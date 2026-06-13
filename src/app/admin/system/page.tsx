@@ -1,0 +1,1 @@
+export default function AdminSystemPage() { return <div className="min-h-screen flex items-center justify-center text-slate-400"><div className="text-center"><p className="text-4xl mb-2">⚙️</p><p className="text-sm">系统配置 (开发中)</p></div></div>; }

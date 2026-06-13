@@ -1,0 +1,534 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ──── 用户表 (三角色统一) ────
+
+model User {
+  id               String    @id @default(cuid())
+  role             String    @default("customer") // admin | business | customer
+  email            String?   @unique
+  phone            String?   @unique
+  passwordHash     String?
+  displayName      String?
+  avatarUrl        String?
+
+  // 企业专用字段
+  businessName     String?
+  businessLogo     String?
+  businessCategory String?   // cafe, retail, food, beauty, etc.
+  businessSlug     String?   @unique // URL 友好标识
+
+  // 客户专用字段
+  pointsBalance    Int       @default(0)
+  lifetimePoints   Int       @default(0)
+  membershipTier   String    @default("regular") // regular, silver, gold, platinum
+
+  // 游戏化字段
+  streakDays       Int       @default(0)   // 连续签到天数
+  lastCheckIn      DateTime?               // 上次签到时间
+  referralCode     String?   @unique       // 个人推荐码
+  referredBy       String?                 // 推荐人ID
+
+  storeId          String?
+
+  status           String    @default("active") // active, suspended, deleted
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // 关系
+  verifications    VerificationCode[]
+  tokenAccount     TokenAccount?
+  memberships      Membership[]        @relation("BusinessMemberships")
+  customerOf       Membership[]        @relation("CustomerMemberships")
+  createdCoupons   Coupon[]            @relation("BusinessCoupons")
+  claimedCoupons   CustomerCoupon[]    @relation("CustomerClaims")
+  redemptions      RedemptionLog[]     @relation("BusinessRedemptions")
+  tokenPurchases   TokenPurchase[]
+  checkIns         CheckIn[]
+  badges           UserBadge[]
+  referralFrom     Referral[]          @relation("Referrer")
+  referralTo       Referral[]          @relation("Referred")
+  promoterAccount  PromoterAccount?
+  promoterLinks    PromoterLink[]      @relation("PromoterLinks")
+  promoterEarnings PromoterEarning[]   @relation("PromoterEarnings")
+  campaigns        Campaign[]          @relation("BusinessCampaigns")
+  bulkPurchases    BulkPurchase[]      @relation("BulkPurchases")
+  store            Store?              @relation("StoreStaff", fields: [storeId], references: [id])
+  managedStores    Store[]             @relation("BusinessStores")
+  luckyDrawEntries LuckyDrawEntry[]
+}
+
+// ──── 验证码 ────
+
+model VerificationCode {
+  id        String   @id @default(cuid())
+  userId    String?
+  contact   String               // email or phone
+  code      String               // 6-digit code
+  purpose   String               // login | register | reset_password
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int      @default(0) // max 5
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+// ──── 客户↔企业关联 ────
+
+model Membership {
+  id           String   @id @default(cuid())
+  businessId   String
+  customerId   String
+  points       Int      @default(0)
+  visitsCount  Int      @default(0)
+  totalSpent   Float    @default(0) // 元
+  isFavorite   Boolean  @default(false)
+  tier         String   @default("regular") // regular | silver | gold | platinum
+  createdAt    DateTime @default(now())
+
+  business     User     @relation("BusinessMemberships", fields: [businessId], references: [id])
+  customer     User     @relation("CustomerMemberships", fields: [customerId], references: [id])
+  pointsLogs   PointsLog[]
+
+  @@unique([businessId, customerId])
+}
+
+// ──── 门店 ────
+
+model Store {
+  id          String   @id @default(cuid())
+  businessId  String
+  name        String               // "星巴克·国贸店"
+  slug        String   @unique     // URL 标识
+  address     String?
+  phone       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business    User     @relation("BusinessStores", fields: [businessId], references: [id])
+  staff       User[]   @relation("StoreStaff")
+  redemptions RedemptionLog[]
+  pointsLogs  PointsLog[]
+  entries     LuckyDrawEntry[]
+
+  @@unique([businessId, name])
+}
+
+// ──── 会员等级配置 ────
+
+model MembershipTierConfig {
+  id             String  @id @default(cuid())
+  businessId     String
+  tier           String                 // regular | silver | gold | platinum
+  name           String                 // "金卡会员"
+  pointsRequired Int                    // 升级所需积分
+  color          String?                // 标签色
+  benefits       String?                // JSON: ["9折优惠","生日礼"]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([businessId, tier])
+}
+
+// ──── 积分流水 ────
+
+model PointsLog {
+  id           String   @id @default(cuid())
+  membershipId String
+  storeId      String?               // 积分操作门店
+  amount       Int                   // 正=获得, 负=消耗
+  type         String                // checkin | redeem_bonus | manual_grant | manual_deduct
+  reason       String
+  balanceAfter Int
+  createdAt    DateTime @default(now())
+
+  membership   Membership @relation(fields: [membershipId], references: [id])
+  store        Store?     @relation(fields: [storeId], references: [id])
+}
+
+// ──── 代金券模板 ────
+
+model Coupon {
+  id                  String   @id @default(cuid())
+  businessId          String
+  title               String                  // "15元咖啡券"
+  description         String?                 // 使用条款
+  type                String                  // fixed_amount | percentage | free_item
+  valueCents          Int                     // 面值(分), 如 1500 = ¥15
+  minSpendCents       Int      @default(0)    // 最低消费(分)
+  pointsRequired      Int      @default(0)    // 所需积分
+  totalQuantity       Int?                    // null=不限量
+  remainingQuantity   Int?
+  validFrom           DateTime
+  validUntil          DateTime
+  imageUrl            String?
+  color               String?
+  status              String   @default("draft") // draft | published | paused | ended
+  isGiftable          Boolean  @default(true)
+  perCustomerLimit    Int      @default(1)
+
+  // 冗余计数器
+  claimedCount        Int      @default(0)
+  usedCount           Int      @default(0)
+
+  // 推广分销
+  allowPromotion      Boolean  @default(false)   // 允许推广
+  rewardType          String   @default("cash")  // "cash" | "item" | "lottery"
+  commissionType      String?                    // "percentage" | "fixed" (cash时用)
+  commissionValue     Int?                       // 百分比(20)或金额(分)
+  itemRewardName      String?                    // 实物奖励名 (item时用,如"奶茶一杯")
+  itemRewardImage     String?                    // 实物图
+  itemRewardQuantity  Int?                       // 实物库存
+  itemRewardClaimed   Int      @default(0)       // 已领取
+  allowBulkPurchase   Boolean  @default(false)   // 允许囤货
+  bulkDiscount       Int?                        // 囤货折扣(85=85折)
+
+  // 领券赠品 (给领券人的惊喜)
+  giftType           String   @default("none")  // "none" | "item" | "lottery" | "points"
+  giftData           String?                    // JSON: {"name":"小饼干","icon":"🍪"} 或 {"points":50} 或 {"prizes":[...]}
+
+  // 所属活动
+  campaignId         String?                    // 归属活动 (可选)
+  campaign           Campaign?   @relation(fields: [campaignId], references: [id])
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  business            User     @relation("BusinessCoupons", fields: [businessId], references: [id])
+  claims              CustomerCoupon[]
+  promoterLinks       PromoterLink[]
+  bulkPurchases       BulkPurchase[]
+  lotteryPrizes       LotteryPrize[]
+}
+
+// ──── 客户已领取的券 ────
+
+model CustomerCoupon {
+  id           String   @id @default(cuid())
+  customerId   String
+  couponId     String
+  status       String   @default("available") // available | used | expired | gifted
+  qrCode       String   @unique              // 唯一核销码
+  claimedAt    DateTime @default(now())
+  usedAt       DateTime?
+  giftFromId   String?                       // 谁赠送的
+  giftMessage  String?
+  pointsSpent  Int      @default(0)
+  sourceLinkId String?                       // 来源推广链接 (PromoterLink.id)
+
+  customer     User     @relation("CustomerClaims", fields: [customerId], references: [id])
+  coupon       Coupon   @relation(fields: [couponId], references: [id])
+  redemption   RedemptionLog?
+}
+
+// ──── 核销记录 ────
+
+model RedemptionLog {
+  id               String   @id @default(cuid())
+  businessId       String
+  customerId       String
+  couponId         String
+  customerCouponId String   @unique
+  amountSaved      Float              // 省了多少钱(元)
+  staffUserId      String?            // 核销员工
+  storeId          String?            // 核销门店
+  location         String?
+  redeemedAt       DateTime @default(now())
+
+  business         User     @relation("BusinessRedemptions", fields: [businessId], references: [id])
+  claim            CustomerCoupon @relation(fields: [customerCouponId], references: [id])
+  store            Store?   @relation(fields: [storeId], references: [id])
+}
+
+// ──── Token 经济 ────
+
+model TokenAccount {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  balance     Int      @default(0)    // 当前余额
+  totalEarned Int      @default(0)    // 累计获得
+  totalSpent  Int      @default(0)    // 累计消耗
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id])
+  transactions TokenTransaction[]
+}
+
+model TokenTransaction {
+  id           String   @id @default(cuid())
+  accountId    String
+  amount       Int                     // 正=获得, 负=消耗
+  type         String                  // purchase, free_grant, signup_bonus, etc.
+  description  String                  // 人类可读描述
+  referenceId  String?                 // 关联的券/会员ID
+  balanceAfter Int                     // 交易后余额
+  createdAt    DateTime @default(now())
+
+  account      TokenAccount @relation(fields: [accountId], references: [id])
+}
+
+model TokenPurchase {
+  id            String   @id @default(cuid())
+  userId        String
+  packageId     String                 // 套餐ID
+  amount        Int                    // Token数量
+  priceCents    Int                    // 支付金额(分)
+  bonusAmount   Int      @default(0)  // 赠送Token
+  status        String   @default("pending") // pending | paid | failed | refunded
+  paymentMethod String?                // stripe | wechat | alipay
+  paymentRef    String?                // 网关流水号
+  createdAt     DateTime @default(now())
+  paidAt        DateTime?
+
+  user          User     @relation(fields: [userId], references: [id])
+}
+
+// ──── 游戏化 ────
+
+model CheckIn {
+  id        String   @id @default(cuid())
+  userId    String
+  date      String               // "2026-06-05"
+  dayNumber Int                  // 连续天数
+  bonus     Int                  // 奖励积分
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+}
+
+model Badge {
+  id          String   @id @default(cuid())
+  key         String   @unique      // "first_claim", "ten_claims", "week_streak"
+  name        String                // "首次领券"
+  description String                // "领取你的第一张代金券"
+  icon        String                // "🎫"
+  category    String                // milestone | streak | social
+  rarity      String   @default("common") // common | rare | epic
+
+  users       UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  badgeId   String
+  earnedAt  DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+
+  @@unique([userId, badgeId])
+}
+
+model Referral {
+  id             String   @id @default(cuid())
+  referrerId     String               // 邀请人
+  referredId     String               // 被邀请人
+  rewardGranted  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  referrer       User     @relation("Referrer", fields: [referrerId], references: [id])
+  referred       User     @relation("Referred", fields: [referredId], references: [id])
+
+  @@unique([referrerId, referredId])
+}
+
+// ──── AI 记录 ────
+
+model AiUsageLog {
+  id                String   @id @default(cuid())
+  userId            String?
+  feature           String               // "coupon_generator" | "recommend" | "describe" | "search_nl"
+  promptTokens      Int
+  completionTokens  Int
+  costCents         Float
+  latencyMs         Int
+  success           Boolean
+  createdAt         DateTime @default(now())
+}
+
+// ──── 推广分销 ────
+
+model PromoterAccount {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  totalEarned      Int      @default(0)  // 累计收益(分)
+  availableBalance Int      @default(0)  // 可提现余额(分)
+  frozenBalance    Int      @default(0)  // 冻结中(分)
+  level            Int      @default(1)  // 1-5
+  totalSold        Int      @default(0)  // 累计推广数量
+  isActive         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user             User     @relation(fields: [userId], references: [id])
+}
+
+model PromoterLink {
+  id              String   @id @default(cuid())
+  promoterId      String
+  couponId        String
+  code            String   @unique       // 短推广码
+  clicks          Int      @default(0)
+  claims          Int      @default(0)
+  redemptions     Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  promoter        User     @relation("PromoterLinks", fields: [promoterId], references: [id])
+  coupon          Coupon   @relation(fields: [couponId], references: [id])
+  earnings        PromoterEarning[]
+}
+
+model PromoterEarning {
+  id              String   @id @default(cuid())
+  promoterId      String
+  linkId          String?
+  couponId        String
+  type            String               // "commission" | "bulk_resale"
+  amountCents     Int                  // 收益(分)
+  platformFee     Int    @default(0)   // 平台抽成(分)
+  status          String @default("pending") // pending | confirmed | paid | cancelled
+  claimId         String?              // 关联的领券ID
+  confirmedAt     DateTime?
+  createdAt       DateTime @default(now())
+
+  promoter        User     @relation("PromoterEarnings", fields: [promoterId], references: [id])
+  link            PromoterLink? @relation(fields: [linkId], references: [id])
+}
+
+model BulkPurchase {
+  id              String   @id @default(cuid())
+  promoterId      String
+  couponId        String
+  quantity        Int                   // 购买数量
+  unitPrice       Int                   // 进单价(分)
+  totalCost       Int                   // 总成本(分)
+  soldCount       Int    @default(0)   // 已售出
+  revenue         Int    @default(0)   // 销售收入(分)
+  profit          Int    @default(0)   // 利润(分)
+  status          String @default("active") // active | sold_out | refunded
+  createdAt       DateTime @default(now())
+
+  promoter        User     @relation("BulkPurchases", fields: [promoterId], references: [id])
+  coupon          Coupon   @relation(fields: [couponId], references: [id])
+}
+
+// ──── 推广抽奖奖池 ────
+
+model LotteryPrize {
+  id              String   @id @default(cuid())
+  couponId        String?               // 绑定券的推广奖池（可选）
+  campaignId      String?               // 绑定抽奖活动（可选）
+  name            String                // 奖品名, "免费奶茶一杯"
+  icon            String   @default("🎁")
+  type            String   @default("item") // "item" | "cash" | "coupon"
+  valueCents      Int      @default(0)  // 价值(分), 现金类用
+  weight          Int      @default(10) // 权重, 越大越容易中
+  totalStock      Int?                  // null=不限
+  remainingStock  Int?
+  claimed         Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  coupon          Coupon?   @relation(fields: [couponId], references: [id])
+  campaign        Campaign? @relation(fields: [campaignId], references: [id])
+  wins            LotteryWin[]
+}
+
+model LotteryWin {
+  id              String   @id @default(cuid())
+  prizeId         String
+  promoterId      String
+  claimId         String?               // 关联的领券ID
+  status          String   @default("pending") // pending | claimed | expired
+  wonAt           DateTime @default(now())
+  claimedAt       DateTime?
+
+  prize           LotteryPrize @relation(fields: [prizeId], references: [id])
+}
+
+// ──── 领券赠品记录 ────
+
+model GiftRecord {
+  id              String   @id @default(cuid())
+  claimId         String
+  customerId      String
+  type            String               // "item" | "lottery" | "points"
+  data            String               // JSON: 奖品详情
+  status          String   @default("pending") // pending | claimed | expired
+  createdAt       DateTime @default(now())
+  claimedAt       DateTime?
+}
+
+// ──── 抽奖活动参与记录 ────
+
+model LuckyDrawEntry {
+  id           String   @id @default(cuid())
+  campaignId   String
+  customerId   String?
+  storeId      String?
+
+  // 线下手动录入字段
+  name         String?
+  phone        String?
+
+  // 来源
+  source       String   @default("auto") // auto = 消费自动 | manual = 店员录入
+
+  // 触发上下文
+  redemptionId String?
+
+  // 结果
+  won          Boolean  @default(false)
+  prizeName    String?
+  prizeIcon    String?
+  notified     Boolean  @default(false)
+  claimedAt    DateTime?
+  createdAt    DateTime @default(now())
+
+  campaign     Campaign     @relation(fields: [campaignId], references: [id])
+  customer     User?        @relation(fields: [customerId], references: [id])
+  store        Store?       @relation(fields: [storeId], references: [id])
+}
+
+// ──── 活动/批次管理 ────
+
+model Campaign {
+  id              String   @id @default(cuid())
+  businessId      String
+  name            String                    // "夏日清凉节"
+  description     String?                   // 活动描述
+  type            String   @default("promotion") // promotion | seasonal | holiday | event | launch | lucky_draw
+  color           String?                   // 标签色 #FF6B35
+  startDate       DateTime
+  endDate         DateTime
+  drawDate        DateTime?                 // 抽奖类型的开奖时间
+  // 消费门槛 (lucky_draw 类型)
+  minSpendCents   Int?                      // 最低消费多少分才可获得抽奖资格
+  maxEntries      Int?                      // 最多参与人数 (null=不限)
+  drawMethod      String   @default("weighted") // weighted = 加权随机
+  budgetCents     Int?                      // 活动预算(分), 可选
+  tags            String   @default("[]")   // JSON数组, ["新品","限时"]
+  status          String   @default("draft") // draft | active | ended
+  couponCount     Int      @default(0)      // 券数量
+  totalClaims     Int      @default(0)      // 总领取
+  totalRedemptions Int     @default(0)      // 总核销
+  entryCount      Int      @default(0)      // 抽奖参与人数
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business        User     @relation("BusinessCampaigns", fields: [businessId], references: [id])
+  coupons         Coupon[]
+  prizes          LotteryPrize[]
+  entries         LuckyDrawEntry[]
+}
