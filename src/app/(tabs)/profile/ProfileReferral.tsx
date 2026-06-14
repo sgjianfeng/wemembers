@@ -51,7 +51,7 @@ export function ProfileReferral() {
             {count > 0 && <p className="text-xs text-slate-400 mt-2">已邀请 {count} 位好友</p>}
           </div>
         ) : (
-          <Button size="sm" variant="primary" className="mt-3" onClick={generate} loading={loading}>
+          <Button size="sm" variant="default" className="mt-3" onClick={generate} loading={loading}>
             生成我的邀请码
           </Button>
         )}

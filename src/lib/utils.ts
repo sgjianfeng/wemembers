@@ -1,7 +1,8 @@
-import { v4 as uuidv4 } from "uuid";
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
 
-export function cn(...classes: (string | boolean | undefined | null)[]): string {
-  return classes.filter(Boolean).join(" ");
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
 }
 
 export function generateCode(length: number = 6): string {
@@ -9,7 +10,6 @@ export function generateCode(length: number = 6): string {
 }
 
 export function generateQrCode(): string {
-  // 生成 12 位唯一核销码
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   return Array.from({ length: 12 }, () =>
     chars.charAt(Math.floor(Math.random() * chars.length))

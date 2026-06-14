@@ -1,26 +1,14 @@
+import * as React from "react";
 import { cn } from "@/lib/utils";
 
-interface CardProps {
-  children: React.ReactNode;
-  className?: string;
-  onClick?: () => void;
-}
+const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("rounded-xl border bg-card text-card-foreground shadow-sm", className)} {...props} />
+));
+Card.displayName = "Card";
 
-export function Card({ children, className, onClick }: CardProps) {
-  return (
-    <div
-      className={cn(
-        "bg-white border border-slate-100 rounded-xl overflow-hidden",
-        onClick && "cursor-pointer active:bg-slate-50 transition-colors",
-        className
-      )}
-      onClick={onClick}
-    >
-      {children}
-    </div>
-  );
-}
+const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("p-5", className)} {...props} />
+));
+CardContent.displayName = "CardContent";
 
-export function CardContent({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn("p-4", className)}>{children}</div>;
-}
+export { Card, CardContent };
