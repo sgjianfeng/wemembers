@@ -11,6 +11,8 @@ const STAFF_BLOCKED = [
   "/business/tokens",
   "/business/members/config",
   "/business/lucky-draw",
+  "/business/partners",
+  "/business/settlements",
 ];
 
 export async function middleware(request: NextRequest) {

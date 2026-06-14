@@ -9,6 +9,7 @@ const businessTabs = [
   { icon: "🎰", label: "抽奖", href: "/business/lucky-draw" },
   { icon: "📅", label: "活动", href: "/business/campaigns" },
   { icon: "🏪", label: "门店", href: "/business/stores" },
+  { icon: "🤝", label: "合作", href: "/business/partners" },
 ];
 
 const staffTabs = [

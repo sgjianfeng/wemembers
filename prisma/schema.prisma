@@ -62,6 +62,10 @@ model User {
   store            Store?              @relation("StoreStaff", fields: [storeId], references: [id])
   managedStores    Store[]             @relation("BusinessStores")
   luckyDrawEntries LuckyDrawEntry[]
+  partnersFrom     BusinessPartner[]   @relation("PartnerInitiator")
+  partnersTo       BusinessPartner[]   @relation("PartnerReceiver")
+  settlementsIssuer Settlement[]       @relation("SettlementIssuer")
+  settlementsRedeemer Settlement[]     @relation("SettlementRedeemer")
 }
 
 // ──── 验证码 ────
@@ -117,6 +121,7 @@ model Store {
   redemptions RedemptionLog[]
   pointsLogs  PointsLog[]
   entries     LuckyDrawEntry[]
+  joinRequests CampaignJoinRequest[]
 
   @@unique([businessId, name])
 }
@@ -198,6 +203,11 @@ model Coupon {
   campaignId         String?                    // 归属活动 (可选)
   campaign           Campaign?   @relation(fields: [campaignId], references: [id])
 
+  // 跨商家协作
+  allowCollaboration Boolean  @default(false)   // 允许合作商家核销
+  promotionFeeRate   Int?                       // 推广费率（%），默认20
+  partnerIds         String?                    // 合作商家 ID 列表 JSON
+
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -240,23 +250,33 @@ model RedemptionLog {
   staffUserId      String?            // 核销员工
   storeId          String?            // 核销门店
   location         String?
+
+  // 跨商家核销
+  isCrossStore      Boolean  @default(false)
+  issuerBusinessId  String?           // 发券方（券的 owner）
+  promotionFee      Float?            // 推广费（元）
+  settled           Boolean  @default(false)
+  settledAt         DateTime?
+
   redeemedAt       DateTime @default(now())
 
   business         User     @relation("BusinessRedemptions", fields: [businessId], references: [id])
   claim            CustomerCoupon @relation(fields: [customerCouponId], references: [id])
   store            Store?   @relation(fields: [storeId], references: [id])
+  settlement       Settlement?
 }
 
 // ──── Token 经济 ────
 
 model TokenAccount {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  balance     Int      @default(0)    // 当前余额
-  totalEarned Int      @default(0)    // 累计获得
-  totalSpent  Int      @default(0)    // 累计消耗
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  balance       Int      @default(0)    // 当前可用余额
+  frozenBalance Int      @default(0)    // 冻结金额（已售出未核销的券款）
+  totalEarned   Int      @default(0)    // 累计获得
+  totalSpent    Int      @default(0)    // 累计消耗
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   user        User     @relation(fields: [userId], references: [id])
   transactions TokenTransaction[]
@@ -470,6 +490,60 @@ model GiftRecord {
   claimedAt       DateTime?
 }
 
+// ──── 商家合作 ────
+
+model BusinessPartner {
+  id            String   @id @default(cuid())
+  businessId    String               // 发起方
+  partnerId     String               // 合作方
+  source        String               // "invite" | "apply" | "auto"
+  message       String?              // 邀请/申请留言
+  status        String   @default("pending") // pending | active | rejected | revoked
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business      User     @relation("PartnerInitiator", fields: [businessId], references: [id])
+  partner       User     @relation("PartnerReceiver", fields: [partnerId], references: [id])
+
+  @@unique([businessId, partnerId])
+}
+
+model CampaignJoinRequest {
+  id          String   @id @default(cuid())
+  campaignId  String
+  storeId     String               // 申请加入的门店
+  businessId  String               // 申请门店所属公司
+  message     String?              // 申请留言
+  status      String   @default("pending") // pending | approved | rejected
+  createdAt   DateTime @default(now())
+  reviewedAt  DateTime?
+
+  campaign    Campaign @relation(fields: [campaignId], references: [id])
+  store       Store    @relation(fields: [storeId], references: [id])
+
+  @@unique([campaignId, storeId])
+}
+
+// ──── 结算记录 ────
+
+model Settlement {
+  id                 String   @id @default(cuid())
+  redemptionId       String   @unique      // 关联核销记录
+  totalAmount        Int                   // 券面值（分）
+  platformFee        Int                   // 平台手续费（分）
+  issuerFee          Int                   // 发券方推广费（分）
+  redeemerIncome     Int                   // 核销方收入（分）
+  issuerBusinessId   String               // 发券方
+  redeemerBusinessId String               // 核销方
+  status             String   @default("completed")
+  createdAt          DateTime @default(now())
+  settledAt          DateTime @default(now())
+
+  redemption         RedemptionLog @relation(fields: [redemptionId], references: [id])
+  issuer             User          @relation("SettlementIssuer", fields: [issuerBusinessId], references: [id])
+  redeemer           User          @relation("SettlementRedeemer", fields: [redeemerBusinessId], references: [id])
+}
+
 // ──── 抽奖活动参与记录 ────
 
 model LuckyDrawEntry {
@@ -524,6 +598,13 @@ model Campaign {
   totalClaims     Int      @default(0)      // 总领取
   totalRedemptions Int     @default(0)      // 总核销
   entryCount      Int      @default(0)      // 抽奖参与人数
+
+  // 协作
+  allowCollaboration Boolean @default(false)
+  partnerIds         String?               // 合作商家 ID 列表 JSON，null=仅自己门店
+  storeIds           String?               // 参与门店 ID 列表 JSON，null=不限门店
+  joinable           Boolean @default(false) // 允许其他商家主动申请加入
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -531,4 +612,5 @@ model Campaign {
   coupons         Coupon[]
   prizes          LotteryPrize[]
   entries         LuckyDrawEntry[]
+  joinRequests    CampaignJoinRequest[]
 }

@@ -22,8 +22,33 @@ export async function POST(request: NextRequest) {
     });
 
     if (!claim) return NextResponse.json({ error: "无效的核销码" }, { status: 404 });
-    if (claim.coupon.businessId !== session.userId) return NextResponse.json({ error: "该券不属于你的店铺" }, { status: 403 });
     if (claim.status !== "available") return NextResponse.json({ error: `该券已${claim.status === "used" ? "使用" : "过期"}` }, { status: 400 });
+
+    // 跨商家核销判断
+    const isCrossStore = claim.coupon.businessId !== session.userId;
+    let settlementMessage = "";
+    let settlementId: string | null = null;
+
+    if (isCrossStore) {
+      // 检查是否有合作关系
+      const partnership = await prisma.businessPartner.findFirst({
+        where: {
+          status: "active",
+          OR: [
+            { businessId: session.userId, partnerId: claim.coupon.businessId },
+            { businessId: claim.coupon.businessId, partnerId: session.userId },
+          ],
+        },
+      });
+
+      // 检查券本身是否允许跨商家核销
+      if (!partnership) {
+        return NextResponse.json({ error: "该券不属于本店，且双方未建立合作关系" }, { status: 403 });
+      }
+      if (!claim.coupon.allowCollaboration) {
+        return NextResponse.json({ error: "该券不支持跨商家核销" }, { status: 403 });
+      }
+    }
 
     // 扣 Token
     const tokenResult = await spendTokens(session.userId, TOKEN_COSTS.redeem_verify, "redeem_verify", `核销「${claim.coupon.title}」`);
@@ -41,7 +66,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 记录核销
-    await prisma.redemptionLog.create({
+    const log = await prisma.redemptionLog.create({
       data: {
         businessId: session.userId,
         customerId: claim.customerId,
@@ -50,31 +75,101 @@ export async function POST(request: NextRequest) {
         amountSaved: claim.coupon.valueCents / 100,
         staffUserId: session.userId,
         storeId: session.storeId || null,
+        isCrossStore,
+        issuerBusinessId: isCrossStore ? claim.coupon.businessId : null,
       },
     });
+
+    // 跨商家结算
+    if (isCrossStore) {
+      const totalAmount = claim.coupon.valueCents;
+      const feeRate = claim.coupon.promotionFeeRate ?? 20;
+      const platformFeeRate = 10;
+      const issuerFeeRate = feeRate;
+      const redeemerRate = 100 - platformFeeRate - issuerFeeRate;
+
+      const platformFee = Math.round(totalAmount * platformFeeRate / 100);
+      const issuerFee = Math.round(totalAmount * issuerFeeRate / 100);
+      const redeemerIncome = totalAmount - platformFee - issuerFee;
+
+      // 创建结算记录
+      const settlement = await prisma.settlement.create({
+        data: {
+          redemptionId: log.id,
+          totalAmount,
+          platformFee,
+          issuerFee,
+          redeemerIncome,
+          issuerBusinessId: claim.coupon.businessId,
+          redeemerBusinessId: session.userId,
+          status: "completed",
+        },
+      });
+      settlementId = settlement.id;
+
+      // 发券方：解冻 + 推广费入账
+      await prisma.tokenAccount.upsert({
+        where: { userId: claim.coupon.businessId },
+        create: { userId: claim.coupon.businessId, balance: issuerFee, frozenBalance: 0, totalEarned: issuerFee, totalSpent: 0 },
+        update: {
+          frozenBalance: { decrement: totalAmount },
+          balance: { increment: issuerFee },
+          totalEarned: { increment: issuerFee },
+        },
+      });
+
+      // 核销方：收入
+      await prisma.tokenAccount.upsert({
+        where: { userId: session.userId },
+        create: { userId: session.userId, balance: redeemerIncome, frozenBalance: 0, totalEarned: redeemerIncome, totalSpent: 0 },
+        update: {
+          balance: { increment: redeemerIncome },
+          totalEarned: { increment: redeemerIncome },
+        },
+      });
+
+      settlementMessage = `跨店核销 · 发券方推广费 ¥${(issuerFee / 100).toFixed(2)} · 本店收入 ¥${(redeemerIncome / 100).toFixed(2)}`;
+    }
 
     // 自动积分
     let pointsAwarded = 0;
     let tierUpgraded: string | undefined;
     let luckyDrawEntry: string | undefined;
 
-    // 自动抽奖资格：检查公司是否有进行中的 lucky_draw 活动
+    // 自动抽奖资格：检查有没有进行中的 lucky_draw 活动
     try {
-      const activeDraw = await prisma.campaign.findFirst({
+      // 找活动（本公司的 + 合作商家允许我参与的活动）
+      const activeDraws = await prisma.campaign.findMany({
         where: {
-          businessId: session.userId,
           type: "lucky_draw",
           status: "active",
           startDate: { lte: new Date() },
           endDate: { gte: new Date() },
+          OR: [
+            // 本公司的活动
+            { businessId: session.userId, joinable: false, storeIds: null },
+            { businessId: session.userId, joinable: true },
+            // 合作商家允许我参与的活动（我已有 approved 申请）
+            { joinable: true, joinRequests: { some: { businessId: session.userId, status: "approved" } } },
+          ],
         },
         orderBy: { createdAt: "desc" },
+        take: 5,
       });
 
-      if (activeDraw) {
-        // 检查是否满足最低消费
+      for (const activeDraw of activeDraws) {
+        // 门店检查：如果活动指定了门店，检查当前门店是否在列表中
+        let storeOk = true;
+        if (activeDraw.storeIds) {
+          try {
+            const ids: string[] = JSON.parse(activeDraw.storeIds);
+            storeOk = session.storeId ? ids.includes(session.storeId) : false;
+          } catch { storeOk = false; }
+        }
+
+        if (!storeOk) continue;
+
         const spendMet = !activeDraw.minSpendCents || claim.coupon.valueCents >= activeDraw.minSpendCents;
-        // 检查人数上限
         let underMax = true;
         if (activeDraw.maxEntries) {
           const count = await prisma.luckyDrawEntry.count({ where: { campaignId: activeDraw.id } });
@@ -96,6 +191,7 @@ export async function POST(request: NextRequest) {
             data: { entryCount: { increment: 1 } },
           });
           luckyDrawEntry = activeDraw.name;
+          break; // 一张券只发一个活动的抽奖资格
         }
       }
     } catch { /* 不影响核销主流程 */ }
@@ -211,6 +307,9 @@ export async function POST(request: NextRequest) {
         pointsAwarded: pointsAwarded > 0 ? pointsAwarded : undefined,
         tierUpgraded,
         luckyDrawEntry,
+        isCrossStore: isCrossStore || undefined,
+        settlementMessage: settlementMessage || undefined,
+        settlementId: settlementId || undefined,
       },
     });
   } catch (error) {
