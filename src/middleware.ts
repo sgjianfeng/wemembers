@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // 公开路由
-  if (PUBLIC_STARTS.some((r) => pathname.startsWith(r))) {
+  if (pathname === "/" || PUBLIC_STARTS.some((r) => pathname.startsWith(r))) {
     if (pathname.startsWith("/auth/") && payload) {
       const map: Record<string, string> = {
         admin: "/admin",
