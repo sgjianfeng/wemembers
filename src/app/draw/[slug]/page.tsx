@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { CountdownClock } from "./CountdownClock";
 
 export default function DrawPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -82,34 +83,35 @@ export default function DrawPage() {
       </div>
 
       <div className="px-4 -mt-2 pb-8">
-        {/* Pool Status Bar */}
-        <Card className="mb-4 border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-semibold text-amber-800">🚗 大奖池进度</span>
-              <span className="text-xs text-amber-600 font-bold">{progress}%</span>
-            </div>
-            <div className="h-2.5 bg-amber-200 rounded-full overflow-hidden mb-3">
-              <div className="h-full bg-gradient-to-r from-amber-500 to-[#FF6B35] rounded-full transition-all" style={{ width: `${progress}%` }} />
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center text-xs">
-              <div>
-                <p className="text-amber-700 font-bold">S${campaign.grandPoolSgd || "0"}</p>
-                <p className="text-amber-500">大奖池</p>
-              </div>
-              <div>
-                <p className="text-amber-700 font-bold">S${campaign.instantPoolSgd || "0"}</p>
-                <p className="text-amber-500">即时池</p>
-              </div>
-              <div>
-                <p className={campaign.bydUnlocked ? "text-green-600 font-bold" : "text-amber-700 font-bold"}>
-                  {campaign.bydUnlocked ? "✅ 已解锁" : "⏳ 待解锁"}
-                </p>
-                <p className="text-amber-500">比亚迪 S$200K</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Pool + Countdown */}
+        {campaign.drawDate && (
+          <Card className="mb-4 border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50">
+            <CardContent className="p-4">
+              <CountdownClock
+                drawDate={campaign.drawDate}
+                progress={progress}
+                grandPoolSgd={campaign.grandPoolSgd || "0"}
+                totalTicketCount={campaign.totalTicketCount || 0}
+                minSpendSgd={minSpendSgd}
+                startDate={campaign.startDate}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <div className="bg-white/80 rounded-xl p-3 text-center">
+            <p className="text-lg font-bold text-[#1A6EFF]">S${campaign.instantPoolSgd || "0"}</p>
+            <p className="text-[10px] text-slate-400">即时奖池</p>
+          </div>
+          <div className="bg-white/80 rounded-xl p-3 text-center">
+            <p className={campaign.bydUnlocked ? "text-lg font-bold text-green-600" : "text-lg font-bold text-amber-600"}>
+              {campaign.bydUnlocked ? "✅ 已解锁" : "⏳ 待解锁"}
+            </p>
+            <p className="text-[10px] text-slate-400">比亚迪 S$200K</p>
+          </div>
+        </div>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2 mb-4">
