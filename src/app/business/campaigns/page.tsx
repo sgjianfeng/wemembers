@@ -4,10 +4,15 @@ import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { t } from "@/lib/i18n";
 
 export default async function CampaignsPage() {
   const session = await getSession();
   if (!session || session.role !== "business") redirect("/auth/login");
+
+  const c = await cookies();
+  const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
 
   const campaigns = await prisma.campaign.findMany({
     where: { businessId: session.userId },
@@ -15,29 +20,29 @@ export default async function CampaignsPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  const typeLabels: Record<string, { label: string; icon: string }> = {
-    promotion: { label: "促销", icon: "🏷️" },
-    seasonal: { label: "季节", icon: "🌸" },
-    holiday: { label: "节日", icon: "🎉" },
-    event: { label: "活动", icon: "📅" },
-    launch: { label: "新品", icon: "🚀" },
+  const typeLabels: Record<string, { zh: string; en: string; icon: string }> = {
+    promotion: { zh: "促销", en: "Promotion", icon: "🏷️" },
+    seasonal: { zh: "季节", en: "Seasonal", icon: "🌸" },
+    holiday: { zh: "节日", en: "Holiday", icon: "🎉" },
+    event: { zh: "活动", en: "Event", icon: "📅" },
+    launch: { zh: "新品", en: "Launch", icon: "🚀" },
   };
 
-  const statusBadge: Record<string, { variant: "green" | "orange" | "slate"; label: string }> = {
-    draft: { variant: "slate", label: "草稿" },
-    active: { variant: "green", label: "进行中" },
-    ended: { variant: "orange", label: "已结束" },
+  const statusBadge: Record<string, { variant: "green" | "orange" | "slate"; zh: string; en: string }> = {
+    draft: { variant: "slate", zh: "草稿", en: "Draft" },
+    active: { variant: "green", zh: "进行中", en: "Active" },
+    ended: { variant: "orange", zh: "已结束", en: "Ended" },
   };
 
   return (
     <div className="pb-4">
       <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold">活动管理</h1>
-          <p className="text-xs text-slate-400 mt-0.5">批量管理代金券和推广活动</p>
+          <h1 className="text-lg font-semibold">{t("business.campaigns.title", lang)}</h1>
+          <p className="text-xs text-slate-400 mt-0.5">{t("business.campaigns.subtitle", lang)}</p>
         </div>
         <Link href="/business/campaigns/new" className="px-3 py-1.5 bg-[#1A6EFF] text-white text-xs rounded-full">
-          + 创建活动
+          + {t("business.campaigns.create", lang)}
         </Link>
       </div>
 
@@ -57,10 +62,10 @@ export default async function CampaignsPage() {
                       <span className="text-lg">{ti.icon}</span>
                       <div>
                         <p className="text-sm font-semibold text-slate-900">{c.name}</p>
-                        <p className="text-xs text-slate-500">{ti.label} · {c.coupons.length}张券</p>
+                        <p className="text-xs text-slate-500">{ti[lang]} · {t("business.campaigns.couponsCount", lang, { count: c.coupons.length })}</p>
                       </div>
                     </div>
-                    <Badge variant={sb.variant}>{sb.label}</Badge>
+                    <Badge variant={sb.variant}>{sb[lang]}</Badge>
                   </div>
 
                   {c.description && <p className="text-xs text-slate-500 mb-2 line-clamp-1">{c.description}</p>}
@@ -68,21 +73,21 @@ export default async function CampaignsPage() {
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="bg-slate-50 rounded-lg py-2">
                       <p className="text-lg font-bold text-slate-900">{c.totalClaims}</p>
-                      <p className="text-[10px] text-slate-400">领取</p>
+                      <p className="text-[10px] text-slate-400">{t("business.campaigns.claimed", lang)}</p>
                     </div>
                     <div className="bg-slate-50 rounded-lg py-2">
                       <p className="text-lg font-bold text-slate-900">{c.totalRedemptions}</p>
-                      <p className="text-[10px] text-slate-400">核销</p>
+                      <p className="text-[10px] text-slate-400">{t("business.campaigns.redeemed", lang)}</p>
                     </div>
                     <div className="bg-slate-50 rounded-lg py-2">
                       <p className="text-lg font-bold text-slate-900">{c.totalClaims > 0 ? Math.round((c.totalRedemptions / c.totalClaims) * 100) : 0}%</p>
-                      <p className="text-[10px] text-slate-400">转化率</p>
+                      <p className="text-[10px] text-slate-400">{t("business.campaigns.conversionRate", lang)}</p>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between mt-2 text-[10px] text-slate-400">
-                    <span>{c.startDate.toLocaleDateString("zh-CN")} ~ {c.endDate.toLocaleDateString("zh-CN")}</span>
-                    {c.status === "active" && daysLeft > 0 && <span className="text-amber-500">还剩 {daysLeft} 天</span>}
+                    <span>{c.startDate.toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US")} ~ {c.endDate.toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US")}</span>
+                    {c.status === "active" && daysLeft > 0 && <span className="text-amber-500">{t("business.campaigns.daysLeft", lang, { days: daysLeft })}</span>}
                   </div>
                 </CardContent>
               </Card>
@@ -93,8 +98,8 @@ export default async function CampaignsPage() {
         {campaigns.length === 0 && (
           <div className="text-center py-12 text-slate-400">
             <p className="text-4xl mb-2">📅</p>
-            <p className="text-sm">还没有活动</p>
-            <p className="text-xs mt-1">创建活动来批量管理代金券</p>
+            <p className="text-sm">{t("business.campaigns.noCampaigns", lang)}</p>
+            <p className="text-xs mt-1">{t("business.campaigns.noCampaignsHint", lang)}</p>
           </div>
         )}
       </div>

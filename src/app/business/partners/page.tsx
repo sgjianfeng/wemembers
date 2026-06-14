@@ -5,10 +5,15 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import Link from "next/link";
 import { PartnerActions } from "./PartnerActions";
+import { cookies } from "next/headers";
+import { t } from "@/lib/i18n";
 
 export default async function PartnersPage() {
   const session = await getSession();
   if (!session || session.role !== "business") redirect("/auth/login");
+
+  const c = await cookies();
+  const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
 
   // 我发出的邀请 (initiator)
   const sent = await prisma.businessPartner.findMany({
@@ -25,25 +30,25 @@ export default async function PartnersPage() {
   });
 
   const statusBadge: Record<string, { variant: "green" | "orange" | "red" | "slate"; label: string }> = {
-    active: { variant: "green", label: "合作中" },
-    pending: { variant: "orange", label: "待处理" },
-    rejected: { variant: "red", label: "已拒绝" },
-    revoked: { variant: "slate", label: "已撤销" },
+    active: { variant: "green", label: t("business.partners.active", lang) },
+    pending: { variant: "orange", label: t("business.partners.pending", lang) },
+    rejected: { variant: "red", label: t("business.partners.rejected", lang) },
+    revoked: { variant: "slate", label: t("business.partners.revoked", lang) },
   };
 
   return (
     <div className="pb-4">
       <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
         <div>
-          <h1 className="text-lg font-semibold">商家合作</h1>
-          <p className="text-xs text-slate-400 mt-0.5">发现合作伙伴 · 跨店核销 · 联合活动</p>
+          <h1 className="text-lg font-semibold">{t("business.partners.title", lang)}</h1>
+          <p className="text-xs text-slate-400 mt-0.5">{t("business.partners.subtitle", lang)}</p>
         </div>
         <div className="flex gap-1.5">
           <Link href="/business/settlements" className="px-3 py-1.5 text-xs text-slate-500 border border-slate-200 rounded-full">
-            📊 结算
+            {t("business.partners.settlements", lang)}
           </Link>
           <Link href="/business/partners/discover" className="px-3 py-1.5 bg-[#1A6EFF] text-white text-xs rounded-full">
-            + 发现商家
+            {t("business.partners.discover", lang)}
           </Link>
         </div>
       </div>
@@ -52,7 +57,7 @@ export default async function PartnersPage() {
         {/* 我收到的邀请 */}
         {received.length > 0 && (
           <div>
-            <h3 className="text-sm font-semibold text-slate-900 mb-2">📨 收到的邀请</h3>
+            <h3 className="text-sm font-semibold text-slate-900 mb-2">{t("business.partners.received", lang)}</h3>
             {received.map((p) => {
               const sb = statusBadge[p.status] || statusBadge.pending;
               return (
@@ -64,7 +69,7 @@ export default async function PartnersPage() {
                         <div>
                           <p className="text-sm font-medium text-slate-900">{p.business.businessName}</p>
                           <p className="text-[10px] text-slate-400">
-                            {p.source === "invite" ? "对方邀请你" : p.source === "apply" ? "已申请加入" : "自动匹配"}
+                            {p.source === "invite" ? t("business.partners.invitedBy", lang) : p.source === "apply" ? t("business.partners.appliedToJoin", lang) : t("business.partners.autoMatch", lang)}
                           </p>
                         </div>
                       </div>
@@ -83,7 +88,7 @@ export default async function PartnersPage() {
 
         {/* 我发出的邀请 */}
         <div>
-          <h3 className="text-sm font-semibold text-slate-900 mb-2">📤 合作关系</h3>
+          <h3 className="text-sm font-semibold text-slate-900 mb-2">{t("business.partners.sent", lang)}</h3>
           {sent.length > 0 ? (
             sent.map((p) => {
               const sb = statusBadge[p.status] || statusBadge.pending;
@@ -96,7 +101,7 @@ export default async function PartnersPage() {
                         <div>
                           <p className="text-sm font-medium text-slate-900">{p.partner.businessName}</p>
                           <p className="text-[10px] text-slate-400">
-                            {p.source === "invite" ? "你发出的邀请" : p.source === "apply" ? "对方申请加入" : "自动匹配"}
+                            {p.source === "invite" ? t("business.partners.youInvited", lang) : p.source === "apply" ? t("business.partners.theyAppliedToJoin", lang) : t("business.partners.autoMatch", lang)}
                           </p>
                         </div>
                       </div>
@@ -112,10 +117,10 @@ export default async function PartnersPage() {
           ) : (
             <div className="text-center py-10 text-slate-400">
               <p className="text-3xl mb-2">🤝</p>
-              <p className="text-sm">还没有合作伙伴</p>
-              <p className="text-xs mt-1">开始发现商家建立合作关系</p>
+              <p className="text-sm">{t("business.partners.noPartners", lang)}</p>
+              <p className="text-xs mt-1">{t("business.partners.noPartnersHint", lang)}</p>
               <Link href="/business/partners/discover" className="inline-block mt-3 px-4 py-1.5 bg-[#1A6EFF] text-white text-xs rounded-full">
-                发现商家
+                {lang === "zh" ? "发现商家" : "Discover"}
               </Link>
             </div>
           )}
