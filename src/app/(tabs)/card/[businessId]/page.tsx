@@ -1,10 +1,14 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { t } from "@/lib/i18n";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/Card";
 import Link from "next/link";
 
 export default async function CardPage() {
+  const c = await cookies();
+  const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
   const session = await getSession();
   if (!session) redirect("/auth/login");
 
@@ -21,7 +25,7 @@ export default async function CardPage() {
   return (
     <div className="pb-4">
       <div className="px-4 py-4 border-b border-slate-100">
-        <h1 className="text-lg font-semibold">我的会员卡</h1>
+        <h1 className="text-lg font-semibold">{t("card.title", lang)}</h1>
       </div>
 
       {memberships.length > 0 ? (
@@ -38,10 +42,10 @@ export default async function CardPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-slate-900">
-                      {m.business.businessName || "商家"}
+                      {m.business.businessName || t("card.unknownShop", lang)}
                     </p>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      ⭐ {m.points}积分 · {m.visitsCount}次消费
+                      {t("card.pointsAndVisits", lang, { points: m.points, visits: m.visitsCount })}
                     </p>
                   </div>
                   <span className="text-slate-300">→</span>
@@ -53,13 +57,13 @@ export default async function CardPage() {
       ) : (
         <div className="text-center py-20 px-6">
           <p className="text-5xl mb-4">💳</p>
-          <p className="text-sm text-slate-400">还没有会员卡</p>
-          <p className="text-xs text-slate-300 mt-1">去首页领取代金券即可成为商家会员</p>
+          <p className="text-sm text-slate-400">{t("card.noCard", lang)}</p>
+          <p className="text-xs text-slate-300 mt-1">{t("card.noCardHint", lang)}</p>
           <Link
             href="/home"
             className="inline-block mt-4 px-6 py-2 bg-[#1A6EFF] text-white text-sm rounded-full"
           >
-            去领券
+            {t("card.goClaim", lang)}
           </Link>
         </div>
       )}

@@ -6,9 +6,11 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { useLang } from "@/components/i18n/LanguageProvider";
 
 export default function DiscoverPartnersPage() {
   const router = useRouter();
+  const { t, lang } = useLang();
   const [search, setSearch] = useState("");
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -38,15 +40,15 @@ export default function DiscoverPartnersPage() {
   }
 
   const statusLabels: Record<string, { variant: "green" | "orange" | "red" | "slate"; label: string }> = {
-    active: { variant: "green", label: "已合作" },
-    pending: { variant: "orange", label: "处理中" },
+    active: { variant: "green", label: t("business.discover.active") },
+    pending: { variant: "orange", label: t("business.discover.processing") },
   };
 
   return (
     <div className="pb-4">
       <div className="px-4 py-3 border-b border-slate-100 sticky top-0 bg-white z-10">
-        <h1 className="text-lg font-semibold">发现商家</h1>
-        <p className="text-xs text-slate-400 mt-0.5">搜索并邀请其他商家建立合作关系</p>
+        <h1 className="text-lg font-semibold">{t("business.discover.title")}</h1>
+        <p className="text-xs text-slate-400 mt-0.5">{t("business.discover.subtitle")}</p>
       </div>
 
       <div className="px-4 pt-3">
@@ -55,12 +57,12 @@ export default function DiscoverPartnersPage() {
           className="flex gap-2"
         >
           <Input
-            placeholder="搜索商家名称..."
+            placeholder={t("business.discover.search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1"
           />
-          <Button size="sm" onClick={load} loading={loading}>搜索</Button>
+          <Button size="sm" onClick={load} loading={loading}>{t("common.search")}</Button>
         </form>
       </div>
 
@@ -77,7 +79,7 @@ export default function DiscoverPartnersPage() {
                     <p className="text-sm font-medium text-slate-900 truncate">{b.businessName}</p>
                     <p className="text-[10px] text-slate-400">
                       {b.categoryLabel || b.businessCategory || ""}
-                      {b.createdAt && ` · ${new Date(b.createdAt).toLocaleDateString("zh-CN")} 加入`}
+                      {b.createdAt && ` · ${new Date(b.createdAt).toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US")} ${lang === "zh" ? "加入" : "Joined"}`}
                     </p>
                   </div>
                 </div>
@@ -89,7 +91,7 @@ export default function DiscoverPartnersPage() {
                     disabled={acting === b.id}
                     className="px-3 py-1 bg-[#1A6EFF] text-white text-xs rounded-full disabled:opacity-50 shrink-0"
                   >
-                    {acting === b.id ? "..." : "邀请合作"}
+                    {acting === b.id ? "..." : t("business.discover.invite")}
                   </button>
                 )}
               </CardContent>
@@ -99,7 +101,7 @@ export default function DiscoverPartnersPage() {
         {businesses.length === 0 && !loading && (
           <div className="text-center py-12 text-slate-400">
             <p className="text-3xl mb-2">🔍</p>
-            <p className="text-sm">没有找到商家</p>
+            <p className="text-sm">{t("business.discover.noResults")}</p>
           </div>
         )}
       </div>

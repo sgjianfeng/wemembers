@@ -1,6 +1,8 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { t } from "@/lib/i18n";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { StoreCreateForm } from "./StoreCreateForm";
@@ -8,6 +10,9 @@ import { StoreCreateForm } from "./StoreCreateForm";
 export default async function StoresPage() {
   const session = await getSession();
   if (!session || session.role !== "business") redirect("/auth/login");
+
+  const c = await cookies();
+  const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
 
   const stores = await prisma.store.findMany({
     where: { businessId: session.userId },
@@ -20,7 +25,7 @@ export default async function StoresPage() {
   return (
     <div className="pb-4">
       <div className="px-4 py-3 border-b border-slate-100 sticky top-0 bg-white z-10">
-        <h1 className="text-lg font-semibold">门店管理</h1>
+        <h1 className="text-lg font-semibold">{t("business.stores.title", lang)}</h1>
       </div>
 
       <div className="px-4 mt-4 space-y-4">
@@ -68,7 +73,7 @@ export default async function StoresPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400">暂无店员</p>
+                  <p className="text-xs text-slate-400">{t("business.stores.noStaff", lang)}</p>
                 )}
               </CardContent>
             </Card>

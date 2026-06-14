@@ -5,10 +5,15 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { timeAgo } from "@/lib/utils";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { t } from "@/lib/i18n";
 
 export default async function LuckyDrawPage() {
   const session = await getSession();
   if (!session || session.role !== "business") redirect("/auth/login");
+
+  const c = await cookies();
+  const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
 
   const campaigns = await prisma.campaign.findMany({
     where: { businessId: session.userId, type: "lucky_draw" },
@@ -16,20 +21,28 @@ export default async function LuckyDrawPage() {
     orderBy: { createdAt: "desc" },
   });
 
+  const dateLocale = lang === "zh" ? "zh-CN" : "en-US";
+
+  const statusLabels: Record<string, Record<string, string>> = {
+    draft: { zh: "草稿", en: "Draft" },
+    active: { zh: "进行中", en: "Active" },
+    ended: { zh: "已结束", en: "Ended" },
+  };
+
   return (
     <div className="pb-4">
       <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
         <div>
-          <h1 className="text-lg font-semibold">🎰 抽奖活动</h1>
+          <h1 className="text-lg font-semibold">{t("business.luckyDraw.title", lang)}</h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            核销自动发券 · 店员可手动录入 · 一键开奖
+            {t("business.luckyDraw.subtitle", lang)}
           </p>
         </div>
         <Link
           href="/business/campaigns/new?type=lucky_draw"
           className="px-3 py-1.5 bg-[#1A6EFF] text-white text-xs rounded-full"
         >
-          + 创建活动
+          {t("business.luckyDraw.create", lang)}
         </Link>
       </div>
 
@@ -37,9 +50,9 @@ export default async function LuckyDrawPage() {
         {campaigns.map((c) => {
           const s = c.status;
           const sBadge: Record<string, { variant: "green" | "orange" | "red" | "slate"; label: string }> = {
-            draft: { variant: "slate", label: "草稿" },
-            active: { variant: "green", label: "进行中" },
-            ended: { variant: "red", label: "已结束" },
+            draft: { variant: "slate", label: statusLabels.draft[lang] },
+            active: { variant: "green", label: statusLabels.active[lang] },
+            ended: { variant: "red", label: statusLabels.ended[lang] },
           };
           const sb = sBadge[s] || { variant: "slate" as const, label: s };
           const prizeCount = c.prizes.length;
@@ -55,8 +68,8 @@ export default async function LuckyDrawPage() {
                       <div>
                         <p className="text-sm font-semibold text-slate-900">{c.name}</p>
                         <p className="text-xs text-slate-400">
-                          {c.startDate.toLocaleDateString("zh-CN")} ~ {c.endDate.toLocaleDateString("zh-CN")}
-                          {c.drawDate && ` · ${c.drawDate.toLocaleDateString("zh-CN")} 开奖`}
+                          {c.startDate.toLocaleDateString(dateLocale)} ~ {c.endDate.toLocaleDateString(dateLocale)}
+                          {c.drawDate && ` · ${c.drawDate.toLocaleDateString(dateLocale)} ${lang === "zh" ? "开奖" : "Draw"}`}
                         </p>
                       </div>
                     </div>
@@ -64,9 +77,9 @@ export default async function LuckyDrawPage() {
                   </div>
 
                   <div className="flex items-center gap-3 text-xs text-slate-500">
-                    <span>🎁 {prizeCount} 奖品</span>
-                    <span>👤 {c.entryCount} 参与</span>
-                    {c.minSpendCents && <span>💰 满¥{c.minSpendCents / 100}获得资格</span>}
+                    <span>🎁 {prizeCount} {t("business.luckyDraw.prizes", lang)}</span>
+                    <span>👤 {c.entryCount} {t("business.luckyDraw.entries", lang)}</span>
+                    {c.minSpendCents && <span>💰 {t("business.luckyDraw.minSpend", lang, { amount: c.minSpendCents / 100 })}</span>}
                   </div>
                 </CardContent>
               </Card>
@@ -77,15 +90,15 @@ export default async function LuckyDrawPage() {
         {campaigns.length === 0 && (
           <div className="text-center py-16 text-slate-400">
             <p className="text-5xl mb-4">🎰</p>
-            <p className="text-sm">还没有抽奖活动</p>
+            <p className="text-sm">{t("business.luckyDraw.noData", lang)}</p>
             <p className="text-xs mt-1 text-slate-300">
-              创建活动后，客户核销代金券即可自动获得抽奖资格
+              {t("business.luckyDraw.noDataHint", lang)}
             </p>
             <Link
               href="/business/campaigns/new?type=lucky_draw"
               className="inline-block mt-4 px-6 py-2 bg-[#1A6EFF] text-white text-sm rounded-full"
             >
-              创建第一个抽奖活动
+              {t("business.luckyDraw.firstCampaign", lang)}
             </Link>
           </div>
         )}

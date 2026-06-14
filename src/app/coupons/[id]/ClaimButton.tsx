@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { useLang } from "@/components/i18n/LanguageProvider";
 
 export function ClaimButton({ couponId, pointsRequired, soldOut, expired }: {
   couponId: string; pointsRequired: number; soldOut: boolean; expired: boolean;
 }) {
   const router = useRouter();
+  const { t } = useLang();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success?: boolean; message?: string; error?: string; gift?: { type: string; data: any; message: string } } | null>(null);
 
@@ -20,13 +22,13 @@ export function ClaimButton({ couponId, pointsRequired, soldOut, expired }: {
       const data = await res.json();
       if (res.ok) {
         const giftMsg = data.data?.gift?.message || "";
-        setResult({ success: true, message: "领取成功！🎉" + (giftMsg ? ` ${giftMsg}` : ""), gift: data.data?.gift });
+        setResult({ success: true, message: t("coupon.claim.success") + (giftMsg ? ` ${giftMsg}` : ""), gift: data.data?.gift });
         setTimeout(() => router.push("/wallet"), 1200);
       } else {
-        setResult({ success: false, error: data.error || "领取失败" });
+        setResult({ success: false, error: data.error || t("coupon.claim.failed") });
       }
     } catch {
-      setResult({ success: false, error: "网络错误" });
+      setResult({ success: false, error: t("coupon.claim.networkError") });
     }
     setLoading(false);
   }
@@ -42,7 +44,7 @@ export function ClaimButton({ couponId, pointsRequired, soldOut, expired }: {
         loading={loading}
         disabled={disabled}
       >
-        {soldOut ? "已领完" : expired ? "已过期" : `领取 (${pointsRequired}⭐)`}
+        {soldOut ? t("coupon.detail.soldOut") : expired ? t("coupon.detail.expired") : t("coupon.claim.button", { points: pointsRequired })}
       </Button>
 
       {result && (
