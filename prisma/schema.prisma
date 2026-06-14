@@ -622,6 +622,7 @@ model Campaign {
   totalRedemptions Int     @default(0)      // 总核销
   entryCount      Int      @default(0)      // 抽奖参与人数
   totalTicketCount Int     @default(0)      // 已发放券数
+  instantPoolCents Int      @default(0)      // 即时奖池（分）= 总消费 × 20% × 10%
 
   // 收据抽奖
   entryMethod     String   @default("auto")        // auto | receipt
@@ -653,8 +654,9 @@ model DrawTicket {
   id         String   @id @default(cuid())
   campaignId String
   customerId String?
-  entryId    String               // 关联的 LuckyDrawEntry
-  ticketNo   String   @unique     // 券号: "DRAW-00001"
+  entryId    String
+  ticketNo   String   @unique
+  drawMode   String   @default("deferred") // instant | deferred
   won        Boolean  @default(false)
   prizeName  String?
   prizeIcon  String?

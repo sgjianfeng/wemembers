@@ -18,13 +18,18 @@ export async function GET(
 
   if (!campaign) return NextResponse.json({ error: "活动不存在" }, { status: 404 });
 
+  const getGrandPoolEstimate = (await import("@/lib/draw")).getGrandPoolEstimate;
+  const minSpend = campaign.receiptMinSpend || 5000;
+  const totalSpendEst = campaign.totalTicketCount * minSpend;
+  const pool = getGrandPoolEstimate(totalSpendEst, campaign.budgetPercent || 20);
+
   return NextResponse.json({
     data: {
       name: campaign.name,
       description: campaign.description,
       businessName: campaign.business.businessName,
       entryMethod: campaign.entryMethod,
-      receiptMinSpend: campaign.receiptMinSpend || 5000,
+      receiptMinSpend: minSpend,
       ticketsPerUnit: campaign.ticketsPerUnit,
       startDate: campaign.startDate,
       endDate: campaign.endDate,
@@ -32,6 +37,12 @@ export async function GET(
       status: campaign.status,
       entryCount: campaign.entryCount,
       totalTicketCount: campaign.totalTicketCount,
+      instantPoolCents: campaign.instantPoolCents,
+      instantPoolSgd: (campaign.instantPoolCents / 100).toFixed(2),
+      grandPoolCents: pool.grandPoolCents,
+      grandPoolSgd: (pool.grandPoolCents / 100).toFixed(2),
+      progress: pool.progress,
+      bydUnlocked: pool.bydUnlocked,
       prizes: campaign.prizes.map((p) => ({
         name: p.name,
         icon: p.icon,
