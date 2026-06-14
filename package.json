@@ -12,7 +12,9 @@
     "lint": "eslint",
     "db:push": "npx prisma db push",
     "db:seed": "npx tsx prisma/seed.ts",
-    "db:reset": "npx prisma db push --force-reset && npx tsx prisma/seed.ts"
+    "db:reset": "npx prisma db push --force-reset && npx tsx prisma/seed.ts",
+    "test": "npx tsx tests/run-all.ts",
+    "test:unit": "npx jest --config jest.config.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -36,8 +38,10 @@
     "uuid": "^14.0.0"
   },
   "devDependencies": {
+    "@jest/globals": "^30.4.1",
     "@tailwindcss/postcss": "^4",
     "@types/better-sqlite3": "^7.6.13",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
@@ -45,7 +49,9 @@
     "@types/uuid": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
+    "jest": "^30.4.2",
     "tailwindcss": "^4",
+    "ts-jest": "^29.4.11",
     "typescript": "^5"
   }
 }

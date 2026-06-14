@@ -46,7 +46,10 @@ export async function POST(
   });
 
   // 生成券号 + 即时抽奖
-  const existingCount = await prisma.drawTicket.count({ where: { campaignId: campaign.id } });
+  // Use timestamp + random to avoid unique constraint collisions
+  const ts = Date.now().toString(36).toUpperCase();
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const baseSeq = (await prisma.drawTicket.count({ where: { campaignId: campaign.id } }));
   const tickets: any[] = [];
   const instantWins: any[] = [];
   let instantWonTotal = 0;
@@ -60,7 +63,7 @@ export async function POST(
   const instantPoolCents = (campaign.instantPoolCents || 0) + newInstantPoolCents;
 
   for (let i = 0; i < ticketCount; i++) {
-    const ticketNo = `DRAW-${String(existingCount + i + 1).padStart(6, "0")}`;
+    const ticketNo = `DRAW-${ts}-${rand}-${String(baseSeq + i + 1).padStart(4, "0")}`;
 
     if (mode === "instant") {
       // 即时抽
