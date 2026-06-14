@@ -657,6 +657,9 @@ const en: Record<string, string> = {
   "business.partners.reject": "Reject",
   "business.partners.revoke": "Revoke",
   "business.partners.settlements": "📊 Settlements",
+  "business.partners.appliedToJoin": "Applied to join",
+  "business.partners.theyAppliedToJoin": "They applied to join",
+  "business.partners.autoMatch": "Auto-matched",
 
   "business.discover.title": "Discover",
   "business.discover.subtitle": "Search and invite other businesses to partner",

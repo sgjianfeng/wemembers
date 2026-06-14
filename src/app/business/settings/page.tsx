@@ -4,10 +4,15 @@ import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { SERVICE_CATEGORIES } from "@/types";
+import { cookies } from "next/headers";
+import { t } from "@/lib/i18n";
 
 export default async function BusinessSettingsPage() {
   const session = await getSession();
   if (!session || session.role !== "business") redirect("/auth/login");
+
+  const c = await cookies();
+  const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
@@ -31,31 +36,31 @@ export default async function BusinessSettingsPage() {
   return (
     <div className="pb-4">
       <div className="px-4 py-3 border-b border-slate-100 sticky top-0 bg-white z-10">
-        <h1 className="text-lg font-semibold">店铺设置</h1>
+        <h1 className="text-lg font-semibold">{t("business.settings.title", lang)}</h1>
       </div>
 
       <div className="px-4 mt-4 space-y-4">
-        {/* 店铺信息 */}
+        {/* {t("business.settings.shopInfo", lang)} */}
         <Card>
           <CardContent className="p-4">
-            <h3 className="text-sm font-semibold text-slate-900 mb-3">📋 店铺信息</h3>
+            <h3 className="text-sm font-semibold text-slate-900 mb-3">{t("business.settings.shopInfo", lang)}</h3>
             <div className="space-y-2 text-sm">
-              <Info label="店铺名称" value={user.businessName || "未设置"} />
-              <Info label="行业分类" value={categoryLabel || "未设置"} />
-              <Info label="注册邮箱" value={user.email || "未设置"} />
-              <Info label="注册手机" value={user.phone || "未设置"} />
-              <Info label="注册时间" value={user.createdAt.toLocaleDateString("zh-CN")} />
-              <Info label="店铺标识" value={user.businessSlug || "未生成"} />
+              <Info label={t("business.settings.shopName", lang)} value={user.businessName || t("business.settings.notSet", lang)} />
+              <Info label={t("business.settings.category", lang)} value={categoryLabel || t("business.settings.notSet", lang)} />
+              <Info label={t("business.settings.email", lang)} value={user.email || t("business.settings.notSet", lang)} />
+              <Info label={t("business.settings.phone", lang)} value={user.phone || t("business.settings.notSet", lang)} />
+              <Info label={t("business.settings.registeredAt", lang)} value={user.createdAt.toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US")} />
+              <Info label={t("business.settings.slug", lang)} value={user.businessSlug || t("business.settings.notGenerated", lang)} />
             </div>
           </CardContent>
         </Card>
 
-        {/* 店铺二维码 */}
+        {/* {t("business.settings.qrCode", lang)} */}
         <Card>
           <CardContent className="p-4">
-            <h3 className="text-sm font-semibold text-slate-900 mb-3">📱 店铺二维码</h3>
+            <h3 className="text-sm font-semibold text-slate-900 mb-3">{t("business.settings.qrCode", lang)}</h3>
             <p className="text-xs text-slate-500 mb-4">
-              客户扫描此二维码即可进入你的店铺页面，查看并领取代金券
+              {t("business.settings.qrHint", lang)}
             </p>
 
             {shopUrl ? (
@@ -66,7 +71,7 @@ export default async function BusinessSettingsPage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`/api/shop/qr?size=192`}
-                      alt="店铺二维码"
+                      alt={t("business.settings.qrAlt", lang)}
                       className="w-full h-full"
                     />
                   </div>
@@ -74,26 +79,26 @@ export default async function BusinessSettingsPage() {
 
                 {/* URL Display */}
                 <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-1">店铺链接</p>
+                  <p className="text-xs text-slate-400 mb-1">{t("business.settings.shopUrl", lang)}</p>
                   <p className="text-sm font-mono text-slate-700 break-all">{shopUrl}</p>
                 </div>
 
                 {/* Tips */}
                 <div className="p-3 bg-[#1A6EFF]/5 rounded-xl">
-                  <h4 className="text-xs font-semibold text-[#1A6EFF] mb-2">💡 使用建议</h4>
+                  <h4 className="text-xs font-semibold text-[#1A6EFF] mb-2">{t("business.settings.usageTitle", lang)}</h4>
                   <ul className="text-xs text-slate-500 space-y-1">
-                    <li>• 打印二维码贴在收银台或桌卡上</li>
-                    <li>• 客户扫码即可查看你的所有代金券</li>
-                    <li>• 分享链接到微信群/朋友圈吸引客户</li>
-                    <li>• 创建新券后，店铺页会自动更新</li>
+                    <li>{t("business.settings.usage1", lang)}</li>
+                    <li>{t("business.settings.usage2", lang)}</li>
+                    <li>{t("business.settings.usage3", lang)}</li>
+                    <li>{t("business.settings.usage4", lang)}</li>
                   </ul>
                 </div>
               </div>
             ) : (
               <div className="text-center py-8 text-slate-400">
                 <p className="text-3xl mb-2">🔗</p>
-                <p className="text-sm">店铺标识未生成</p>
-                <p className="text-xs mt-1">请联系管理员设置店铺标识</p>
+                <p className="text-sm">{t("business.settings.slugNotGenerated", lang)}</p>
+                <p className="text-xs mt-1">{t("business.settings.contactAdmin", lang)}</p>
               </div>
             )}
           </CardContent>

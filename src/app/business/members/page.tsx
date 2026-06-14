@@ -4,13 +4,8 @@ import { prisma } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import Link from "next/link";
-
-const tierDisplay: Record<string, { label: string; variant: "slate" | "amber" | "purple" | "blue" }> = {
-  regular: { label: "普通", variant: "slate" },
-  silver: { label: "银卡", variant: "blue" },
-  gold: { label: "金卡", variant: "amber" },
-  platinum: { label: "铂金", variant: "purple" },
-};
+import { cookies } from "next/headers";
+import { t, Lang } from "@/lib/i18n";
 
 export default async function MembersPage({
   searchParams,
@@ -26,7 +21,17 @@ export default async function MembersPage({
   const tierFilter = sp.tier || "";
   const sort = sp.sort || "recent";
 
+  const c = await cookies();
+  const lang: Lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
+
   const isBusiness = session.role === "business";
+
+  const tierDisplay: Record<string, { label: string; variant: "slate" | "amber" | "purple" | "blue" }> = {
+    regular: { label: t("business.members.filterRegular", lang), variant: "slate" },
+    silver: { label: t("business.members.filterSilver", lang), variant: "blue" },
+    gold: { label: t("business.members.filterGold", lang), variant: "amber" },
+    platinum: { label: t("business.members.filterPlatinum", lang), variant: "purple" },
+  };
 
   const where: any = {
     businessId: session.userId,
@@ -59,34 +64,34 @@ export default async function MembersPage({
 
   const tiers = ["regular", "silver", "gold", "platinum"];
   const sorts = [
-    { value: "recent", label: "最近加入" },
-    { value: "points", label: "积分最高" },
-    { value: "visits", label: "到店最多" },
-    { value: "tier", label: "等级最高" },
+    { value: "recent", label: t("business.members.sortRecent", lang) },
+    { value: "points", label: t("business.members.sortPoints", lang) },
+    { value: "visits", label: t("business.members.sortVisits", lang) },
+    { value: "tier", label: t("business.members.sortTier", lang) },
   ];
 
   return (
     <div className="pb-4">
       <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
-        <h1 className="text-lg font-semibold">会员管理</h1>
+        <h1 className="text-lg font-semibold">{t("business.members.title", lang)}</h1>
         {isBusiness && (
           <Link
             href="/business/members/config"
             className="px-2 py-1 text-xs text-[#1A6EFF] border border-[#1A6EFF] rounded-full"
           >
-            等级配置
+            {t("business.members.tierConfig", lang)}
           </Link>
         )}
       </div>
 
-      {/* 搜索栏 */}
+      {/* search bar */}
       <div className="px-4 pt-3 pb-2">
         <form className="relative">
           <input
             type="text"
             name="search"
             defaultValue={search}
-            placeholder="搜索姓名或手机号..."
+            placeholder={t("business.members.search", lang)}
             className="w-full h-9 pl-9 pr-4 rounded-full bg-slate-100 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1A6EFF]"
           />
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
@@ -95,7 +100,7 @@ export default async function MembersPage({
         </form>
       </div>
 
-      {/* 筛选 + 排序 */}
+      {/* filter + sort */}
       <div className="px-4 pb-2 flex gap-2 overflow-x-auto">
         <form className="flex gap-1.5">
           <input type="hidden" name="search" value={search} />
@@ -138,7 +143,7 @@ export default async function MembersPage({
         </form>
       </div>
 
-      {/* 列表 */}
+      {/* list */}
       <div className="px-4 mt-2 space-y-2">
         {members.map((m) => {
           const td = tierDisplay[m.tier] || tierDisplay.regular;
@@ -155,10 +160,10 @@ export default async function MembersPage({
                     </div>
                     <div>
                       <p className="text-sm font-medium text-slate-900">
-                        {m.customer.displayName || "未命名"}
+                        {m.customer.displayName || t("business.members.unnamed", lang)}
                       </p>
                       <p className="text-xs text-slate-400">
-                        {m.customer.phone} · {m.visitsCount}次到店 · ⭐{m.points}
+                        {m.customer.phone} · {m.visitsCount}{t("business.members.visits", lang)} · ⭐{m.points}
                       </p>
                     </div>
                   </div>
@@ -171,8 +176,8 @@ export default async function MembersPage({
         {members.length === 0 && (
           <div className="text-center py-12 text-slate-400">
             <p className="text-3xl mb-2">👥</p>
-            <p className="text-sm">还没有会员</p>
-            {search && <p className="text-xs mt-1">未找到匹配的会员</p>}
+            <p className="text-sm">{t("business.members.noMembers", lang)}</p>
+            {search && <p className="text-xs mt-1">{t("business.members.notFound", lang)}</p>}
           </div>
         )}
       </div>
