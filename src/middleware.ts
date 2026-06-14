@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 
-const PUBLIC_STARTS = ["/shop", "/coupons", "/store", "/auth"];
+const PUBLIC_STARTS = ["/shop", "/coupons", "/store", "/auth", "/api/stripe"];
 
 const STAFF_BLOCKED = [
   "/business/coupons",

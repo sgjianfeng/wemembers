@@ -114,6 +114,23 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // 为商家自动创建 Stripe Connected account (异步，不阻塞注册)
+    if (role === "business") {
+      try {
+        const { createConnectedAccount } = await import("@/lib/stripe");
+        const stripeAccountId = await createConnectedAccount(
+          isEmail ? contact : `business-${user.id}@wemembers.com`,
+          businessName || "商家"
+        );
+        await prisma.stripeAccount.create({
+          data: { userId: user.id, stripeAccountId },
+        });
+      } catch (e) {
+        console.error("Stripe account creation failed:", e);
+        // 不阻塞注册
+      }
+    }
+
     // 签发 JWT
     const token = await signToken({
       userId: user.id,

@@ -66,6 +66,7 @@ model User {
   partnersTo       BusinessPartner[]   @relation("PartnerReceiver")
   settlementsIssuer Settlement[]       @relation("SettlementIssuer")
   settlementsRedeemer Settlement[]     @relation("SettlementRedeemer")
+  stripeAccount     StripeAccount?
 }
 
 // ──── 验证码 ────
@@ -269,17 +270,32 @@ model RedemptionLog {
 // ──── Token 经济 ────
 
 model TokenAccount {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  balance       Int      @default(0)    // 当前可用余额
-  frozenBalance Int      @default(0)    // 冻结金额（已售出未核销的券款）
-  totalEarned   Int      @default(0)    // 累计获得
-  totalSpent    Int      @default(0)    // 累计消耗
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  stripeAccountId String?               // Stripe Connect account ID
+  balance         Int      @default(0)    // 当前可用余额
+  frozenBalance   Int      @default(0)    // 冻结金额
+  totalEarned     Int      @default(0)    // 累计获得
+  totalSpent      Int      @default(0)    // 累计消耗
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   user        User     @relation(fields: [userId], references: [id])
   transactions TokenTransaction[]
+}
+
+// Stripe 账户关联
+model StripeAccount {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  stripeAccountId String   @unique         // Stripe connect account ID
+  chargesEnabled  Boolean  @default(false)
+  payoutsEnabled  Boolean  @default(false)
+  detailsSubmitted Boolean @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id])
 }
 
 model TokenTransaction {
