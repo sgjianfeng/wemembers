@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -158,6 +158,9 @@ model PointsLog {
 
   membership   Membership @relation(fields: [membershipId], references: [id])
   store        Store?     @relation(fields: [storeId], references: [id])
+
+  @@index([membershipId, createdAt])
+  @@index([type])
 }
 
 // ──── 代金券模板 ────
@@ -218,6 +221,9 @@ model Coupon {
   promoterLinks       PromoterLink[]
   bulkPurchases       BulkPurchase[]
   lotteryPrizes       LotteryPrize[]
+
+  @@index([businessId, status])
+  @@index([campaignId])
 }
 
 // ──── 客户已领取的券 ────
@@ -238,6 +244,9 @@ model CustomerCoupon {
   customer     User     @relation("CustomerClaims", fields: [customerId], references: [id])
   coupon       Coupon   @relation(fields: [couponId], references: [id])
   redemption   RedemptionLog?
+
+  @@index([customerId, status])
+  @@index([couponId, claimedAt])
 }
 
 // ──── 核销记录 ────
@@ -266,6 +275,9 @@ model RedemptionLog {
   claim            CustomerCoupon @relation(fields: [customerCouponId], references: [id])
   store            Store?   @relation(fields: [storeId], references: [id])
   settlement       Settlement?
+
+  @@index([businessId, redeemedAt])
+  @@index([customerId])
 }
 
 // ──── Token 经济 ────
@@ -310,6 +322,8 @@ model TokenTransaction {
   createdAt    DateTime @default(now())
 
   account      TokenAccount @relation(fields: [accountId], references: [id])
+
+  @@index([accountId, createdAt])
 }
 
 model TokenPurchase {
