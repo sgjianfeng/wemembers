@@ -15,7 +15,7 @@
     "db:reset": "npx prisma db push --force-reset && npx tsx prisma/seed.ts",
     "test": "npx tsx tests/run-all.ts",
     "test:unit": "npx jest --config jest.config.ts",
-    "test:e2e": "npx playwright test --project=mobile"
+    "test:e2e": "npx playwright test"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

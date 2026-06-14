@@ -1,4 +1,4 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -10,14 +10,10 @@ export default defineConfig({
   reporter: "list",
   use: {
     baseURL: "http://localhost:3000",
+    browserName: "chromium",
+    viewport: { width: 390, height: 844 },
     trace: "on-first-retry",
   },
-  projects: [
-    {
-      name: "mobile",
-      use: { ...devices["iPhone 14"], viewport: { width: 390, height: 844 } },
-    },
-  ],
   webServer: {
     command: "npm run dev",
     url: "http://localhost:3000",

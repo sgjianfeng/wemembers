@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
   const { prisma } = await import("@/lib/db");
   const body = await request.json();
-  const { name, description, type, color, startDate, endDate, budgetCents, tags, drawDate, minSpendCents, maxEntries, drawMethod, entryMethod, receiptMinSpend, ticketsPerUnit, budgetPercent, slug } = body;
+  const { name, description, type, color, startDate, endDate, budgetCents, tags, drawDate, minSpendCents, maxEntries, drawMethod, entryMethod, receiptMinSpend, ticketsPerUnit, budgetPercent, slug, joinable, allowCollaboration } = body;
 
   if (!name || !startDate || !endDate) return NextResponse.json({ error: "请填写活动名称和时间" }, { status: 400 });
 
@@ -52,6 +52,8 @@ export async function POST(request: NextRequest) {
       ticketsPerUnit: ticketsPerUnit || 1,
       budgetPercent: budgetPercent || 20,
       slug: slug || null,
+      joinable: joinable || false,
+      allowCollaboration: allowCollaboration || false,
       budgetCents: budgetCents || null,
       tags: tags ? JSON.stringify(tags) : "[]",
       status: new Date(startDate) <= new Date() ? "active" : "draft",
