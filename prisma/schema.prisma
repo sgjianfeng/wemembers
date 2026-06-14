@@ -62,6 +62,7 @@ model User {
   store            Store?              @relation("StoreStaff", fields: [storeId], references: [id])
   managedStores    Store[]             @relation("BusinessStores")
   luckyDrawEntries LuckyDrawEntry[]
+  drawTickets      DrawTicket[]
   partnersFrom     BusinessPartner[]   @relation("PartnerInitiator")
   partnersTo       BusinessPartner[]   @relation("PartnerReceiver")
   settlementsIssuer Settlement[]       @relation("SettlementIssuer")
@@ -573,7 +574,12 @@ model LuckyDrawEntry {
   phone        String?
 
   // 来源
-  source       String   @default("auto") // auto = 消费自动 | manual = 店员录入
+  source       String   @default("auto") // auto = 消费自动 | manual = 店员录入 | receipt = 收据上传
+
+  // 收据上传字段
+  receiptUrl     String?              // 收据照片 URL
+  receiptAmount  Int?                 // 消费金额（分）
+  ticketCount    Int    @default(0)   // 获得几张券
 
   // 触发上下文
   redemptionId String?
@@ -589,6 +595,7 @@ model LuckyDrawEntry {
   campaign     Campaign     @relation(fields: [campaignId], references: [id])
   customer     User?        @relation(fields: [customerId], references: [id])
   store        Store?       @relation(fields: [storeId], references: [id])
+  tickets      DrawTicket[]
 }
 
 // ──── 活动/批次管理 ────
@@ -614,6 +621,14 @@ model Campaign {
   totalClaims     Int      @default(0)      // 总领取
   totalRedemptions Int     @default(0)      // 总核销
   entryCount      Int      @default(0)      // 抽奖参与人数
+  totalTicketCount Int     @default(0)      // 已发放券数
+
+  // 收据抽奖
+  entryMethod     String   @default("auto")        // auto | receipt
+  receiptMinSpend Int?                             // 最低消费门槛（分），null=无门槛
+  ticketsPerUnit  Int      @default(1)             // 每满 minSpend 几张券
+  budgetPercent   Int      @default(20)            // 预算占比 %
+  slug            String?  @unique                 // 公开页 URL
 
   // 协作
   allowCollaboration Boolean @default(false)
@@ -628,5 +643,24 @@ model Campaign {
   coupons         Coupon[]
   prizes          LotteryPrize[]
   entries         LuckyDrawEntry[]
+  tickets         DrawTicket[]
   joinRequests    CampaignJoinRequest[]
+}
+
+// ──── 抽奖券号码 ────
+
+model DrawTicket {
+  id         String   @id @default(cuid())
+  campaignId String
+  customerId String?
+  entryId    String               // 关联的 LuckyDrawEntry
+  ticketNo   String   @unique     // 券号: "DRAW-00001"
+  won        Boolean  @default(false)
+  prizeName  String?
+  prizeIcon  String?
+  createdAt  DateTime @default(now())
+
+  campaign   Campaign        @relation(fields: [campaignId], references: [id])
+  customer   User?           @relation(fields: [customerId], references: [id])
+  entry      LuckyDrawEntry  @relation(fields: [entryId], references: [id])
 }

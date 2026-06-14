@@ -36,6 +36,11 @@ export default function NewCampaignPage() {
   });
   const [minSpendCents, setMinSpendCents] = useState(0);
   const [maxEntries, setMaxEntries] = useState(0);
+  const [entryMethod, setEntryMethod] = useState<"auto" | "receipt">("auto");
+  const [receiptMinSpend, setReceiptMinSpend] = useState(5000);
+  const [ticketsPerUnit, setTicketsPerUnit] = useState(1);
+  const [budgetPercent, setBudgetPercent] = useState(20);
+  const [slug, setSlug] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -57,6 +62,11 @@ export default function NewCampaignPage() {
           drawDate: drawDate || undefined,
           minSpendCents: minSpendCents > 0 ? minSpendCents : undefined,
           maxEntries: maxEntries > 0 ? maxEntries : undefined,
+          entryMethod,
+          receiptMinSpend: entryMethod === "receipt" ? receiptMinSpend : undefined,
+          ticketsPerUnit: entryMethod === "receipt" ? ticketsPerUnit : undefined,
+          budgetPercent: entryMethod === "receipt" ? budgetPercent : undefined,
+          slug: slug || undefined,
         } : {}),
       }),
     });
@@ -114,22 +124,48 @@ export default function NewCampaignPage() {
         {type === "lucky_draw" && (
           <div className="space-y-3 p-4 bg-amber-50 rounded-xl border border-amber-100">
             <h3 className="text-sm font-semibold text-amber-800">🎰 抽奖设置</h3>
+
+            {/* 参与模式 */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">参与方式</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEntryMethod("auto")}
+                  className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
+                    entryMethod === "auto" ? "bg-amber-500 text-white" : "bg-white text-slate-500"
+                  }`}
+                >
+                  🤖 消费自动
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEntryMethod("receipt")}
+                  className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
+                    entryMethod === "receipt" ? "bg-amber-500 text-white" : "bg-white text-slate-500"
+                  }`}
+                >
+                  📸 收据上传
+                </button>
+              </div>
+            </div>
+
             <Input label="计划开奖日期" type="date" value={drawDate} onChange={(e) => setDrawDate(e.target.value)} />
-            <Input
-              label="消费门槛 (分, 0=无门槛)"
-              type="number"
-              value={minSpendCents}
-              onChange={(e) => setMinSpendCents(Number(e.target.value))}
-              prefix="¥"
-              placeholder="客户消费满多少分可获得抽奖资格"
-            />
-            <Input
-              label="参与上限 (0=不限)"
-              type="number"
-              value={maxEntries}
-              onChange={(e) => setMaxEntries(Number(e.target.value))}
-              placeholder="限制参与人数"
-            />
+
+            {/* 收据模式专属 */}
+            {entryMethod === "receipt" ? (
+              <>
+                <Input label="公开页面标识 (slug)" value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"))} placeholder="如: byd-lucky-draw-2026" />
+                <Input label="消费门槛 (分)" type="number" value={receiptMinSpend} onChange={(e) => setReceiptMinSpend(Number(e.target.value))} prefix="S$" placeholder="客户消费满多少可获得抽奖券" />
+                <Input label="每满门槛得几张券" type="number" value={ticketsPerUnit} onChange={(e) => setTicketsPerUnit(Number(e.target.value))} />
+                <Input label="预算占比 (%)" type="number" value={budgetPercent} onChange={(e) => setBudgetPercent(Number(e.target.value))} prefix="%" />
+              </>
+            ) : (
+              <>
+                <Input label="消费门槛 (分, 0=无门槛)" type="number" value={minSpendCents} onChange={(e) => setMinSpendCents(Number(e.target.value))} prefix="S$" />
+                <Input label="参与上限 (0=不限)" type="number" value={maxEntries} onChange={(e) => setMaxEntries(Number(e.target.value))} />
+              </>
+            )}
           </div>
         )}
 
