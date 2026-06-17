@@ -3,6 +3,8 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { createConnectedAccount, createAccountLink, getAccountStatus } from "@/lib/stripe";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/stripe/account — 获取账户状态
 export async function GET() {
   const session = await getSession();

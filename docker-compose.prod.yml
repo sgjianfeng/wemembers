@@ -1,0 +1,72 @@
+# wemembers.store - Production Docker Compose
+# Deploy: docker compose -f docker-compose.prod.yml up -d --build
+
+name: wemembers-prod
+
+services:
+  wemembers_db:
+    image: pgvector/pgvector:pg15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-wemembers}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-in-production}
+      POSTGRES_DB: ${POSTGRES_DB:-wemembers_prod}
+    volumes:
+      - wemembers_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wemembers} -d ${POSTGRES_DB:-wemembers_prod}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Resource limits (ECS has 2GB total)
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  wemembers:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - path: .env.production
+        required: false
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wemembers}:${POSTGRES_PASSWORD:-change-me-in-production}@wemembers_db:5432/${POSTGRES_DB:-wemembers_prod}
+      DIRECT_URL: postgresql://${POSTGRES_USER:-wemembers}:${POSTGRES_PASSWORD:-change-me-in-production}@wemembers_db:5432/${POSTGRES_DB:-wemembers_prod}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-min-32-chars}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://wemembers.store}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+    depends_on:
+      wemembers_db:
+        condition: service_healthy
+    expose:
+      - "3000"
+    networks:
+      default:
+      edge:
+        aliases:
+          - wemembers
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+volumes:
+  wemembers_pg_data:
+
+networks:
+  default:
+  edge:
+    name: platform_edge
+    external: true
