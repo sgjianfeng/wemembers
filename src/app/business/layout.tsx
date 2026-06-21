@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
 import { BottomNav } from "@/components/ui/BottomNav";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 
 export default async function BusinessLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -30,6 +31,9 @@ export default async function BusinessLayout({ children }: { children: React.Rea
 
   return (
     <>
+      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-slate-50 px-3 h-10 flex items-center justify-end">
+        <LanguageSwitcher />
+      </div>
       <main className="pb-16 min-h-screen">{children}</main>
       <BottomNav tabs={session.role === "staff" ? staffTabs : businessTabs} />
     </>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useLang } from "@/components/i18n/LanguageProvider";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 
 interface BackHeaderProps {
   title?: string;
@@ -9,6 +11,7 @@ interface BackHeaderProps {
 
 export function BackHeader({ title, fallbackUrl = "/" }: BackHeaderProps) {
   const router = useRouter();
+  const { t } = useLang();
 
   return (
     <div className="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-slate-100">
@@ -26,13 +29,14 @@ export function BackHeader({ title, fallbackUrl = "/" }: BackHeaderProps) {
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
-          返回
+          {t("common.back")}
         </button>
         {title && (
           <h1 className="flex-1 text-center text-sm font-semibold text-slate-900 truncate px-2">
             {title}
           </h1>
         )}
+        <LanguageSwitcher />
       </div>
     </div>
   );

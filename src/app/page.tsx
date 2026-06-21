@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useLang } from "@/components/i18n/LanguageProvider";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 
 const content = {
   zh: {
@@ -186,12 +187,25 @@ export default function HomePage() {
         <div className="absolute bottom-[-60px] left-[-60px] w-64 h-64 bg-violet-500/15 rounded-full blur-3xl" />
 
         <div className="relative z-10 max-w-sm mx-auto text-center">
+          <div className="flex justify-end mb-4">
+            <LanguageSwitcher variant="light" />
+          </div>
           <span className="inline-block px-3 py-1 rounded-full bg-white/10 text-xs font-medium text-white/80 backdrop-blur mb-6">
             {t.hero.badge}
           </span>
 
           {/* ── Role Tabs ── */}
           <div className="flex gap-1.5 justify-center mb-6">
+            <button
+              onClick={() => switchRoleView("consumer")}
+              className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${
+                roleView === "consumer"
+                  ? "bg-white text-slate-900 shadow-lg"
+                  : "bg-white/10 text-white/60 hover:bg-white/20"
+              }`}
+            >
+              👤 {isZh ? "我是消费者" : "For Consumers"}
+            </button>
             <button
               data-role-switch="business"
               onClick={() => switchRoleView("business")}
@@ -202,16 +216,6 @@ export default function HomePage() {
               }`}
             >
               🏪 {isZh ? "我是商家" : "For Business"}
-            </button>
-            <button
-              onClick={() => switchRoleView("consumer")}
-              className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${
-                roleView === "consumer"
-                  ? "bg-white text-slate-900 shadow-lg"
-                  : "bg-white/10 text-white/60 hover:bg-white/20"
-              }`}
-            >
-              👤 {isZh ? "我是消费者" : "For Consumers"}
             </button>
           </div>
 
@@ -424,7 +428,7 @@ const GRAND_PRIZES = [
   {
     key: "iPhone", emoji: "📱", labelZh: "iPhone 17", labelEn: "iPhone 17",
     targetSgd: "5,000", targetCents: 500000,
-    img: "https://images.unsplash.com/photo-1592286927505-1def02115558?w=600&h=400&fit=crop&auto=format",
+    img: "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=600&h=400&fit=crop&auto=format",
     color: "from-slate-700 to-slate-900", accent: "#0071e3",
   },
   {

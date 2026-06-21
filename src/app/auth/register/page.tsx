@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLang } from "@/components/i18n/LanguageProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { BackHeader } from "@/components/ui/BackHeader";
 import { CodeInput } from "@/components/ui/CodeInput";
 import { SERVICE_CATEGORIES } from "@/types";
 
@@ -89,6 +90,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
+      <BackHeader />
       <div className="flex-1 flex flex-col justify-center px-6">
         {/* Header */}
         <div className="text-center mb-8">

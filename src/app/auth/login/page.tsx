@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { BackHeader } from "@/components/ui/BackHeader";
 import { CodeInput } from "@/components/ui/CodeInput";
 import { useLang } from "@/components/i18n/LanguageProvider";
 
@@ -41,6 +42,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
+      <BackHeader />
       <div className="flex-1 flex flex-col justify-center px-6">
         <div className="text-center mb-10">
           <div className="w-16 h-16 bg-[#1A6EFF] rounded-2xl flex items-center justify-center mx-auto mb-4">

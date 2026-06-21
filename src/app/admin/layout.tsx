@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 
 const navItems = [
   { icon: "📊", label: "平台概览", href: "/admin" },
@@ -10,8 +11,9 @@ const navItems = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="sticky top-0 z-30 bg-white border-b border-slate-100 px-4 h-12 flex items-center">
+      <header className="sticky top-0 z-30 bg-white border-b border-slate-100 px-4 h-12 flex items-center justify-between">
         <span className="font-semibold text-sm text-slate-900">WeMembers 后台</span>
+        <LanguageSwitcher />
       </header>
       <main className="flex-1 pb-16">{children}</main>
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 z-40">

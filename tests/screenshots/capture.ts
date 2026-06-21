@@ -246,7 +246,7 @@ test("seed all test data", async () => {
 // ====================================================================
 test.describe("1. Public", () => {
 
-  test("1.1 Landing page", async ({ page }) => { meta("p01", "Public", "/", "首页 - 三支柱入口", "guest"); await page.goto("/"); await shot(page, "p01"); });
+  test("1.1 Landing page", async ({ page }) => { meta("p01", "Public", "/", "首页 - 消费者默认", "guest"); await page.goto("/"); await page.waitForSelector('text=热门代金券', { timeout: 8000 }).catch(() => page.waitForTimeout(1500)); await shot(page, "p01"); });
   test("1.2 For Business", async ({ page }) => { meta("p02", "Public", "/for-business", "商戶合作页", "guest"); await page.goto("/for-business"); await shot(page, "p02"); });
   test("1.3 Login", async ({ page }) => { meta("p03", "Public", "/auth/login", "登录页", "guest"); await page.goto("/auth/login"); await shot(page, "p03"); });
   test("1.4 Register", async ({ page }) => { meta("p04", "Public", "/auth/register", "注册页", "guest"); await page.goto("/auth/register"); await shot(page, "p04"); });
