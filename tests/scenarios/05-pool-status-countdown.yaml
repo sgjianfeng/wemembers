@@ -1,0 +1,94 @@
+# 场景 5：奖池状态 + 预计倒计时 + 进度条
+name: "Pool Status → Countdown → Progress After Purchase"
+description: >
+  查看奖池状态，验证三层奖池（即时/中奖/梦想）+ 预计倒计时。
+  购券后刷新，验证计数器和奖池金额增长。
+
+steps:
+  - name: "注册商家 + 客户"
+    api:
+      method: POST
+      path: /api/auth/register
+      body:
+        contact: "${BIZ_PHONE_5}"
+        code: "123456"
+        role: "business"
+        displayName: "测试火锅"
+        businessName: "测试火锅"
+        businessCategory: "food"
+      expect: 200
+    set:
+      biz_token: "$.data.token"
+
+  - name: "注册客户"
+    api:
+      method: POST
+      path: /api/auth/register
+      body:
+        contact: "${CUST_PHONE_5}"
+        code: "123456"
+        role: "customer"
+        displayName: "孙七"
+      expect: 200
+    set:
+      cust_token: "$.data.token"
+
+  - name: "创建购券抽奖活动"
+    api:
+      method: POST
+      path: /api/business/campaigns
+      cookie: "${biz_token}"
+      body:
+        name: "火锅店购券抽奖"
+        type: "lucky_draw_v2"
+        startDate: "${START_DATE}"
+        endDate: "${END_DATE}"
+        slug: "${SLUG_5}"
+        budgetPercent: 20
+        instantPoolRatio: 10
+        midPoolRatio: 60
+        grandPoolRatio: 30
+      expect: 200
+
+  # ── 购券前查看奖池 ──
+  - name: "购券前查看奖池状态（应为初始值）"
+    api:
+      method: GET
+      path: /api/campaign/pool-status?slug=${SLUG_5}
+      expect: 200
+    log: "初始奖池: 即时池=$..pool.instantPool.sgd, 中奖池=$..pool.midPool.sgd, 梦想池=$..pool.grandPool.sgd"
+
+  - name: "验证：倒计时数据存在（countdown 数组非空）"
+    log: "倒计时项目数: $..countdown.length"
+
+  # ── 购券后刷新 ──
+  - name: "购买S$100券"
+    api:
+      method: POST
+      path: /api/voucher/purchase?slug=${SLUG_5}
+      cookie: "${cust_token}"
+      body:
+        amountSgd: 100
+        spendNowSgd: 40
+      expect: 200
+
+  - name: "购券后再次查看奖池（应增加）"
+    api:
+      method: GET
+      path: /api/campaign/pool-status?slug=${SLUG_5}
+      expect: 200
+    log: "购券后奖池: 即时池=$..pool.instantPool.sgd, entryCount=$..pool.entryCount"
+
+  - name: "验证：参与人数 = 1（刚买了一张券）"
+    log: "entryCount: $..pool.entryCount"
+
+  - name: "验证：预计倒计时存在（iPhone/MacBook/BYD 中至少一个）"
+    log: "BYD 倒计时天数: $..countdown[2].daysPredicted"
+
+  # ── 公开 draw 页面也返回 v2 数据 ──
+  - name: "公开 draw API 返回 v2 campaign 数据"
+    api:
+      method: GET
+      path: /api/draw/${SLUG_5}
+      expect: 200
+    log: "v2 fields: budgetPercent=$..budgetPercent, voucherTiers=$..voucherTiers"

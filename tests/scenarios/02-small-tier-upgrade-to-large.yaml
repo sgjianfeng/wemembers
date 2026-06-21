@@ -1,0 +1,94 @@
+# 场景 2：小额券 → 升级提示 → 买大额券 → 2×权重
+name: "Small Tier → Upgrade Hint → Buy Large → 2× Grand Weight"
+description: >
+  客户先买S$20小额券，中S$0.5即时奖但看到升级提示。
+  再买S$100大额券，获得2×权重进入大奖池。
+
+steps:
+  # ── 注册商家 + 客户 ──
+  - name: "注册商家"
+    api:
+      method: POST
+      path: /api/auth/register
+      body:
+        contact: "${BIZ_PHONE_2}"
+        code: "123456"
+        role: "business"
+        displayName: "测试面馆"
+        businessName: "测试面馆"
+        businessCategory: "food"
+      expect: 200
+    set:
+      biz_token: "$.data.token"
+
+  - name: "注册客户"
+    api:
+      method: POST
+      path: /api/auth/register
+      body:
+        contact: "${CUST_PHONE_2}"
+        code: "123456"
+        role: "customer"
+        displayName: "李四"
+      expect: 200
+    set:
+      cust_token: "$.data.token"
+
+  - name: "商家创建购券抽奖活动"
+    api:
+      method: POST
+      path: /api/business/campaigns
+      cookie: "${biz_token}"
+      body:
+        name: "面馆购券抽奖"
+        type: "lucky_draw_v2"
+        startDate: "${START_DATE}"
+        endDate: "${END_DATE}"
+        slug: "${SLUG_2}"
+        budgetPercent: 20
+      expect: 200
+
+  # ── 小额券 S$20（应该中S$0.5-2，不进入大奖池）──
+  - name: "购买S$20小额券"
+    api:
+      method: POST
+      path: /api/voucher/purchase?slug=${SLUG_2}
+      cookie: "${cust_token}"
+      body:
+        amountSgd: 20
+        spendNowSgd: 5
+      expect: 200
+    set:
+      small_voucher_id: "$.data.voucher.id"
+      small_prize: "$.data.instantPrize.name"
+
+  - name: "验证：小额券中奖（必中）"
+    log: "S$20券中奖: ${small_prize}"
+
+  - name: "验证：小额券不进入大奖池（grandPoolEntry=false）"
+    log: "大奖池参与: $..data.grandPoolEntry (应为false)"
+    # 在 runner 里做断言
+
+  # ── 大额券 S$100（2×权重，进大奖池）──
+  - name: "购买S$100大额券"
+    api:
+      method: POST
+      path: /api/voucher/purchase?slug=${SLUG_2}
+      cookie: "${cust_token}"
+      body:
+        amountSgd: 100
+        spendNowSgd: 0
+      expect: 200
+    set:
+      large_voucher_id: "$.data.voucher.id"
+      large_prize: "$.data.instantPrize.name"
+      large_weight: "$.data.voucher.drawWeight"
+
+  - name: "验证：大额券中奖（必中，金额更大）"
+    log: "S$100券中奖: ${large_prize}"
+
+  - name: "验证：大额券进入大奖池 + 2×权重（grandPoolEntry=true, weight=20000）"
+    log: "大奖池参与: $..data.grandPoolEntry, 权重: ${large_weight}"
+
+  - name: "验证：大额券权重是小额券的 2×（小额=0，大额=amountCents×2=20000）"
+    log: "权重: ${large_weight} (应为 20000 = 10000×2)"

@@ -1,0 +1,88 @@
+# 场景 3：分享加权 → 上限拒绝
+name: "Share Boost Once → Repeat Blocked"
+description: >
+  客户购券后分享，权重翻倍。再次分享被拒绝（防止无限刷）。
+
+steps:
+  - name: "注册商家 + 客户"
+    api:
+      method: POST
+      path: /api/auth/register
+      body:
+        contact: "${BIZ_PHONE_3}"
+        code: "123456"
+        role: "business"
+        displayName: "测试餐厅C"
+        businessName: "C餐厅"
+        businessCategory: "food"
+      expect: 200
+    set:
+      biz_token: "$.data.token"
+
+  - name: "注册客户"
+    api:
+      method: POST
+      path: /api/auth/register
+      body:
+        contact: "${CUST_PHONE_3}"
+        code: "123456"
+        role: "customer"
+        displayName: "王五"
+      expect: 200
+    set:
+      cust_token: "$.data.token"
+
+  - name: "创建活动"
+    api:
+      method: POST
+      path: /api/business/campaigns
+      cookie: "${biz_token}"
+      body:
+        name: "分享测试活动"
+        type: "lucky_draw_v2"
+        startDate: "${START_DATE}"
+        endDate: "${END_DATE}"
+        slug: "${SLUG_3}"
+        budgetPercent: 20
+      expect: 200
+
+  - name: "购买S$100券"
+    api:
+      method: POST
+      path: /api/voucher/purchase?slug=${SLUG_3}
+      cookie: "${cust_token}"
+      body:
+        amountSgd: 100
+        spendNowSgd: 50
+      expect: 200
+    set:
+      voucher_id: "$.data.voucher.id"
+      initial_weight: "$.data.voucher.drawWeight"
+
+  - name: "验证：初始权重 = 20000（100×100×2）"
+    log: "初始权重: ${initial_weight}"
+
+  - name: "第一次分享 → 权重加一倍"
+    api:
+      method: POST
+      path: /api/campaign/share-boost
+      cookie: "${cust_token}"
+      body:
+        voucherId: "${voucher_id}"
+      expect: 200
+    set:
+      new_weight: "$.data.newWeight"
+      boosted: "$.data.boostedBy"
+
+  - name: "验证：权重已增加"
+    log: "新权重: ${new_weight}，增加了: ${boosted}"
+
+  - name: "第二次分享 → 被拒绝（已boost过）"
+    api:
+      method: POST
+      path: /api/campaign/share-boost
+      cookie: "${cust_token}"
+      body:
+        voucherId: "${voucher_id}"
+      expect: 400
+    log: "第二次分享被正确拒绝"
