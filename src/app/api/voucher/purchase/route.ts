@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   const campaign = await prisma.campaign.findUnique({
     where: { slug, type: "lucky_draw_v2", status: "active" },
   });
-  if (!campaign || new Date() > campaign.endDate) {
+  if (!campaign || new Date() < campaign.startDate || new Date() > campaign.endDate) {
     return NextResponse.json({ error: "Campaign not available" }, { status: 404 });
   }
 
@@ -58,16 +58,17 @@ export async function POST(request: NextRequest) {
     const store = await prisma.store.findFirst({
       where: { businessId: campaign.businessId },
     });
-    const storeId = store?.id ?? campaign.businessId; // fallback for backwards compat
-    await prisma.voucherUsage.create({
-      data: {
-        voucherId: voucher.id,
-        storeId,
-        amountCents: spendNowCents,
-        feeCents: Math.round(spendNowCents * budgetPercent / 100),
-        storeIncome: spendNowCents - Math.round(spendNowCents * budgetPercent / 100),
-      },
-    });
+    if (store) {
+      await prisma.voucherUsage.create({
+        data: {
+          voucherId: voucher.id,
+          storeId: store.id,
+          amountCents: spendNowCents,
+          feeCents: Math.round(spendNowCents * budgetPercent / 100),
+          storeIncome: spendNowCents - Math.round(spendNowCents * budgetPercent / 100),
+        },
+      });
+    }
   }
 
   // Instant draw (100% win)
@@ -87,14 +88,13 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  // Update campaign counters
-  const newInstantPoolCents = instantPoolCents + prizePoolContribution;
+  // Update campaign counters atomically
   await prisma.campaign.update({
     where: { id: campaign.id },
     data: {
       entryCount: { increment: 1 },
       totalTicketCount: { increment: 1 },
-      instantPoolCents: newInstantPoolCents,
+      instantPoolCents: { increment: prizePoolContribution },
     },
   });
 

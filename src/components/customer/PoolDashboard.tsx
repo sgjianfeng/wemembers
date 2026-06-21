@@ -1,39 +1,23 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import type { PoolCountdown } from "@/lib/draw-v2";
+
+export interface CountdownItem {
+  prizeName: string;
+  targetCents: number;
+  currentCents: number;
+  progress: number;
+  daysPredicted: number;
+  velocityPerDay: number;
+  accelerating: boolean;
+}
 
 interface PoolDashboardProps {
-  slug: string;
+  countdowns: CountdownItem[];
+  instantPoolSgd: string;
+  dailyAvgVelocity: number;
 }
-
-interface PoolStatusData {
-  campaign: {
-    id: string;
-    slug: string;
-    name: string;
-    status: string;
-    voucherCount: number;
-  };
-  pool: {
-    totalCents: number;
-    totalSgd: string;
-    instantPool: { cents: number; sgd: string; ratio: number };
-    midPool: { cents: number; sgd: string; ratio: number };
-    grandPool: { cents: number; sgd: string; ratio: number };
-  };
-  draws: Record<string, { total: number; won: number }>;
-  velocity: {
-    dailyAvgCents: number;
-    dailyAvgSgd: string;
-    lastUpdated: string | null;
-  };
-  countdown: PoolCountdown[];
-}
-
-type LoadState = "loading" | "error" | "empty" | "loaded";
 
 function formatCents(cents: number): string {
   return `S$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -63,7 +47,7 @@ const PRIZE_ICONS: Record<string, string> = {
   BYD: "🚗",
 };
 
-function CountdownCard({ item }: { item: PoolCountdown }) {
+function CountdownCard({ item }: { item: CountdownItem }) {
   const days = item.daysPredicted;
   const displayDays =
     days <= 0 ? "今日开奖" : days === 1 ? "预计明天" : `预计 ${days} 天`;
@@ -115,60 +99,8 @@ function CountdownCard({ item }: { item: PoolCountdown }) {
   );
 }
 
-export function PoolDashboard({ slug }: PoolDashboardProps) {
-  const [state, setState] = useState<LoadState>("loading");
-  const [data, setData] = useState<PoolStatusData | null>(null);
-
-  const fetchPool = useCallback(async () => {
-    setState("loading");
-    try {
-      const res = await fetch(`/api/campaign/pool-status?slug=${encodeURIComponent(slug)}`);
-      if (!res.ok) {
-        if (res.status === 404) { setState("empty"); return; }
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const json = await res.json();
-      const payload: PoolStatusData = json.data;
-      if (!payload) { setState("empty"); return; }
-      setData(payload);
-      setState("loaded");
-    } catch {
-      setState("error");
-    }
-  }, [slug]);
-
-  useEffect(() => { fetchPool(); }, [fetchPool]);
-
-  if (state === "loading") {
-    return (
-      <Card>
-        <CardContent className="p-5 text-center text-sm text-slate-400">
-          <div className="animate-pulse space-y-2">
-            <div className="h-4 bg-slate-100 rounded w-1/2 mx-auto" />
-            <div className="h-8 bg-slate-100 rounded w-3/4 mx-auto" />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (state === "error") {
-    return (
-      <Card>
-        <CardContent className="p-5 text-center">
-          <p className="text-sm text-red-500 mb-2">奖池加载失败</p>
-          <button
-            onClick={fetchPool}
-            className="text-xs text-blue-500 underline hover:no-underline"
-          >
-            点击重试
-          </button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (state === "empty" || !data) {
+export function PoolDashboard({ countdowns, instantPoolSgd, dailyAvgVelocity }: PoolDashboardProps) {
+  if (!countdowns || countdowns.length === 0) {
     return (
       <Card>
         <CardContent className="p-5 text-center text-sm text-slate-400">
@@ -178,68 +110,30 @@ export function PoolDashboard({ slug }: PoolDashboardProps) {
     );
   }
 
-  const { campaign, pool, draws, countdown } = data;
-
   return (
     <div className="space-y-4">
-      {/* Campaign header */}
+      {/* Instant pool summary */}
       <Card>
         <CardContent className="p-4 space-y-1">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-slate-900">{campaign.name}</h3>
-            <Badge variant={campaign.status === "active" ? "green" : "slate"} size="sm">
-              {campaign.status === "active" ? "进行中" : campaign.status}
-            </Badge>
+            <h3 className="text-base font-bold text-slate-900">奖池进度</h3>
+            <Badge variant="green" size="sm">进行中</Badge>
           </div>
           <p className="text-xs text-slate-400">
-            {campaign.voucherCount} 张券 · 总奖池 {pool.totalSgd}
+            即时奖池 S${instantPoolSgd} · 日均 {dailyAvgVelocity > 0 ? formatCents(dailyAvgVelocity) : "--"}
           </p>
         </CardContent>
       </Card>
 
-      {/* Pool allocation summary */}
-      <Card>
-        <CardContent className="p-4 space-y-2">
-          <h4 className="text-sm font-semibold text-slate-800">奖池分配</h4>
-          <PoolProgressBar current={pool.instantPool.cents} target={pool.totalCents} label={`即时奖池 ${pool.instantPool.sgd}`} />
-          <PoolProgressBar current={pool.midPool.cents} target={pool.totalCents} label={`中级奖池 ${pool.midPool.sgd}`} />
-          <PoolProgressBar current={pool.grandPool.cents} target={pool.totalCents} label={`大奖池 ${pool.grandPool.sgd}`} />
-          <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-            <span>即时 {pool.instantPool.ratio}%</span>
-            <span>中级 {pool.midPool.ratio}%</span>
-            <span>大奖 {pool.grandPool.ratio}%</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Draw stats */}
-      {Object.keys(draws).length > 0 && (
-        <Card>
-          <CardContent className="p-4 space-y-1">
-            <h4 className="text-sm font-semibold text-slate-800 mb-1">抽奖统计</h4>
-            {Object.entries(draws).map(([type, info]) => (
-              <div key={type} className="flex items-center justify-between text-xs text-slate-600">
-                <span className="capitalize">{type === "grand" ? "大奖" : type === "mid" ? "中级" : "即时"}</span>
-                <span>
-                  <b className="text-slate-800">{info.won}</b> / {info.total} 次中奖
-                </span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
       {/* Grand prize countdown */}
-      {countdown && countdown.length > 0 && (
+      <div className="space-y-2">
+        <h4 className="text-sm font-semibold text-slate-800 px-0.5">大奖进度</h4>
         <div className="space-y-2">
-          <h4 className="text-sm font-semibold text-slate-800 px-0.5">大奖进度</h4>
-          <div className="space-y-2">
-            {countdown.map((item) => (
-              <CountdownCard key={item.prizeName} item={item} />
-            ))}
-          </div>
+          {countdowns.map((item) => (
+            <CountdownCard key={item.prizeName} item={item} />
+          ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }

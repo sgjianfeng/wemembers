@@ -33,22 +33,25 @@ export async function POST(request: NextRequest) {
   const feeCents = Math.round(amountCents * budgetPercent / 100);
   const storeIncome = amountCents - feeCents;
 
-  // Get the store from session
+  // Get the store from session — only create usage when a real store is available
   const storeId = session.storeId;
-  const businessId = storeId
-    ? (await prisma.store.findUnique({ where: { id: storeId } }))?.businessId
-    : session.userId;
+  let usageId: string | null = null;
 
-  // Record usage
-  const usage = await prisma.voucherUsage.create({
-    data: {
-      voucherId: voucher.id,
-      storeId: storeId || session.userId, // fallback to business userId if no store
-      amountCents,
-      feeCents,
-      storeIncome,
-    },
-  });
+  if (storeId) {
+    const store = await prisma.store.findUnique({ where: { id: storeId } });
+    if (store) {
+      const usage = await prisma.voucherUsage.create({
+        data: {
+          voucherId: voucher.id,
+          storeId,
+          amountCents,
+          feeCents,
+          storeIncome,
+        },
+      });
+      usageId = usage.id;
+    }
+  }
 
   // Update voucher balance
   const newBalance = voucher.balanceCents - amountCents;
@@ -66,12 +69,12 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     data: {
-      usage: {
-        id: usage.id,
+      usage: usageId ? {
+        id: usageId,
         amountSgd: (amountCents / 100).toFixed(2),
         feeSgd: (feeCents / 100).toFixed(2),
         storeIncomeSgd: (storeIncome / 100).toFixed(2),
-      },
+      } : null,
       voucher: {
         id: voucher.id,
         remainingBalanceSgd: (newBalance / 100).toFixed(2),

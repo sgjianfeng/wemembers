@@ -37,10 +37,15 @@ export async function GET(request: NextRequest) {
 
   const totalPoolCents = poolAgg._sum.prizePoolContribution ?? 0;
 
-  // Allocate pool by campaign ratios
-  const instantPoolCents = Math.floor(totalPoolCents * (campaign.instantPoolRatio ?? 10) / 100);
-  const midPoolCents = Math.floor(totalPoolCents * (campaign.midPoolRatio ?? 60) / 100);
-  const grandPoolCents = Math.floor(totalPoolCents * (campaign.grandPoolRatio ?? 30) / 100);
+  // Use actual accumulated instant pool from campaign counter
+  const instantPoolCents = campaign.instantPoolCents ?? 0;
+  // Mid and grand pools: allocate remaining total proportionally by ratio
+  const midRatio = campaign.midPoolRatio ?? 60;
+  const grandRatio = campaign.grandPoolRatio ?? 30;
+  const sumMidGrand = midRatio + grandRatio;
+  const nonInstantCents = totalPoolCents - instantPoolCents;
+  const midPoolCents = sumMidGrand > 0 ? Math.floor(nonInstantCents * midRatio / sumMidGrand) : 0;
+  const grandPoolCents = sumMidGrand > 0 ? Math.floor(nonInstantCents * grandRatio / sumMidGrand) : 0;
 
   // Count draws per pool type (instant / mid / grand)
   const drawCounts = await prisma.voucherDraw.groupBy({
@@ -65,9 +70,13 @@ export async function GET(request: NextRequest) {
   }
 
   // Build pool config for grand prize countdown estimation
+  // Allocate grand pool proportionally by each prize's target size
+  const totalGrandTarget = Object.values(GRAND_PRIZE_TARGETS).reduce((sum, m) => sum + m.targetCents, 0);
   const poolConfigs: Record<string, { targetCents: number; currentCents: number }> = {};
   for (const [key, meta] of Object.entries(GRAND_PRIZE_TARGETS)) {
-    const allocated = Math.floor(grandPoolCents * (meta.valueCents / 100000)); // rough proportional allocation
+    const allocated = totalGrandTarget > 0
+      ? Math.floor(grandPoolCents * (meta.targetCents / totalGrandTarget))
+      : 0;
     poolConfigs[key] = {
       targetCents: meta.targetCents,
       currentCents: Math.min(allocated, meta.targetCents),

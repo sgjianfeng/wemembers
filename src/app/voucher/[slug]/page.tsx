@@ -97,9 +97,9 @@ export default function VoucherDrawPage() {
         {poolStatus && (
           <div className="mb-4">
             <PoolDashboard
-              countdowns={poolStatus.countdowns || []}
-              instantPoolSgd={poolStatus.instantPoolSgd || "0"}
-              dailyAvgVelocity={poolStatus.dailyAvgVelocity || 0}
+              countdowns={poolStatus.countdown || []}
+              instantPoolSgd={poolStatus.pool?.instantPool?.sgd || "0"}
+              dailyAvgVelocity={poolStatus.velocity?.dailyAvgCents || 0}
             />
           </div>
         )}

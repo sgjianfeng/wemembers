@@ -18,9 +18,9 @@ interface VoucherTierSelectorProps {
 }
 
 const TIERS: TierOption[] = [
-  { value: 20, label: "S$20", descKey: "voucher.smallTier", gradient: "from-slate-400 to-slate-500", bg: "bg-slate-50", icon: "☕" },
-  { value: 50, label: "S$50", descKey: "voucher.mediumTier", gradient: "from-amber-400 to-amber-500", bg: "bg-amber-50", icon: "🎫", badge: "🎯" },
-  { value: 100, label: "S$100", descKey: "voucher.largeTier", gradient: "from-violet-500 to-violet-600", bg: "bg-violet-50", icon: "💎", badge: "🚀" },
+  { value: 20, label: "S$20", descKey: "voucher.smallTier.desc", gradient: "from-slate-400 to-slate-500", bg: "bg-slate-50", icon: "☕" },
+  { value: 50, label: "S$50", descKey: "voucher.mediumTier.desc", gradient: "from-amber-400 to-amber-500", bg: "bg-amber-50", icon: "🎫", badge: "🎯" },
+  { value: 100, label: "S$100", descKey: "voucher.largeTier.desc", gradient: "from-violet-500 to-violet-600", bg: "bg-violet-50", icon: "💎", badge: "🚀" },
 ];
 
 export function VoucherTierSelector({ selectedAmount, onSelect }: VoucherTierSelectorProps) {

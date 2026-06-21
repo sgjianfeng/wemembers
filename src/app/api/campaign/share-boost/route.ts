@@ -22,6 +22,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Voucher not found" }, { status: 404 });
   }
 
+  // Prevent unlimited stacking: check if already boosted
+  if (voucher.drawWeight > voucher.amountCents) {
+    return NextResponse.json({ error: "already boosted" }, { status: 400 });
+  }
+
   // Boost weight: +1× base weight per share
   const boostAmount = voucher.amountCents;
   const newWeight = voucher.drawWeight + boostAmount;
