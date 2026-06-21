@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
   // Record first spend (in-store consumption)
   if (spendNowCents > 0) {
-    // Find the business's primary store for the usage record
+    // 当场消费不扣费：奖池已从券面总额计提，售券方实收 100%
     const store = await prisma.store.findFirst({
       where: { businessId: campaign.businessId },
     });
@@ -64,8 +64,8 @@ export async function POST(request: NextRequest) {
           voucherId: voucher.id,
           storeId: store.id,
           amountCents: spendNowCents,
-          feeCents: Math.round(spendNowCents * budgetPercent / 100),
-          storeIncome: spendNowCents - Math.round(spendNowCents * budgetPercent / 100),
+          feeCents: 0, // 售券方不承担获客成本
+          storeIncome: spendNowCents, // 全额实收
         },
       });
     }
