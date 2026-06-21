@@ -1,0 +1,394 @@
+[
+  {
+    "id": "p01",
+    "group": "Public",
+    "url": "/",
+    "title": "",
+    "description": "首页 - 三支柱入口",
+    "role": "guest"
+  },
+  {
+    "id": "p02",
+    "group": "Public",
+    "url": "/for-business",
+    "title": "",
+    "description": "商戶合作页",
+    "role": "guest"
+  },
+  {
+    "id": "p03",
+    "group": "Public",
+    "url": "/auth/login",
+    "title": "",
+    "description": "登录页",
+    "role": "guest"
+  },
+  {
+    "id": "p04",
+    "group": "Public",
+    "url": "/auth/register",
+    "title": "",
+    "description": "注册页",
+    "role": "guest"
+  },
+  {
+    "id": "p05",
+    "group": "Public",
+    "url": "/shop/",
+    "title": "",
+    "description": "商戶优惠券展示",
+    "role": "guest"
+  },
+  {
+    "id": "p06",
+    "group": "Public",
+    "url": "/store/截图商戶-mqnrptfv-v1n7",
+    "title": "",
+    "description": "门店页面",
+    "role": "guest"
+  },
+  {
+    "id": "p07",
+    "group": "Public",
+    "url": "/draw/ss-draw-mqnrptfv",
+    "title": "",
+    "description": "抽奖活动页(游客)",
+    "role": "guest"
+  },
+  {
+    "id": "p08",
+    "group": "Public",
+    "url": "/voucher/ss-vouch-mqnrptfv",
+    "title": "",
+    "description": "代金券抽奖页(游客)",
+    "role": "guest"
+  },
+  {
+    "id": "p09",
+    "group": "Public",
+    "url": "/coupons/cmqnrpxhk000tmuqj0moj3wvr",
+    "title": "",
+    "description": "优惠券详情(游客)",
+    "role": "guest"
+  },
+  {
+    "id": "c01",
+    "group": "Customer",
+    "url": "/home",
+    "title": "",
+    "description": "用户首页",
+    "role": "customer"
+  },
+  {
+    "id": "c02",
+    "group": "Customer",
+    "url": "/wallet",
+    "title": "",
+    "description": "我的钱包-优惠券",
+    "role": "customer"
+  },
+  {
+    "id": "c03",
+    "group": "Customer",
+    "url": "/balance",
+    "title": "",
+    "description": "积分/余额页",
+    "role": "customer"
+  },
+  {
+    "id": "c04",
+    "group": "Customer",
+    "url": "/profile",
+    "title": "",
+    "description": "个人中心",
+    "role": "customer"
+  },
+  {
+    "id": "c05",
+    "group": "Customer",
+    "url": "/card/",
+    "title": "",
+    "description": "会员卡页面",
+    "role": "customer"
+  },
+  {
+    "id": "c06",
+    "group": "Customer",
+    "url": "/draw/ss-draw-mqnrptfv",
+    "title": "",
+    "description": "抽奖活动(已登录)",
+    "role": "customer"
+  },
+  {
+    "id": "c07",
+    "group": "Customer",
+    "url": "/voucher/ss-vouch-mqnrptfv",
+    "title": "",
+    "description": "购券抽奖页(已登录)",
+    "role": "customer"
+  },
+  {
+    "id": "c08",
+    "group": "Customer",
+    "url": "/my-tokens",
+    "title": "",
+    "description": "我的代币",
+    "role": "customer"
+  },
+  {
+    "id": "c09",
+    "group": "Customer",
+    "url": "/redeem/cmqnrpxwp00dfxgpu2c60qi0x",
+    "title": "",
+    "description": "核销优惠券",
+    "role": "customer"
+  },
+  {
+    "id": "c10",
+    "group": "Customer",
+    "url": "/coupons/cmqnrpxhk000tmuqj0moj3wvr",
+    "title": "",
+    "description": "优惠券详情(已登录)",
+    "role": "customer"
+  },
+  {
+    "id": "c11",
+    "group": "Customer",
+    "url": "/promoter",
+    "title": "",
+    "description": "推广中心",
+    "role": "customer"
+  },
+  {
+    "id": "c12",
+    "group": "Customer",
+    "url": "/promoter/withdraw",
+    "title": "",
+    "description": "推广提现",
+    "role": "customer"
+  },
+  {
+    "id": "c13",
+    "group": "Customer",
+    "url": "/p/SSMQNRPTFV",
+    "title": "",
+    "description": "推广链接落地页",
+    "role": "customer"
+  },
+  {
+    "id": "b01",
+    "group": "Business",
+    "url": "/business",
+    "title": "",
+    "description": "商戶仪表盘",
+    "role": "business"
+  },
+  {
+    "id": "b02",
+    "group": "Business",
+    "url": "/business/campaigns",
+    "title": "",
+    "description": "营销活动列表",
+    "role": "business"
+  },
+  {
+    "id": "b03",
+    "group": "Business",
+    "url": "/business/campaigns/cmqnrpxhd000amuqja9cg090q",
+    "title": "",
+    "description": "活动详情",
+    "role": "business"
+  },
+  {
+    "id": "b04",
+    "group": "Business",
+    "url": "/business/campaigns/new",
+    "title": "",
+    "description": "创建新活动",
+    "role": "business"
+  },
+  {
+    "id": "b05",
+    "group": "Business",
+    "url": "/business/coupons",
+    "title": "",
+    "description": "优惠券管理列表",
+    "role": "business"
+  },
+  {
+    "id": "b06",
+    "group": "Business",
+    "url": "/business/coupons/cmqnrpxhk000tmuqj0moj3wvr",
+    "title": "",
+    "description": "优惠券详情/统计",
+    "role": "business"
+  },
+  {
+    "id": "b07",
+    "group": "Business",
+    "url": "/business/coupons/new",
+    "title": "",
+    "description": "创建优惠券",
+    "role": "business"
+  },
+  {
+    "id": "b08",
+    "group": "Business",
+    "url": "/business/lucky-draw",
+    "title": "",
+    "description": "抽奖活动列表",
+    "role": "business"
+  },
+  {
+    "id": "b09",
+    "group": "Business",
+    "url": "/business/members",
+    "title": "",
+    "description": "会员列表",
+    "role": "business"
+  },
+  {
+    "id": "b10",
+    "group": "Business",
+    "url": "/business/members/cmqnrpxhb0005muqjux9ukpbl",
+    "title": "",
+    "description": "会员详情",
+    "role": "business"
+  },
+  {
+    "id": "b11",
+    "group": "Business",
+    "url": "/business/members/config",
+    "title": "",
+    "description": "会员等级配置",
+    "role": "business"
+  },
+  {
+    "id": "b12",
+    "group": "Business",
+    "url": "/business/partners",
+    "title": "",
+    "description": "合作伙伴",
+    "role": "business"
+  },
+  {
+    "id": "b13",
+    "group": "Business",
+    "url": "/business/partners/discover",
+    "title": "",
+    "description": "发现合作活动",
+    "role": "business"
+  },
+  {
+    "id": "b14",
+    "group": "Business",
+    "url": "/business/scan",
+    "title": "",
+    "description": "扫码核销",
+    "role": "business"
+  },
+  {
+    "id": "b15",
+    "group": "Business",
+    "url": "/business/settings",
+    "title": "",
+    "description": "商戶设置",
+    "role": "business"
+  },
+  {
+    "id": "b16",
+    "group": "Business",
+    "url": "/business/store",
+    "title": "",
+    "description": "门店管理页",
+    "role": "business"
+  },
+  {
+    "id": "b17",
+    "group": "Business",
+    "url": "/business/stores",
+    "title": "",
+    "description": "门店列表",
+    "role": "business"
+  },
+  {
+    "id": "b18",
+    "group": "Business",
+    "url": "/business/settlements",
+    "title": "",
+    "description": "结算记录",
+    "role": "business"
+  },
+  {
+    "id": "b19",
+    "group": "Business",
+    "url": "/business/tokens",
+    "title": "",
+    "description": "代币管理",
+    "role": "business"
+  },
+  {
+    "id": "b20",
+    "group": "Business",
+    "url": "/business/tokens/history",
+    "title": "",
+    "description": "代币流水",
+    "role": "business"
+  },
+  {
+    "id": "s01",
+    "group": "Staff",
+    "url": "/business",
+    "title": "",
+    "description": "店员视图(有限导航)",
+    "role": "staff"
+  },
+  {
+    "id": "s02",
+    "group": "Staff",
+    "url": "/business/scan",
+    "title": "",
+    "description": "店员扫码核销",
+    "role": "staff"
+  },
+  {
+    "id": "a01",
+    "group": "Admin",
+    "url": "/admin",
+    "title": "",
+    "description": "管理后台首页",
+    "role": "admin"
+  },
+  {
+    "id": "a02",
+    "group": "Admin",
+    "url": "/admin/businesses",
+    "title": "",
+    "description": "商戶管理列表",
+    "role": "admin"
+  },
+  {
+    "id": "a03",
+    "group": "Admin",
+    "url": "/admin/businesses/cmqnrptpg00cnxgpu4q1tpld4",
+    "title": "",
+    "description": "商戶详情/审批",
+    "role": "admin"
+  },
+  {
+    "id": "a04",
+    "group": "Admin",
+    "url": "/admin/tokens",
+    "title": "",
+    "description": "代币管理",
+    "role": "admin"
+  },
+  {
+    "id": "a05",
+    "group": "Admin",
+    "url": "/admin/system",
+    "title": "",
+    "description": "系统设置",
+    "role": "admin"
+  }
+]
