@@ -158,8 +158,18 @@ export default function HomePage() {
   const { lang } = useLang();
   const t = content[lang as keyof typeof content] || content.zh;
   const [session, setSession] = useState<any>(null);
-  const [roleView, setRoleView] = useState<"business" | "consumer">("business");
+  const [roleView, setRoleView] = useState<"business" | "consumer">(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("wem_role_view") as "business" | "consumer") || "consumer";
+    }
+    return "consumer";
+  });
   const isZh = lang === "zh";
+
+  function switchRoleView(v: "business" | "consumer") {
+    setRoleView(v);
+    try { localStorage.setItem("wem_role_view", v); } catch {}
+  }
 
   useEffect(() => {
     fetch("/api/auth/me").then(r => r.json()).then(d => {
@@ -183,7 +193,8 @@ export default function HomePage() {
           {/* ── Role Tabs ── */}
           <div className="flex gap-1.5 justify-center mb-6">
             <button
-              onClick={() => setRoleView("business")}
+              data-role-switch="business"
+              onClick={() => switchRoleView("business")}
               className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${
                 roleView === "business"
                   ? "bg-white text-slate-900 shadow-lg"
@@ -193,7 +204,7 @@ export default function HomePage() {
               🏪 {isZh ? "我是商家" : "For Business"}
             </button>
             <button
-              onClick={() => setRoleView("consumer")}
+              onClick={() => switchRoleView("consumer")}
               className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${
                 roleView === "consumer"
                   ? "bg-white text-slate-900 shadow-lg"
@@ -259,57 +270,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Consumer View: Stats + Hot Picks ── */}
+      {/* ── Consumer View ── */}
       {roleView === "consumer" ? (
-        <>
-          <section className="relative -mt-8 px-5">
-            <div className="max-w-sm mx-auto">
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { value: "🎫", unit: isZh ? "代金券" : "Vouchers", label: isZh ? "扫码即领" : "Scan & Claim" },
-                  { value: "⭐", unit: isZh ? "积分" : "Points", label: isZh ? "消费攒积分" : "Earn on Spend" },
-                  { value: "🎰", unit: isZh ? "抽奖" : "Draws", label: isZh ? "赢取大奖" : "Win Big" },
-                ].map((s, i) => (
-                  <div key={i} className="bg-white rounded-2xl border border-slate-100 py-4 px-2 text-center shadow-sm">
-                    <p className="text-2xl font-extrabold text-slate-900 tracking-tight">{s.value}</p>
-                    <p className="text-xs font-medium text-slate-600 mt-0.5">{s.unit}</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          <section className="px-5 pt-12 pb-8 max-w-sm mx-auto text-center">
-            <h2 className="text-xl font-bold text-slate-900 mb-2">
-              {isZh ? "怎么开始省钱？" : "How to Start Saving?"}
-            </h2>
-            <p className="text-sm text-slate-400 mb-8">
-              {isZh ? "三步搞定，没有任何费用" : "Three steps, completely free"}
-            </p>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { icon: "📱", title: isZh ? "扫码" : "Scan", desc: isZh ? "扫商家二维码" : "Scan store QR" },
-                { icon: "🎫", title: isZh ? "领券" : "Claim", desc: isZh ? "一键领取代金券" : "One-tap claim" },
-                { icon: "💰", title: isZh ? "省钱" : "Save", desc: isZh ? "消费自动抵扣" : "Auto discount" },
-              ].map((step, i) => (
-                <div key={i} className="flex flex-col items-center gap-2">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center text-2xl">
-                    {step.icon}
-                  </div>
-                  <p className="text-sm font-semibold text-slate-900">{step.title}</p>
-                  <p className="text-[11px] text-slate-400">{step.desc}</p>
-                </div>
-              ))}
-            </div>
-            <Link
-              href="/auth/register"
-              className="inline-flex items-center justify-center mt-8 px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full font-semibold text-sm shadow-lg hover:from-amber-600 hover:to-orange-600 transition-all active:scale-[0.98]"
-            >
-              {isZh ? "🎉 免费注册，开始领券" : "🎉 Sign Up Free & Start Saving"}
-            </Link>
-          </section>
-        </>
+        <ConsumerView isZh={isZh} lang={lang} />
       ) : (
         <>
       {/* ── Stats ── */}
@@ -444,5 +407,125 @@ export default function HomePage() {
         <p className="text-xs text-slate-300">{t.footer}</p>
       </footer>
     </div>
+  );
+}
+
+// ──── Consumer View Component ────
+
+const PRIZE_TIERS = [
+  { icon: "🎰", labelZh: "即时奖", labelEn: "Instant Win", rangeZh: "S$0.50~S$20", rangeEn: "S$0.50~S$20", descZh: "买券100%中奖", descEn: "100% win on purchase", color: "from-amber-400 to-orange-400", bg: "bg-amber-50", emoji: "⚡" },
+  { icon: "📱", labelZh: "iPhone", labelEn: "iPhone", rangeZh: "目标 S$5,000", rangeEn: "Target S$5,000", descZh: "大奖池抽取", descEn: "Grand pool draw", color: "from-blue-400 to-cyan-400", bg: "bg-blue-50", emoji: "📱" },
+  { icon: "🚗", labelZh: "BYD 汽车", labelEn: "BYD Car", rangeZh: "目标 S$667,000", rangeEn: "Target S$667,000", descZh: "终极豪华大奖", descEn: "Ultimate grand prize", color: "from-violet-400 to-purple-400", bg: "bg-violet-50", emoji: "🚗" },
+];
+
+function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
+  const [draws, setDraws] = useState<any[]>([]);
+  const [coupons, setCoupons] = useState<any[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      const [drawRes, couponRes] = await Promise.all([
+        fetch("/api/campaign/active-draws").then(r => r.json()).catch(() => ({ data: [] })),
+        fetch("/api/coupons/discover").then(r => r.json()).catch(() => ({ data: [] })),
+      ]);
+      setDraws(drawRes.data || []);
+      setCoupons((couponRes.data || []).slice(0, 6));
+      setLoaded(true);
+    }
+    load();
+  }, []);
+
+  const mainDraw = draws[0] || null;
+
+  return (
+    <>
+      {/* ── Prize Showcase ── */}
+      <section className="relative -mt-8 px-5 pb-4">
+        <div className="max-w-sm mx-auto">
+          <div className="grid grid-cols-3 gap-2">
+            {PRIZE_TIERS.map((prize, i) => {
+              const cd = mainDraw?.countdown?.find((c: any) => c.prizeName === prize.labelEn) || null;
+              const pct = cd?.progress || 0;
+              const days = cd?.daysPredicted;
+              const dayLabel = days === undefined ? "—" : days <= 0
+                ? (isZh ? "即将开奖" : "Soon")
+                : (isZh ? `${days}天` : `${days}d`);
+              return (
+                <div key={i} className="bg-white rounded-2xl border border-slate-100 py-3 px-2 text-center shadow-sm">
+                  <p className="text-2xl mb-1">{prize.icon}</p>
+                  <p className="text-[11px] font-semibold text-slate-900">
+                    {isZh ? prize.labelZh : prize.labelEn}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {isZh ? prize.rangeZh : prize.rangeEn}
+                  </p>
+                  {cd && (
+                    <>
+                      <div className="mt-2 h-1 bg-slate-100 rounded-full overflow-hidden">
+                        <div className={`h-full bg-gradient-to-r ${prize.color} rounded-full`} style={{ width: `${Math.min(100, pct)}%` }} />
+                      </div>
+                      <p className="text-[9px] text-slate-400 mt-0.5">{pct}% · {dayLabel}</p>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {mainDraw && (
+            <p className="text-center text-[10px] text-slate-400 mt-2">
+              {isZh
+                ? `奖池累计 S$${mainDraw.totalPoolSgd} · 日均 S$${mainDraw.dailyVelocitySgd}`
+                : `Pool S$${mainDraw.totalPoolSgd} · S$${mainDraw.dailyVelocitySgd}/day`}
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* ── Hot Coupons ── */}
+      {loaded && coupons.length > 0 && (
+        <section className="px-5 pt-4 pb-8 max-w-sm mx-auto">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-bold text-slate-900">
+              🔥 {isZh ? "热门代金券" : "Hot Vouchers"}
+            </h2>
+            <a href="/home" className="text-xs text-blue-500">
+              {isZh ? "更多 →" : "More →"}
+            </a>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
+            {coupons.map((c: any) => {
+              const displayValue = c.type === "percentage"
+                ? `${(c.valueCents / 100).toFixed(0)}${isZh ? "折" : "% OFF"}`
+                : c.type === "free_item"
+                ? (isZh ? "免单" : "FREE")
+                : `S$${(c.valueCents / 100).toFixed(0)}`;
+              return (
+                <a key={c.id} href={`/coupons/${c.id}`} className="snap-start shrink-0 w-36 bg-white rounded-xl border border-slate-100 p-3 hover:border-blue-200 transition-colors no-underline">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center text-lg mb-2">🎫</div>
+                  <p className="text-sm font-bold text-[#FF6B35]">{displayValue}</p>
+                  <p className="text-[11px] text-slate-900 mt-0.5 line-clamp-1">{c.title}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">{c.pointsRequired}⭐</p>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ── For Business Entry ── */}
+      <section className="px-5 pb-12 max-w-sm mx-auto">
+        <button
+          onClick={() => {
+            const el = document.querySelector('[data-role-switch="business"]');
+            if (el instanceof HTMLElement) el.click();
+          }}
+          className="w-full py-3 bg-slate-50 rounded-xl text-xs text-slate-400 hover:bg-slate-100 transition-colors"
+        >
+          🏪 {isZh ? "我是商家，查看营销工具" : "I'm a business, view marketing tools"}
+        </button>
+      </section>
+    </>
   );
 }
