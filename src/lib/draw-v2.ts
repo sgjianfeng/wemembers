@@ -39,13 +39,12 @@ export const GRAND_PRIZE_TARGETS = {
 };
 
 const INSTANT_PRIZES: InstantPrizeV2[] = [
-  { name: "S$20 代金券", icon: "💵", valueCents: 2000, weight: 3 },
-  { name: "S$10 代金券", icon: "💵", valueCents: 1000, weight: 8 },
-  { name: "S$5 代金券",  icon: "🎫", valueCents: 500,  weight: 15 },
-  { name: "S$2 代金券",  icon: "🎟", valueCents: 200,  weight: 25 },
+  { name: "S$20 代金券", icon: "💵", valueCents: 2000, weight: 6 },
+  { name: "S$10 代金券", icon: "💵", valueCents: 1000, weight: 14 },
+  { name: "S$5 代金券",  icon: "🎫", valueCents: 500,  weight: 8 },
+  { name: "S$2 代金券",  icon: "🎟", valueCents: 200,  weight: 15 },
   { name: "S$1 代金券",  icon: "☕", valueCents: 100,  weight: 35 },
   { name: "S$0.50 代金券", icon: "🍬", valueCents: 50, weight: 50 },
-  { name: "S$0.20 代金券", icon: "⭐", valueCents: 20, weight: 64 },
 ];
 
 /**

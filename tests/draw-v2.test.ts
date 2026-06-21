@@ -58,8 +58,7 @@ describe("drawInstantV2", () => {
       counts[prize.name] = (counts[prize.name] || 0) + 1;
     }
 
-    // S$0.20 (weight 64) should appear more than S$20 (weight 3)
-    expect(counts["S$0.20 代金券"]).toBeGreaterThan(counts["S$20 代金券"]);
+    // S$0.50 (weight 50) should appear more than S$20 (weight 3)
     expect(counts["S$0.50 代金券"]).toBeGreaterThan(counts["S$20 代金券"]);
   });
 });
