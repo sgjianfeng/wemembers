@@ -29,17 +29,43 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Insufficient balance" }, { status: 400 });
   }
 
+  // 核销方必须已加入余额消费网络（至少有一个 lucky_draw_v2 活动）
+  const storeId = session.storeId;
+  let redeemerStore: { id: string; businessId: string } | null = null;
+  let redeemerBusinessId: string;
+
+  if (storeId) {
+    redeemerStore = await prisma.store.findUnique({ where: { id: storeId } });
+    if (redeemerStore) {
+      redeemerBusinessId = redeemerStore.businessId;
+    } else {
+      return NextResponse.json({ error: "Store not found" }, { status: 404 });
+    }
+  } else {
+    // business owner redeeming directly (no store assignment)
+    redeemerStore = null;
+    redeemerBusinessId = session.userId;
+  }
+
+  const inNetwork = await prisma.campaign.findFirst({
+    where: { businessId: redeemerBusinessId, type: "lucky_draw_v2" },
+    select: { id: true },
+  });
+  if (!inNetwork) {
+    return NextResponse.json(
+      { error: "This store is not in the voucher spending network. Join a lucky_draw_v2 campaign first." },
+      { status: 403 }
+    );
+  }
+
   const budgetPercent = voucher.campaign?.budgetPercent || 20;
   const feeCents = Math.round(amountCents * budgetPercent / 100);
   const storeIncome = amountCents - feeCents;
 
-  // Get the store from session — only create usage when a real store is available
-  const storeId = session.storeId;
+  // Create usage record — only when a real store is available
   let usageId: string | null = null;
 
-  if (storeId) {
-    const store = await prisma.store.findUnique({ where: { id: storeId } });
-    if (store) {
+  if (redeemerStore) {
       const usage = await prisma.voucherUsage.create({
         data: {
           voucherId: voucher.id,
@@ -50,7 +76,6 @@ export async function POST(request: NextRequest) {
         },
       });
       usageId = usage.id;
-    }
   }
 
   // Update voucher balance
