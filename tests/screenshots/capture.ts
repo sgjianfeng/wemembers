@@ -39,6 +39,16 @@ async function registerUser(phone: string, role: string, name: string): Promise<
   return { token: j.data.token, userId: j.data.user.id, businessSlug: j.data.user.businessSlug };
 }
 
+async function getFreshToken(phone: string): Promise<string> {
+  await api("/api/auth/send-code", { method: "POST", json: { contact: phone, purpose: "login" } });
+  await new Promise(r => setTimeout(r, 300));
+  const vc = await getVerificationCode(phone, "login");
+  if (!vc) throw new Error(`No login code for ${phone}`);
+  const res = await api("/api/auth/verify-code", { method: "POST", json: { contact: phone, code: vc.code, purpose: "login" } });
+  const j = await res.json();
+  return j.data.token;
+}
+
 async function setCookie(page: Page, token: string) {
   await page.context().addCookies([{ name: "gwm_token", value: token, domain: "localhost", path: "/" }]);
 }
@@ -94,12 +104,12 @@ test("seed all test data", async () => {
   const s = await registerUser(STAFF_PHONE, "customer", "店员截图");
   const staffStore = await prisma.store.findFirst({ where: { businessId: bizUserId } });
   await prisma.user.update({ where: { id: s.userId }, data: { role: "staff", storeId: staffStore!.id } });
-  staffToken = s.token; // token still valid after role change
+  staffToken = await getFreshToken(STAFF_PHONE); // fresh token with staff role
 
-  // Admin: register then set role directly
+  // Admin: register as customer, change role, then get fresh token
   const a = await registerUser(ADMIN_PHONE, "customer", "管理员截图");
   await prisma.user.update({ where: { id: a.userId }, data: { role: "admin" } });
-  adminToken = a.token;
+  adminToken = await getFreshToken(ADMIN_PHONE); // fresh token with admin role
   BUSINESS_ID = bizUserId;
 
   // ── Token accounts ──
@@ -318,6 +328,14 @@ test.describe("5. Admin", () => {
 // ====================================================================
 test.afterAll(async () => {
   const fs = await import("fs");
-  fs.writeFileSync("tests/screenshots/output/metadata.json", JSON.stringify(pagesMeta, null, 2));
-  console.log(`\n📸 ${pagesMeta.length} pages captured. Metadata saved.`);
+  const path = "tests/screenshots/output/metadata.json";
+  // Merge with existing metadata (in case of worker restarts/retries)
+  let existing: typeof pagesMeta = [];
+  try { existing = JSON.parse(fs.readFileSync(path, "utf-8")); } catch {}
+  const seen = new Set(existing.map((m) => m.id));
+  for (const m of pagesMeta) { if (!seen.has(m.id)) { existing.push(m); seen.add(m.id); } }
+  // Sort by id for consistent ordering
+  existing.sort((a, b) => a.id.localeCompare(b.id));
+  fs.writeFileSync(path, JSON.stringify(existing, null, 2));
+  console.log(`\n📸 ${pagesMeta.length} new / ${existing.length} total pages. Metadata saved.`);
 });
