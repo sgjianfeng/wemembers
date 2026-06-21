@@ -1,39 +1,34 @@
-# 场景 2：小额券 → 升级提示 → 买大额券 → 2×权重
-name: "Small Tier → Upgrade Hint → Buy Large → 2× Grand Weight"
-description: >
-  客户先买S$20小额券，中S$0.5即时奖（不进入大奖池）。
-  再买S$100大额券，获得2×权重进入大奖池。
+name: "Small Tier → Upgrade → Large Tier 2x Weight"
+description: 先买S$20不进入大奖池，再买S$100得2x权重
 
 steps:
-  - name: "商家 — 发验证码"
-    api: { method: POST, path: /api/auth/send-code, body: { contact: "+6592000201", purpose: "register" }, expect: 200 }
-  - name: "商家 — 读验证码"
-    db: { model: verificationCode, method: findFirst, args: { where: { contact: "+6592000201", purpose: "register" }, orderBy: { createdAt: desc } }, set: { code_biz: "code" } }
-  - name: "注册商家"
-    api: { method: POST, path: /api/auth/register, body: { contact: "+6592000201", code: "${code_biz}", role: business, displayName: "测试面馆", businessName: "测试面馆", businessCategory: food }, expect: 200 }
+  - name: 商家发码
+    api: { method: POST, path: /api/auth/send-code, body: { contact: "+6592600201", purpose: "register" }, expect: 200 }
+  - name: 商家读码
+    db: { model: verificationCode, method: findFirst, args: { where: { contact: "+6592600201" }, orderBy: { createdAt: desc } }, set: { cbiz: "code" } }
+  - name: 注册商家
+    api: { method: POST, path: /api/auth/register, body: { contact: "+6592600201", code: "${cbiz}", role: business, displayName: "测试面馆", businessName: "测试面馆", businessCategory: food }, expect: 200 }
     set: { biz_token: "$.data.token" }
 
-  - name: "客户 — 发验证码"
-    api: { method: POST, path: /api/auth/send-code, body: { contact: "+6592000202", purpose: "register" }, expect: 200 }
-  - name: "客户 — 读验证码"
-    db: { model: verificationCode, method: findFirst, args: { where: { contact: "+6592000202", purpose: "register" }, orderBy: { createdAt: desc } }, set: { code_cust: "code" } }
-  - name: "注册客户"
-    api: { method: POST, path: /api/auth/register, body: { contact: "+6592000202", code: "${code_cust}", role: customer, displayName: "李四" }, expect: 200 }
+  - name: 客户发码
+    api: { method: POST, path: /api/auth/send-code, body: { contact: "+6592600202", purpose: "register" }, expect: 200 }
+  - name: 客户读码
+    db: { model: verificationCode, method: findFirst, args: { where: { contact: "+6592600202" }, orderBy: { createdAt: desc } }, set: { ccust: "code" } }
+  - name: 注册客户
+    api: { method: POST, path: /api/auth/register, body: { contact: "+6592600202", code: "${ccust}", role: customer, displayName: "李四" }, expect: 200 }
     set: { cust_token: "$.data.token" }
 
-  - name: "创建购券抽奖活动"
-    api: { method: POST, path: /api/business/campaigns, body: { name: "面馆购券抽奖", type: lucky_draw_v2, startDate: "2026-06-01T00:00:00Z", endDate: "2026-12-31T00:00:00Z", slug: "scenario-2-${RUN}", budgetPercent: 20 }, cookie: "${biz_token}", expect: 200 }
+  - name: 创建活动
+    api: { method: POST, path: /api/business/campaigns, body: { name: "面馆抽奖", type: lucky_draw_v2, startDate: "2026-06-01T00:00:00Z", endDate: "2026-12-31T00:00:00Z", slug: "s2", budgetPercent: 20 }, cookie: "${biz_token}", expect: 200 }
 
-  - name: "购买S$20小额券"
-    api: { method: POST, path: /api/voucher/purchase?slug=scenario-2, body: { amountSgd: 20, spendNowSgd: 5 }, cookie: "${cust_token}", expect: 200 }
+  - name: 买S$20券
+    api: { method: POST, path: /api/voucher/purchase?slug=s2, body: { amountSgd: 20, spendNowSgd: 5 }, cookie: "${cust_token}", expect: 200 }
     set: { small_prize: "$.data.instantPrize.name", small_grand: "$.data.grandPoolEntry" }
+  - name: 验证小额不进入大奖池
+    log: "S$20: ${small_prize}, 大奖池=${small_grand}(expect false)"
 
-  - name: "验证：小额券不进入大奖池"
-    log: "S$20券中: ${small_prize}，大奖池: ${small_grand}（应为false）"
-
-  - name: "购买S$100大额券"
-    api: { method: POST, path: /api/voucher/purchase?slug=scenario-2, body: { amountSgd: 100, spendNowSgd: 0 }, cookie: "${cust_token}", expect: 200 }
+  - name: 买S$100券
+    api: { method: POST, path: /api/voucher/purchase?slug=s2, body: { amountSgd: 100, spendNowSgd: 0 }, cookie: "${cust_token}", expect: 200 }
     set: { large_prize: "$.data.instantPrize.name", large_weight: "$.data.voucher.drawWeight", large_grand: "$.data.grandPoolEntry" }
-
-  - name: "验证：大额券进大奖池 + 2×权重"
-    log: "S$100券中: ${large_prize}，大奖池: ${large_grand}，权重: ${large_weight}（期望20000）"
+  - name: 验证大额2x权重
+    log: "S$100: ${large_prize}, 大奖池=${large_grand}, weight=${large_weight}(expect 20000)"

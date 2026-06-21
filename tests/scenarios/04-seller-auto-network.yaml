@@ -1,52 +1,40 @@
-# 场景 4：售券方自动进入余额消费网络
-name: "Seller Auto-Enters Spending Network"
-description: >
-  餐厅A创建 lucky_draw_v2 活动 → 自动入网 → 可以接别家余额。
-  未入网的餐厅C接余额 → 403 拒绝。
+name: "Seller Auto-Network / Non-Network Rejected"
+description: A入网可接余额，未入网C接余额403
 
 steps:
-  # ═══ 餐厅A（会入网）═══
-  - name: "餐厅A — 发验证码"
-    api: { method: POST, path: /api/auth/send-code, body: { contact: "+6590384434", purpose: "register" }, expect: 200 }
-  - name: "餐厅A — 读验证码"
-    db: { model: verificationCode, method: findFirst, args: { where: { contact: "+6590384434", purpose: "register" }, orderBy: { createdAt: desc } }, set: { code_a: "code" } }
-  - name: "注册餐厅A"
-    api: { method: POST, path: /api/auth/register, body: { contact: "+6590384434", code: "${code_a}", role: business, displayName: "A餐厅", businessName: "A餐厅", businessCategory: food }, expect: 200 }
+  - name: A发码
+    api: { method: POST, path: /api/auth/send-code, body: { contact: "+6592600401", purpose: "register" }, expect: 200 }
+  - name: A读码
+    db: { model: verificationCode, method: findFirst, args: { where: { contact: "+6592600401" }, orderBy: { createdAt: desc } }, set: { ca: "code" } }
+  - name: 注册A
+    api: { method: POST, path: /api/auth/register, body: { contact: "+6592600401", code: "${ca}", role: business, displayName: "A餐厅", businessName: "A餐厅", businessCategory: food }, expect: 200 }
     set: { token_a: "$.data.token" }
 
-  # ═══ 餐厅C（不入网）═══
-  - name: "餐厅C — 发验证码"
-    api: { method: POST, path: /api/auth/send-code, body: { contact: "+6590384434", purpose: "register" }, expect: 200 }
-  - name: "餐厅C — 读验证码"
-    db: { model: verificationCode, method: findFirst, args: { where: { contact: "+6590384434", purpose: "register" }, orderBy: { createdAt: desc } }, set: { code_c: "code" } }
-  - name: "注册餐厅C（不创建活动 = 不入网）"
-    api: { method: POST, path: /api/auth/register, body: { contact: "+6590384434", code: "${code_c}", role: business, displayName: "C餐厅", businessName: "C餐厅", businessCategory: food }, expect: 200 }
+  - name: C发码
+    api: { method: POST, path: /api/auth/send-code, body: { contact: "+6592600402", purpose: "register" }, expect: 200 }
+  - name: C读码
+    db: { model: verificationCode, method: findFirst, args: { where: { contact: "+6592600402" }, orderBy: { createdAt: desc } }, set: { cc: "code" } }
+  - name: 注册C(不入网)
+    api: { method: POST, path: /api/auth/register, body: { contact: "+6592600402", code: "${cc}", role: business, displayName: "C餐厅", businessName: "C餐厅", businessCategory: food }, expect: 200 }
     set: { token_c: "$.data.token" }
 
-  # ═══ 客户 ═══
-  - name: "客户 — 发验证码"
-    api: { method: POST, path: /api/auth/send-code, body: { contact: "+6590384434", purpose: "register" }, expect: 200 }
-  - name: "客户 — 读验证码"
-    db: { model: verificationCode, method: findFirst, args: { where: { contact: "+6590384434", purpose: "register" }, orderBy: { createdAt: desc } }, set: { code_cust: "code" } }
-  - name: "注册客户"
-    api: { method: POST, path: /api/auth/register, body: { contact: "+6590384434", code: "${code_cust}", role: customer, displayName: "赵六" }, expect: 200 }
+  - name: 客户发码
+    api: { method: POST, path: /api/auth/send-code, body: { contact: "+6592600403", purpose: "register" }, expect: 200 }
+  - name: 客户读码
+    db: { model: verificationCode, method: findFirst, args: { where: { contact: "+6592600403" }, orderBy: { createdAt: desc } }, set: { ccust: "code" } }
+  - name: 注册客户
+    api: { method: POST, path: /api/auth/register, body: { contact: "+6592600403", code: "${ccust}", role: customer, displayName: "赵六" }, expect: 200 }
     set: { cust_token: "$.data.token" }
 
-  # ═══ A 创建活动（入网）═══
-  - name: "餐厅A 创建购券抽奖活动"
-    api: { method: POST, path: /api/business/campaigns, body: { name: "A店购券抽奖", type: lucky_draw_v2, startDate: "2026-06-01T00:00:00Z", endDate: "2026-12-31T00:00:00Z", slug: "scenario-4-${RUN}", budgetPercent: 20 }, cookie: "${token_a}", expect: 200 }
+  - name: A创建活动入网
+    api: { method: POST, path: /api/business/campaigns, body: { name: "A店抽奖", type: lucky_draw_v2, startDate: "2026-06-01T00:00:00Z", endDate: "2026-12-31T00:00:00Z", slug: "s4", budgetPercent: 20 }, cookie: "${token_a}", expect: 200 }
 
-  - name: "客户在A购买S$100券"
-    api: { method: POST, path: /api/voucher/purchase?slug=scenario-4, body: { amountSgd: 100, spendNowSgd: 30 }, cookie: "${cust_token}", expect: 200 }
+  - name: 客户买S$100券
+    api: { method: POST, path: /api/voucher/purchase?slug=s4, body: { amountSgd: 100, spendNowSgd: 30 }, cookie: "${cust_token}", expect: 200 }
     set: { voucher_id: "$.data.voucher.id" }
 
-  # ═══ 餐厅C（未入网）尝接余额 → 403 ═══
-  - name: "餐厅C 尝试接余额 → 403"
+  - name: C接余额403
     api: { method: POST, path: /api/voucher/redeem, body: { voucherId: "${voucher_id}", amountCents: 2000 }, cookie: "${token_c}", expect: 403 }
 
-  # ═══ 餐厅A 接余额 → 200 ═══
-  - name: "餐厅A 核销余额 → 200"
+  - name: A接余额200
     api: { method: POST, path: /api/voucher/redeem, body: { voucherId: "${voucher_id}", amountCents: 2000 }, cookie: "${token_a}", expect: 200 }
-    set: { remaining: "$.data.voucher.remainingBalanceSgd" }
-  - name: "验证：A作为核销方也能接余额"
-    log: "核销成功，剩余余额: S$${remaining}"

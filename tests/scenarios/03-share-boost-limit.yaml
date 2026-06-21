@@ -1,43 +1,37 @@
-# 场景 3：分享加权 → 上限拒绝
-name: "Share Boost → Weight Doubled → Repeat Blocked"
-description: >
-  客户购券后分享，权重从20000翻至30000。
-  第二次分享被拒绝。
+name: "Share Boost → Doubled → Blocked"
+description: 分享后权重从20000变30000，再次分享被拒
 
 steps:
-  - name: "商家 — 发验证码"
-    api: { method: POST, path: /api/auth/send-code, body: { contact: "+65920384433", purpose: "register" }, expect: 200 }
-  - name: "商家 — 读验证码"
-    db: { model: verificationCode, method: findFirst, args: { where: { contact: "+65920384433", purpose: "register" }, orderBy: { createdAt: desc } }, set: { code_biz: "code" } }
-  - name: "注册商家"
-    api: { method: POST, path: /api/auth/register, body: { contact: "+65920384433", code: "${code_biz}", role: business, displayName: "C餐厅", businessName: "C餐厅", businessCategory: food }, expect: 200 }
+  - name: 商家发码
+    api: { method: POST, path: /api/auth/send-code, body: { contact: "+6592600301", purpose: "register" }, expect: 200 }
+  - name: 商家读码
+    db: { model: verificationCode, method: findFirst, args: { where: { contact: "+6592600301" }, orderBy: { createdAt: desc } }, set: { cbiz: "code" } }
+  - name: 注册商家
+    api: { method: POST, path: /api/auth/register, body: { contact: "+6592600301", code: "${cbiz}", role: business, displayName: "C餐厅", businessName: "C餐厅", businessCategory: food }, expect: 200 }
     set: { biz_token: "$.data.token" }
 
-  - name: "客户 — 发验证码"
-    api: { method: POST, path: /api/auth/send-code, body: { contact: "+65920384433", purpose: "register" }, expect: 200 }
-  - name: "客户 — 读验证码"
-    db: { model: verificationCode, method: findFirst, args: { where: { contact: "+65920384433", purpose: "register" }, orderBy: { createdAt: desc } }, set: { code_cust: "code" } }
-  - name: "注册客户"
-    api: { method: POST, path: /api/auth/register, body: { contact: "+65920384433", code: "${code_cust}", role: customer, displayName: "王五" }, expect: 200 }
+  - name: 客户发码
+    api: { method: POST, path: /api/auth/send-code, body: { contact: "+6592600302", purpose: "register" }, expect: 200 }
+  - name: 客户读码
+    db: { model: verificationCode, method: findFirst, args: { where: { contact: "+6592600302" }, orderBy: { createdAt: desc } }, set: { ccust: "code" } }
+  - name: 注册客户
+    api: { method: POST, path: /api/auth/register, body: { contact: "+6592600302", code: "${ccust}", role: customer, displayName: "王五" }, expect: 200 }
     set: { cust_token: "$.data.token" }
 
-  - name: "创建活动"
-    api: { method: POST, path: /api/business/campaigns, body: { name: "分享测试活动", type: lucky_draw_v2, startDate: "2026-06-01T00:00:00Z", endDate: "2026-12-31T00:00:00Z", slug: "scenario-3-v2-${RUN}", budgetPercent: 20 }, cookie: "${biz_token}", expect: 200 }
+  - name: 创建活动
+    api: { method: POST, path: /api/business/campaigns, body: { name: "分享测试", type: lucky_draw_v2, startDate: "2026-06-01T00:00:00Z", endDate: "2026-12-31T00:00:00Z", slug: "s3", budgetPercent: 20 }, cookie: "${biz_token}", expect: 200 }
 
-  - name: "购买S$100券"
-    api: { method: POST, path: /api/voucher/purchase?slug=scenario-3-v2, body: { amountSgd: 100, spendNowSgd: 50 }, cookie: "${cust_token}", expect: 200 }
-    set: { voucher_id: "$.data.voucher.id", initial_weight: "$.data.voucher.drawWeight" }
+  - name: 买S$100券
+    api: { method: POST, path: /api/voucher/purchase?slug=s3, body: { amountSgd: 100, spendNowSgd: 50 }, cookie: "${cust_token}", expect: 200 }
+    set: { voucher_id: "$.data.voucher.id", weight: "$.data.voucher.drawWeight" }
+  - name: 验证初始权重
+    log: "初始权重: ${weight} (expect 20000)"
 
-  - name: "验证：大额券初始权重 = 20000"
-    log: "初始权重: ${initial_weight}（期望20000 = 10000×2）"
-
-  - name: "第一次分享 → 权重加 10000"
+  - name: 第一次分享
     api: { method: POST, path: /api/campaign/share-boost, body: { voucherId: "${voucher_id}" }, cookie: "${cust_token}", expect: 200 }
     set: { new_weight: "$.data.newWeight" }
+  - name: 验证权重增加
+    log: "新权重: ${new_weight} (expect 30000)"
 
-  - name: "验证：新权重 = 30000"
-    log: "新权重: ${new_weight}（期望30000 = 20000 + 10000）"
-
-  - name: "第二次分享 → 被拒"
+  - name: 第二次分享被拒
     api: { method: POST, path: /api/campaign/share-boost, body: { voucherId: "${voucher_id}" }, cookie: "${cust_token}", expect: 400 }
-    log: "第二次分享被正确拒绝"

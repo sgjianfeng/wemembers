@@ -58,12 +58,20 @@ const vars: Record<string, string> = {};
 // ── Var resolution ──
 
 function resolveVars(template: string): string {
-  return template.replace(/\$\{(\w+)\}/g, (_, key) => vars[key] ?? `\$\{${key}\}`);
+  let s = template.replace(/\$\{(\w+)\}/g, (_, key) => vars[key] ?? `\$\{${key}\}`);
+  return s;
 }
 
 function resolveObj(obj: any, visited = new Set<any>()): any {
   if (obj === null || obj === undefined) return obj;
-  if (typeof obj === "string") return resolveVars(obj);
+  if (typeof obj === "string") {
+    let s = resolveVars(obj);
+    if (vars.RUN) {
+      if (s.match(/^s[0-9]/)) s = s + "-" + vars.RUN;
+      if (s.match(/^\+65/) && s.length < 15) s = s + "-" + vars.RUN.slice(-4);
+    }
+    return s;
+  }
   if (Array.isArray(obj)) {
     if (visited.has(obj)) return obj;
     visited.add(obj);
@@ -110,7 +118,11 @@ function prisma(): any {
 // ── API call ──
 
 async function apiCall(method: string, rawPath: string, rawBody?: any, cookie?: string): Promise<Response> {
-  const resolvedPath = resolveVars(rawPath);
+  let resolvedPath = resolveVars(rawPath);
+  if (vars.RUN) {
+    resolvedPath = resolvedPath.replace(/([?&]slug=)(s[0-9][a-z]?)/g, '$1$2-' + vars.RUN);
+    resolvedPath = resolvedPath.replace(/\/api\/draw\/(s[0-9][a-z]?)([?/]|$)/g, '/api/draw/$1-' + vars.RUN + '$2');
+  }
   const body = rawBody ? resolveObj(rawBody) : undefined;
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
