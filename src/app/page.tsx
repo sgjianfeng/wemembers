@@ -51,10 +51,10 @@ const content = {
       {
         icon: "🎰",
         title: "幸运抽奖",
-        subtitle: "收据上传 · 奖池透明 · 开奖倒计时",
-        desc: "收据上传即时抽奖，奖池实时可见。延迟开奖等大奖。即时抽+延迟抽双模式，商家联合活动。中奖率高达 26%。",
+        subtitle: "代金券抽奖 · 奖池透明 · 开奖倒计时",
+        desc: "代金券参与即时抽奖，消费即有机会赢取大奖。奖池实时可见，延迟开奖等大奖。即时抽+延迟抽双模式，商家联合活动。",
         features: [
-          { title: "双模抽奖", body: "即时抽当场开，延迟抽攒大奖" },
+          { title: "券即机会", body: "领券/购券自动获得抽奖资格" },
           { title: "奖池透明", body: "双轨奖池实时可见，进度追踪" },
           { title: "商家联合", body: "多商家参与，共用奖池做大活动" },
         ],
@@ -125,10 +125,10 @@ const content = {
       {
         icon: "🎰",
         title: "Lucky Draw",
-        subtitle: "Receipts · Pool · Countdown · Prizes",
-        desc: "Receipt-based instant draw with transparent pool. Deferred mode for grand prizes. Dual mode + multi-business joint campaigns.",
+        subtitle: "Voucher Draw · Pool · Countdown · Prizes",
+        desc: "Use vouchers to enter instant draws with a transparent pool. Deferred mode for grand prizes. Dual mode + multi-business joint campaigns.",
         features: [
-          { title: "Dual Mode", body: "Instant win now, or wait for grand prizes" },
+          { title: "Voucher Entry", body: "Claim/buy vouchers to auto-enter draws" },
           { title: "Live Pool", body: "Dual-track pool, real-time progress" },
           { title: "Multi-Biz", body: "Joint campaigns across multiple businesses" },
         ],
