@@ -4,8 +4,12 @@
 import { PrismaClient } from "@prisma/client";
 import { signToken } from "@/lib/auth";
 
+import path from "path";
+
+const TEST_DB_PATH = "file:" + path.resolve(__dirname, "../prisma/test.db");
+
 export const testPrisma = new PrismaClient({
-  datasources: { db: { url: "file:./test.db" } },
+  datasources: { db: { url: TEST_DB_PATH } },
 });
 
 // ── Auth helpers ──

@@ -9,7 +9,7 @@ export async function GET(
   const { slug } = await params;
 
   const campaign = await prisma.campaign.findUnique({
-    where: { slug, type: "lucky_draw" },
+    where: { slug, type: { in: ["lucky_draw", "lucky_draw_v2"] } },
     include: {
       business: { select: { businessName: true, businessCategory: true } },
       prizes: { orderBy: { weight: "desc" } },
@@ -51,6 +51,13 @@ export async function GET(
         remainingStock: p.remainingStock,
         claimed: p.claimed,
       })),
+      ...(campaign.type === "lucky_draw_v2" && {
+        voucherTiers: campaign.voucherTiers ? JSON.parse(campaign.voucherTiers) : null,
+        instantPoolRatio: campaign.instantPoolRatio,
+        midPoolRatio: campaign.midPoolRatio,
+        grandPoolRatio: campaign.grandPoolRatio,
+        budgetPercent: campaign.budgetPercent,
+      }),
     },
   });
 }

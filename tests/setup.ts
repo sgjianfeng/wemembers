@@ -1,5 +1,8 @@
+import path from "path";
+
 // Test environment setup
-process.env.DATABASE_URL = "file:./test.db";
+const TEST_DB_ABSOLUTE = path.resolve(__dirname, "../prisma/test.db");
+process.env.DATABASE_URL = "file:" + TEST_DB_ABSOLUTE;
 process.env.JWT_SECRET = "test-secret-minimum-32-characters-long!!";
 process.env.STRIPE_SECRET_KEY = "sk_test_dummy";
 process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3000";
@@ -11,8 +14,8 @@ const prisma = new PrismaClient();
 beforeAll(async () => {
   // Push schema to test database
   const { execSync } = require("child_process");
-  execSync("npx prisma db push --force-reset --skip-generate", {
-    env: { ...process.env, DATABASE_URL: "file:./test.db" },
+  execSync(`npx prisma db push --force-reset --skip-generate`, {
+    env: { ...process.env, DATABASE_URL: "file:" + TEST_DB_ABSOLUTE },
     stdio: "pipe",
   });
 });
@@ -21,7 +24,7 @@ afterAll(async () => {
   await prisma.$disconnect();
   // Clean up test database
   try {
-    require("fs").unlinkSync("prisma/test.db");
+    require("fs").unlinkSync(TEST_DB_ABSOLUTE);
   } catch {}
 });
 

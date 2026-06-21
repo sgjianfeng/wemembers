@@ -64,6 +64,7 @@ model User {
   managedStores    Store[]             @relation("BusinessStores")
   luckyDrawEntries LuckyDrawEntry[]
   drawTickets      DrawTicket[]
+  vouchers         Voucher[]
   partnersFrom     BusinessPartner[]   @relation("PartnerInitiator")
   partnersTo       BusinessPartner[]   @relation("PartnerReceiver")
   settlementsIssuer Settlement[]       @relation("SettlementIssuer")
@@ -125,6 +126,8 @@ model Store {
   pointsLogs  PointsLog[]
   entries     LuckyDrawEntry[]
   joinRequests CampaignJoinRequest[]
+  vouchers        Voucher[]
+  voucherUsages   VoucherUsage[]
 
   @@unique([businessId, name])
 }
@@ -652,6 +655,14 @@ model Campaign {
   storeIds           String?               // 参与门店 ID 列表 JSON，null=不限门店
   joinable           Boolean @default(false) // 允许其他商家主动申请加入
 
+  // V2 voucher draw fields
+  voucherTiers      String?                    // JSON: [{"min":10,"max":40,"tier":"small","instantPrizeCap":2},...]
+  instantPoolRatio  Int      @default(10)      // 即时池占比 %
+  midPoolRatio      Int      @default(60)      // 中奖池占比 %
+  grandPoolRatio    Int      @default(30)      // 梦想池占比 %
+  dailyAvgVelocity  Float    @default(0)       // 7日均速
+  lastVelocityUpdate DateTime?                  // 上次速度更新时间
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -661,6 +672,7 @@ model Campaign {
   entries         LuckyDrawEntry[]
   tickets         DrawTicket[]
   joinRequests    CampaignJoinRequest[]
+  vouchers        Voucher[]
 }
 
 // ──── 抽奖券号码 ────
@@ -680,4 +692,63 @@ model DrawTicket {
   campaign   Campaign        @relation(fields: [campaignId], references: [id])
   customer   User?           @relation(fields: [customerId], references: [id])
   entry      LuckyDrawEntry  @relation(fields: [entryId], references: [id])
+}
+
+// ──── V2 购券抽奖 ────
+
+model Voucher {
+  id                    String   @id @default(cuid())
+  customerId            String
+  campaignId            String
+  storeId               String?                // 售券门店
+  amountCents           Int                    // 券面金额（分）
+  usedCents             Int      @default(0)   // 已消费金额
+  balanceCents          Int                    // 剩余余额
+  prizePoolContribution Int                    // 奖池贡献
+  drawWeight            Int                    // 大奖池权重
+  tier                  String                 // small / medium / large
+  status                String   @default("active") // active / exhausted / expired
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  customer      User     @relation(fields: [customerId], references: [id])
+  campaign      Campaign @relation(fields: [campaignId], references: [id])
+  store         Store?   @relation(fields: [storeId], references: [id])
+  usages        VoucherUsage[]
+  draws         VoucherDraw[]
+
+  @@index([customerId, status])
+  @@index([campaignId, createdAt])
+}
+
+model VoucherUsage {
+  id          String   @id @default(cuid())
+  voucherId   String
+  storeId     String                // 消费门店
+  amountCents Int                   // 本次消费金额
+  feeCents    Int                   // 核销方贡献奖池费
+  storeIncome Int                   // 门店实收
+  createdAt   DateTime @default(now())
+
+  voucher     Voucher  @relation(fields: [voucherId], references: [id])
+  store       Store    @relation(fields: [storeId], references: [id])
+
+  @@index([voucherId, createdAt])
+  @@index([storeId, createdAt])
+}
+
+model VoucherDraw {
+  id           String   @id @default(cuid())
+  voucherId    String
+  drawType     String                // "instant" | "mid" | "grand"
+  won          Boolean  @default(false)
+  prizeName    String?
+  prizeIcon    String?
+  valueCents   Int?
+  weightAtTime Int?
+  createdAt    DateTime @default(now())
+
+  voucher      Voucher  @relation(fields: [voucherId], references: [id])
+
+  @@index([voucherId])
 }
