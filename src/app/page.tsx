@@ -228,17 +228,17 @@ export default function HomePage() {
           ) : (
             <>
               <h1 className="text-4xl font-extrabold tracking-tight mb-3">
-                <span className="bg-gradient-to-r from-amber-400 to-orange-300 bg-clip-text text-transparent">
-                  {isZh ? "发现身边好券" : "Discover Nearby Deals"}
+                <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
+                  {isZh ? "🎰 买券抽大奖" : "🎰 Buy & Win Big"}
                 </span>
               </h1>
               <p className="text-xl font-semibold text-white/90 mb-2">
-                {isZh ? "领券省钱 · 积分升级" : "Claim Vouchers · Earn Points"}
+                {isZh ? "100% 中奖 · 赢 iPhone · BYD 海豹" : "100% Win · iPhone · BYD Seal"}
               </p>
               <p className="text-sm text-white/50 mb-8">
                 {isZh
-                  ? "扫码领取代金券，消费省钱。参与抽奖赢大奖！"
-                  : "Scan to claim vouchers, save on every purchase. Join lucky draws!"}
+                  ? "买代金券即抽奖，即时中现金，大奖池倒计时中！"
+                  : "Buy vouchers & draw instantly. Grand prize countdown live!"}
               </p>
             </>
           )}
@@ -250,6 +250,13 @@ export default function HomePage() {
             >
               {session.role === "business" ? t.nav.dashboard : t.nav.home}
               <span className="text-lg">→</span>
+            </Link>
+          ) : roleView === "consumer" ? (
+            <Link
+              href="/auth/register"
+              className="inline-flex items-center justify-center gap-2 px-10 py-3.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full font-bold text-sm shadow-xl shadow-orange-300/30 hover:from-amber-500 hover:to-orange-600 transition-all active:scale-[0.98]"
+            >
+              🎰 {isZh ? "免费注册，立即抽奖" : "Sign Up Free & Win Now"}
             </Link>
           ) : (
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -412,11 +419,51 @@ export default function HomePage() {
 
 // ──── Consumer View Component ────
 
-const PRIZE_TIERS = [
-  { icon: "🎰", labelZh: "即时奖", labelEn: "Instant Win", rangeZh: "S$0.50~S$20", rangeEn: "S$0.50~S$20", descZh: "买券100%中奖", descEn: "100% win on purchase", color: "from-amber-400 to-orange-400", bg: "bg-amber-50", emoji: "⚡" },
-  { icon: "📱", labelZh: "iPhone", labelEn: "iPhone", rangeZh: "目标 S$5,000", rangeEn: "Target S$5,000", descZh: "大奖池抽取", descEn: "Grand pool draw", color: "from-blue-400 to-cyan-400", bg: "bg-blue-50", emoji: "📱" },
-  { icon: "🚗", labelZh: "BYD 汽车", labelEn: "BYD Car", rangeZh: "目标 S$667,000", rangeEn: "Target S$667,000", descZh: "终极豪华大奖", descEn: "Ultimate grand prize", color: "from-violet-400 to-purple-400", bg: "bg-violet-50", emoji: "🚗" },
+// Prize card config — real product images from Unsplash
+const GRAND_PRIZES = [
+  {
+    key: "iPhone", emoji: "📱", labelZh: "iPhone 17", labelEn: "iPhone 17",
+    targetSgd: "5,000", targetCents: 500000,
+    img: "https://images.unsplash.com/photo-1592286927505-1def02115558?w=600&h=400&fit=crop&auto=format",
+    color: "from-slate-700 to-slate-900", accent: "#0071e3",
+  },
+  {
+    key: "MacBook", emoji: "💻", labelZh: "MacBook Pro", labelEn: "MacBook Pro",
+    targetSgd: "10,000", targetCents: 1000000,
+    img: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&h=400&fit=crop&auto=format",
+    color: "from-slate-800 to-gray-900", accent: "#6e6e73",
+  },
+  {
+    key: "BYD", emoji: "🚗", labelZh: "BYD 海豹", labelEn: "BYD Seal",
+    targetSgd: "667,000", targetCents: 66700000,
+    img: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=600&h=400&fit=crop&auto=format",
+    color: "from-red-700 to-red-900", accent: "#e31837",
+  },
 ];
+
+function CountdownBadge({ days, isZh }: { days: number | undefined; isZh: boolean }) {
+  if (days === undefined) return null;
+  if (days <= 0) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-600 rounded-full text-[10px] font-bold animate-pulse">
+        <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+        {isZh ? "即将开奖" : "SOON"}
+      </span>
+    );
+  }
+  if (days <= 3) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-600 rounded-full text-[10px] font-bold">
+        {isZh ? `仅剩 ${days} 天` : `${days} days left`}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-[10px] font-bold">
+      {isZh ? `预计 ${days} 天` : `~${days} days`}
+    </span>
+  );
+}
 
 function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
   const [draws, setDraws] = useState<any[]>([]);
@@ -440,58 +487,171 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
 
   return (
     <>
-      {/* ── Prize Showcase ── */}
-      <section className="relative -mt-8 px-5 pb-4">
+      {/* ══════ Section 1 — Scenario Demo Card ══════ */}
+      <section className="relative -mt-6 px-5 pb-5">
         <div className="max-w-sm mx-auto">
-          <div className="grid grid-cols-3 gap-2">
-            {PRIZE_TIERS.map((prize, i) => {
-              const cd = mainDraw?.countdown?.find((c: any) => c.prizeName === prize.labelEn) || null;
+          <div className="bg-white rounded-2xl shadow-lg border border-amber-100 overflow-hidden">
+            {/* Demo banner */}
+            <div className="bg-gradient-to-r from-amber-400 to-orange-400 px-4 py-2 flex items-center justify-center gap-2">
+              <span className="text-white text-[10px] font-bold tracking-wide uppercase">
+                {isZh ? "💡 场景演示" : "💡 HOW IT WORKS"}
+              </span>
+            </div>
+            <div className="p-4">
+              {/* Flow: spend → ticket → instant prize */}
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex-1 bg-slate-50 rounded-xl p-2.5 text-center">
+                  <p className="text-[10px] text-slate-400 mb-0.5">{isZh ? "消费" : "Spend"}</p>
+                  <p className="text-lg font-extrabold text-slate-900">S$100</p>
+                </div>
+                <span className="text-slate-300 text-lg">→</span>
+                <div className="flex-1 bg-blue-50 rounded-xl p-2.5 text-center">
+                  <p className="text-[10px] text-slate-400 mb-0.5">{isZh ? "获券" : "Voucher"}</p>
+                  <p className="text-lg font-extrabold text-blue-600">S$100</p>
+                </div>
+                <span className="text-slate-300 text-lg">→</span>
+                <div className="flex-1 bg-green-50 rounded-xl p-2.5 text-center border-2 border-green-200">
+                  <p className="text-[10px] text-slate-400 mb-0.5">{isZh ? "即时中奖" : "Instant Win"}</p>
+                  <p className="text-lg font-extrabold text-green-600">🎉 S$10</p>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500 text-center leading-relaxed">
+                {isZh
+                  ? "买 S$100 代金券 → 即时抽中 S$10 现金奖！余额 S$90 继续消费，同时自动进入大奖池"
+                  : "Buy S$100 voucher → win S$10 instantly! S$90 balance + auto-enter grand prize pool"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════ Section 2 — Grand Prize Countdown Cards ══════ */}
+      <section className="px-5 pb-6">
+        <div className="max-w-sm mx-auto">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-extrabold text-slate-900">
+              🏆 {isZh ? "大奖池倒计时" : "Grand Prize Countdown"}
+            </h2>
+            {mainDraw && (
+              <span className="text-[10px] text-slate-400">
+                {isZh ? "奖池 " : "Pool "}S${mainDraw.totalPoolSgd}
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            {GRAND_PRIZES.map((prize) => {
+              const cd = mainDraw?.countdown?.find((c: any) => c.prizeName === prize.key) || null;
+              const currentSgd = cd?.currentSgd || "0";
+              const targetSgd = cd?.targetSgd || prize.targetSgd.replace(",", "");
               const pct = cd?.progress || 0;
               const days = cd?.daysPredicted;
-              const dayLabel = days === undefined ? "—" : days <= 0
-                ? (isZh ? "即将开奖" : "Soon")
-                : (isZh ? `${days}天` : `${days}d`);
+              const accelerating = cd?.accelerating || false;
+              const currentNum = parseInt(String(currentSgd).replace(/,/g, "")) || 0;
+              const targetNum = parseInt(String(targetSgd).replace(/,/g, "")) || 1;
+
               return (
-                <div key={i} className="bg-white rounded-2xl border border-slate-100 py-3 px-2 text-center shadow-sm">
-                  <p className="text-2xl mb-1">{prize.icon}</p>
-                  <p className="text-[11px] font-semibold text-slate-900">
-                    {isZh ? prize.labelZh : prize.labelEn}
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    {isZh ? prize.rangeZh : prize.rangeEn}
-                  </p>
-                  {cd && (
-                    <>
-                      <div className="mt-2 h-1 bg-slate-100 rounded-full overflow-hidden">
-                        <div className={`h-full bg-gradient-to-r ${prize.color} rounded-full`} style={{ width: `${Math.min(100, pct)}%` }} />
+                <div key={prize.key} className="relative bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden hover:shadow-lg transition-shadow">
+                  {/* Product image strip */}
+                  <div className="relative h-32 bg-gradient-to-r from-slate-800 to-slate-900 overflow-hidden">
+                    <img
+                      src={prize.img}
+                      alt={prize.labelEn}
+                      className="absolute inset-0 w-full h-full object-cover opacity-70"
+                      loading="lazy"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
+                    {/* Gradient overlay */}
+                    <div className={`absolute inset-0 bg-gradient-to-r ${prize.color} opacity-50`} />
+                    {/* Prize label overlay */}
+                    <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
+                      <div>
+                        <p className="text-white/70 text-[10px] font-medium uppercase tracking-wide">
+                          {isZh ? "大奖" : "GRAND PRIZE"}
+                        </p>
+                        <p className="text-white text-xl font-extrabold">
+                          {prize.emoji} {isZh ? prize.labelZh : prize.labelEn}
+                        </p>
                       </div>
-                      <p className="text-[9px] text-slate-400 mt-0.5">{pct}% · {dayLabel}</p>
-                    </>
-                  )}
+                      <CountdownBadge days={days} isZh={isZh} />
+                      {accelerating && (
+                        <span className="absolute top-3 right-3 px-2 py-0.5 bg-green-400/90 text-white rounded-full text-[9px] font-bold">
+                          🚀 {isZh ? "加速中" : "ACCEL"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Progress + stats */}
+                  <div className="p-4">
+                    {/* Big progress bar */}
+                    <div className="mb-2">
+                      <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+                        <span>
+                          {isZh ? "已筹" : "Raised"} <b className="text-slate-700">S${Number(currentSgd).toLocaleString()}</b>
+                        </span>
+                        <span>
+                          {isZh ? "目标" : "Goal"} <b className="text-slate-700">S${Number(targetSgd).toLocaleString()}</b>
+                        </span>
+                      </div>
+                      <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{
+                            width: `${Math.min(100, Math.max(0, pct))}%`,
+                            background: `linear-gradient(90deg, ${prize.accent}cc, ${prize.accent})`,
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Bottom stats row */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold" style={{ color: prize.accent }}>
+                        {Math.min(100, Math.max(0, pct)).toFixed(1)}%
+                      </span>
+                      <div className="flex items-center gap-3 text-[10px] text-slate-400">
+                        {days !== undefined && days > 0 && (
+                          <span>
+                            {isZh ? "每天约" : "~"} S${Math.max(1, Math.round(currentNum / Math.max(1, days))).toLocaleString()}
+                            {isZh ? "/天" : "/day"}
+                          </span>
+                        )}
+                        <span>
+                          {isZh ? "大奖池抽取" : "Grand pool draw"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               );
             })}
           </div>
 
-          {mainDraw && (
-            <p className="text-center text-[10px] text-slate-400 mt-2">
-              {isZh
-                ? `奖池累计 S$${mainDraw.totalPoolSgd} · 日均 S$${mainDraw.dailyVelocitySgd}`
-                : `Pool S$${mainDraw.totalPoolSgd} · S$${mainDraw.dailyVelocitySgd}/day`}
+          {/* CTA */}
+          <div className="mt-5 text-center">
+            <a
+              href="/auth/register"
+              className="inline-flex items-center justify-center gap-2 px-10 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-200 hover:from-amber-600 hover:to-orange-600 transition-all active:scale-[0.98]"
+            >
+              🎰 {isZh ? "免费注册，立即抽奖" : "Sign Up Free & Win Now"}
+            </a>
+            <p className="text-[10px] text-slate-400 mt-2">
+              {isZh ? "100% 中奖 · 零成本参与 · 随时提现" : "100% Win · Free to Join · Cash Out Anytime"}
             </p>
-          )}
+          </div>
         </div>
       </section>
 
-      {/* ── Hot Coupons ── */}
+      {/* ══════ Section 3 — Hot Coupons ══════ */}
       {loaded && coupons.length > 0 && (
-        <section className="px-5 pt-4 pb-8 max-w-sm mx-auto">
+        <section className="px-5 pt-2 pb-6 max-w-sm mx-auto">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-bold text-slate-900">
+            <h2 className="text-sm font-bold text-slate-900">
               🔥 {isZh ? "热门代金券" : "Hot Vouchers"}
             </h2>
-            <a href="/home" className="text-xs text-blue-500">
-              {isZh ? "更多 →" : "More →"}
+            <a href="/home" className="text-xs text-blue-500 font-medium">
+              {isZh ? "查看更多 →" : "View All →"}
             </a>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
@@ -514,8 +674,8 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
         </section>
       )}
 
-      {/* ── For Business Entry ── */}
-      <section className="px-5 pb-12 max-w-sm mx-auto">
+      {/* ══════ For Business Entry ══════ */}
+      <section className="px-5 pb-14 max-w-sm mx-auto">
         <button
           onClick={() => {
             const el = document.querySelector('[data-role-switch="business"]');
