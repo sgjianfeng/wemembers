@@ -77,7 +77,6 @@ let staffToken = "";
 let adminToken = "";
 
 // ── IDs / slugs populated at seed time ──
-let DRAW_SLUG = "";
 let VOUCHER_SLUG = "";
 let CUST_COUPON_ID = "";   // for redeem page
 let BIZ_SLUG = "";          // for shop page
@@ -139,54 +138,20 @@ test("seed all test data", async () => {
   const store = await prisma.store.findFirst({ where: { businessId: bizUserId } });
   STORE_SLUG = store?.slug || BIZ_SLUG;
 
-  // ── Lucky Draw Campaign ──
-  const start = new Date(); start.setHours(0);
-  const end = new Date(); end.setDate(end.getDate() + 30);
-  const drawDate = new Date(); drawDate.setDate(drawDate.getDate() + 35);
-  DRAW_SLUG = `ss-draw-${R}`;
-  const camp = await prisma.campaign.create({
-    data: {
-      businessId: bizUserId, name: "截图测试-幸运抽奖", type: "lucky_draw",
-      entryMethod: "receipt", receiptMinSpend: 5000, ticketsPerUnit: 1, budgetPercent: 20,
-      slug: DRAW_SLUG, status: "active",
-      startDate: start, endDate: end, drawDate,
-      instantPoolCents: 50000,
-      storeIds: JSON.stringify([store!.id]),
-    },
-  });
-  CAMPAIGN_ID = camp.id;
-
-  // Prizes
-  await prisma.lotteryPrize.createMany({
-    data: [
-      { campaignId: camp.id, name: "BYD 汽车", icon: "🚗", type: "item", weight: 1, totalStock: 1, remainingStock: 1 },
-      { name: "iPhone 17", icon: "📱", type: "item", weight: 5, totalStock: 15, remainingStock: 15, campaignId: camp.id },
-      { name: "S$100", icon: "💵", type: "cash", valueCents: 10000, weight: 20, totalStock: 700, remainingStock: 700, campaignId: camp.id },
-    ],
-  });
-
-  // Create some tickets
-  const entry = await prisma.luckyDrawEntry.create({
-    data: { campaignId: camp.id, customerId: custUserId, source: "receipt", receiptAmount: 25000, ticketCount: 5, storeId: store!.id },
-  });
-  for (let i = 0; i < 5; i++) {
-    await prisma.drawTicket.create({
-      data: { campaignId: camp.id, customerId: custUserId, entryId: entry.id, ticketNo: `SCREEN-DRAW-${R}-${i}`, drawMode: i < 2 ? "instant" : "deferred", won: i === 0, prizeName: i === 0 ? "S$100" : null, prizeIcon: i === 0 ? "💵" : null },
-    });
-  }
-
   // ── Voucher v2 Campaign ──
+  const start = new Date(); start.setHours(0);
+  const end = new Date(); end.setDate(end.getDate() + 60);
   VOUCHER_SLUG = `ss-vouch-${R}`;
-  const end2 = new Date(); end2.setDate(end2.getDate() + 60);
-  await prisma.campaign.create({
+  const camp = await prisma.campaign.create({
     data: {
       businessId: bizUserId, name: "截图测试-代金券抽奖", type: "lucky_draw_v2",
       slug: VOUCHER_SLUG, status: "active",
-      startDate: start, endDate: end2,
+      startDate: start, endDate: end,
       budgetPercent: 20, instantPoolCents: 30000,
       storeIds: JSON.stringify([store!.id]),
     },
   });
+  CAMPAIGN_ID = camp.id;
 
   // ── Published Coupons ──
   const now = new Date(); const future = new Date(); future.setMonth(future.getMonth() + 3);
@@ -238,7 +203,7 @@ test("seed all test data", async () => {
   // ── Check-in streak ──
   await prisma.checkIn.create({ data: { userId: custUserId, date: new Date().toISOString().slice(0, 10), dayNumber: 3, bonus: 10 } });
 
-  console.log(`✅ Seed done. DRAW_SLUG=${DRAW_SLUG} VOUCHER_SLUG=${VOUCHER_SLUG} BIZ_SLUG=${BIZ_SLUG} STORE_SLUG=${STORE_SLUG}`);
+  console.log(`✅ Seed done. VOUCHER_SLUG=${VOUCHER_SLUG} BIZ_SLUG=${BIZ_SLUG} STORE_SLUG=${STORE_SLUG}`);
 });
 
 // ====================================================================
@@ -252,9 +217,8 @@ test.describe("1. Public", () => {
   test("1.4 Register", async ({ page }) => { meta("p04", "Public", "/auth/register", "注册页", "guest"); await page.goto("/auth/register"); await shot(page, "p04"); });
   test("1.5 Shop page", async ({ page }) => { meta("p05", "Public", `/shop/${BIZ_SLUG}`, "商戶优惠券展示", "guest"); await page.goto(`/shop/${BIZ_SLUG}`); await shot(page, "p05"); });
   test("1.6 Store page", async ({ page }) => { meta("p06", "Public", `/store/${STORE_SLUG}`, "门店页面", "guest"); await page.goto(`/store/${STORE_SLUG}`); await shot(page, "p06"); });
-  test("1.7 Draw campaign (guest)", async ({ page }) => { meta("p07", "Public", `/draw/${DRAW_SLUG}`, "抽奖活动页(游客)", "guest"); await page.goto(`/draw/${DRAW_SLUG}`); await page.waitForSelector('h1', { timeout: 8000 }); await shot(page, "p07"); });
-  test("1.8 Voucher campaign (guest)", async ({ page }) => { meta("p08", "Public", `/voucher/${VOUCHER_SLUG}`, "代金券抽奖页(游客)", "guest"); await page.goto(`/voucher/${VOUCHER_SLUG}`); await page.waitForSelector('text=奖池进度', { timeout: 8000 }).catch(() => page.waitForSelector('text=S$20', { timeout: 5000 }).catch(() => page.waitForTimeout(2000))); await shot(page, "p08"); });
-  test("1.9 Coupon detail (guest)", async ({ page }) => { meta("p09", "Public", `/coupons/${PUBLISHED_COUPON_ID}`, "优惠券详情(游客)", "guest"); await page.goto(`/coupons/${PUBLISHED_COUPON_ID}`); await shot(page, "p09"); });
+  test("1.7 Voucher campaign (guest)", async ({ page }) => { meta("p07", "Public", `/voucher/${VOUCHER_SLUG}`, "代金券抽奖页(游客)", "guest"); await page.goto(`/voucher/${VOUCHER_SLUG}`); await page.waitForSelector('text=奖池进度', { timeout: 8000 }).catch(() => page.waitForSelector('text=S$20', { timeout: 5000 }).catch(() => page.waitForTimeout(2000))); await shot(page, "p07"); });
+  test("1.8 Coupon detail (guest)", async ({ page }) => { meta("p08", "Public", `/coupons/${PUBLISHED_COUPON_ID}`, "优惠券详情(游客)", "guest"); await page.goto(`/coupons/${PUBLISHED_COUPON_ID}`); await shot(page, "p08"); });
 });
 
 // ====================================================================
@@ -267,14 +231,13 @@ test.describe("2. Customer", () => {
   test("2.3 Balance tab", async ({ page }) => { meta("c03", "Customer", "/balance", "积分/余额页", "customer"); await setCookie(page, custToken); await page.goto("/balance"); await shot(page, "c03"); });
   test("2.4 Profile tab", async ({ page }) => { meta("c04", "Customer", "/profile", "个人中心", "customer"); await setCookie(page, custToken); await page.goto("/profile"); await shot(page, "c04"); });
   test("2.5 Card page", async ({ page }) => { meta("c05", "Customer", `/card/${BIZ_SLUG}`, "会员卡页面", "customer"); await setCookie(page, custToken); await page.goto(`/card/${BIZ_SLUG}`); await shot(page, "c05"); });
-  test("2.6 Draw campaign (logged in)", async ({ page }) => { meta("c06", "Customer", `/draw/${DRAW_SLUG}`, "抽奖活动(已登录)", "customer"); await setCookie(page, custToken); await page.goto(`/draw/${DRAW_SLUG}`); await page.waitForSelector('h1', { timeout: 8000 }); await shot(page, "c06"); });
-  test("2.7 Voucher campaign (logged in)", async ({ page }) => { meta("c07", "Customer", `/voucher/${VOUCHER_SLUG}`, "购券抽奖页(已登录)", "customer"); await setCookie(page, custToken); await page.goto(`/voucher/${VOUCHER_SLUG}`); await page.waitForSelector('text=奖池进度', { timeout: 8000 }).catch(() => page.waitForSelector('text=S$20', { timeout: 5000 }).catch(() => page.waitForTimeout(2000))); await shot(page, "c07"); });
-  test("2.8 My Tokens", async ({ page }) => { meta("c08", "Customer", "/my-tokens", "我的代币", "customer"); await setCookie(page, custToken); await page.goto("/my-tokens"); await shot(page, "c08"); });
-  test("2.9 Redeem page", async ({ page }) => { meta("c09", "Customer", `/redeem/${CUST_COUPON_ID}`, "核销优惠券", "customer"); await setCookie(page, custToken); await page.goto(`/redeem/${CUST_COUPON_ID}`); await shot(page, "c09"); });
-  test("2.10 Coupon detail (logged in)", async ({ page }) => { meta("c10", "Customer", `/coupons/${PUBLISHED_COUPON_ID}`, "优惠券详情(已登录)", "customer"); await setCookie(page, custToken); await page.goto(`/coupons/${PUBLISHED_COUPON_ID}`); await shot(page, "c10"); });
-  test("2.11 Promoter dashboard", async ({ page }) => { meta("c11", "Customer", "/promoter", "推广中心", "customer"); await setCookie(page, custToken); await page.goto("/promoter"); await shot(page, "c11"); });
-  test("2.12 Promoter withdraw", async ({ page }) => { meta("c12", "Customer", "/promoter/withdraw", "推广提现", "customer"); await setCookie(page, custToken); await page.goto("/promoter/withdraw"); await shot(page, "c12"); });
-  test("2.13 Promoter link page", async ({ page }) => { meta("c13", "Customer", `/p/${PROMOTER_CODE}`, "推广链接落地页", "customer"); await page.goto(`/p/${PROMOTER_CODE}`); await shot(page, "c13"); });
+  test("2.6 Voucher campaign (logged in)", async ({ page }) => { meta("c06", "Customer", `/voucher/${VOUCHER_SLUG}`, "购券抽奖页(已登录)", "customer"); await setCookie(page, custToken); await page.goto(`/voucher/${VOUCHER_SLUG}`); await page.waitForSelector('text=奖池进度', { timeout: 8000 }).catch(() => page.waitForSelector('text=S$20', { timeout: 5000 }).catch(() => page.waitForTimeout(2000))); await shot(page, "c06"); });
+  test("2.7 My Tokens", async ({ page }) => { meta("c07", "Customer", "/my-tokens", "我的代币", "customer"); await setCookie(page, custToken); await page.goto("/my-tokens"); await shot(page, "c07"); });
+  test("2.8 Redeem page", async ({ page }) => { meta("c08", "Customer", `/redeem/${CUST_COUPON_ID}`, "核销优惠券", "customer"); await setCookie(page, custToken); await page.goto(`/redeem/${CUST_COUPON_ID}`); await shot(page, "c08"); });
+  test("2.9 Coupon detail (logged in)", async ({ page }) => { meta("c09", "Customer", `/coupons/${PUBLISHED_COUPON_ID}`, "优惠券详情(已登录)", "customer"); await setCookie(page, custToken); await page.goto(`/coupons/${PUBLISHED_COUPON_ID}`); await shot(page, "c09"); });
+  test("2.10 Promoter dashboard", async ({ page }) => { meta("c10", "Customer", "/promoter", "推广中心", "customer"); await setCookie(page, custToken); await page.goto("/promoter"); await shot(page, "c10"); });
+  test("2.11 Promoter withdraw", async ({ page }) => { meta("c11", "Customer", "/promoter/withdraw", "推广提现", "customer"); await setCookie(page, custToken); await page.goto("/promoter/withdraw"); await shot(page, "c11"); });
+  test("2.12 Promoter link page", async ({ page }) => { meta("c12", "Customer", `/p/${PROMOTER_CODE}`, "推广链接落地页", "customer"); await page.goto(`/p/${PROMOTER_CODE}`); await shot(page, "c12"); });
 });
 
 // ====================================================================

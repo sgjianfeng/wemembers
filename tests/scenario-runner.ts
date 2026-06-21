@@ -121,7 +121,6 @@ async function apiCall(method: string, rawPath: string, rawBody?: any, cookie?: 
   let resolvedPath = resolveVars(rawPath);
   if (vars.RUN) {
     resolvedPath = resolvedPath.replace(/([?&]slug=)(s[0-9][a-z]?)/g, '$1$2-' + vars.RUN);
-    resolvedPath = resolvedPath.replace(/\/api\/draw\/(s[0-9][a-z]?)([?/]|$)/g, '/api/draw/$1-' + vars.RUN + '$2');
   }
   const body = rawBody ? resolveObj(rawBody) : undefined;
 

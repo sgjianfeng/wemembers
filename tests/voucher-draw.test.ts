@@ -109,57 +109,6 @@ describe("Voucher Purchase Flow (Integration)", () => {
     await testPrisma.$disconnect();
   });
 
-  // ──── V2 Campaign API ───────────────────────────────────────────
-
-  describe("GET /api/draw/[slug] — V2 campaign", () => {
-    test("returns v2 campaign with voucherTiers and budget fields", async () => {
-      const { GET } = await import("@/app/api/draw/[slug]/route");
-      const req = mockRequest({}, { method: "GET" });
-
-      const res = await GET(req as any, {
-        params: Promise.resolve({ slug: campaignV2.slug }),
-      });
-      const json = await res.json();
-
-      expect(res.status).toBe(200);
-      expect(json.data.name).toBe("V2 Lucky Draw Integration");
-      expect(json.data.voucherTiers).toBeDefined();
-      expect(json.data.voucherTiers).toHaveLength(3);
-      expect(json.data.voucherTiers[0].tier).toBe("small");
-      expect(json.data.voucherTiers[1].tier).toBe("medium");
-      expect(json.data.voucherTiers[2].tier).toBe("large");
-      expect(json.data.budgetPercent).toBe(20);
-      expect(json.data.instantPoolRatio).toBe(10);
-      expect(json.data.midPoolRatio).toBe(60);
-      expect(json.data.grandPoolRatio).toBe(30);
-    });
-
-    test("v2 campaign includes pool estimates", async () => {
-      const { GET } = await import("@/app/api/draw/[slug]/route");
-      const req = mockRequest({}, { method: "GET" });
-
-      const res = await GET(req as any, {
-        params: Promise.resolve({ slug: campaignV2.slug }),
-      });
-      const json = await res.json();
-
-      expect(res.status).toBe(200);
-      expect(json.data.instantPoolSgd).toBeDefined();
-      expect(json.data.grandPoolSgd).toBeDefined();
-      expect(json.data.progress).toBeDefined();
-    });
-
-    test("returns 404 for unknown slug", async () => {
-      const { GET } = await import("@/app/api/draw/[slug]/route");
-      const req = mockRequest({}, { method: "GET" });
-
-      const res = await GET(req as any, {
-        params: Promise.resolve({ slug: "nonexistent-slug-99999" }),
-      });
-      expect(res.status).toBe(404);
-    });
-  });
-
   // ──── Pool Status API ──────────────────────────────────────────
 
   describe("GET /api/campaign/pool-status", () => {

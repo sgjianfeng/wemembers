@@ -16,7 +16,7 @@ export default async function LuckyDrawPage() {
   const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
 
   const campaigns = await prisma.campaign.findMany({
-    where: { businessId: session.userId, type: { in: ["lucky_draw", "lucky_draw_v2"] } },
+    where: { businessId: session.userId, type: "lucky_draw_v2" },
     include: { prizes: true },
     orderBy: { createdAt: "desc" },
   });

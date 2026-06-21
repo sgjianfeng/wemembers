@@ -293,79 +293,76 @@ async function run() {
   });
 
   // ==================================================================
-  // LUCKY DRAW
+  // VOUCHER DRAW V2
   // ==================================================================
-  console.log("\n─── Lucky Draw System ───");
+  console.log("\n─── Voucher Draw V2 ───");
 
-  const slug = `drawtest-${Date.now()}`;
-  let campaignId = "";
+  const v2slug = `v2test-${Date.now()}`;
 
-  await ok("Create lucky_draw campaign", async () => {
+  await ok("Create lucky_draw_v2 campaign", async () => {
     const start = new Date(); start.setHours(0);
     const end = new Date(); end.setDate(end.getDate() + 60);
-    const draw = new Date(); draw.setDate(draw.getDate() + 65);
     const r = await post("/api/business/campaigns", {
-      name: "Test Draw", type: "lucky_draw",
+      name: "Test V2 Draw", type: "lucky_draw_v2",
       startDate: start.toISOString(), endDate: end.toISOString(),
-      drawDate: draw.toISOString(), entryMethod: "receipt",
-      receiptMinSpend: 5000, ticketsPerUnit: 1, budgetPercent: 20, slug,
+      budgetPercent: 20, slug: v2slug,
     }, bizToken);
     const j = await r.json();
     if (r.status !== 200) throw new Error(j.error || `Status ${r.status}`);
-    campaignId = j.data.id;
-  });
-
-  await ok("Set prize pool", async () => {
     const { PrismaClient } = require("@prisma/client");
     const p = new PrismaClient({ datasources: { db: { url: "file:./dev.db" } } });
-    const r = await p.campaign.update({
-      where: { id: campaignId },
-      data: { status: "active" },
-    });
+    await p.campaign.update({ where: { id: j.data.id }, data: { status: "active" } });
   });
 
-  await ok("Public draw page loads", async () => {
-    const r = await get(`/draw/${slug}`);
+  await ok("Voucher campaign page loads (guest)", async () => {
+    const r = await get(`/voucher/${v2slug}`);
     if (r.status !== 200) throw new Error(`Status ${r.status}`);
   });
 
-  await ok("Public draw API returns pool data", async () => {
-    const r = await get(`/api/draw/${slug}`);
+  await ok("Pool status API returns data", async () => {
+    const r = await get(`/api/campaign/pool-status?slug=${v2slug}`);
     const j = await r.json();
     if (r.status !== 200) throw new Error(`Status ${r.status}`);
+    if (!j.data.pool) throw new Error("Missing pool data");
   });
 
-  await ok("Submit receipt → deferred: 5 tickets", async () => {
-    const r = await post(`/api/draw/${slug}/submit`, {
-      receiptAmount: 25000, drawMode: "deferred",
+  await ok("Active draws API returns V2 campaigns", async () => {
+    const r = await get("/api/campaign/active-draws");
+    const j = await r.json();
+    if (r.status !== 200) throw new Error(`Status ${r.status}`);
+    if (!Array.isArray(j.data)) throw new Error("Not an array");
+  });
+
+  await ok("Purchase voucher S$20 (small tier)", async () => {
+    const r = await post(`/api/voucher/purchase?slug=${v2slug}`, {
+      amountSgd: 20, spendNowSgd: 5,
     }, custToken);
     const j = await r.json();
     if (r.status !== 200) throw new Error(j.error || `Status ${r.status}`);
-    if (j.data.ticketCount !== 5) throw new Error(`Expected 5, got ${j.data.ticketCount}`);
-    for (const t of j.data.tickets) {
-      if (!/^DRAW-/.test(t.ticketNo)) throw new Error(`Bad: ${t.ticketNo}`);
-    }
+    if (!j.data.instantPrize) throw new Error("No instant prize");
+    if (!j.data.voucher) throw new Error("No voucher");
+    if (!j.data.grandPoolEntry) throw new Error("Small tier should not enter grand pool");
   });
 
-  await ok("Submit receipt → instant: pool data returned", async () => {
-    const r = await post(`/api/draw/${slug}/submit`, {
-      receiptAmount: 20000, drawMode: "instant",
+  await ok("Purchase voucher S$50 (medium tier, grand pool entry)", async () => {
+    const r = await post(`/api/voucher/purchase?slug=${v2slug}`, {
+      amountSgd: 50, spendNowSgd: 0,
     }, custToken);
     const j = await r.json();
     if (r.status !== 200) throw new Error(j.error || `Status ${r.status}`);
-    if (!j.data.pool) throw new Error("Missing pool");
+    if (!j.data.grandPoolEntry) throw new Error("Medium tier should enter grand pool");
   });
 
-  await ok("Rejects below S$50 minimum", async () => {
-    const r = await post(`/api/draw/${slug}/submit`, { receiptAmount: 1000 }, custToken);
-    if (r.status !== 400) throw new Error("Should reject");
-  });
+  await ok("Share boost adds weight", async () => {
+    const { PrismaClient } = require("@prisma/client");
+    const p = new PrismaClient({ datasources: { db: { url: "file:./dev.db" } } });
+    const v = await p.voucher.findFirst({ where: { tier: "medium" }, orderBy: { createdAt: "desc" } });
+    if (!v) throw new Error("No medium voucher found");
 
-  await ok("My tickets: 2 entries", async () => {
-    const r = await get(`/api/draw/${slug}/my-tickets`, custToken);
+    const r = await post("/api/campaign/share-boost", { voucherId: v.id }, custToken);
     const j = await r.json();
-    if (r.status !== 200) throw new Error(`Status ${r.status}`);
-    if (j.data.length !== 2) throw new Error(`Expected 2, got ${j.data.length}`);
+    if (r.status !== 200) throw new Error(j.error || `Status ${r.status}`);
+    if (j.data.previousWeight >= j.data.newWeight) throw new Error("Weight not increased");
   });
 
   // ==================================================================

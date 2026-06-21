@@ -30,5 +30,5 @@ steps:
   - name: 购券后查看奖池
     api: { method: GET, path: /api/campaign/pool-status?slug=s5, expect: 200 }
 
-  - name: draw API返回v2
-    api: { method: GET, path: /api/draw/s5, expect: 200 }
+  - name: pool-status API返回数据
+    api: { method: GET, path: /api/campaign/pool-status, params: { slug: s5 }, expect: 200 }
