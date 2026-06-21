@@ -158,6 +158,8 @@ export default function HomePage() {
   const { lang } = useLang();
   const t = content[lang as keyof typeof content] || content.zh;
   const [session, setSession] = useState<any>(null);
+  const [roleView, setRoleView] = useState<"business" | "consumer">("business");
+  const isZh = lang === "zh";
 
   useEffect(() => {
     fetch("/api/auth/me").then(r => r.json()).then(d => {
@@ -178,14 +180,57 @@ export default function HomePage() {
             {t.hero.badge}
           </span>
 
-          <h1 className="text-4xl font-extrabold tracking-tight mb-3">
-            <span className="bg-gradient-to-r from-blue-400 to-sky-300 bg-clip-text text-transparent">
-              {t.hero.title}
-            </span>
-          </h1>
+          {/* ── Role Tabs ── */}
+          <div className="flex gap-1.5 justify-center mb-6">
+            <button
+              onClick={() => setRoleView("business")}
+              className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${
+                roleView === "business"
+                  ? "bg-white text-slate-900 shadow-lg"
+                  : "bg-white/10 text-white/60 hover:bg-white/20"
+              }`}
+            >
+              🏪 {isZh ? "我是商家" : "For Business"}
+            </button>
+            <button
+              onClick={() => setRoleView("consumer")}
+              className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${
+                roleView === "consumer"
+                  ? "bg-white text-slate-900 shadow-lg"
+                  : "bg-white/10 text-white/60 hover:bg-white/20"
+              }`}
+            >
+              👤 {isZh ? "我是消费者" : "For Consumers"}
+            </button>
+          </div>
 
-          <p className="text-xl font-semibold text-white/90 mb-2">{t.hero.subtitle}</p>
-          <p className="text-sm text-white/50 mb-8">{t.hero.desc}</p>
+          {roleView === "business" ? (
+            <>
+              <h1 className="text-4xl font-extrabold tracking-tight mb-3">
+                <span className="bg-gradient-to-r from-blue-400 to-sky-300 bg-clip-text text-transparent">
+                  {t.hero.title}
+                </span>
+              </h1>
+              <p className="text-xl font-semibold text-white/90 mb-2">{t.hero.subtitle}</p>
+              <p className="text-sm text-white/50 mb-8">{t.hero.desc}</p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-4xl font-extrabold tracking-tight mb-3">
+                <span className="bg-gradient-to-r from-amber-400 to-orange-300 bg-clip-text text-transparent">
+                  {isZh ? "发现身边好券" : "Discover Nearby Deals"}
+                </span>
+              </h1>
+              <p className="text-xl font-semibold text-white/90 mb-2">
+                {isZh ? "领券省钱 · 积分升级" : "Claim Vouchers · Earn Points"}
+              </p>
+              <p className="text-sm text-white/50 mb-8">
+                {isZh
+                  ? "扫码领取代金券，消费省钱。参与抽奖赢大奖！"
+                  : "Scan to claim vouchers, save on every purchase. Join lucky draws!"}
+              </p>
+            </>
+          )}
 
           {session ? (
             <Link
@@ -214,6 +259,59 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── Consumer View: Stats + Hot Picks ── */}
+      {roleView === "consumer" ? (
+        <>
+          <section className="relative -mt-8 px-5">
+            <div className="max-w-sm mx-auto">
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { value: "🎫", unit: isZh ? "代金券" : "Vouchers", label: isZh ? "扫码即领" : "Scan & Claim" },
+                  { value: "⭐", unit: isZh ? "积分" : "Points", label: isZh ? "消费攒积分" : "Earn on Spend" },
+                  { value: "🎰", unit: isZh ? "抽奖" : "Draws", label: isZh ? "赢取大奖" : "Win Big" },
+                ].map((s, i) => (
+                  <div key={i} className="bg-white rounded-2xl border border-slate-100 py-4 px-2 text-center shadow-sm">
+                    <p className="text-2xl font-extrabold text-slate-900 tracking-tight">{s.value}</p>
+                    <p className="text-xs font-medium text-slate-600 mt-0.5">{s.unit}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="px-5 pt-12 pb-8 max-w-sm mx-auto text-center">
+            <h2 className="text-xl font-bold text-slate-900 mb-2">
+              {isZh ? "怎么开始省钱？" : "How to Start Saving?"}
+            </h2>
+            <p className="text-sm text-slate-400 mb-8">
+              {isZh ? "三步搞定，没有任何费用" : "Three steps, completely free"}
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { icon: "📱", title: isZh ? "扫码" : "Scan", desc: isZh ? "扫商家二维码" : "Scan store QR" },
+                { icon: "🎫", title: isZh ? "领券" : "Claim", desc: isZh ? "一键领取代金券" : "One-tap claim" },
+                { icon: "💰", title: isZh ? "省钱" : "Save", desc: isZh ? "消费自动抵扣" : "Auto discount" },
+              ].map((step, i) => (
+                <div key={i} className="flex flex-col items-center gap-2">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center text-2xl">
+                    {step.icon}
+                  </div>
+                  <p className="text-sm font-semibold text-slate-900">{step.title}</p>
+                  <p className="text-[11px] text-slate-400">{step.desc}</p>
+                </div>
+              ))}
+            </div>
+            <Link
+              href="/auth/register"
+              className="inline-flex items-center justify-center mt-8 px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full font-semibold text-sm shadow-lg hover:from-amber-600 hover:to-orange-600 transition-all active:scale-[0.98]"
+            >
+              {isZh ? "🎉 免费注册，开始领券" : "🎉 Sign Up Free & Start Saving"}
+            </Link>
+          </section>
+        </>
+      ) : (
+        <>
       {/* ── Stats ── */}
       <section className="relative -mt-8 px-5">
         <div className="max-w-sm mx-auto">
@@ -337,6 +435,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+        </>
+      )}
 
       {/* ── Footer ── */}
       <footer className="px-5 pb-10 text-center">
