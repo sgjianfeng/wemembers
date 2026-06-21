@@ -4,151 +4,53 @@ description: >
   客户在餐厅A购买S$100券，现场消费S$10，中即时奖，余额S$90。
   去咖啡店B消费S$15余额。验证奖池、余额、两次核销的费率。
 
-setup:
-  env:
-    TEST_MODE: "1"
-
 steps:
-  # ── 注册两个商家 ──
+  - name: "餐厅A — 发验证码"
+    api: { method: POST, path: /api/auth/send-code, body: { contact: "+6592000101", purpose: "register" }, expect: 200 }
+  - name: "餐厅A — 读验证码"
+    db: { model: verificationCode, method: findFirst, args: { where: { contact: "+6592000101", purpose: "register" }, orderBy: { createdAt: desc } }, set: { code_a: "code" } }
   - name: "注册餐厅A"
-    api:
-      method: POST
-      path: /api/auth/register
-      body:
-        contact: "${RESTAURANT_A_PHONE}"
-        code: "123456"
-        role: "business"
-        displayName: "好吃餐厅"
-        businessName: "好吃餐厅"
-        businessCategory: "food"
-      expect: 200
-    set:
-      token_a: "$.data.token"
-      biz_a_id: "$.data.user.id"
+    api: { method: POST, path: /api/auth/register, body: { contact: "+6592000101", code: "${code_a}", role: business, displayName: "好吃餐厅", businessName: "好吃餐厅", businessCategory: food }, expect: 200 }
+    set: { token_a: "$.data.token" }
 
+  - name: "咖啡店B — 发验证码"
+    api: { method: POST, path: /api/auth/send-code, body: { contact: "+6592000102", purpose: "register" }, expect: 200 }
+  - name: "咖啡店B — 读验证码"
+    db: { model: verificationCode, method: findFirst, args: { where: { contact: "+6592000102", purpose: "register" }, orderBy: { createdAt: desc } }, set: { code_b: "code" } }
   - name: "注册咖啡店B"
-    api:
-      method: POST
-      path: /api/auth/register
-      body:
-        contact: "${CAFE_B_PHONE}"
-        code: "123456"
-        role: "business"
-        displayName: "阳光咖啡"
-        businessName: "阳光咖啡"
-        businessCategory: "cafe"
-      expect: 200
-    set:
-      token_b: "$.data.token"
-      biz_b_id: "$.data.user.id"
+    api: { method: POST, path: /api/auth/register, body: { contact: "+6592000102", code: "${code_b}", role: business, displayName: "阳光咖啡", businessName: "阳光咖啡", businessCategory: cafe }, expect: 200 }
+    set: { token_b: "$.data.token" }
 
+  - name: "客户 — 发验证码"
+    api: { method: POST, path: /api/auth/send-code, body: { contact: "+6592000103", purpose: "register" }, expect: 200 }
+  - name: "客户 — 读验证码"
+    db: { model: verificationCode, method: findFirst, args: { where: { contact: "+6592000103", purpose: "register" }, orderBy: { createdAt: desc } }, set: { code_c: "code" } }
   - name: "注册客户"
-    api:
-      method: POST
-      path: /api/auth/register
-      body:
-        contact: "${CUSTOMER_PHONE}"
-        code: "123456"
-        role: "customer"
-        displayName: "张三"
-      expect: 200
-    set:
-      cust_token: "$.data.token"
-      cust_id: "$.data.user.id"
+    api: { method: POST, path: /api/auth/register, body: { contact: "+6592000103", code: "${code_c}", role: customer, displayName: "张三" }, expect: 200 }
+    set: { cust_token: "$.data.token" }
 
-  # ── 餐厅A 创建 lucky_draw_v2 活动 → 自动入网 ──
   - name: "餐厅A 创建购券抽奖活动"
-    api:
-      method: POST
-      path: /api/business/campaigns
-      cookie: "${token_a}"
-      body:
-        name: "A店购券抽奖"
-        type: "lucky_draw_v2"
-        startDate: "${START_DATE}"
-        endDate: "${END_DATE}"
-        slug: "${CAMPAIGN_SLUG}"
-        budgetPercent: 20
-        instantPoolRatio: 10
-        midPoolRatio: 60
-        grandPoolRatio: 30
-      expect: 200
-    set:
-      campaign_id: "$.data.id"
+    api: { method: POST, path: /api/business/campaigns, body: { name: "A店购券抽奖", type: lucky_draw_v2, startDate: "2026-06-01T00:00:00Z", endDate: "2026-12-31T00:00:00Z", slug: "scenario-1-a-${RUN}", budgetPercent: 20, instantPoolRatio: 10, midPoolRatio: 60, grandPoolRatio: 30 }, cookie: "${token_a}", expect: 200 }
 
-  # ── 咖啡店B 加入网络 ──
   - name: "咖啡店B 创建购券抽奖活动（入网）"
-    api:
-      method: POST
-      path: /api/business/campaigns
-      cookie: "${token_b}"
-      body:
-        name: "B店购券抽奖"
-        type: "lucky_draw_v2"
-        startDate: "${START_DATE}"
-        endDate: "${END_DATE}"
-        slug: "${CAMPAIGN_SLUG_B}"
-        budgetPercent: 20
-      expect: 200
+    api: { method: POST, path: /api/business/campaigns, body: { name: "B店购券抽奖", type: lucky_draw_v2, startDate: "2026-06-01T00:00:00Z", endDate: "2026-12-31T00:00:00Z", slug: "scenario-1-b-${RUN}", budgetPercent: 20 }, cookie: "${token_b}", expect: 200 }
 
-  # ── 客户购券 S$100，现场消费 S$10 ──
-  - name: "客户购买S$100券，现场消费S$10"
-    api:
-      method: POST
-      path: /api/voucher/purchase?slug=${CAMPAIGN_SLUG}
-      cookie: "${cust_token}"
-      body:
-        amountSgd: 100
-        spendNowSgd: 10
-      expect: 200
-    set:
-      voucher_id: "$.data.voucher.id"
-      prize_name: "$.data.instantPrize.name"
+  - name: "客户购买S$100券"
+    api: { method: POST, path: /api/voucher/purchase?slug=scenario-1-a, body: { amountSgd: 100, spendNowSgd: 10 }, cookie: "${cust_token}", expect: 200 }
+    set: { voucher_id: "$.data.voucher.id", prize_name: "$.data.instantPrize.name" }
 
-  - name: "验证：100%中奖，确实中了一个即时奖品"
+  - name: "验证：100%中奖"
     log: "🎁 即时奖品: ${prize_name}"
 
-  - name: "验证：余额 S$90（100-10）"
-    log: "💳 剩余余额: S$$.data.voucher.balanceSgd"
-
-  - name: "验证：大额券自动获得大奖池参与权"
-    log: "🎯 大奖池: $..data.grandPoolEntry"
-
-  # ── 客户去咖啡店B消费余额 ──
   - name: "咖啡店B 核销 S$15 余额"
-    api:
-      method: POST
-      path: /api/voucher/redeem
-      cookie: "${token_b}"
-      body:
-        voucherId: "${voucher_id}"
-        amountCents: 1500
-      expect: 200
-    set:
-      fee_sgd: "$.data.usage.feeSgd"
-      store_income: "$.data.usage.storeIncomeSgd"
-      remaining: "$.data.voucher.remainingBalanceSgd"
+    api: { method: POST, path: /api/voucher/redeem, body: { voucherId: "${voucher_id}", amountCents: 1500 }, cookie: "${token_b}", expect: 200 }
+    set: { fee_sgd: "$.data.usage.feeSgd" }
 
-  - name: "验证：核销方扣费20%（S$3），实收S$12"
-    log: "核销费: S$${fee_sgd}，咖啡店B实收: S$${store_income}"
+  - name: "验证：核销方扣费20%"
+    log: "核销费: S$${fee_sgd}（应为S$3.00）"
 
-  - name: "验证：剩余余额 S$75（90-15）"
-    log: "剩余: S$${remaining}"
+  - name: "客户查看余额"
+    api: { method: GET, path: /api/voucher/my-balance, cookie: "${cust_token}", expect: 200 }
 
-  # ── 查看客户余额 ──
-  - name: "客户查看我的余额"
-    api:
-      method: GET
-      path: /api/voucher/my-balance
-      cookie: "${cust_token}"
-      expect: 200
-    log: "可用余额: S$$.data.totalBalanceSgd"
-
-  # ── 查看消费记录 ──
   - name: "客户查看消费记录"
-    api:
-      method: GET
-      path: /api/voucher/usage-history
-      cookie: "${cust_token}"
-      expect: 200
-    log: "消费记录: $.data.length 条"
+    api: { method: GET, path: /api/voucher/usage-history, cookie: "${cust_token}", expect: 200 }

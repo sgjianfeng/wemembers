@@ -22,12 +22,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Voucher not found" }, { status: 404 });
   }
 
-  // Prevent unlimited stacking: check if already boosted
-  if (voucher.drawWeight > voucher.amountCents) {
+  // Prevent unlimited stacking: compare against tier base weight
+  // small=0, medium=amountCents×1, large=amountCents×2
+  const baseWeight = voucher.tier === "large" ? voucher.amountCents * 2
+    : voucher.tier === "medium" ? voucher.amountCents
+    : 0;
+  if (voucher.drawWeight > baseWeight) {
     return NextResponse.json({ error: "already boosted" }, { status: 400 });
   }
 
-  // Boost weight: +1× base weight per share
+  // Boost weight: +1× amountCents per share
   const boostAmount = voucher.amountCents;
   const newWeight = voucher.drawWeight + boostAmount;
 
