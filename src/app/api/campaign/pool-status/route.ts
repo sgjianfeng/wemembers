@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   }
 
   const campaign = await prisma.campaign.findUnique({
-    where: { slug, type: "lucky_draw" },
+    where: { slug, type: { in: ["lucky_draw", "lucky_draw_v2"] } },
     include: {
       _count: {
         select: { vouchers: true },

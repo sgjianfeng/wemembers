@@ -54,10 +54,15 @@ export async function POST(request: NextRequest) {
 
   // Record first spend (in-store consumption)
   if (spendNowCents > 0) {
+    // Find the business's primary store for the usage record
+    const store = await prisma.store.findFirst({
+      where: { businessId: campaign.businessId },
+    });
+    const storeId = store?.id ?? campaign.businessId; // fallback for backwards compat
     await prisma.voucherUsage.create({
       data: {
         voucherId: voucher.id,
-        storeId: campaign.businessId, // campaign owner store
+        storeId,
         amountCents: spendNowCents,
         feeCents: Math.round(spendNowCents * budgetPercent / 100),
         storeIncome: spendNowCents - Math.round(spendNowCents * budgetPercent / 100),
