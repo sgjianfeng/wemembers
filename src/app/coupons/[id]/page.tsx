@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { BackHeader } from "@/components/ui/BackHeader";
 import { daysUntil } from "@/lib/utils";
 import { ClaimButton } from "./ClaimButton";
 import { getSession } from "@/lib/auth";
@@ -48,6 +49,7 @@ export default async function CouponDetailPage({ params }: { params: Promise<{ i
 
   return (
     <div className="pb-4 min-h-screen">
+      <BackHeader />
       {/* Hero Card */}
       <div className="bg-gradient-to-b from-[#1A6EFF] to-white px-4 pt-8 pb-6">
         <Card className="max-w-sm mx-auto overflow-hidden border-0 shadow-sm">

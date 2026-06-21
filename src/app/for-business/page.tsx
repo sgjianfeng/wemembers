@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { BackHeader } from "@/components/ui/BackHeader";
 import { useLang } from "@/components/i18n/LanguageProvider";
 
 const content = {
@@ -157,15 +158,7 @@ export default function ForBusinessPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* ── Top bar with back link ── */}
-      <div className="px-4 pt-4 pb-2">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors"
-        >
-          {t.backToHome}
-        </Link>
-      </div>
+      <BackHeader />
 
       {/* ── Hero ── */}
       <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 px-5 pt-12 pb-24 text-white">

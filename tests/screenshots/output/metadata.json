@@ -58,7 +58,7 @@
   {
     "id": "b03",
     "group": "Business",
-    "url": "/business/campaigns/cmqntowgf000a33gj5aq291es",
+    "url": "/business/campaigns/cmqntykkq000adkx2r15ekmrd",
     "title": "",
     "description": "活动详情",
     "role": "business"
@@ -82,7 +82,7 @@
   {
     "id": "b06",
     "group": "Business",
-    "url": "/business/coupons/cmqntowgn000t33gjbhm7w5x7",
+    "url": "/business/coupons/cmqntykky000tdkx2ycjptq19",
     "title": "",
     "description": "优惠券详情/统计",
     "role": "business"
@@ -114,7 +114,7 @@
   {
     "id": "b10",
     "group": "Business",
-    "url": "/business/members/cmqntowga000533gj4q00ro19",
+    "url": "/business/members/cmqntykkm0005dkx2bhxoljb0",
     "title": "",
     "description": "会员详情",
     "role": "business"
@@ -234,7 +234,7 @@
   {
     "id": "c05",
     "group": "Customer",
-    "url": "/card/biz-mqntorux-yg9p",
+    "url": "/card/biz-mqntyfsz-vi2y",
     "title": "",
     "description": "会员卡页面",
     "role": "customer"
@@ -242,7 +242,7 @@
   {
     "id": "c06",
     "group": "Customer",
-    "url": "/draw/ss-draw-mqntorux",
+    "url": "/draw/ss-draw-mqntyfsz",
     "title": "",
     "description": "抽奖活动(已登录)",
     "role": "customer"
@@ -250,7 +250,7 @@
   {
     "id": "c07",
     "group": "Customer",
-    "url": "/voucher/ss-vouch-mqntorux",
+    "url": "/voucher/ss-vouch-mqntyfsz",
     "title": "",
     "description": "购券抽奖页(已登录)",
     "role": "customer"
@@ -266,7 +266,7 @@
   {
     "id": "c09",
     "group": "Customer",
-    "url": "/redeem/cmqntowh500q3xgpuqc0h4uwm",
+    "url": "/redeem/cmqntyklx00r5xgpuxmlskf5m",
     "title": "",
     "description": "核销优惠券",
     "role": "customer"
@@ -274,7 +274,7 @@
   {
     "id": "c10",
     "group": "Customer",
-    "url": "/coupons/cmqntowgn000t33gjbhm7w5x7",
+    "url": "/coupons/cmqntykky000tdkx2ycjptq19",
     "title": "",
     "description": "优惠券详情(已登录)",
     "role": "customer"
@@ -298,7 +298,7 @@
   {
     "id": "c13",
     "group": "Customer",
-    "url": "/p/SSMQNTORUX",
+    "url": "/p/SSMQNTYFSZ",
     "title": "",
     "description": "推广链接落地页",
     "role": "customer"
@@ -338,7 +338,7 @@
   {
     "id": "p05",
     "group": "Public",
-    "url": "/shop/biz-mqntorux-yg9p",
+    "url": "/shop/biz-mqntyfsz-vi2y",
     "title": "",
     "description": "商戶优惠券展示",
     "role": "guest"
@@ -346,7 +346,7 @@
   {
     "id": "p06",
     "group": "Public",
-    "url": "/store/biz-mqntorux-yg9p",
+    "url": "/store/biz-mqntyfsz-vi2y",
     "title": "",
     "description": "门店页面",
     "role": "guest"
@@ -354,7 +354,7 @@
   {
     "id": "p07",
     "group": "Public",
-    "url": "/draw/ss-draw-mqntorux",
+    "url": "/draw/ss-draw-mqntyfsz",
     "title": "",
     "description": "抽奖活动页(游客)",
     "role": "guest"
@@ -362,7 +362,7 @@
   {
     "id": "p08",
     "group": "Public",
-    "url": "/voucher/ss-vouch-mqntorux",
+    "url": "/voucher/ss-vouch-mqntyfsz",
     "title": "",
     "description": "代金券抽奖页(游客)",
     "role": "guest"
@@ -370,7 +370,7 @@
   {
     "id": "p09",
     "group": "Public",
-    "url": "/coupons/cmqntowgn000t33gjbhm7w5x7",
+    "url": "/coupons/cmqntykky000tdkx2ycjptq19",
     "title": "",
     "description": "优惠券详情(游客)",
     "role": "guest"

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { BackHeader } from "@/components/ui/BackHeader";
 import { VoucherTierSelector } from "@/components/customer/VoucherTierSelector";
 import { PoolDashboard } from "@/components/customer/PoolDashboard";
 import { InstantPrizePreview } from "@/components/customer/InstantPrizePreview";
@@ -87,8 +88,9 @@ export default function VoucherDrawPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FF6B35] via-orange-50 to-white">
+      <BackHeader />
       {/* Header */}
-      <div className="px-4 pt-8 pb-4 text-center text-white">
+      <div className="px-4 pt-4 pb-4 text-center text-white">
         <p className="text-5xl mb-3">🎰</p>
         <h1 className="text-2xl font-bold">{campaign.name}</h1>
         <p className="text-white/70 text-sm mt-1">{t("voucher.subtitle")}</p>
