@@ -13,6 +13,7 @@ const types = [
   { key: "event", icon: "📅", label: "特别事件" },
   { key: "launch", icon: "🚀", label: "新品发布" },
   { key: "lucky_draw", icon: "🎰", label: "幸运抽奖" },
+  { key: "lucky_draw_v2", icon: "🎰", label: "幸运抽奖 V2" },
 ];
 
 const colors = ["#FF6B35", "#1A6EFF", "#16A34A", "#DC2626", "#8B5CF6", "#F59E0B", "#EC4899", "#06B6D4"];
@@ -58,7 +59,7 @@ export default function NewCampaignPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name, description, type, color, startDate, endDate, tags,
-        ...(type === "lucky_draw" ? {
+        ...(type === "lucky_draw" || type === "lucky_draw_v2" ? {
           drawDate: drawDate || undefined,
           minSpendCents: minSpendCents > 0 ? minSpendCents : undefined,
           maxEntries: maxEntries > 0 ? maxEntries : undefined,
@@ -121,7 +122,7 @@ export default function NewCampaignPage() {
         </div>
 
         {/* 抽奖专用设置 */}
-        {type === "lucky_draw" && (
+        {(type === "lucky_draw" || type === "lucky_draw_v2") && (
           <div className="space-y-3 p-4 bg-amber-50 rounded-xl border border-amber-100">
             <h3 className="text-sm font-semibold text-amber-800">🎰 抽奖设置</h3>
 
