@@ -1,13 +1,13 @@
 #!/bin/bash
 # ============================================================
 # wemembers.store - 本地 Build + 上传部署脚本
-# 参考 gourmeow 的部署模式
+# 参考 wemember 的部署模式
 # ============================================================
 set -euo pipefail
 
 SERVER_HOST="43.106.94.37"
 SERVER_USER="root"
-SERVER_KEY="${SERVER_KEY:-$HOME/.ssh/gourmeow_key}"
+SERVER_KEY="${SERVER_KEY:-$HOME/.ssh/wemember_key}"
 SSH_OPTS="-i ${SERVER_KEY} -o StrictHostKeyChecking=no"
 REMOTE="ssh ${SSH_OPTS} ${SERVER_USER}@${SERVER_HOST}"
 IMAGE_NAME="wemembers-prod-wemembers:latest"
@@ -137,7 +137,7 @@ echo "  ╔═══════════════════════
 echo "  ║       Deployment Complete! ✅             ║"
 echo "  ╠══════════════════════════════════════════╣"
 echo "  ║  Site:  http://wemembers.store           ║"
-echo "  ║  Server: ssh -i gourmeow_key root@${SERVER_HOST}"
+echo "  ║  Server: ssh -i wemember_key root@${SERVER_HOST}"
 echo "  ║  Logs:   docker compose logs -f           ║"
 echo "  ╚══════════════════════════════════════════╝"
 echo ""
