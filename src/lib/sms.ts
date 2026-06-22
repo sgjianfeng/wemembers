@@ -1,57 +1,43 @@
-// 短信发送 - 阿里云短信服务
-// 文档: https://help.aliyun.com/zh/sms/developer-reference/nodejs-sdk
+// 短信发送 - Vonage (Nexmo)
+// 文档: https://developer.vonage.com/en/messaging/sms/overview
 
-import Dysmsapi20170525, * as $Dysmsapi20170525 from "@alicloud/dysmsapi20170525";
-import * as $OpenApi from "@alicloud/openapi-client";
-import * as $Util from "@alicloud/tea-util";
+import { Vonage } from "@vonage/server-sdk";
 
-function getClient(): Dysmsapi20170525 | null {
-  const accessKeyId = process.env.ALIBABA_ACCESS_KEY_ID;
-  const accessKeySecret = process.env.ALIBABA_ACCESS_KEY_SECRET;
-  if (!accessKeyId || !accessKeySecret || accessKeyId === "LTAI..." || accessKeySecret === "...") return null;
-  const endpoint = process.env.ALIBABA_SMS_ENDPOINT || "dysmsapi.ap-southeast-1.aliyuncs.com";
-  const config = new $OpenApi.Config({ accessKeyId, accessKeySecret, endpoint });
-  return new Dysmsapi20170525(config);
+let vonageClient: Vonage | null = null;
+
+function getClient(): Vonage | null {
+  if (vonageClient) return vonageClient;
+  const apiKey = process.env.VONAGE_API_KEY;
+  const apiSecret = process.env.VONAGE_API_SECRET;
+  if (!apiKey || !apiSecret || apiKey === "..." || apiSecret === "...") return null;
+  vonageClient = new Vonage({ apiKey, apiSecret });
+  return vonageClient;
 }
 
 export async function sendSMS(
   phone: string,
-  templateParam: Record<string, string>
+  text: string
 ): Promise<{ success: boolean; error?: string }> {
   const client = getClient();
   if (!client) {
-    console.log(`[SMS PLACEHOLDER] To: ${phone}, Params: ${JSON.stringify(templateParam)}`);
+    console.log(`[SMS PLACEHOLDER] To: ${phone}, Text: ${text}`);
     return { success: true };
   }
 
-  const signName = process.env.ALIBABA_SMS_SIGN_NAME || "WeMembers";
-  const templateCode = process.env.ALIBABA_SMS_TEMPLATE_CODE || "SMS_...";
+  const from = process.env.VONAGE_FROM_NAME || "WeMembers";
 
   try {
-    const req = new $Dysmsapi20170525.SendSmsRequest({
-      phoneNumbers: phone,
-      signName,
-      templateCode,
-      templateParam: JSON.stringify(templateParam),
-    });
-    const runtime = new $Util.RuntimeOptions({});
-    const resp = await client.sendSmsWithOptions(req, runtime);
-
-    if (resp.body?.code === "OK") {
-      console.log(`[SMS] ✅ Sent to ${phone}, BizId: ${resp.body?.bizId}`);
+    const resp = await client.sms.send({ to: phone, from, text });
+    const first = resp?.messages?.[0];
+    if (first?.status === "0") {
+      console.log(`[Vonage] ✅ Sent to ${phone}, ID: ${first.messageId}`);
       return { success: true };
     }
-    const msg = resp.body?.message || resp.body?.code || "Unknown error";
-    console.error(`[SMS] Failed: ${resp.body?.code} - ${msg}`);
-    return { success: false, error: msg };
+    const errMsg = first?.errorText || "Unknown error";
+    console.error(`[Vonage] Failed: ${first?.status} - ${errMsg}`);
+    return { success: false, error: errMsg };
   } catch (err: any) {
-    if (err.data?.Message?.includes("Signature")) {
-      return { success: false, error: "短信签名未就绪" };
-    }
-    if (err.data?.Message?.includes("Template")) {
-      return { success: false, error: "短信模板未就绪" };
-    }
-    console.error("[SMS] Exception:", err.message);
+    console.error("[Vonage] Exception:", err.message);
     return { success: false, error: err.message };
   }
 }
@@ -60,5 +46,5 @@ export async function sendVerificationSMS(
   phone: string,
   code: string
 ): Promise<{ success: boolean; error?: string }> {
-  return sendSMS(phone, { code });
+  return sendSMS(phone, `Your WeMembers verification code is ${code}. Valid for 5 minutes.`);
 }

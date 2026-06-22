@@ -2,11 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  serverExternalPackages: [
-    "@alicloud/dysmsapi20170525",
-    "@alicloud/openapi-client",
-    "@alicloud/tea-util",
-  ],
+  serverExternalPackages: ["@vonage/server-sdk"],
   typescript: {
     ignoreBuildErrors: true,
   },
