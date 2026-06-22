@@ -1,7 +1,8 @@
-// 短信发送 - Vonage (Nexmo)
+// 短信发送 - Vonage Messages API
 // 文档: https://developer.vonage.com/en/messaging/sms/overview
 
 import { Vonage } from "@vonage/server-sdk";
+import { Channels } from "@vonage/messages";
 
 let vonageClient: Vonage | null = null;
 
@@ -27,17 +28,17 @@ export async function sendSMS(
   const from = process.env.VONAGE_FROM_NAME || "WeMembers";
 
   try {
-    const resp = await client.sms.send({ to: phone, from, text });
-    const first = resp?.messages?.[0];
-    if (first?.status === "0") {
-      console.log(`[Vonage] ✅ Sent to ${phone}, ID: ${first.messageId}`);
-      return { success: true };
-    }
-    const errMsg = first?.errorText || "Unknown error";
-    console.error(`[Vonage] Failed: ${first?.status} - ${errMsg}`);
-    return { success: false, error: errMsg };
+    const { messageUUID } = await client.messages.send({
+      channel: Channels.SMS,
+      messageType: "text",
+      text,
+      to: phone,
+      from,
+    });
+    console.log(`[Vonage] ✅ Sent to ${phone}, UUID: ${messageUUID}`);
+    return { success: true };
   } catch (err: any) {
-    console.error("[Vonage] Exception:", err.message);
+    console.error("[Vonage] Error:", err.message);
     return { success: false, error: err.message };
   }
 }
