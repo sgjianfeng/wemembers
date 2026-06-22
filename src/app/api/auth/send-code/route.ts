@@ -60,10 +60,19 @@ export async function POST(request: NextRequest) {
     });
 
     // 发送
+    let sendResult: { success: boolean; error?: string };
     if (isEmail) {
-      await sendVerificationCode(contact, code);
+      sendResult = await sendVerificationCode(contact, code);
     } else {
-      await sendVerificationSMS(contact, code);
+      sendResult = await sendVerificationSMS(contact, code);
+    }
+
+    if (!sendResult.success) {
+      console.error(`[send-code] ${isEmail ? "Email" : "SMS"} failed: ${sendResult.error}`);
+      return NextResponse.json(
+        { error: isEmail ? "邮件发送失败，请稍后重试" : "短信发送失败，请稍后重试" },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ data: { message: "验证码已发送" } });
