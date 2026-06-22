@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     "你是推荐系统。根据用户偏好排序代金券。输出JSON。",
     `用户: 等级${user?.membershipTier}, 积分${user?.pointsBalance}
 偏好类别: ${categories.join(", ") || "未知"}
-常领面值: ¥${(avgValue / 100).toFixed(0)}
+常领面值: S$${(avgValue / 100).toFixed(0)}
 可选券: ${JSON.stringify(couponList)}
 输出: { "rankedIds": ["id1","id2"...], "explanation": "推荐理由(≤50字)" }`,
     { temperature: 0.2, cacheTTL: 3600 }

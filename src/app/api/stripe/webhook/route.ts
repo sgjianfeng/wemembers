@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
               accountId: tokenAccount.id,
               amount: amountCents,
               type: "stripe_topup",
-              description: `Stripe 充值 ¥${(amountCents / 100).toFixed(2)}`,
+              description: `Stripe 充值 S$${(amountCents / 100).toFixed(2)}`,
               balanceAfter: tokenAccount.balance,
             },
           });

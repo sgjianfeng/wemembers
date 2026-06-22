@@ -53,7 +53,7 @@ export default async function StorePage({ params }: { params: Promise<{ slug: st
               {coupons.map((c) => {
                 const displayValue = c.type === "percentage" ? `${(c.valueCents / 100).toFixed(0)}${lang === "zh" ? "折" : "% off"}`
                   : c.type === "free_item" ? (lang === "zh" ? "免单" : "Free")
-                  : `¥${(c.valueCents / 100).toFixed(0)}`;
+                  : `S$${(c.valueCents / 100).toFixed(0)}`;
                 const soldOut = c.remainingQuantity !== null && c.remainingQuantity <= 0;
                 return (
                   <Link key={c.id} href={`/coupons/${c.id}`}>

@@ -66,7 +66,7 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
                 const typeLabel = (typeLabels[c.type] || typeLabels.fixed_amount)[lang] || c.type;
                 const displayValue = c.type === "percentage" ? `${(c.valueCents / 100).toFixed(0)}${lang === "zh" ? "折" : "% off"}`
                   : c.type === "free_item" ? (lang === "zh" ? "免单" : "Free")
-                  : `¥${(c.valueCents / 100).toFixed(0)}`;
+                  : `S$${(c.valueCents / 100).toFixed(0)}`;
 
                 return (
                   <Link key={c.id} href={`/coupons/${c.id}`}>

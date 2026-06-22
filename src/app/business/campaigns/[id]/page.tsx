@@ -167,7 +167,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-slate-900 truncate">{c.title}</p>
                         <p className="text-xs text-slate-400 mt-0.5">
-                          ¥{(c.valueCents / 100).toFixed(0)} · {c.pointsRequired}⭐ · {lang === "zh" ? "领取" : "Claimed"}{c.claimedCount}/{c.totalQuantity || "∞"} · {lang === "zh" ? "核销" : "Redeemed"}{c.usedCount}
+                          S${(c.valueCents / 100).toFixed(0)} · {c.pointsRequired}⭐ · {lang === "zh" ? "领取" : "Claimed"}{c.claimedCount}/{c.totalQuantity || "∞"} · {lang === "zh" ? "核销" : "Redeemed"}{c.usedCount}
                         </p>
                       </div>
                       <Badge variant={
@@ -203,7 +203,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 <Info label={t("campaign.detail.drawMethodLabel", lang)} value={campaign.drawMethod === "weighted" ? t("campaign.detail.weightedRandom", lang) : campaign.drawMethod || t("campaign.detail.weightedRandom", lang)} />
                 {campaign.drawDate && <Info label={t("campaign.detail.drawDateLabel", lang)} value={campaign.drawDate.toLocaleDateString("zh-CN")} />}
                 <Info label={t("campaign.detail.entryCountLabel", lang)} value={t("campaign.detail.peopleCount", lang, { count: campaign.entryCount })} />
-                {campaign.budgetCents && <Info label={t("campaign.detail.budgetLabel", lang)} value={`¥${(campaign.budgetCents / 100).toFixed(0)}`} />}
+                {campaign.budgetCents && <Info label={t("campaign.detail.budgetLabel", lang)} value={`S$${(campaign.budgetCents / 100).toFixed(0)}`} />}
               </CardContent>
             </Card>
           </div>
@@ -228,7 +228,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                       </div>
                     </div>
                     <span className="text-[10px] text-slate-400">
-                      {p.type === "cash" ? `¥${(p.valueCents / 100).toFixed(0)}` : prizeTypeLabels[p.type] ? prizeTypeLabels[p.type][lang] : prizeTypeLabels.physical[lang]}
+                      {p.type === "cash" ? `S$${(p.valueCents / 100).toFixed(0)}` : prizeTypeLabels[p.type] ? prizeTypeLabels[p.type][lang] : prizeTypeLabels.physical[lang]}
                     </span>
                   </div>
                 ))}

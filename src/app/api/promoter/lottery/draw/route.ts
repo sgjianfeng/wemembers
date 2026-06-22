@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     data: {
       win,
       prize: { name: winner.name, icon: winner.icon, type: winner.type, valueCents: winner.valueCents },
-      message: winner.type === "cash" ? `恭喜获得 ¥${(winner.valueCents / 100).toFixed(2)} 现金！` : `恭喜获得「${winner.name}」！`,
+      message: winner.type === "cash" ? `恭喜获得 S$${(winner.valueCents / 100).toFixed(2)} 现金！` : `恭喜获得「${winner.name}」！`,
     },
   });
 }

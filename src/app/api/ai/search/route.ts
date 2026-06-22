@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     `用户搜索: "${query}"
 可过滤条件: { keywords: string[], category?: "cafe"|"food"|"retail"|"beauty"|"fitness", maxPrice?: number, sortBy?: "value"|"popularity"|"expiry", explanation: string }
 
-示例: "找20块以内的咖啡券" → { "keywords":["咖啡"], "category":"cafe", "maxPrice":2000, "sortBy":"value", "explanation":"筛选咖啡类券，面值≤¥20" }`,
+示例: "找20块以内的咖啡券" → { "keywords":["咖啡"], "category":"cafe", "maxPrice":2000, "sortBy":"value", "explanation":"筛选咖啡类券，面值≤S$20" }`,
     { temperature: 0.2, maxTokens: 200 }
   );
 

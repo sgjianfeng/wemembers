@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     data: {
       purchase,
-      message: `成功囤货 ${quantity} 张券，成本 ¥${(totalCost / 100).toFixed(2)}，预计利润 ¥${(((coupon.valueCents - unitPrice) * quantity) / 100).toFixed(2)}`,
+      message: `成功囤货 ${quantity} 张券，成本 S$${(totalCost / 100).toFixed(2)}，预计利润 S$${(((coupon.valueCents - unitPrice) * quantity) / 100).toFixed(2)}`,
     },
   });
 }

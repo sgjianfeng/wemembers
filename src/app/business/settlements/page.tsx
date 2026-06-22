@@ -90,9 +90,9 @@ export default async function SettlementsPage({
       {/* 汇总 */}
       <div className="px-4 mt-4">
         <div className="grid grid-cols-3 gap-2">
-          <MiniStat label={t("business.settlements.myPromoFee", lang)} value={`¥${(summary.totalIssuerFee / 100).toFixed(2)}`} />
-          <MiniStat label={t("business.settlements.myRedeemIncome", lang)} value={`¥${(summary.totalRedeemerIncome / 100).toFixed(2)}`} />
-          <MiniStat label={t("business.settlements.platformFee", lang)} value={`¥${(summary.totalPlatformFee / 100).toFixed(2)}`} />
+          <MiniStat label={t("business.settlements.myPromoFee", lang)} value={`S$${(summary.totalIssuerFee / 100).toFixed(2)}`} />
+          <MiniStat label={t("business.settlements.myRedeemIncome", lang)} value={`S$${(summary.totalRedeemerIncome / 100).toFixed(2)}`} />
+          <MiniStat label={t("business.settlements.platformFee", lang)} value={`S$${(summary.totalPlatformFee / 100).toFixed(2)}`} />
         </div>
       </div>
 
@@ -126,7 +126,7 @@ export default async function SettlementsPage({
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs">💎</span>
                     <span className="text-sm font-medium text-slate-900">
-                      ¥{(s.totalAmount / 100).toFixed(2)}
+                      S${(s.totalAmount / 100).toFixed(2)}
                     </span>
                     <Badge variant={isIssuer ? "amber" : "blue"} size="sm">
                       {isIssuer ? t("business.settlements.myVoucher", lang) : t("business.settlements.iRedeemed", lang)}
@@ -140,13 +140,13 @@ export default async function SettlementsPage({
                 </p>
                 <div className="flex items-center gap-2 mt-1.5 text-[10px]">
                   <span className="text-slate-400">
-                    {t("business.settlements.platform", lang)} ¥{(s.platformFee / 100).toFixed(2)}
+                    {t("business.settlements.platform", lang)} S${(s.platformFee / 100).toFixed(2)}
                   </span>
                   <span className="text-amber-600 font-medium">
-                    {t("business.settlements.promo", lang)} ¥{(s.issuerFee / 100).toFixed(2)}
+                    {t("business.settlements.promo", lang)} S${(s.issuerFee / 100).toFixed(2)}
                   </span>
                   <span className="text-green-600 font-medium">
-                    {t("business.settlements.redeem", lang)} ¥{(s.redeemerIncome / 100).toFixed(2)}
+                    {t("business.settlements.redeem", lang)} S${(s.redeemerIncome / 100).toFixed(2)}
                   </span>
                 </div>
               </CardContent>

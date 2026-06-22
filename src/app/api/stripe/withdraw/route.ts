@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   const { amountCents } = await request.json();
   if (!amountCents || amountCents < MIN_WITHDRAWAL_CENTS) {
     return NextResponse.json(
-      { error: `提现金额至少 ¥${(MIN_WITHDRAWAL_CENTS / 100).toFixed(0)}` },
+      { error: `提现金额至少 S$${(MIN_WITHDRAWAL_CENTS / 100).toFixed(0)}` },
       { status: 400 }
     );
   }
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
         accountId: updated.id,
         amount: -amountCents,
         type: "withdrawal",
-        description: `提现 ¥${(amountCents / 100).toFixed(2)}`,
+        description: `提现 S$${(amountCents / 100).toFixed(2)}`,
         balanceAfter: updated.balance,
       },
     });

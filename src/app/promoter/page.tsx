@@ -62,7 +62,7 @@ export default function PromoterPage() {
               { icon: "🔗", title: "生成推广链接", desc: "一键生成专属推广链接或二维码" },
               { icon: "📱", title: "分享到微信/朋友圈", desc: "把链接发给朋友、微信群、朋友圈" },
               { icon: "💰", title: "核销后自动到账", desc: "好友领券并到店核销，佣金自动计入你的账户" },
-              { icon: "💳", title: "随时提现", desc: "满 ¥10 即可提现到微信或支付宝" },
+              { icon: "💳", title: "随时提现", desc: "满 S$10 即可提现到微信或支付宝" },
             ].map((step, i) => (
               <div key={i} className="flex gap-3 bg-white p-3 rounded-xl border border-slate-100">
                 <span className="text-2xl">{step.icon}</span>
@@ -97,18 +97,18 @@ export default function PromoterPage() {
           <div className="flex justify-between">
             <div>
               <p className="text-white/70 text-xs">今日收益</p>
-              <p className="text-3xl font-bold mt-1">¥{((dashboard?.todayEarnings || 0) / 100).toFixed(2)}</p>
+              <p className="text-3xl font-bold mt-1">S${((dashboard?.todayEarnings || 0) / 100).toFixed(2)}</p>
             </div>
             <div className="text-right">
               <p className="text-white/70 text-xs">可提现余额</p>
-              <p className="text-3xl font-bold mt-1">¥{((account?.availableBalance || 0) / 100).toFixed(2)}</p>
+              <p className="text-3xl font-bold mt-1">S${((account?.availableBalance || 0) / 100).toFixed(2)}</p>
               {account.availableBalance >= 1000 && (
                 <button onClick={() => router.push("/promoter/withdraw")} className="mt-2 px-3 py-1 bg-white/20 text-white text-xs rounded-full">提现 →</button>
               )}
             </div>
           </div>
           <div className="flex gap-4 mt-3 text-white/80 text-xs">
-            <span>累计: ¥{((account?.totalEarned || 0) / 100).toFixed(2)}</span>
+            <span>累计: S${((account?.totalEarned || 0) / 100).toFixed(2)}</span>
             <span>等级: Lv{account?.level || 1}</span>
           </div>
         </div>
@@ -152,8 +152,8 @@ export default function PromoterPage() {
             const rt = coupon.rewardType || "cash";
             const rewardLabel = rt === "item" ? `🎁 ${coupon.itemRewardName || "奖品"}/张`
               : rt === "lottery" ? "🎰 抽奖机会/张"
-              : coupon.commissionType === "percentage" ? `${coupon.commissionValue}%（≈¥${((coupon.valueCents * (coupon.commissionValue || 0)) / 10000).toFixed(2)}/张）`
-              : `💰 ¥${((coupon.commissionValue || 0) / 100).toFixed(2)}/张`;
+              : coupon.commissionType === "percentage" ? `${coupon.commissionValue}%（≈S$${((coupon.valueCents * (coupon.commissionValue || 0)) / 10000).toFixed(2)}/张）`
+              : `💰 S$${((coupon.commissionValue || 0) / 100).toFixed(2)}/张`;
             return (
               <Card key={coupon.id} className="hover:border-green-200 transition-colors">
                 <CardContent className="p-3 flex items-center justify-between">
@@ -179,7 +179,7 @@ export default function PromoterPage() {
               {dashboard.recentEarnings.map((e: any) => (
                 <div key={e.id} className="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-slate-50 text-xs">
                   <span className={e.status === "confirmed" ? "text-green-600" : e.status === "pending" ? "text-amber-600" : "text-slate-400"}>
-                    {e.status === "confirmed" ? "✅" : e.status === "pending" ? "⏳" : "💳"} ¥{(e.amountCents / 100).toFixed(2)}
+                    {e.status === "confirmed" ? "✅" : e.status === "pending" ? "⏳" : "💳"} S${(e.amountCents / 100).toFixed(2)}
                   </span>
                   <span className="text-slate-400">
                     {e.status === "pending" ? "待核销" : e.status === "confirmed" ? "已确认" : "已提现"}

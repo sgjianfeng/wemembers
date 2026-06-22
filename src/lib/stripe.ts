@@ -16,7 +16,7 @@ export const stripe = new Proxy({} as Stripe, {
 }) as Stripe;
 
 export const PLATFORM_FEE_PERCENT = 10; // 平台抽成 10%
-export const MIN_WITHDRAWAL_CENTS = 1000; // 最低提现 ¥10
+export const MIN_WITHDRAWAL_CENTS = 1000; // 最低提现 S$10
 
 export async function createConnectedAccount(
   email: string,

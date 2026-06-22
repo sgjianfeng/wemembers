@@ -51,9 +51,9 @@ export default async function CouponDetailPage({ params }: { params: Promise<{ i
             <div className="flex items-center gap-2 mb-3"><span className="text-3xl">🎫</span><div><p className="text-lg font-bold text-slate-900">{coupon.title}</p><p className="text-xs text-slate-500">{coupon.description || t("business.coupons.detail.noDescription", lang)}</p></div></div>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <Info label={t("coupon.detail.type", lang)} value={t(`coupon.typeMap.${coupon.type}`, lang)} />
-              <Info label={t("business.coupons.detail.faceValue", lang)} value={`¥${(coupon.valueCents / 100).toFixed(coupon.type === "percentage" ? 1 : 0)}${coupon.type === "percentage" ? t("coupon.detail.discountSuffix", lang) : ""}`} />
+              <Info label={t("business.coupons.detail.faceValue", lang)} value={`S$${(coupon.valueCents / 100).toFixed(coupon.type === "percentage" ? 1 : 0)}${coupon.type === "percentage" ? t("coupon.detail.discountSuffix", lang) : ""}`} />
               <Info label={t("coupon.detail.points", lang)} value={`${coupon.pointsRequired}⭐`} />
-              <Info label={t("coupon.detail.minSpend", lang)} value={coupon.minSpendCents > 0 ? `¥${(coupon.minSpendCents / 100).toFixed(0)}` : t("coupon.detail.noMinSpend", lang)} />
+              <Info label={t("coupon.detail.minSpend", lang)} value={coupon.minSpendCents > 0 ? `S$${(coupon.minSpendCents / 100).toFixed(0)}` : t("coupon.detail.noMinSpend", lang)} />
               <Info label={t("coupon.detail.validity", lang)} value={`${coupon.validFrom.toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US")} ~ ${coupon.validUntil.toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US")}`} />
               <Info label={t("business.coupons.detail.quantity", lang)} value={coupon.totalQuantity ? `${coupon.claimedCount}/${coupon.totalQuantity}` : `${coupon.claimedCount}/∞`} />
               <Info label={t("coupon.detail.perCustomer", lang)} value={t("coupon.detail.perCustomerCount", lang, { count: coupon.perCustomerLimit })} />

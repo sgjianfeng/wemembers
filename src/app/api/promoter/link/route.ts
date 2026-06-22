@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       rewardType: coupon.rewardType || "cash",
       commissionDisplay: coupon.rewardType === "item" ? `🎁 ${coupon.itemRewardName || "奖品"}/张`
         : coupon.rewardType === "lottery" ? "🎰 抽奖机会/张"
-        : (coupon.commissionType === "percentage" ? `${coupon.commissionValue}%（≈¥${((coupon.valueCents * (coupon.commissionValue!)) / 10000).toFixed(2)}/张）` : `¥${((coupon.commissionValue || 0) / 100).toFixed(2)}/张`),
+        : (coupon.commissionType === "percentage" ? `${coupon.commissionValue}%（≈S$${((coupon.valueCents * (coupon.commissionValue!)) / 10000).toFixed(2)}/张）` : `S$${((coupon.commissionValue || 0) / 100).toFixed(2)}/张`),
     },
   });
 }
@@ -64,8 +64,8 @@ export async function GET() {
       rewardType: l.coupon.rewardType || "cash",
       commissionDisplay: (l.coupon.rewardType || "cash") === "item" ? `🎁 ${l.coupon.itemRewardName || "奖品"}/张`
         : (l.coupon.rewardType || "cash") === "lottery" ? "🎰 抽奖机会/张"
-        : l.coupon.commissionType === "percentage" ? `${l.coupon.commissionValue}%（≈¥${((l.coupon.valueCents * (l.coupon.commissionValue!)) / 10000).toFixed(2)}/张）`
-        : `¥${((l.coupon.commissionValue || 0) / 100).toFixed(2)}/张`,
+        : l.coupon.commissionType === "percentage" ? `${l.coupon.commissionValue}%（≈S$${((l.coupon.valueCents * (l.coupon.commissionValue!)) / 10000).toFixed(2)}/张）`
+        : `S$${((l.coupon.commissionValue || 0) / 100).toFixed(2)}/张`,
     })),
   });
 }

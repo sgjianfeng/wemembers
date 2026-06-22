@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useLang } from "@/components/i18n/LanguageProvider";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
+import { PremiumCouponCard } from "@/components/landing/PremiumCouponCard";
 
 const content = {
   zh: {
@@ -496,8 +497,8 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
         <div className="max-w-sm mx-auto">
           <div className="bg-white rounded-2xl shadow-lg border border-amber-100 overflow-hidden">
             {/* Demo banner */}
-            <div className="bg-gradient-to-r from-amber-400 to-orange-400 px-4 py-2 flex items-center justify-center gap-2">
-              <span className="text-white text-[10px] font-bold tracking-wide uppercase">
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2.5 flex items-center justify-center gap-2">
+              <span className="text-white text-xs font-bold tracking-wider uppercase">
                 {isZh ? "💡 场景演示" : "💡 HOW IT WORKS"}
               </span>
             </div>
@@ -647,33 +648,26 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
         </div>
       </section>
 
-      {/* ══════ Section 3 — Hot Coupons ══════ */}
+      {/* ══════ Section 3 — Hot Coupons (Premium Black-Gold) ══════ */}
       {loaded && coupons.length > 0 && (
         <section className="px-5 pt-2 pb-6 max-w-sm mx-auto">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-slate-900">
-              🔥 {isZh ? "热门代金券" : "Hot Vouchers"}
-            </h2>
-            <a href="/home" className="text-xs text-blue-500 font-medium">
+          <div className="flex items-end justify-between mb-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-amber-600 font-bold mb-1">
+                {isZh ? "🔥 热门代金券" : "🔥 HOT VOUCHERS"}
+              </p>
+              <h2 className="text-base font-extrabold text-slate-900">
+                {isZh ? "黑金甄选" : "Black Gold Selection"}
+              </h2>
+            </div>
+            <a href="/home" className="text-[11px] text-amber-600 font-semibold hover:text-amber-700 transition-colors">
               {isZh ? "查看更多 →" : "View All →"}
             </a>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
-            {coupons.map((c: any) => {
-              const displayValue = c.type === "percentage"
-                ? `${(c.valueCents / 100).toFixed(0)}${isZh ? "折" : "% OFF"}`
-                : c.type === "free_item"
-                ? (isZh ? "免单" : "FREE")
-                : `S$${(c.valueCents / 100).toFixed(0)}`;
-              return (
-                <a key={c.id} href={`/coupons/${c.id}`} className="snap-start shrink-0 w-36 bg-white rounded-xl border border-slate-100 p-3 hover:border-blue-200 transition-colors no-underline">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center text-lg mb-2">🎫</div>
-                  <p className="text-sm font-bold text-[#FF6B35]">{displayValue}</p>
-                  <p className="text-[11px] text-slate-900 mt-0.5 line-clamp-1">{c.title}</p>
-                  <p className="text-[10px] text-slate-400 mt-1">{c.pointsRequired}⭐</p>
-                </a>
-              );
-            })}
+          <div className="flex gap-2.5 overflow-x-auto pb-3 -mx-1 px-1 snap-x scrollbar-none">
+            {coupons.map((c: any) => (
+              <PremiumCouponCard key={c.id} coupon={c} isZh={isZh} />
+            ))}
           </div>
         </section>
       )}

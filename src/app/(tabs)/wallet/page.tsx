@@ -39,7 +39,7 @@ export default async function WalletPage() {
             <Card className="border-l-4 border-l-[#FF6B35] hover:border-[#1A6EFF] transition-colors">
               <CardContent className="p-3">
                 <div className="flex items-center justify-between">
-                  <div><p className="text-xs text-slate-400">{claim.coupon.business?.businessName}</p><p className="text-lg font-bold text-slate-900 mt-0.5">¥{(claim.coupon.valueCents / 100).toFixed(0)}</p><p className="text-xs text-slate-500">{claim.coupon.title}</p></div>
+                  <div><p className="text-xs text-slate-400">{claim.coupon.business?.businessName}</p><p className="text-lg font-bold text-slate-900 mt-0.5">S${(claim.coupon.valueCents / 100).toFixed(0)}</p><p className="text-xs text-slate-500">{claim.coupon.title}</p></div>
                   <div className="text-right"><p className="text-xs text-slate-400">{t("wallet.expires", lang)} {claim.coupon.validUntil.toLocaleDateString(dateLocale)}</p><span className="inline-block mt-2 px-3 py-1 bg-[#1A6EFF] text-white text-xs rounded-full">{t("wallet.useNow", lang)}</span></div>
                 </div>
                 <div className="mt-2 pt-2 border-t border-dashed border-slate-100 flex items-center justify-between"><span className="text-[10px] text-slate-400 font-mono">{claim.qrCode}</span><span className="text-[10px] text-slate-400">{t("wallet.gift", lang)}</span></div>

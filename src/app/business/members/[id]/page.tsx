@@ -115,11 +115,11 @@ export default async function MemberDetailPage({
               <MiniStat label="积分" value={membership.points.toString()} />
               <MiniStat
                 label="总消费"
-                value={`¥${membership.totalSpent.toFixed(0)}`}
+                value={`S$${membership.totalSpent.toFixed(0)}`}
               />
               <MiniStat
                 label="总领取"
-                value={`¥${(claimedTotal / 100).toFixed(0)}`}
+                value={`S$${(claimedTotal / 100).toFixed(0)}`}
               />
             </div>
 
@@ -193,7 +193,7 @@ export default async function MemberDetailPage({
                 </div>
                 <div className="text-right shrink-0 ml-2">
                   <p className="text-slate-900 font-medium">
-                    ¥{(claim.coupon.valueCents / 100).toFixed(0)}
+                    S${(claim.coupon.valueCents / 100).toFixed(0)}
                   </p>
                   <Badge
                     variant={
@@ -235,7 +235,7 @@ export default async function MemberDetailPage({
                   className="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-slate-50 text-xs"
                 >
                   <span className="text-slate-500">
-                    核销 ¥{r.amountSaved}
+                    核销 S${r.amountSaved}
                   </span>
                   <span className="text-[10px] text-slate-400">
                     {timeAgo(r.redeemedAt)}

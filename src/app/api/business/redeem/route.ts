@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      settlementMessage = `跨店核销 · 发券方推广费 ¥${(issuerFee / 100).toFixed(2)} · 本店收入 ¥${(redeemerIncome / 100).toFixed(2)}`;
+      settlementMessage = `跨店核销 · 发券方推广费 S$${(issuerFee / 100).toFixed(2)} · 本店收入 S$${(redeemerIncome / 100).toFixed(2)}`;
     }
 
     // 自动积分
@@ -259,7 +259,7 @@ export async function POST(request: NextRequest) {
               create: { userId: link.promoterId, isActive: true, totalEarned: promoterAmount, availableBalance: promoterAmount, totalSold: 1 },
               update: { totalEarned: { increment: promoterAmount }, availableBalance: { increment: promoterAmount }, totalSold: { increment: 1 } },
             });
-            rewardDesc = `💰 ¥${(promoterAmount / 100).toFixed(2)} 佣金`;
+            rewardDesc = `💰 S$${(promoterAmount / 100).toFixed(2)} 佣金`;
           }
         } else if (rewardType === "item" && claim.coupon.itemRewardName) {
           // 实物奖励 - 检查库存

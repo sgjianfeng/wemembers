@@ -66,7 +66,7 @@ export default function ScanPage() {
                   <p className="text-3xl mb-2">✅</p>
                   <p className="text-lg font-semibold text-green-800">{t("business.scan.success")}</p>
                   <p className="text-sm text-green-700 mt-1">{result.couponTitle}</p>
-                  <p className="text-2xl font-bold text-green-900 mt-2">¥{result.value?.toFixed(0)}</p>
+                  <p className="text-2xl font-bold text-green-900 mt-2">S${result.value?.toFixed(0)}</p>
                   {result.tokenBalance !== undefined && (
                     <Badge variant="slate" className="mt-2">{t("business.scan.tokenBalance", { tokens: String(result.tokenBalance) })}</Badge>
                   )}

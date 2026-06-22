@@ -52,17 +52,17 @@ export default function WithdrawPage() {
       <div className="px-4 mt-6">
         <div className="text-center mb-6">
           <p className="text-sm text-slate-500">可提现余额</p>
-          <p className="text-4xl font-bold text-green-600 mt-1">¥{(balance / 100).toFixed(2)}</p>
+          <p className="text-4xl font-bold text-green-600 mt-1">S${(balance / 100).toFixed(2)}</p>
         </div>
 
         <div className="space-y-4">
           <Input
             label="提现金额 (元)"
             type="number"
-            placeholder="最低 ¥10.00"
+            placeholder="最低 S$10.00"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            prefix="¥"
+            prefix="S$"
           />
 
           <div>
@@ -116,7 +116,7 @@ export default function WithdrawPage() {
                 className="px-4 py-1.5 bg-slate-100 rounded-full text-xs text-slate-600 hover:bg-slate-200"
                 disabled={preset > balance / 100}
               >
-                ¥{preset}
+                S${preset}
               </button>
             ))}
             {balance > 0 && (

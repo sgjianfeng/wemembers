@@ -66,7 +66,7 @@ export function AiGenerateButton({ onFill }: { onFill: (data: CouponData) => voi
             <div className="space-y-2">
               <div className="flex justify-between text-xs"><span className="text-slate-500">标题</span><span className="text-slate-900 font-medium">{result.title}</span></div>
               <div className="flex justify-between text-xs"><span className="text-slate-500">类型</span><span className="text-slate-900">{{ fixed_amount: "定额减免", percentage: "折扣券", free_item: "免单券" }[result.type]}</span></div>
-              <div className="flex justify-between text-xs"><span className="text-slate-500">面值/折扣</span><span className="text-slate-900 font-bold">¥{(result.valueCents / 100).toFixed(0)}</span></div>
+              <div className="flex justify-between text-xs"><span className="text-slate-500">面值/折扣</span><span className="text-slate-900 font-bold">S${(result.valueCents / 100).toFixed(0)}</span></div>
               <div className="flex justify-between text-xs"><span className="text-slate-500">所需积分</span><span className="text-[#FF6B35] font-bold">{result.pointsRequired}⭐</span></div>
               <div className="flex justify-between text-xs"><span className="text-slate-500">有效期</span><span className="text-slate-900">{result.validDays}天</span></div>
               <div className="flex justify-between text-xs"><span className="text-slate-500">说明</span><span className="text-slate-500 text-[11px]">{result.description}</span></div>

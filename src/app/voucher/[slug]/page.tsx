@@ -80,7 +80,17 @@ export default function VoucherDrawPage() {
     return <div className="min-h-screen flex items-center justify-center text-slate-400"><p>{t("common.loading")}</p></div>;
   }
   if (!campaign) {
-    return <div className="min-h-screen flex items-center justify-center"><p className="text-slate-400">Campaign not found</p></div>;
+    return (
+      <div className="min-h-screen bg-white">
+        <BackHeader />
+        <div className="flex items-center justify-center py-32">
+          <div className="text-center text-slate-400">
+            <p className="text-5xl mb-4">🎰</p>
+            <p className="text-sm">{lang === "zh" ? "活动不存在或已结束" : "Campaign not found or ended"}</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const isActive = campaign.status === "active";

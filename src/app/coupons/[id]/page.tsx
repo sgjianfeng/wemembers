@@ -56,7 +56,7 @@ export default async function CouponDetailPage({ params }: { params: Promise<{ i
           <div className="bg-gradient-to-r from-[#FF6B35] to-orange-400 p-6 text-white text-center">
             <p className="text-white/70 text-xs mb-1">{coupon.business?.businessName}</p>
             <p className="text-4xl font-bold">
-              {coupon.type === "percentage" ? `${(coupon.valueCents / 100).toFixed(0)}${t("coupon.detail.discountSuffix", lang)}` : coupon.type === "free_item" ? t("coupon.detail.freeLabel", lang) : `¥${(coupon.valueCents / 100).toFixed(0)}`}
+              {coupon.type === "percentage" ? `${(coupon.valueCents / 100).toFixed(0)}${t("coupon.detail.discountSuffix", lang)}` : coupon.type === "free_item" ? t("coupon.detail.freeLabel", lang) : `S$${(coupon.valueCents / 100).toFixed(0)}`}
             </p>
             <p className="text-sm font-medium mt-1">{coupon.title}</p>
             {coupon.description && <p className="text-xs text-white/70 mt-2">{coupon.description}</p>}
@@ -64,7 +64,7 @@ export default async function CouponDetailPage({ params }: { params: Promise<{ i
           <CardContent className="p-4 space-y-2">
             <div className="flex justify-between text-xs"><span className="text-slate-400">{t("coupon.detail.type", lang)}</span><span className="text-slate-900">{typeLabel}</span></div>
             <div className="flex justify-between text-xs"><span className="text-slate-400">{t("coupon.detail.points", lang)}</span><span className="text-[#FF6B35] font-bold">{coupon.pointsRequired}⭐</span></div>
-            <div className="flex justify-between text-xs"><span className="text-slate-400">{t("coupon.detail.minSpend", lang)}</span><span className="text-slate-900">{coupon.minSpendCents > 0 ? `¥${(coupon.minSpendCents / 100).toFixed(0)}` : t("coupon.detail.noMinSpend", lang)}</span></div>
+            <div className="flex justify-between text-xs"><span className="text-slate-400">{t("coupon.detail.minSpend", lang)}</span><span className="text-slate-900">{coupon.minSpendCents > 0 ? `S$${(coupon.minSpendCents / 100).toFixed(0)}` : t("coupon.detail.noMinSpend", lang)}</span></div>
             <div className="flex justify-between text-xs">
               <span className="text-slate-400">{t("coupon.detail.validity", lang)}</span>
               <span className={`${daysLeft <= 3 ? "text-red-500" : "text-slate-900"}`}>

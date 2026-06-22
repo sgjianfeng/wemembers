@@ -42,8 +42,8 @@ export default async function PromoLandingPage({ params }: { params: Promise<{ c
   let rewardIcon = "💰";
   if (rewardType === "cash" && coupon.commissionType && coupon.commissionValue) {
     rewardDisplay = coupon.commissionType === "percentage"
-      ? `${coupon.commissionValue}%（约 ¥${((coupon.valueCents * coupon.commissionValue) / 10000).toFixed(2)}）`
-      : `¥${(coupon.commissionValue / 100).toFixed(2)}`;
+      ? `${coupon.commissionValue}%（约 S$${((coupon.valueCents * coupon.commissionValue) / 10000).toFixed(2)}）`
+      : `S$${(coupon.commissionValue / 100).toFixed(2)}`;
   } else if (rewardType === "item" && coupon.itemRewardName) {
     rewardDisplay = coupon.itemRewardName;
     rewardIcon = "🎁";
@@ -67,7 +67,7 @@ export default async function PromoLandingPage({ params }: { params: Promise<{ c
           <div className="bg-gradient-to-r from-[#FF6B35] to-orange-400 p-6 text-white text-center">
             <p className="text-white/70 text-xs mb-1">{coupon.business?.businessName}</p>
             <p className="text-5xl font-bold">
-              {coupon.type === "percentage" ? `${(coupon.valueCents / 100).toFixed(0)}折` : `¥${(coupon.valueCents / 100).toFixed(0)}`}
+              {coupon.type === "percentage" ? `${(coupon.valueCents / 100).toFixed(0)}折` : `S$${(coupon.valueCents / 100).toFixed(0)}`}
             </p>
             <p className="text-sm font-medium mt-1">{coupon.title}</p>
             {coupon.description && <p className="text-xs text-white/70 mt-2">{coupon.description}</p>}

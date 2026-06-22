@@ -32,7 +32,7 @@ export default async function RedeemPage({ params }: { params: Promise<{ custome
       <div className="flex-1 flex flex-col items-center justify-center px-6">
         {/* Coupon Info */}
         <p className="text-xs text-slate-400 mb-1">{claim.coupon.business?.businessName}</p>
-        <p className="text-3xl font-bold text-[#FF6B35]">¥{(claim.coupon.valueCents / 100).toFixed(0)}</p>
+        <p className="text-3xl font-bold text-[#FF6B35]">S${(claim.coupon.valueCents / 100).toFixed(0)}</p>
         <p className="text-sm text-slate-600 mt-1">{claim.coupon.title}</p>
 
         {/* QR Code Placeholder */}

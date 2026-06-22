@@ -13,7 +13,7 @@ type Step = 1 | 2 | 3;
 
 const types: { value: CouponType; icon: string; label: string; desc: string }[] = [
   { value: "percentage", icon: "🏷️", label: "折扣券", desc: "按百分比减免，如 8折" },
-  { value: "fixed_amount", icon: "💰", label: "定额减免", desc: "固定金额，如 ¥15代金券" },
+  { value: "fixed_amount", icon: "💰", label: "定额减免", desc: "固定金额，如 S$15代金券" },
   { value: "free_item", icon: "🎁", label: "免单券", desc: "免费赠送指定商品/服务" },
 ];
 
@@ -62,7 +62,7 @@ export default function CreateCouponPage() {
       .then(r => r.json()).then(d => setCampaigns(d.data || []));
   }, []);
 
-  const typeDisplay: Record<CouponType, string> = { fixed_amount: `¥${(valueCents / 100).toFixed(0)}`, percentage: `${(valueCents / 100).toFixed(0)}折`, free_item: "免单" };
+  const typeDisplay: Record<CouponType, string> = { fixed_amount: `S$${(valueCents / 100).toFixed(0)}`, percentage: `${(valueCents / 100).toFixed(0)}折`, free_item: "免单" };
 
   const previewCoupon = {
     title: title || "代金券标题",
@@ -187,7 +187,7 @@ export default function CreateCouponPage() {
                 type="number"
                 value={valueCents}
                 onChange={(e) => setValueCents(Number(e.target.value))}
-                prefix={couponType === "percentage" ? "" : "¥"}
+                prefix={couponType === "percentage" ? "" : "S$"}
               />
               <Input label="所需积分" type="number" value={pointsRequired} onChange={(e) => setPointsRequired(Number(e.target.value))} prefix="⭐" />
             </div>
@@ -201,7 +201,7 @@ export default function CreateCouponPage() {
             <p className="text-xs text-slate-400 mb-4">定义使用条件和限制</p>
 
             <div className="space-y-3">
-              <Input label="最低消费 (元，0=无)" type="number" value={minSpend} onChange={(e) => setMinSpend(Number(e.target.value))} prefix="¥" />
+              <Input label="最低消费 (元，0=无)" type="number" value={minSpend} onChange={(e) => setMinSpend(Number(e.target.value))} prefix="S$" />
               <Input label="有效期 (天)" type="number" value={validDays} onChange={(e) => setValidDays(Number(e.target.value))} />
 
               <div>
@@ -264,9 +264,9 @@ export default function CreateCouponPage() {
                             <button onClick={() => setCommissionType("fixed")} className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${commissionType === "fixed" ? "bg-green-500 text-white" : "bg-white text-slate-500"}`}>固定金额</button>
                           </div>
                         </div>
-                        <Input label={commissionType === "percentage" ? "佣金比例 (%)" : "固定佣金 (分)"} type="number" value={commissionValue} onChange={(e) => setCommissionValue(Number(e.target.value))} prefix={commissionType === "percentage" ? "%" : "¥"} />
+                        <Input label={commissionType === "percentage" ? "佣金比例 (%)" : "固定佣金 (分)"} type="number" value={commissionValue} onChange={(e) => setCommissionValue(Number(e.target.value))} prefix={commissionType === "percentage" ? "%" : "S$"} />
                         <p className="text-[10px] text-green-700">
-                          {commissionType === "percentage" ? `每核销一张，推广者得券面值的 ${commissionValue}%（平台抽20%）` : `每核销一张，推广者得 ¥${(commissionValue / 100).toFixed(2)}（平台抽20%）`}
+                          {commissionType === "percentage" ? `每核销一张，推广者得券面值的 ${commissionValue}%（平台抽20%）` : `每核销一张，推广者得 S$${(commissionValue / 100).toFixed(2)}（平台抽20%）`}
                         </p>
                       </>
                     )}
@@ -453,7 +453,7 @@ export default function CreateCouponPage() {
                 { label: "券标题", value: title || "(未填写)" },
                 { label: "面值", value: typeDisplay[couponType] },
                 { label: "所需积分", value: `${pointsRequired}⭐` },
-                { label: "最低消费", value: minSpend > 0 ? `¥${minSpend}` : "无" },
+                { label: "最低消费", value: minSpend > 0 ? `S$${minSpend}` : "无" },
                 { label: "有效期", value: `${validDays}天` },
                 { label: "数量", value: unlimited ? "不限量" : `${quantity}张` },
                 { label: "每人限领", value: `${perCustomer}张` },
