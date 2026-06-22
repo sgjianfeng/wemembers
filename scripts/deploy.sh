@@ -9,7 +9,7 @@ set -euo pipefail
 SERVER_HOST="43.106.94.37"
 SERVER_USER="root"
 SERVER_APP_DIR="/var/www/wemembers"
-SERVER_KEY="${SERVER_KEY:-$HOME/.ssh/gourmeow_key}"
+SERVER_KEY="${SERVER_KEY:-$HOME/.ssh/wemember_key}"
 SSH_OPTS="-i ${SERVER_KEY} -o StrictHostKeyChecking=no"
 
 # 颜色输出
@@ -32,11 +32,11 @@ log "预检中..."
 
 # 查找 SSH Key
 if [ ! -f "${SERVER_KEY}" ]; then
-    for candidate in ~/.ssh/gourmeow_key ./gourmeow_key; do
+    for candidate in ~/.ssh/wemember_key ./wemember_key; do
         [ -f "$candidate" ] && SERVER_KEY="$candidate" && break
     done
 fi
-[ ! -f "${SERVER_KEY}" ] && err "找不到 SSH Key 'gourmeow_key'。请放到 ~/.ssh/gourmeow_key"
+[ ! -f "${SERVER_KEY}" ] && err "找不到 SSH Key 'wemember_key'。请放到 ~/.ssh/wemember_key"
 chmod 600 "${SERVER_KEY}" 2>/dev/null || true
 SSH_OPTS="-i ${SERVER_KEY} -o StrictHostKeyChecking=no"
 REMOTE_CMD="ssh ${SSH_OPTS} ${SERVER_USER}@${SERVER_HOST}"
