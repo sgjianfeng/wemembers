@@ -31,6 +31,15 @@ export default async function BusinessDashboard() {
     prisma.redemptionLog.findMany({ where: { businessId: user.id }, orderBy: { redeemedAt: "desc" }, take: 5 }),
   ]);
 
+  const marketCampaignCount = await prisma.campaign.count({
+    where: {
+      joinable: true,
+      status: "active",
+      endDate: { gte: new Date() },
+      businessId: { not: user.id },
+    },
+  });
+
   const balance = user.tokenAccount?.balance ?? 0;
 
   return (
@@ -49,7 +58,15 @@ export default async function BusinessDashboard() {
         </div>
         <h3 className="text-sm font-semibold text-slate-900 mt-5 mb-2">{t("business.overview.quickActions", lang)}</h3>
         <div className="grid grid-cols-2 gap-2">
-          {[{ icon: "🎫", label: t("business.overview.issueCoupon", lang), desc: t("business.overview.issueCouponDesc", lang), href: "/business/coupons/new" },{ icon: "👤", label: t("business.overview.membersMgmt", lang), desc: t("business.overview.membersMgmtDesc", lang), href: "/business/members" },{ icon: "📷", label: t("business.overview.scan", lang), desc: t("business.overview.scanDesc", lang), href: "/business/scan" },{ icon: "🪙", label: t("business.overview.topup", lang), desc: t("business.overview.topupDesc", lang), href: "/business/tokens" }].map(a => (
+          {[{ icon: "🎫", label: t("business.overview.issueCoupon", lang), desc: t("business.overview.issueCouponDesc", lang), href: "/business/coupons/new" },{ icon: "👤", label: t("business.overview.membersMgmt", lang), desc: t("business.overview.membersMgmtDesc", lang), href: "/business/members" },{ icon: "📷", label: t("business.overview.scan", lang), desc: t("business.overview.scanDesc", lang), href: "/business/scan" },{ icon: "🪙", label: t("business.overview.topup", lang), desc: t("business.overview.topupDesc", lang), href: "/business/tokens" },
+            {
+              icon: "🎰",
+              label: lang === "zh" ? "参与活动" : "Join Campaigns",
+              desc: lang === "zh"
+                ? `${marketCampaignCount} 个活动可参与`
+                : `${marketCampaignCount} campaigns available`,
+              href: "/business/campaigns/market",
+            }].map(a => (
             <Link key={a.href} href={a.href}><Card className="hover:border-[#1A6EFF]/30 transition-colors"><CardContent className="p-3 flex items-center gap-3"><span className="text-2xl">{a.icon}</span><div><p className="text-sm font-medium text-slate-900">{a.label}</p><p className="text-[10px] text-slate-400">{a.desc}</p></div></CardContent></Card></Link>
           ))}
         </div>
