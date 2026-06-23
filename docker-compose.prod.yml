@@ -44,6 +44,7 @@ services:
       # Messaging gate
       MESSAGING_MODE: ${MESSAGING_MODE:-live}
       BLOCKED_CONTACTS: ${BLOCKED_CONTACTS:-}
+      PLATFORM_ACCOUNT_EMAIL: ${PLATFORM_ACCOUNT_EMAIL:-wemembers.platform@wemembers.store}
       VONAGE_API_KEY: ${VONAGE_API_KEY:-}
       VONAGE_API_SECRET: ${VONAGE_API_SECRET:-}
       VONAGE_FROM_NAME: ${VONAGE_FROM_NAME:-WeMembers}
