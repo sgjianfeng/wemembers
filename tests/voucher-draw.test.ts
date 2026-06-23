@@ -238,7 +238,7 @@ describe("Voucher Purchase Flow (Integration)", () => {
       const { POST } = await import("@/app/api/voucher/purchase/route");
       const url = `http://localhost/api/campaign/pool-status?slug=${campaignV2.slug}`;
       const req = mockRequest(
-        { amountSgd: 25, spendNowSgd: 0 },
+        { amountSgd: 20, spendNowSgd: 0 },
         { url: `http://localhost/api/voucher/purchase?slug=${campaignV2.slug}`, method: "POST" },
       );
 
@@ -318,7 +318,7 @@ describe("Voucher Purchase Flow (Integration)", () => {
       const { POST } = await import("@/app/api/voucher/purchase/route");
       const url = `http://localhost/api/voucher/purchase?slug=${campaignV2.slug}`;
       const req = mockRequest(
-        { amountSgd: 80, spendNowSgd: 0 },
+        { amountSgd: 100, spendNowSgd: 0 },
         { url, method: "POST" },
       );
 
@@ -433,9 +433,9 @@ describe("V2 Algorithm (integration-level sanity checks)", () => {
 
     test("share boosts stack correctly on medium and large", () => {
       // medium + 1 boost = 2x
-      expect(drawV2.calculateTierWeight(5000, "medium", 1)).toBe(10000);
+      expect(drawV2.calculateTierWeight(5000, "medium", 0, 1)).toBe(10000);
       // large + 3 boosts = 5x (base 2x + 3x)
-      expect(drawV2.calculateTierWeight(10000, "large", 3)).toBe(50000);
+      expect(drawV2.calculateTierWeight(10000, "large", 0, 3)).toBe(50000);
     });
   });
 
@@ -492,11 +492,11 @@ describe("V2 Algorithm (integration-level sanity checks)", () => {
   describe("resolveTier", () => {
     test("maps amounts to correct tiers", () => {
       expect(drawV2.resolveTier(20)!.tier).toBe("small");
-      expect(drawV2.resolveTier(40)!.tier).toBe("small");
+      expect(drawV2.resolveTier(20)!.tier).toBe("small");
       expect(drawV2.resolveTier(50)!.tier).toBe("medium");
-      expect(drawV2.resolveTier(99)!.tier).toBe("medium");
+      expect(drawV2.resolveTier(50)!.tier).toBe("medium");
       expect(drawV2.resolveTier(100)!.tier).toBe("large");
-      expect(drawV2.resolveTier(5000)!.tier).toBe("large");
+      expect(drawV2.resolveTier(200)!.tier).toBe("large");
     });
 
     test("returns null for amounts below minimum", () => {

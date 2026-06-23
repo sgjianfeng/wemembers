@@ -79,6 +79,7 @@ export function drawInstantV2(
  * small: 不参与大奖池
  * medium: 1× 券面金额
  * large: 2× 券面金额
+ * balanceCents: 储值金额，统一按 2× 加成 (medium & large)
  * 分享加权由 share-boost API 处理
  */
 export function calculateTierWeight(
