@@ -282,6 +282,22 @@ describe("Voucher Purchase Flow (Integration)", () => {
       setMockSession(null);
     });
 
+    test("rejects if spend exceeds 80% of voucher (min 20% balance)", async () => {
+      setMockSession({ userId: customer.id, role: "customer" });
+
+      const { POST } = await import("@/app/api/voucher/purchase/route");
+      const url = `http://localhost/api/voucher/purchase?slug=${campaignV2.slug}`;
+      const req = mockRequest(
+        { amountSgd: 100, spendNowSgd: 90 }, // 90% spend, only 10% balance — should fail
+        { url, method: "POST" },
+      );
+
+      const res = await POST(req as any);
+      expect(res.status).toBe(400);
+
+      setMockSession(null);
+    });
+
     test("increments campaign entry count after purchase", async () => {
       setMockSession({ userId: customer.id, role: "customer" });
 
