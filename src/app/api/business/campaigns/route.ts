@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
+function isPlatformAccount(email: string): boolean {
+  const platformEmail = process.env.PLATFORM_ACCOUNT_EMAIL;
+  if (!platformEmail) return false;
+  return email === platformEmail;
+}
+
 // GET /api/business/campaigns — 活动列表
 export async function GET(request: NextRequest) {
   const { getSession } = await import("@/lib/auth");
@@ -30,7 +36,14 @@ export async function POST(request: NextRequest) {
 
   const { prisma } = await import("@/lib/db");
   const body = await request.json();
-  const { name, description, type, color, startDate, endDate, budgetCents, tags, drawDate, minSpendCents, maxEntries, drawMethod, entryMethod, receiptMinSpend, ticketsPerUnit, budgetPercent, slug, joinable, allowCollaboration } = body;
+  const { name, description, type, color, startDate, endDate, budgetCents, tags, drawDate, minSpendCents, maxEntries, drawMethod, entryMethod, receiptMinSpend, ticketsPerUnit, budgetPercent, slug, allowCollaboration } = body;
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { email: true },
+  });
+  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  const isPlatform = isPlatformAccount(user.email);
 
   if (!name || !startDate || !endDate) return NextResponse.json({ error: "请填写活动名称和时间" }, { status: 400 });
 
@@ -52,7 +65,8 @@ export async function POST(request: NextRequest) {
       ticketsPerUnit: ticketsPerUnit || 1,
       budgetPercent: budgetPercent || 20,
       slug: slug || null,
-      joinable: joinable || false,
+      joinable: isPlatform,
+      joinCount: 0,
       allowCollaboration: allowCollaboration || false,
       budgetCents: budgetCents || null,
       tags: tags ? JSON.stringify(tags) : "[]",
