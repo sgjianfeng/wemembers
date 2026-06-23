@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   const budgetPercent = campaign.budgetPercent || 20;
   const prizePoolContribution = Math.round(amountCents * budgetPercent / 100);
   const balanceCents = amountCents - spendNowCents;
-  const weight = calculateTierWeight(amountCents, tier.tier);
+  const weight = calculateTierWeight(amountCents, tier.tier, balanceCents);
 
   // Create voucher
   const voucher = await prisma.voucher.create({
