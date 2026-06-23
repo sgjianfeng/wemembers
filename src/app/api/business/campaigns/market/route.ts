@@ -11,11 +11,13 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") || "";
 
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
   const campaigns = await prisma.campaign.findMany({
     where: {
       joinable: true,
       status: "active",
-      endDate: { gte: new Date() },
+      endDate: { gte: today },
       businessId: { not: session.userId },
       ...(search ? { name: { contains: search } } : {}),
     },

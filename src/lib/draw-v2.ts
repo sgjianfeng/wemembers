@@ -103,7 +103,7 @@ export function resolveTier(amountSgd: number): VoucherTierConfig | null {
     if (amountSgd >= t.min && amountSgd <= t.max) return t;
   }
   // Fallback: find highest available tier for amount >= 10000
-  if (amountSgd > 9999) return DEFAULT_VOUCHER_TIERS[2];
+  if (amountSgd > 9999) return DEFAULT_VOUCHER_TIERS[3];
   return null;
 }
 

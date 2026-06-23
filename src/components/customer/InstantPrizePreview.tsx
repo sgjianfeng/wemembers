@@ -35,6 +35,7 @@ export function InstantPrizePreview({ tier, selectedAmount }: InstantPrizePrevie
 
   const tierComparison = DEFAULT_VOUCHER_TIERS.map((tc) => ({
     tier: tc.tier,
+    min: tc.min,
     cap: tc.instantPrizeCap,
     weightLabel:
       tc.tier === "small"
@@ -112,9 +113,9 @@ export function InstantPrizePreview({ tier, selectedAmount }: InstantPrizePrevie
             >
               <p className="text-lg mb-0.5">{tc.emoji}</p>
               <p className={`text-[11px] font-semibold ${tc.isActive ? "text-amber-700" : "text-slate-500"}`}>
-                S${tc.cap}
+                {lang === "zh" ? "券面" : "Voucher"} S${tc.min}
               </p>
-              <p className="text-[10px] text-slate-400">{lang === "zh" ? "即时奖上限" : "Instant Cap"}</p>
+              <p className="text-[10px] text-slate-400">{lang === "zh" ? "即时奖上限" : "Instant Cap"} S${tc.cap}</p>
               <p className="text-[10px] mt-1 font-medium text-slate-600">
                 {lang === "zh" ? "大奖池权重" : "Grand Weight"}: {tc.weightLabel}
               </p>

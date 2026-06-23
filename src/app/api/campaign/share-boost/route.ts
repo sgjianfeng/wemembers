@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { calculateTierWeight } from "@/lib/draw-v2";
 
 export async function POST(request: NextRequest) {
   const session = await getSession();
@@ -23,10 +24,8 @@ export async function POST(request: NextRequest) {
   }
 
   // Prevent unlimited stacking: compare against tier base weight
-  // small=0, medium=amountCents×1, large=amountCents×2
-  const baseWeight = voucher.tier === "large" ? voucher.amountCents * 2
-    : voucher.tier === "medium" ? voucher.amountCents
-    : 0;
+  const balanceCents = voucher.amountCents - voucher.usedCents;
+  const baseWeight = calculateTierWeight(voucher.amountCents, voucher.tier as "small" | "medium" | "large", balanceCents);
   if (voucher.drawWeight > baseWeight) {
     return NextResponse.json({ error: "already boosted" }, { status: 400 });
   }

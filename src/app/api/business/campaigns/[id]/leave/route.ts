@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
 
 export async function POST(
   request: NextRequest,
@@ -11,35 +12,42 @@ export async function POST(
   }
 
   const { id } = await params;
-  const { prisma } = await import("@/lib/db");
 
-  const campaign = await prisma.campaign.findUnique({ where: { id } });
-  if (!campaign) {
-    return NextResponse.json({ error: "活动不存在" }, { status: 404 });
+  const result = await prisma.$transaction(async (tx) => {
+    const campaign = await tx.campaign.findUnique({ where: { id } });
+    if (!campaign) {
+      return { error: "活动不存在", status: 404 as const };
+    }
+
+    const myStores = await tx.store.findMany({
+      where: { businessId: session.userId },
+      select: { id: true },
+    });
+    const myStoreIds = myStores.map((s) => s.id);
+
+    let currentStoreIds: string[] = [];
+    try { currentStoreIds = JSON.parse(campaign.storeIds || "[]"); } catch {}
+
+    const updatedStoreIds = currentStoreIds.filter((sid) => !myStoreIds.includes(sid));
+
+    if (updatedStoreIds.length === currentStoreIds.length) {
+      return { error: "未参与该活动", status: 400 as const };
+    }
+
+    await tx.campaign.update({
+      where: { id },
+      data: {
+        storeIds: JSON.stringify(updatedStoreIds),
+        joinCount: { decrement: 1 },
+      },
+    });
+
+    return { data: { status: "left" } };
+  });
+
+  if ("error" in result) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
-  const myStores = await prisma.store.findMany({
-    where: { businessId: session.userId },
-    select: { id: true },
-  });
-  const myStoreIds = myStores.map((s) => s.id);
-
-  let currentStoreIds: string[] = [];
-  try { currentStoreIds = JSON.parse(campaign.storeIds || "[]"); } catch {}
-
-  const updatedStoreIds = currentStoreIds.filter((sid) => !myStoreIds.includes(sid));
-
-  if (updatedStoreIds.length === currentStoreIds.length) {
-    return NextResponse.json({ error: "未参与该活动" }, { status: 400 });
-  }
-
-  await prisma.campaign.update({
-    where: { id },
-    data: {
-      storeIds: JSON.stringify(updatedStoreIds),
-      joinCount: { decrement: 1 },
-    },
-  });
-
-  return NextResponse.json({ data: { status: "left" } });
+  return NextResponse.json(result);
 }

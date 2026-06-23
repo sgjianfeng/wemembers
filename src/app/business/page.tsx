@@ -29,7 +29,7 @@ export default async function BusinessDashboard() {
     prisma.customerCoupon.count({ where: { coupon: { businessId: user.id }, claimedAt: { gte: today, lt: tomorrow } } }),
     prisma.redemptionLog.count({ where: { businessId: user.id, redeemedAt: { gte: today, lt: tomorrow } } }),
     prisma.redemptionLog.findMany({ where: { businessId: user.id }, orderBy: { redeemedAt: "desc" }, take: 5 }),
-    prisma.campaign.count({ where: { joinable: true, status: "active", endDate: { gte: new Date() }, businessId: { not: user.id } } }),
+    prisma.campaign.count({ where: { joinable: true, status: "active", endDate: { gte: today }, businessId: { not: user.id } } }),
   ]);
 
   const balance = user.tokenAccount?.balance ?? 0;

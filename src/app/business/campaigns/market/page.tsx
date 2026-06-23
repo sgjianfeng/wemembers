@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/Badge";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { JoinButton } from "./JoinButton";
+import { t } from "@/lib/i18n";
 
 export default async function CampaignMarketPage() {
   const session = await getSession();
@@ -14,11 +15,13 @@ export default async function CampaignMarketPage() {
   const c = await cookies();
   const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
 
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
   const campaigns = await prisma.campaign.findMany({
     where: {
       joinable: true,
       status: "active",
-      endDate: { gte: new Date() },
+      endDate: { gte: today },
       businessId: { not: session.userId },
     },
     include: {
@@ -38,13 +41,13 @@ export default async function CampaignMarketPage() {
     <div className="pb-4">
       <div className="px-4 py-3 border-b border-slate-100 sticky top-0 bg-white z-10">
         <div className="flex items-center gap-2">
-          <Link href="/business" className="text-xs text-slate-500">← {lang === "zh" ? "返回" : "Back"}</Link>
+          <Link href="/business" className="text-xs text-slate-500">← {t("market.back", lang)}</Link>
         </div>
         <h1 className="text-lg font-semibold mt-1">
-          {lang === "zh" ? "🎰 活动市场" : "🎰 Campaign Market"}
+          {t("market.title", lang)}
         </h1>
         <p className="text-xs text-slate-400 mt-0.5">
-          {lang === "zh" ? "平台策划 · 一键参与 · 共享大奖池" : "Platform campaigns · Join in one tap · Shared pool"}
+          {t("market.subtitle", lang)}
         </p>
       </div>
 
@@ -52,9 +55,9 @@ export default async function CampaignMarketPage() {
         {campaigns.length === 0 ? (
           <div className="text-center py-16 text-slate-400">
             <p className="text-5xl mb-4">🎰</p>
-            <p className="text-sm">{lang === "zh" ? "暂无可用活动" : "No campaigns available"}</p>
+            <p className="text-sm">{t("market.noCampaigns", lang)}</p>
             <p className="text-xs mt-1">
-              {lang === "zh" ? "平台正在筹备新活动，敬请期待" : "New campaigns coming soon"}
+              {t("market.noCampaignsHint", lang)}
             </p>
           </div>
         ) : (
@@ -73,12 +76,12 @@ export default async function CampaignMarketPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-slate-900 truncate">{camp.name}</span>
-                        {isJoined && <Badge variant="green" size="sm">{lang === "zh" ? "已参与" : "Joined"}</Badge>}
+                        {isJoined && <Badge variant="green" size="sm">{t("market.joined", lang)}</Badge>}
                       </div>
                       <p className="text-xs text-slate-400 mt-0.5">
                         {camp.business?.businessName || "WeMembers"}
-                        {" · "}{camp.joinCount || 0} {lang === "zh" ? "家店" : "stores"}
-                        {" · "}{lang === "zh" ? "奖池" : "Pool"} S${totalPoolSgd}
+                        {" · "}{camp.joinCount || 0} {t("market.stores", lang)}
+                        {" · "}{t("market.pool", lang)} S${totalPoolSgd}
                       </p>
                     </div>
                     {camp.color && (
@@ -90,7 +93,7 @@ export default async function CampaignMarketPage() {
                     <div className="flex items-center gap-1.5 mb-2 text-xs">
                       <span>{topPrize.icon}</span>
                       <span className="text-amber-600 font-medium">
-                        {lang === "zh" ? "大奖" : "Grand"}: {topPrize.name}
+                        {t("market.grand", lang)}: {topPrize.name}
                       </span>
                       {camp.prizes.length > 1 && (
                         <span className="text-slate-300">+{camp.prizes.length - 1}</span>
@@ -101,15 +104,15 @@ export default async function CampaignMarketPage() {
                   <div className="flex items-center justify-between text-xs text-slate-500">
                     <span>
                       {daysLeft > 0
-                        ? (lang === "zh" ? `剩余 ${daysLeft} 天` : `${daysLeft} days left`)
-                        : (lang === "zh" ? "即将结束" : "Ending soon")}
+                        ? t("market.daysLeft", lang, { days: daysLeft })
+                        : t("market.ending", lang)}
                     </span>
                     {isJoined ? (
-                      <span className="text-green-600 font-medium">✓ {lang === "zh" ? "已参与" : "Joined"}</span>
+                      <span className="text-green-600 font-medium">✓ {t("market.joined", lang)}</span>
                     ) : (
                       <JoinButton
                         campaignId={camp.id}
-                        label={lang === "zh" ? "参与" : "Join"}
+                        label={t("market.join", lang)}
                       />
                     )}
                   </div>
