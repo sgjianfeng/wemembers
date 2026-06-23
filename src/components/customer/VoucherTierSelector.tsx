@@ -21,13 +21,14 @@ const TIERS: TierOption[] = [
   { value: 20, label: "S$20", descKey: "voucher.smallTier.desc", gradient: "from-slate-400 to-slate-500", bg: "bg-slate-50", icon: "☕" },
   { value: 50, label: "S$50", descKey: "voucher.mediumTier.desc", gradient: "from-amber-400 to-amber-500", bg: "bg-amber-50", icon: "🎫", badge: "🎯" },
   { value: 100, label: "S$100", descKey: "voucher.largeTier.desc", gradient: "from-violet-500 to-violet-600", bg: "bg-violet-50", icon: "💎", badge: "🚀" },
+  { value: 200, label: "S$200", descKey: "voucher.megaTier.desc", gradient: "from-pink-500 to-rose-600", bg: "bg-rose-50", icon: "👑", badge: "MAX" },
 ];
 
 export function VoucherTierSelector({ selectedAmount, onSelect }: VoucherTierSelectorProps) {
   const { t } = useLang();
 
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-4 gap-2">
       {TIERS.map((tier) => {
         const isSelected = selectedAmount === tier.value;
         return (
