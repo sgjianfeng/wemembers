@@ -14,9 +14,9 @@ const PRIZES = [
 ];
 
 const TIER_LABELS: Record<string, { emoji: string; labelZh: string; labelEn: string }> = {
-  small: { emoji: "☕", labelZh: "小额券 S$10-S$40", labelEn: "Small S$10-S$40" },
-  medium: { emoji: "🎫", labelZh: "中额券 S$50-S$99", labelEn: "Medium S$50-S$99" },
-  large: { emoji: "💎", labelZh: "大额券 S$100+", labelEn: "Large S$100+" },
+  small: { emoji: "☕", labelZh: "小额券 S$20", labelEn: "Small S$20" },
+  medium: { emoji: "🎫", labelZh: "中额券 S$50", labelEn: "Medium S$50" },
+  large: { emoji: "💎", labelZh: "大额券 S$100", labelEn: "Large S$100" },
 };
 
 interface InstantPrizePreviewProps {
@@ -96,9 +96,9 @@ export function InstantPrizePreview({ tier, selectedAmount }: InstantPrizePrevie
       {/* ── Tier Comparison ── */}
       <div className="bg-white rounded-xl border border-slate-100 p-4">
         <h3 className="text-sm font-semibold text-slate-900 mb-2">
-          {lang === "zh" ? "三档对比" : "Tier Comparison"}
+          {lang === "zh" ? "四档对比" : "Tier Comparison"}
         </h3>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           {tierComparison.map((tc) => (
             <div
               key={tc.tier}
