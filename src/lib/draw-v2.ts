@@ -26,10 +26,13 @@ export interface PoolCountdown {
 }
 
 export const DEFAULT_VOUCHER_TIERS: VoucherTierConfig[] = [
-  { min: 10, max: 40, tier: "small", instantPrizeCap: 2 },
-  { min: 50, max: 99, tier: "medium", instantPrizeCap: 8 },
-  { min: 100, max: 9999, tier: "large", instantPrizeCap: 20 },
+  { min: 20, max: 20, tier: "small", instantPrizeCap: 2 },
+  { min: 50, max: 50, tier: "medium", instantPrizeCap: 8 },
+  { min: 100, max: 100, tier: "large", instantPrizeCap: 20 },
+  { min: 200, max: 200, tier: "large", instantPrizeCap: 20 },
 ];
+
+export const FIXED_VOUCHER_AMOUNTS = [20, 50, 100, 200] as const;
 
 // Grand prize targets (in cents)
 export const GRAND_PRIZE_TARGETS = {
@@ -81,11 +84,13 @@ export function drawInstantV2(
 export function calculateTierWeight(
   amountCents: number,
   tier: "small" | "medium" | "large",
+  balanceCents: number = 0,
   shareBoosts: number = 0
 ): number {
   if (tier === "small") return 0;
-  const base = tier === "large" ? amountCents * 2 : amountCents;
-  return base + shareBoosts * amountCents; // each share boost = +1× base weight
+  const baseWeight = tier === "large" ? amountCents * 2 : amountCents;
+  const balanceWeight = balanceCents * 2; // unified 2× for medium & large
+  return baseWeight + balanceWeight + shareBoosts * amountCents;
 }
 
 /**

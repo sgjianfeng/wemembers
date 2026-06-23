@@ -8,6 +8,7 @@ import {
   resolveTier,
   estimatePoolCountdown,
   DEFAULT_VOUCHER_TIERS,
+  FIXED_VOUCHER_AMOUNTS,
   GRAND_PRIZE_TARGETS,
   type VoucherTierConfig,
 } from "@/lib/draw-v2";
@@ -84,55 +85,81 @@ describe("calculateTierWeight", () => {
 
   test("applies share boosts correctly", () => {
     // large + 1 share boost = 3x (base 2x + 1x)
-    expect(calculateTierWeight(10000, "large", 1)).toBe(30000);
+    expect(calculateTierWeight(10000, "large", 0, 1)).toBe(30000);
     // large + 2 share boosts = 4x
-    expect(calculateTierWeight(10000, "large", 2)).toBe(40000);
+    expect(calculateTierWeight(10000, "large", 0, 2)).toBe(40000);
     // medium + 1 share boost = 2x
-    expect(calculateTierWeight(5000, "medium", 1)).toBe(10000);
+    expect(calculateTierWeight(5000, "medium", 0, 1)).toBe(10000);
     // small + share boosts still = 0
-    expect(calculateTierWeight(1000, "small", 5)).toBe(0);
+    expect(calculateTierWeight(1000, "small", 0, 5)).toBe(0);
   });
 
   test("zero share boosts returns base weight", () => {
-    expect(calculateTierWeight(10000, "large", 0)).toBe(20000);
+    expect(calculateTierWeight(10000, "large", 0, 0)).toBe(20000);
+    expect(calculateTierWeight(5000, "medium", 0, 0)).toBe(5000);
+  });
+
+  test("applies balanceCents weight (2x) for medium tier", () => {
+    // medium (1x amount) + balance 2000 (2x = 4000) = 5000 + 4000 = 9000
+    expect(calculateTierWeight(5000, "medium", 2000)).toBe(9000);
+    // medium (1x) + shareBoost 1 + balance 1000 = 5000 + 5000 + 2000 = 12000
+    expect(calculateTierWeight(5000, "medium", 1000, 1)).toBe(12000);
+  });
+
+  test("applies balanceCents weight (2x) for large tier", () => {
+    // large (2x amount = 20000) + balance 5000 (2x = 10000) = 30000
+    expect(calculateTierWeight(10000, "large", 5000)).toBe(30000);
+  });
+
+  test("balanceCents of 0 has no effect", () => {
     expect(calculateTierWeight(5000, "medium", 0)).toBe(5000);
+    expect(calculateTierWeight(10000, "large", 0)).toBe(20000);
+  });
+
+  test("balanceCents does not affect small tier", () => {
+    expect(calculateTierWeight(5000, "small", 9999)).toBe(0);
   });
 });
 
 describe("resolveTier", () => {
-  test("returns small tier for S$10-S$40", () => {
-    const t = resolveTier(25);
+  test("returns small tier for S$20 (fixed)", () => {
+    const t = resolveTier(20);
     expect(t).not.toBeNull();
     expect(t!.tier).toBe("small");
-    expect(t!.min).toBe(10);
-    expect(t!.max).toBe(40);
+    expect(t!.min).toBe(20);
+    expect(t!.max).toBe(20);
   });
 
-  test("returns medium tier for S$50-S$99", () => {
-    const t = resolveTier(75);
+  test("returns medium tier for S$50 (fixed)", () => {
+    const t = resolveTier(50);
     expect(t).not.toBeNull();
     expect(t!.tier).toBe("medium");
   });
 
-  test("returns large tier for S$100-S$9999", () => {
-    const t = resolveTier(500);
+  test("returns large tier for S$100 (fixed)", () => {
+    const t = resolveTier(100);
     expect(t).not.toBeNull();
     expect(t!.tier).toBe("large");
   });
 
-  test("handles boundary values", () => {
-    // Exact min
-    expect(resolveTier(10)!.tier).toBe("small");
-    // Exact max of small
-    expect(resolveTier(40)!.tier).toBe("small");
-    // Exact min of medium
+  test("returns large tier for S$200 (fixed)", () => {
+    const t = resolveTier(200);
+    expect(t).not.toBeNull();
+    expect(t!.tier).toBe("large");
+  });
+
+  test("handles exact fixed amount matches", () => {
+    expect(resolveTier(20)!.tier).toBe("small");
     expect(resolveTier(50)!.tier).toBe("medium");
-    // Exact max of medium
-    expect(resolveTier(99)!.tier).toBe("medium");
-    // Exact min of large
     expect(resolveTier(100)!.tier).toBe("large");
-    // At large max
-    expect(resolveTier(9999)!.tier).toBe("large");
+    expect(resolveTier(200)!.tier).toBe("large");
+  });
+
+  test("returns null for non-matching amounts", () => {
+    expect(resolveTier(25)).toBeNull();
+    expect(resolveTier(75)).toBeNull();
+    expect(resolveTier(500)).toBeNull();
+    expect(resolveTier(9999)).toBeNull();
   });
 
   test("returns large tier for amounts above S$9999", () => {
@@ -141,8 +168,9 @@ describe("resolveTier", () => {
     expect(t!.tier).toBe("large");
   });
 
-  test("returns null for amounts below S$10", () => {
-    expect(resolveTier(9)).toBeNull();
+  test("returns null for amounts below S$20", () => {
+    expect(resolveTier(19)).toBeNull();
+    expect(resolveTier(10)).toBeNull();
     expect(resolveTier(0)).toBeNull();
     expect(resolveTier(-1)).toBeNull();
   });
@@ -261,16 +289,25 @@ describe("estimatePoolCountdown", () => {
 });
 
 describe("constants", () => {
-  test("DEFAULT_VOUCHER_TIERS has 3 tiers with correct structure", () => {
-    expect(DEFAULT_VOUCHER_TIERS).toHaveLength(3);
+  test("DEFAULT_VOUCHER_TIERS has 4 tiers with correct structure", () => {
+    expect(DEFAULT_VOUCHER_TIERS).toHaveLength(4);
     expect(DEFAULT_VOUCHER_TIERS[0].tier).toBe("small");
     expect(DEFAULT_VOUCHER_TIERS[1].tier).toBe("medium");
     expect(DEFAULT_VOUCHER_TIERS[2].tier).toBe("large");
+    expect(DEFAULT_VOUCHER_TIERS[3].tier).toBe("large");
     for (const t of DEFAULT_VOUCHER_TIERS) {
       expect(t.min).toBeGreaterThan(0);
-      expect(t.max).toBeGreaterThan(t.min);
+      expect(t.max).toBe(t.min); // fixed amounts: min === max
       expect(t.instantPrizeCap).toBeGreaterThan(0);
     }
+  });
+
+  test("FIXED_VOUCHER_AMOUNTS has 4 entries", () => {
+    expect(FIXED_VOUCHER_AMOUNTS).toHaveLength(4);
+    expect(FIXED_VOUCHER_AMOUNTS[0]).toBe(20);
+    expect(FIXED_VOUCHER_AMOUNTS[1]).toBe(50);
+    expect(FIXED_VOUCHER_AMOUNTS[2]).toBe(100);
+    expect(FIXED_VOUCHER_AMOUNTS[3]).toBe(200);
   });
 
   test("GRAND_PRIZE_TARGETS has expected entries", () => {
