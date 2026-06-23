@@ -41,6 +41,14 @@ services:
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      # Messaging gate
+      MESSAGING_MODE: ${MESSAGING_MODE:-live}
+      BLOCKED_CONTACTS: ${BLOCKED_CONTACTS:-}
+      VONAGE_API_KEY: ${VONAGE_API_KEY:-}
+      VONAGE_API_SECRET: ${VONAGE_API_SECRET:-}
+      VONAGE_FROM_NAME: ${VONAGE_FROM_NAME:-WeMembers}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-noreply@wemembers.store}
     depends_on:
       wemembers_db:
         condition: service_healthy

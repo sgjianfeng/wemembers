@@ -2,6 +2,7 @@
 // 文档: https://resend.com/docs/send-with-nextjs
 
 import { Resend } from "resend";
+import { shouldLogOnly } from "@/lib/messaging";
 
 function getResend(): Resend | null {
   const apiKey = process.env.RESEND_API_KEY;
@@ -14,6 +15,12 @@ export async function sendEmail(
   subject: string,
   html: string
 ): Promise<{ success: boolean; error?: string }> {
+  // 闸门检查：非生产环境或测试联系人 → 只 log
+  if (shouldLogOnly(to)) {
+    console.log(`[EMAIL GATE] Not in live mode or contact blocked. To: ${to}, Subject: ${subject}`);
+    return { success: true };
+  }
+
   const resend = getResend();
   if (!resend) {
     console.log(`[EMAIL PLACEHOLDER] To: ${to}, Subject: ${subject}`);

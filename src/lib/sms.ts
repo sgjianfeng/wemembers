@@ -3,6 +3,7 @@
 
 import { Vonage } from "@vonage/server-sdk";
 import { Channels } from "@vonage/messages";
+import { shouldLogOnly } from "@/lib/messaging";
 
 let vonageClient: Vonage | null = null;
 
@@ -19,6 +20,12 @@ export async function sendSMS(
   phone: string,
   text: string
 ): Promise<{ success: boolean; error?: string }> {
+  // 闸门检查：非生产环境或测试联系人 → 只 log
+  if (shouldLogOnly(phone)) {
+    console.log(`[SMS GATE] Not in live mode or contact blocked. To: ${phone}, Text: ${text}`);
+    return { success: true };
+  }
+
   const client = getClient();
   if (!client) {
     console.log(`[SMS PLACEHOLDER] To: ${phone}, Text: ${text}`);
