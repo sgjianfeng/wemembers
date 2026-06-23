@@ -647,6 +647,7 @@ model Campaign {
   receiptMinSpend Int?                             // 最低消费门槛（分），null=无门槛
   ticketsPerUnit  Int      @default(1)             // 每满 minSpend 几张券
   budgetPercent   Int      @default(20)            // 预算占比 %
+  joinCount           Int      @default(0)      // 已参与门店数
   slug            String?  @unique                 // 公开页 URL
 
   // 协作
