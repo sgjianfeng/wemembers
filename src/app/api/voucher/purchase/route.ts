@@ -16,8 +16,8 @@ export async function POST(request: NextRequest) {
   const amountCents = Math.round((amountSgd || 0) * 100);
   const spendNowCents = Math.round((spendNowSgd || 0) * 100);
 
-  if (amountCents <= 0 || spendNowCents < 0 || spendNowCents > amountCents) {
-    return NextResponse.json({ error: "Invalid amounts" }, { status: 400 });
+  if (amountCents <= 0 || spendNowCents < 0 || spendNowCents > amountCents * 0.8) {
+    return NextResponse.json({ error: "余额不能低于券面的 20%" }, { status: 400 });
   }
 
   // Validate campaign

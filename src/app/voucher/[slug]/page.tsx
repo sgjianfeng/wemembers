@@ -38,8 +38,8 @@ export default function VoucherDrawPage() {
 
   async function handlePurchase() {
     const amt = parseFloat(spendNow);
-    if (isNaN(amt) || amt < 0 || amt > selectedAmount) {
-      setError(lang === "zh" ? "消费金额无效" : "Invalid spend amount");
+    if (isNaN(amt) || amt < 0 || amt > selectedAmount * 0.8) {
+      setError(lang === "zh" ? "消费金额无效，余额不能少于券面的20%" : "Invalid spend amount, min 20% balance required");
       return;
     }
     setSubmitting(true);
@@ -142,15 +142,16 @@ export default function VoucherDrawPage() {
                     type="number"
                     value={spendNow}
                     onChange={e => setSpendNow(e.target.value)}
-                    placeholder={`max S$${selectedAmount}`}
+                    placeholder={`max S$${(selectedAmount * 0.8).toFixed(2)}`}
                     className="flex-1 h-10 px-3 rounded-lg border border-slate-200 text-sm"
                   />
                   <span className={`text-xs px-2 py-1 rounded ${
-                    selectedAmount - (parseFloat(spendNow) || 0) > 0
+                    selectedAmount - (parseFloat(spendNow) || 0) >= selectedAmount * 0.2
                       ? "bg-green-50 text-green-600"
                       : "bg-red-50 text-red-500"
                   }`}>
                     {t("voucher.balanceAfter")}: S${(selectedAmount - (parseFloat(spendNow) || 0)).toFixed(2)}
+                    {" · "}{lang === "zh" ? "最少留" : "min"} S${(selectedAmount * 0.2).toFixed(2)}
                   </span>
                 </div>
               </div>
