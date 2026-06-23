@@ -420,6 +420,25 @@ const zh: Record<string, string> = {
   "voucher.balance.spendAt": "消费于 {store}",
   "voucher.redeem.scanHint": "请出示此码给店员核销",
   "voucher.redeem.amount": "核销金额",
+
+  // ── 活动市场 ──
+  "market.title": "🎰 活动市场",
+  "market.subtitle": "平台策划 · 一键参与 · 共享大奖池",
+  "market.noCampaigns": "暂无可用活动",
+  "market.noCampaignsHint": "平台正在筹备新活动，敬请期待",
+  "market.grand": "大奖",
+  "market.joined": "已参与",
+  "market.join": "参与",
+  "market.stores": "家店",
+  "market.storesUnit": "家店参与",
+  "market.pool": "奖池",
+  "market.daysLeft": "剩余 {days} 天",
+  "market.ending": "即将结束",
+  "market.back": "返回",
+
+  // ── 档位描述 ──
+  "voucher.megaTier.desc": "超大额 · 最高权重",
+
   "pool.title": "奖池进度",
   "pool.grandPrizes": "大奖池",
   "pool.midPrizes": "中等奖品池",
@@ -914,6 +933,25 @@ const en: Record<string, string> = {
   "voucher.balance.spendAt": "Spent at {store}",
   "voucher.redeem.scanHint": "Show this code to staff",
   "voucher.redeem.amount": "Redeem Amount",
+
+  // ── Campaign Market ──
+  "market.title": "🎰 Campaign Market",
+  "market.subtitle": "Platform campaigns · Join in one tap · Shared pool",
+  "market.noCampaigns": "No campaigns available",
+  "market.noCampaignsHint": "New campaigns coming soon",
+  "market.grand": "Grand",
+  "market.joined": "Joined",
+  "market.join": "Join",
+  "market.stores": "stores",
+  "market.storesUnit": "stores",
+  "market.pool": "Pool",
+  "market.daysLeft": "{days} days left",
+  "market.ending": "Ending soon",
+  "market.back": "Back",
+
+  // ── Tier descriptions ──
+  "voucher.megaTier.desc": "Mega · Max Weight",
+
   "pool.title": "Prize Pool",
   "pool.grandPrizes": "Grand Prizes",
   "pool.midPrizes": "Mid-Tier Prizes",
