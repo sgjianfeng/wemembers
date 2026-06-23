@@ -1,22 +1,28 @@
-# Task 12 Report: Customer Balance Page
+### Task 12: Dashboard Entry — Marketplace Card
 
 **Status:** Complete
 
-**Commit SHA:** `99d5fdb` on branch `worktree-voucher-lucky-draw-v2`
+**Commit:** `6772376` — `feat: add marketplace entry to business dashboard`
 
-**Verification:** `npx tsc --noEmit` passes — the only TS error is a pre-existing issue in `tests/e2e/lucky-draw.spec.ts` at line 251 (unrelated to this change).
+**Changes in `src/app/business/page.tsx`:**
 
-**File created:**
-- `src/app/(tabs)/balance/page.tsx` — 135 lines
+1. Added `marketCampaignCount` query (lines 34-41): A `prisma.campaign.count()` query that counts active, joinable campaigns from other businesses (excluding the current user's own campaigns). This runs after the existing `Promise.all` block.
 
-**Page details:**
-- Server component following the existing `(tabs)` page pattern (getSession, cookies-based i18n, direct Prisma queries)
-- Displays total available voucher balance in an amber gradient card (sum of `Voucher.balanceCents` where `status === "active"`)
-- Lists usage history (`VoucherUsage` joined through `Voucher`) in reverse chronological order, capped at 50
-- Each usage row shows: store name, time ago, amount spent (red), and computed running balance after that usage (per-voucher running total working backwards from current balance)
-- Empty state with icon and "no usage history" message when no history exists
-- Uses existing i18n keys (`voucher.balance.*`, `voucher.balanceAfter`) for bilingual support (zh/en)
+2. Added 5th quick-action card (lines 62-68): A new "Join Campaigns" (参与活动) card in the quick-actions grid that links to `/business/campaigns/market` and displays the count of available campaigns. The label and description are locale-aware (zh/en).
 
-**Concerns:** None. Page type-checks cleanly and follows the established codebase patterns (wallet page, profile page).
+**TypeScript Check:**
+- `npx tsc --noEmit` completed with 37 pre-existing errors in 11 other files (seed.ts, tests, api routes, etc.)
+- **Zero new errors** — `src/app/business/page.tsx` compiles cleanly
 
-**Report path:** `/Users/it-macbook/Jianfeng/Github/jianfeng-projects/wemembers/.superpowers/sdd/task-12-report.md`
+**Test Summary:**
+- No new tests required for this change (UI dashboard card addition)
+- Existing pre-existing TS errors are unrelated to this change
+
+**Concerns:**
+- None. This is a straightforward dashboard card addition following the existing pattern.
+
+## Fix Report
+
+**Resolved performance concern:** The `marketCampaignCount` query was running sequentially after `Promise.all`. Moved it into the `Promise.all` as the 6th entry so all six queries run in parallel.
+
+**Commit:**

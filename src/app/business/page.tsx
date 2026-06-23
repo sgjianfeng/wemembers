@@ -23,22 +23,14 @@ export default async function BusinessDashboard() {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const [memberCount, couponCount, claimsToday, redemptionsToday, recentActivity] = await Promise.all([
+  const [memberCount, couponCount, claimsToday, redemptionsToday, recentActivity, marketCampaignCount] = await Promise.all([
     prisma.membership.count({ where: { businessId: user.id } }),
     prisma.coupon.count({ where: { businessId: user.id, status: "published" } }),
     prisma.customerCoupon.count({ where: { coupon: { businessId: user.id }, claimedAt: { gte: today, lt: tomorrow } } }),
     prisma.redemptionLog.count({ where: { businessId: user.id, redeemedAt: { gte: today, lt: tomorrow } } }),
     prisma.redemptionLog.findMany({ where: { businessId: user.id }, orderBy: { redeemedAt: "desc" }, take: 5 }),
+    prisma.campaign.count({ where: { joinable: true, status: "active", endDate: { gte: new Date() }, businessId: { not: user.id } } }),
   ]);
-
-  const marketCampaignCount = await prisma.campaign.count({
-    where: {
-      joinable: true,
-      status: "active",
-      endDate: { gte: new Date() },
-      businessId: { not: user.id },
-    },
-  });
 
   const balance = user.tokenAccount?.balance ?? 0;
 
