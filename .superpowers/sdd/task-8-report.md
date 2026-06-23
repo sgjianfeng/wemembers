@@ -1,8 +1,26 @@
-# Task 8: Share Boost API — Report
+# Task 8 Report: Marketplace API
 
-**Status:** Complete
-**Commit SHA:** 3d20285 (worktree-voucher-lucky-draw-v2)
-**Verification:** `npx tsc --noEmit` -- only pre-existing error in `tests/e2e/lucky-draw.spec.ts`; new route has no type errors.
-**Concerns:** None. Route matches brief exactly. Authenticated POST with voucher ownership check, weight boost = amountCents per share.
-**Files Created:**
-- `src/app/api/campaign/share-boost/route.ts` -- 41 lines
+## Status
+
+Completed. Created the marketplace API route that returns joinable campaigns for business users.
+
+## Commits
+
+- `fe1a380` - feat: marketplace API - list joinable campaigns
+
+## Files Created
+
+- `/Users/it-macbook/Jianfeng/Github/jianfeng-projects/wemembers/src/app/api/business/campaigns/market/route.ts` (58 lines)
+
+## Test Summary
+
+No tests were executed. The route was created per the brief spec without automated tests.
+
+- **Auth guard**: Returns 403 if session is missing or role is not "business"
+- **Query filters**: joinable=true, status="active", endDate >= now, excludes own campaigns, supports optional `search` param
+- **Join status**: Marks campaigns the business has already joined via store ID matching
+- **Response shape**: Returns `{ data: [...] }` with campaign metadata including top prize, pool, participant count, and myStatus
+
+## Concerns
+
+None. The implementation matches the brief exactly. No existing tests were found to verify against, and no lint/type errors are expected given the standard Next.js API route pattern used.

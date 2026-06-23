@@ -1,18 +1,18 @@
-# Task 4 Report: Campaign Pool Status API
+# Task 4 Report: Pass balanceCents to Weight in Purchase API
 
-## Status: DONE
+## Status: Completed
 
-### What was done
-Created `src/app/api/campaign/pool-status/route.ts` — GET handler accepting `?slug=xxx`, returning real-time pool breakdown (total/instant/mid/grand), draw counts per tier, velocity data, and grand prize countdown estimates from `@/lib/draw-v2`.
+## Commit
+- `3670ba4` — `feat: pass balanceCents to weight calculation`
 
-### Verification
-- `npx tsc --noEmit` — only pre-existing error in `tests/e2e/lucky-draw.spec.ts`, no new errors.
+## Change
+- **File**: `src/app/api/voucher/purchase/route.ts`
+- **Line 39**: `calculateTierWeight(amountCents, tier.tier)` changed to `calculateTierWeight(amountCents, tier.tier, balanceCents)`
 
-### Commit
-- `58c26cf` — `feat(api): GET /api/campaign/pool-status — real-time pool progress + countdown`
+## Test Summary
+- **TypeScript**: No errors
+- **voucher-draw.test.ts**: 24 passed, 0 failed (the primary test file covering `calculateTierWeight` and the purchase flow)
+- **vouchers.test.ts**: Pre-existing Jest config failure (ESM `jose` library parse error) — unrelated to this change
 
-### Concerns
-- None identified.
-
-### Report path
-`/Users/it-macbook/Jianfeng/Github/jianfeng-projects/wemembers/.superpowers/sdd/task-4-report.md`
+## Concerns
+- None. The `balanceCents` variable was already computed on line 38 of the same function; this change simply passes it through to `calculateTierWeight`, which was updated in Task 2 to accept the third parameter.

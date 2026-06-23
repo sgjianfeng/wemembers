@@ -1,20 +1,21 @@
-# Task 10 Report: Voucher Tier Selector Component
+# Task 10 Report: JoinButton Client Component
 
-**Status:** Complete
+## Status
 
-**Commit SHA:** `f8701f2` on branch `worktree-voucher-lucky-draw-v2`
+Completed.
 
-**Verification:** `npx tsc --noEmit` passes for the new component (the only TS error is a pre-existing issue in `tests/e2e/lucky-draw.spec.ts` at line 251, unrelated to this change).
+## Commits
 
-**File created:**
-- `src/components/customer/VoucherTierSelector.tsx`
+- `ac68a3b` — `feat: client join button for marketplace page`
 
-**Component details:**
-- 3-tier voucher amount picker (S$20, S$50, S$100)
-- Consumes `useLang()` hook from `@/components/i18n/LanguageProvider`
-- Each tier has a label, description key, gradient, badge, and icon
-- Selected state highlighted with `border-amber-400 bg-amber-50 shadow-md`
-- Includes active press scale effect and hover states
-- Badges shown for medium and large tiers
+## Test Summary
 
-**Concerns:** None. Component type-checks cleanly and follows the brief exactly.
+No automated tests are included in the brief. A `tsc --noEmit` project-wide build check produced no errors related to `JoinButton.tsx`. The component is a straightforward "use client" button that calls the join API endpoint and flashes "..." while loading — unit tests would be discretionary.
+
+## Concerns
+
+None. The component follows the established pattern of other client-side interaction components in the codebase. The API endpoint it calls (`/api/business/campaigns/${campaignId}/join`) is assumed to exist; if it does not, the `else` branch handles failure with an `alert()` fallback.
+
+## Fix Report
+
+Wrapped the `fetch`/`await`/`res.json()` logic in a `try/catch` block. On a network-level exception (e.g. DNS failure, connection refused), the catch alerts `"Network error — please try again"`. `setLoading(false)` is now guaranteed to execute regardless of success or failure, preventing the button from becoming permanently disabled.

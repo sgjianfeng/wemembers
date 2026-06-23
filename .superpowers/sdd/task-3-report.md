@@ -1,17 +1,23 @@
-# Task 3: Add i18n Keys for V2 — Report
+# Task 3 Report: Add S$200 Voucher Tier
 
-## Status: DONE
+## Status
 
-## What was done
+Task completed successfully.
 
-- Added 34 Chinese i18n keys (voucher + pool namespaces) to the `zh` dict in `src/lib/i18n.ts`, inserted before the `common.*` section.
-- Added 34 English i18n keys (voucher + pool namespaces) to the `en` dict in `src/lib/i18n.ts`, inserted before the `common.*` section.
-- Verified the file parses with `npx tsc --noEmit` — no errors.
+## Commits
 
-## Commit
+- `e4ce2bf` feat: add S$200 voucher tier option
 
-`c1a07fb` feat(i18n): add voucher, pool, tier i18n keys (zh + en)
+## Changes to `src/components/customer/VoucherTierSelector.tsx`
+
+1. Added `S$200` tier entry to the `TIERS` array (after S$100): `{ value: 200, label: "S$200", descKey: "voucher.megaTier.desc", gradient: "from-pink-500 to-rose-600", bg: "bg-rose-50", icon: "👑", badge: "MAX" }`
+2. Changed grid layout from `grid-cols-3` to `grid-cols-4`
+
+## Test Summary
+
+- TypeScript compilation: **no errors**
+- No runtime tests further applicable (UI-only change)
 
 ## Concerns
 
-None.
+- The new S$200 tier references `voucher.megaTier.desc` in the i18n system — this key must exist in translation files or a fallback will be shown. This likely corresponds to Task 6 (i18n updates).

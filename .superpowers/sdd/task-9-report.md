@@ -1,16 +1,15 @@
-# Task 9: Pool Dashboard Component — Report
+# Task 9: Join + Leave APIs — Report
 
 **Status:** Complete
-**Commit SHA:** 390cad5 (worktree-voucher-lucky-draw-v2)
-**Verification:** `npx tsc --noEmit` -- only pre-existing error in `tests/e2e/lucky-draw.spec.ts`; new component has no type errors.
+
+**Commit SHA:** `bf16488`
+
+**Branch:** `main`
+
+**Files Created:**
+- `src/app/api/business/campaigns/[id]/join/route.ts` — POST handler; validates session (role business, 403), validates campaign exists/is joinable/is active (400), checks endDate (400), checks store overlap (409), then appends business stores to campaign `storeIds` and increments `joinCount`.
+- `src/app/api/business/campaigns/[id]/leave/route.ts` — POST handler; validates session (role business, 403), checks campaign exists (404), filters out business stores from campaign `storeIds`, no-op guard (400), then decrements `joinCount`.
+
+**Verification:** `npx tsc --noEmit` — 0 errors.
+
 **Concerns:** None.
-
-**File Created:**
-- `src/components/customer/PoolDashboard.tsx` -- 245 lines
-
-**Component Details:**
-- `"use client"` React client component taking a `slug` prop.
-- Fetches `/api/campaign/pool-status?slug={slug}` on mount.
-- Renders: campaign header (name + status badge), pool allocation summary with three progress bars (instant/mid/grand), draw statistics (wins/total per pool type), and grand prize countdown cards with progress bar, remaining amount, daily velocity, and predicted days-to-open.
-- Maps prize names to icons locally via `PRIZE_ICONS` (iPhone/MacBook/BYD).
-- Handles loading (skeleton), error (retry button), and empty states.

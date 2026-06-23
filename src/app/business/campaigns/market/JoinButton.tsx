@@ -14,12 +14,16 @@ export function JoinButton({ campaignId, label }: JoinButtonProps) {
 
   async function handleJoin() {
     setLoading(true);
-    const res = await fetch(`/api/business/campaigns/${campaignId}/join`, { method: "POST" });
-    if (res.ok) {
-      router.refresh();
-    } else {
-      const d = await res.json();
-      alert(d.error || "Join failed");
+    try {
+      const res = await fetch(`/api/business/campaigns/${campaignId}/join`, { method: "POST" });
+      if (res.ok) {
+        router.refresh();
+      } else {
+        const d = await res.json();
+        alert(d.error || "Join failed");
+      }
+    } catch {
+      alert("Network error — please try again");
     }
     setLoading(false);
   }
