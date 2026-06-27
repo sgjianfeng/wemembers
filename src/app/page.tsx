@@ -53,12 +53,12 @@ const content = {
       {
         icon: "🎰",
         title: "幸运抽奖",
-        subtitle: "代金券抽奖 · 奖池透明 · 开奖倒计时",
-        desc: "代金券参与即时抽奖，消费即有机会赢取大奖。奖池实时可见，延迟开奖等大奖。即时抽+延迟抽双模式，商家联合活动。",
+        subtitle: "买券即抽 · 消费留余额 · 大奖倒计时",
+        desc: "买 S$100 代金券 → 消费 S$70 → 剩 S$30 余额。每笔购买即时抽一次奖，100% 中现金。余额消费后再抽一次延迟大奖，赢 iPhone、BYD 海豹！",
         features: [
-          { title: "券即机会", body: "领券/购券自动获得抽奖资格" },
-          { title: "奖池透明", body: "双轨奖池实时可见，进度追踪" },
-          { title: "商家联合", body: "多商家参与，共用奖池做大活动" },
+          { title: "买券即时抽", body: "每笔购券即时抽奖，100% 中现金奖励" },
+          { title: "消费留余额", body: "消费多少扣多少，余额留用下次，灵活省钱" },
+          { title: "再抽大奖", body: "余额消费后触发延迟开奖，赢手机汽车大礼" },
         ],
         gradient: "from-violet-500 to-violet-600",
         bg: "bg-violet-50",
@@ -127,12 +127,12 @@ const content = {
       {
         icon: "🎰",
         title: "Lucky Draw",
-        subtitle: "Voucher Draw · Pool · Countdown · Prizes",
-        desc: "Use vouchers to enter instant draws with a transparent pool. Deferred mode for grand prizes. Dual mode + multi-business joint campaigns.",
+        subtitle: "Buy & Draw · Spend & Save · Grand Prize",
+        desc: "Buy S$100 voucher → Spend S$70 → Keep S$30 balance. Every purchase triggers an instant draw (100% win rate). After spending the balance, enter the deferred grand prize draw — win iPhones, BYD Seal & more!",
         features: [
-          { title: "Voucher Entry", body: "Claim/buy vouchers to auto-enter draws" },
-          { title: "Live Pool", body: "Dual-track pool, real-time progress" },
-          { title: "Multi-Biz", body: "Joint campaigns across multiple businesses" },
+          { title: "Instant Draw", body: "Every purchase triggers a draw, 100% cash win rate" },
+          { title: "Spend & Save", body: "Pay only what you spend, balance rolls over — flexible savings" },
+          { title: "Grand Prize", body: "Full balance use triggers deferred draw for big-ticket prizes" },
         ],
         gradient: "from-violet-500 to-violet-600",
         bg: "bg-violet-50",
@@ -254,12 +254,12 @@ export default function HomePage() {
                 </span>
               </h1>
               <p className="text-xl font-semibold text-white/90 mb-2">
-                {isZh ? "100% 中奖 · 赢 iPhone · BYD 海豹" : "100% Win · iPhone · BYD Seal"}
+                {isZh ? "100% 中奖 · 即时到账 · 延迟赢大奖" : "100% Win · Instant Cash · Grand Prize"}
               </p>
               <p className="text-sm text-white/50 mb-8">
                 {isZh
-                  ? "买代金券即抽奖，即时中现金，大奖池倒计时中！"
-                  : "Buy vouchers & draw instantly. Grand prize countdown live!"}
+                  ? "买券抽一次即时奖，余额消费后再抽一次延迟大奖！"
+                  : "Instant draw on purchase, grand prize draw after spending!"}
               </p>
             </>
           )}
