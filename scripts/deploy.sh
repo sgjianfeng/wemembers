@@ -63,8 +63,10 @@ DEPLOY_DIR=$(mktemp -d)
 trap "rm -rf ${DEPLOY_DIR}" EXIT
 
 # Standalone 模式: .next/standalone 包含独立运行所需的全部文件
-cp -r .next/standalone/* "${DEPLOY_DIR}/" 2>/dev/null || {
-    # 如果 standalone 为空，回退到复制整个 .next
+# 注意: * 不匹配 .next (dot dir), 需要单独复制
+cp -r .next/standalone/* "${DEPLOY_DIR}/" 2>/dev/null || true
+cp -r .next/standalone/.next "${DEPLOY_DIR}/" 2>/dev/null || {
+    # 如果 standalone 为空或不完整，回退到复制整个 .next
     warn "Standalone not found, copying full .next..."
     cp -r .next "${DEPLOY_DIR}/"
     cp -r node_modules "${DEPLOY_DIR}/"
@@ -146,7 +148,7 @@ fi
 pm2 delete wemembers 2>/dev/null || true
 
 # 启动新进程
-PORT=3000 pm2 start server.js --name wemembers --interpreter node
+HOSTNAME=0.0.0.0 PORT=3000 pm2 start server.js --name wemembers --interpreter node
 pm2 save
 
 echo "切换到 ${RELEASE_NAME}"
