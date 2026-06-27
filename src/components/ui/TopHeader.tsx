@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { useLang } from "@/components/i18n/LanguageProvider";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
@@ -45,7 +46,14 @@ export function TopHeader({
         textClass
       )}
     >
-      WeMembers
+      <Image
+        src="/logo.png"
+        alt="WeMembers"
+        width={80}
+        height={24}
+        className="h-6 w-auto"
+        priority
+      />
     </Link>
   ) : (
     <button

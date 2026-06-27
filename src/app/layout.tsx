@@ -10,6 +10,10 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   title: "WeMembers — 会员+代金券平台",
   description: "一站式商户营销平台：会员管理、代金券、幸运抽奖",
+  icons: {
+    icon: "/favicon-32x32.png",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
