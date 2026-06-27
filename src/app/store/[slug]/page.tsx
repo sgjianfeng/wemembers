@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { BackHeader } from "@/components/ui/BackHeader";
+import { TopHeader } from "@/components/ui/TopHeader";
 import { daysUntil } from "@/lib/utils";
 import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
@@ -30,7 +30,7 @@ export default async function StorePage({ params }: { params: Promise<{ slug: st
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <BackHeader title={store.name} />
+      <TopHeader variant="default" title={store.name} />
 
       <div className="bg-gradient-to-b from-[#1A6EFF] to-[#3B82F6] px-4 pt-8 pb-8 text-white">
         <div className="text-center">

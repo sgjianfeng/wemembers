@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { BackHeader } from "@/components/ui/BackHeader";
+import { TopHeader } from "@/components/ui/TopHeader";
 import { VoucherTierSelector } from "@/components/customer/VoucherTierSelector";
 import { PoolDashboard } from "@/components/customer/PoolDashboard";
 import { InstantPrizePreview } from "@/components/customer/InstantPrizePreview";
@@ -82,7 +82,7 @@ export default function VoucherDrawPage() {
   if (!campaign) {
     return (
       <div className="min-h-screen bg-white">
-        <BackHeader />
+        <TopHeader variant="default" />
         <div className="flex items-center justify-center py-32">
           <div className="text-center text-slate-400">
             <p className="text-5xl mb-4">🎰</p>
@@ -98,7 +98,7 @@ export default function VoucherDrawPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FF6B35] via-orange-50 to-white">
-      <BackHeader />
+      <TopHeader variant="default" />
       {/* Header */}
       <div className="px-4 pt-4 pb-4 text-center text-white">
         <p className="text-5xl mb-3">🎰</p>

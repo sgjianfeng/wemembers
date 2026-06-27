@@ -487,6 +487,10 @@ const zh: Record<string, string> = {
   "common.amountInput": "消费金额，至少 S${amount}",
   "common.amountPlaceholder": "请输入金额",
 
+  "nav.home": "首页",
+  "nav.dashboard": "管理后台",
+  "nav.login": "登录",
+
   "coupon.typeMap.fixed_amount": "定额减免",
   "coupon.typeMap.percentage": "折扣券",
   "coupon.typeMap.free_item": "免单券",
@@ -999,6 +1003,10 @@ const en: Record<string, string> = {
   "common.viewAll": "View all →",
   "common.amountInput": "Spend amount, min S${amount}",
   "common.amountPlaceholder": "Enter amount",
+
+  "nav.home": "Home",
+  "nav.dashboard": "Dashboard",
+  "nav.login": "Login",
 
   "coupon.typeMap.fixed_amount": "Fixed Amount",
   "coupon.typeMap.percentage": "Percentage Off",

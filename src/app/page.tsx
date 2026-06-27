@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useLang } from "@/components/i18n/LanguageProvider";
-import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
+import { TopHeader } from "@/components/ui/TopHeader";
 import { PremiumCouponCard } from "@/components/landing/PremiumCouponCard";
 
 const content = {
@@ -181,16 +181,32 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* ── Top Header ── */}
+      <TopHeader variant="landing">
+        {session ? (
+          <Link
+            href={session.role === "business" ? "/business" : "/home"}
+            className="text-xs font-medium text-white/80 hover:text-white transition-colors"
+          >
+            {session.role === "business" ? t.nav.dashboard : t.nav.home}
+          </Link>
+        ) : (
+          <Link
+            href="/auth/login"
+            className="text-xs font-medium text-white/80 hover:text-white transition-colors"
+          >
+            {t.nav.login}
+          </Link>
+        )}
+      </TopHeader>
+
       {/* ── Hero ── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 px-5 pt-16 pb-24 text-white">
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 px-5 pt-8 pb-24 text-white">
         {/* Decorative blobs */}
         <div className="absolute top-[-100px] right-[-80px] w-72 h-72 bg-blue-500/20 rounded-full blur-3xl" />
         <div className="absolute bottom-[-60px] left-[-60px] w-64 h-64 bg-violet-500/15 rounded-full blur-3xl" />
 
         <div className="relative z-10 max-w-sm mx-auto text-center">
-          <div className="flex justify-end mb-4">
-            <LanguageSwitcher variant="light" />
-          </div>
           <span className="inline-block px-3 py-1 rounded-full bg-white/10 text-xs font-medium text-white/80 backdrop-blur mb-6">
             {t.hero.badge}
           </span>

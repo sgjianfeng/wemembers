@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { BackHeader } from "@/components/ui/BackHeader";
+import { TopHeader } from "@/components/ui/TopHeader";
 import { useLang } from "@/components/i18n/LanguageProvider";
 
 const content = {
@@ -158,7 +158,7 @@ export default function ForBusinessPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <BackHeader />
+      <TopHeader variant="transparent" />
 
       {/* ── Hero ── */}
       <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 px-5 pt-12 pb-24 text-white">
