@@ -1,6 +1,6 @@
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "rhel-openssl-1.1.x"]
 }
 
 datasource db {
@@ -70,6 +70,9 @@ model User {
   settlementsIssuer Settlement[]       @relation("SettlementIssuer")
   settlementsRedeemer Settlement[]     @relation("SettlementRedeemer")
   stripeAccount     StripeAccount?
+  businessReceiptGroups ReceiptGroup[] @relation("BusinessReceiptGroups")
+  businessReceipts  Receipt[]          @relation("BusinessReceipts")
+  uploadedReceipts  Receipt[]          @relation("UploadedReceipts")
 }
 
 // ──── 验证码 ────
@@ -128,6 +131,8 @@ model Store {
   joinRequests CampaignJoinRequest[]
   vouchers        Voucher[]
   voucherUsages   VoucherUsage[]
+  receiptGroups   ReceiptGroup[]
+  receipts        Receipt[]
 
   @@unique([businessId, name])
 }
@@ -752,4 +757,72 @@ model VoucherDraw {
   voucher      Voucher  @relation(fields: [voucherId], references: [id])
 
   @@index([voucherId])
+}
+
+// ──── 票据管理 (聊天式分组 + AI 采集) ────
+
+model ReceiptGroup {                       // 聊天"群"/频道：既是分类维度，也是权限/敏感性边界
+  id           String   @id @default(cuid())
+  businessId   String
+  storeId      String?
+  name         String
+  category     String   @default("custom")  // purchase | customer_sale | platform | expense | custom
+  icon         String?                       // emoji
+  isPreset     Boolean  @default(false)
+  visibleRoles String   @default("business") // 逗号分隔，如 "business,staff"
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business     User     @relation("BusinessReceiptGroups", fields: [businessId], references: [id])
+  store        Store?   @relation(fields: [storeId], references: [id])
+  receipts     Receipt[]
+
+  @@index([businessId])
+}
+
+model Receipt {                            // 一条票据 = 时间线上一条消息
+  id            String   @id @default(cuid())
+  groupId       String
+  businessId    String
+  storeId       String?
+  uploadedById  String
+  imageUrl      String                      // 原始票据（云存储）
+  mimeType      String?
+  category      String   @default("unknown") // purchase | customer_sale | platform | expense | unknown
+  status        String   @default("processing") // processing | need_review | confirmed | rejected | failed
+  vendorName    String?
+  totalAmount   Int?                         // 分
+  taxAmount     Int?                         // 分
+  currency      String   @default("SGD")
+  receiptDate   DateTime?
+  ocrRawText    String?                      // 识别原文（可追溯）
+  extractedJson String?                      // 候选数据项 + 类目专属字段(JSON 字符串)
+  confidence    Float?
+  tags          String?                      // 已确认标签(JSON 数组字符串)
+  note          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  group         ReceiptGroup @relation(fields: [groupId], references: [id])
+  business      User     @relation("BusinessReceipts", fields: [businessId], references: [id])
+  store         Store?   @relation(fields: [storeId], references: [id])
+  uploadedBy    User     @relation("UploadedReceipts", fields: [uploadedById], references: [id])
+  items         ReceiptItem[]
+
+  @@index([groupId, createdAt])
+  @@index([businessId, category])
+}
+
+model ReceiptItem {                        // 明细行（采购单/小票）
+  id         String  @id @default(cuid())
+  receiptId  String
+  name       String
+  quantity   Float?
+  unitPrice  Int?                           // 分
+  amount     Int?                           // 分
+
+  receipt    Receipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+
+  @@index([receiptId])
 }

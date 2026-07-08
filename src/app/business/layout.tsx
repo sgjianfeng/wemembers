@@ -18,6 +18,7 @@ export default async function BusinessLayout({ children }: { children: React.Rea
     { icon: "🎫", label: t("business.tabs.coupons", lang as "zh" | "en"), href: "/business/coupons" },
     { icon: "🎰", label: t("business.tabs.luckyDraw", lang as "zh" | "en"), href: "/business/lucky-draw" },
     { icon: "📅", label: t("business.tabs.campaigns", lang as "zh" | "en"), href: "/business/campaigns" },
+    { icon: "🧾", label: t("business.tabs.receipt", lang as "zh" | "en"), href: "/business/receipt" },
     { icon: "🏪", label: t("business.tabs.stores", lang as "zh" | "en"), href: "/business/stores" },
     { icon: "🤝", label: t("business.tabs.partners", lang as "zh" | "en"), href: "/business/partners" },
   ];

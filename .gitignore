@@ -42,4 +42,7 @@ next-env.d.ts
 
 /src/generated/prisma
 test-results/
+
+# local dev receipt uploads (used when S3 is not configured)
+/public/uploads
 prisma/*.db-journal
