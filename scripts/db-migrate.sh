@@ -19,17 +19,17 @@ MODE="${1:-push}"
 # ── Detect environment ──
 if [ -f /.dockerenv ]; then
   # Inside Docker container
-  PRISMA_CMD="npx prisma@5"
+  PRISMA_CMD="node ./node_modules/prisma/build/index.js"
   RUN_IN_CONTAINER=""
 else
   # On Docker host — exec into the wemembers container
   cd /root/wemembers 2>/dev/null || cd "$(dirname "$0")/.."
   if docker compose -f docker-compose.prod.yml ps wemembers 2>/dev/null | grep -q "Up"; then
-    PRISMA_CMD="docker compose -f docker-compose.prod.yml exec -T wemembers npx prisma@5"
+    PRISMA_CMD="docker compose -f docker-compose.prod.yml exec -T wemembers node ./node_modules/prisma/build/index.js"
     RUN_IN_CONTAINER="docker compose -f docker-compose.prod.yml exec -T wemembers"
   else
     warn "Docker containers not running, trying local prisma..."
-    PRISMA_CMD="npx prisma@5"
+    PRISMA_CMD="node ./node_modules/prisma/build/index.js"
     RUN_IN_CONTAINER=""
   fi
 fi
@@ -52,13 +52,13 @@ case "${MODE}" in
     log "Resetting database..."
     ${PRISMA_CMD} db push --force-reset --skip-generate --accept-data-loss
     log "Running production seed..."
-    ${RUN_IN_CONTAINER} sh -c "cd /app && npx tsx prisma/seed-prod.ts"
+    ${RUN_IN_CONTAINER} sh -c "cd /app && node ./node_modules/tsx/dist/cli.mjs prisma/seed-prod.ts"
     log "Reset + seed complete!"
     ;;
 
   --seed)
     log "Running production seed..."
-    ${RUN_IN_CONTAINER} sh -c "cd /app && npx tsx prisma/seed-prod.ts"
+    ${RUN_IN_CONTAINER} sh -c "cd /app && node ./node_modules/tsx/dist/cli.mjs prisma/seed-prod.ts"
     log "Seed complete!"
     ;;
 
@@ -76,7 +76,7 @@ case "${MODE}" in
 
     if [ "${HAS_USERS}" = "0" ] || [ -z "${HAS_USERS}" ]; then
       log "Database is empty, running production seed..."
-      ${RUN_IN_CONTAINER} sh -c "cd /app && npx tsx prisma/seed-prod.ts" || warn "Seed failed — you can run 'bash scripts/db-migrate.sh --seed' later"
+      ${RUN_IN_CONTAINER} sh -c "cd /app && node ./node_modules/tsx/dist/cli.mjs prisma/seed-prod.ts" || warn "Seed failed — you can run 'bash scripts/db-migrate.sh --seed' later"
     else
       log "Database has ${HAS_USERS} users — skipping seed."
       echo "   To force re-seed: bash scripts/db-migrate.sh --seed"

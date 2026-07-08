@@ -98,7 +98,7 @@ sleep 15
 # Run Prisma DB migration
 echo "Running DB migration..."
 docker compose -f docker-compose.prod.yml exec -T wemembers \
-    sh -c "cd /app && npx prisma db push --skip-generate --accept-data-loss" 2>&1 || \
+    sh -c "cd /app && node ./node_modules/prisma/build/index.js db push --skip-generate --accept-data-loss" 2>&1 || \
     echo "   Migration may have failed -- check logs"
 
 # Seed with production demo data if DB is empty
