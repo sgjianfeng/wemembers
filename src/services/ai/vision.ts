@@ -147,6 +147,8 @@ async function recognizeWithClaude(
       {
         model: ANTHROPIC_MODEL,
         max_tokens: 1500,
+        // 关闭思考：强制 tool_choice 与 thinking 模式不兼容（Sonnet 5 默认开 adaptive）
+        thinking: { type: "disabled" },
         system: `${CORE_PROMPT}\n只通过给定的 record_receipt 工具返回结构化结果，不要输出多余文字。`,
         tools: [CLAUDE_TOOL],
         tool_choice: { type: "tool", name: "record_receipt" },
