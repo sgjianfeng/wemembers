@@ -12,6 +12,7 @@
     "lint": "eslint",
     "db:push": "npx prisma db push",
     "db:seed": "npx tsx prisma/seed.ts",
+    "db:seed-prod": "npx tsx prisma/seed-prod.ts",
     "db:reset": "npx prisma db push --force-reset && npx tsx prisma/seed.ts",
     "test": "npx tsx tests/run-all.ts",
     "test:unit": "npx jest --config jest.config.ts",
@@ -57,6 +58,7 @@
     "jest": "^30.4.2",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.11",
+    "tsx": "^4.23.0",
     "typescript": "^5"
   }
 }

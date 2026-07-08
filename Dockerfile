@@ -38,6 +38,11 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+# tsx for running seed scripts, prisma CLI for db push
+COPY --from=builder /app/node_modules/tsx ./node_modules/tsx
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/.bin/tsx ./node_modules/.bin/tsx 2>/dev/null || true
 
 # Copy entrypoint
 COPY scripts/docker-entrypoint.sh /docker-entrypoint.sh

@@ -61,7 +61,7 @@ services:
         aliases:
           - wemembers
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health > /dev/null || exit 1"]
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3000/api/health', r => { process.exit(r.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1))\""]
       interval: 10s
       timeout: 5s
       retries: 5

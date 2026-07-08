@@ -1,7 +1,6 @@
 #!/bin/bash
 # ============================================================
 # wemembers.store - 本地 Build + 上传部署脚本
-# 参考 wemember 的部署模式
 # ============================================================
 set -euo pipefail
 
@@ -24,30 +23,30 @@ echo "  ║  wemembers.store - Deploy (local build)  ║"
 echo "  ╚══════════════════════════════════════════╝"
 echo ""
 
-# ── 1. 预检 ──────────────────────────────────────────
-log "预检..."
-[ ! -f "${SERVER_KEY}" ] && err "SSH Key 未找到: ${SERVER_KEY}"
+# ── 1. Pre-flight ──
+log "Pre-flight..."
+[ ! -f "${SERVER_KEY}" ] && err "SSH Key not found: ${SERVER_KEY}"
 chmod 600 "${SERVER_KEY}" 2>/dev/null || true
 if ! ${REMOTE} "echo ok" > /dev/null 2>&1; then
-    err "SSH 连接失败"
+    err "SSH connection failed"
 fi
-log "SSH 连接正常"
+log "SSH connection OK"
 
-# ── 2. 本地 Build 镜像 (linux/amd64) ────────────────────
-log "本地构建 Docker 镜像 (linux/amd64)..."
+# ── 2. Build image (linux/amd64) ──
+log "Building Docker image (linux/amd64)..."
 docker buildx build --platform linux/amd64 \
     -t ${IMAGE_NAME} \
     -f Dockerfile . 2>&1 | tail -5
-log "镜像构建完成"
+log "Image build complete"
 
-# ── 3. 导出并压缩镜像 ───────────────────────────────────
-log "导出镜像..."
+# ── 3. Export + compress ──
+log "Exporting image..."
 docker save ${IMAGE_NAME} | gzip > ${TAR_FILE}
 SIZE=$(ls -lh ${TAR_FILE} | awk '{print $5}')
-log "镜像已导出: ${TAR_FILE} (${SIZE})"
+log "Image exported: ${TAR_FILE} (${SIZE})"
 
-# ── 4. 同步代码到服务器 ──────────────────────────────────
-log "同步代码到服务器..."
+# ── 4. Sync code to server ──
+log "Syncing code to server..."
 rsync -az \
     -e "ssh ${SSH_OPTS}" \
     --exclude='node_modules' \
@@ -61,53 +60,55 @@ rsync -az \
     --exclude='.claude' \
     ./ \
     "${SERVER_USER}@${SERVER_HOST}:/root/wemembers/"
-log "代码同步完成"
+log "Code sync complete"
 
-# ── 5. 上传镜像 ─────────────────────────────────────────
-log "上传镜像到服务器..."
+# ── 5. Upload image ──
+log "Uploading image to server..."
 rsync -az --progress \
     -e "ssh ${SSH_OPTS}" \
     ${TAR_FILE} \
     "${SERVER_USER}@${SERVER_HOST}:/tmp/wemembers-image.tar.gz" 2>&1 | tail -3
-log "镜像上传完成"
+log "Image upload complete"
 
-# ── 6. 服务器端：加载镜像 + 启动容器 ────────────────────────
-log "服务器端部署..."
+# ── 6. Server-side: load image + start containers ──
+log "Server-side deployment..."
 
 ${REMOTE} << 'REMOTE_SCRIPT'
 set -e
 cd /root/wemembers
 
 # Load new image
-echo "📦 Loading Docker image..."
+echo "Loading Docker image..."
 gunzip -c /tmp/wemembers-image.tar.gz | docker load
 
 # Create .env.production if not exists
 if [ ! -f .env.production ]; then
     cp .env.production .env.production.bak 2>/dev/null || true
-    echo "⚠️  Using default .env.production — please edit with real values!"
+    echo "WARNING: Using default .env.production -- please edit with real values!"
 fi
 
 # Stop old, start new
-echo "🔄 Restarting containers..."
+echo "Restarting containers..."
 docker compose -f docker-compose.prod.yml down 2>/dev/null || true
 docker compose -f docker-compose.prod.yml up -d
 
-echo "⏳ Waiting for PostgreSQL..."
+echo "Waiting for PostgreSQL..."
 sleep 15
 
 # Run Prisma DB migration
-echo "🔧 Running DB migration..."
+echo "Running DB migration..."
 docker compose -f docker-compose.prod.yml exec -T wemembers \
-    sh -c "cd /app && npx prisma@5.22.0 db push --skip-generate --accept-data-loss" 2>&1 || echo "   Migration may have failed — check logs"
+    sh -c "cd /app && npx prisma db push --skip-generate --accept-data-loss" 2>&1 || \
+    echo "   Migration may have failed -- check logs"
 
-# Seed if needed
+# Seed with production demo data if DB is empty
 HAS_USERS=$(docker compose -f docker-compose.prod.yml exec -T wemembers_db \
     psql -U wemembers -d wemembers_prod -t -c "SELECT count(*) FROM \"User\";" 2>/dev/null || echo "0")
 if [ "${HAS_USERS}" = "0" ] || [ "${HAS_USERS}" = "  0" ]; then
-    echo "🌱 Seeding database..."
+    echo "Running production seed..."
     docker compose -f docker-compose.prod.yml exec -T wemembers \
-        sh -c "cd /app && npx prisma@5.22.0 db seed" 2>&1 || echo "   Seed skipped"
+        sh -c "cd /app && node ./node_modules/tsx/dist/cli.mjs prisma/seed-prod.ts" 2>&1 || \
+        echo "   Seed skipped -- run 'bash scripts/db-migrate.sh --seed' manually"
 fi
 
 echo ""
@@ -119,25 +120,26 @@ echo "=== Recent Logs ==="
 docker compose -f docker-compose.prod.yml logs --tail=15
 REMOTE_SCRIPT
 
-# ── 7. 清理本地临时文件 ───────────────────────────────────
+# ── 7. Cleanup ──
 rm -f ${TAR_FILE}
-log "清理本地临时文件"
+log "Cleaned up local temp files"
 
-# ── 8. 验证 ──────────────────────────────────────────
-log "验证部署..."
+# ── 8. Verify ──
+log "Verifying deployment..."
 sleep 3
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: wemembers.store" http://${SERVER_HOST}/ 2>/dev/null || echo "000")
-case "${HTTP_CODE}" in
-    200|301|302|307|308) log "应用响应正常 (HTTP ${HTTP_CODE})" ;;
-    *) warn "应用可能未就绪 (HTTP ${HTTP_CODE})" ;;
+HEALTH=$(curl -s -o /dev/null -w "%{http_code}" "http://${SERVER_HOST}/api/health" 2>/dev/null || echo "000")
+case "${HEALTH}" in
+    200) log "Health check OK (HTTP ${HEALTH})" ;;
+    *) warn "Health check returned ${HEALTH} -- check logs" ;;
 esac
 
 echo ""
 echo "  ╔══════════════════════════════════════════╗"
-echo "  ║       Deployment Complete! ✅             ║"
+echo "  ║       Deployment Complete!               ║"
 echo "  ╠══════════════════════════════════════════╣"
-echo "  ║  Site:  http://wemembers.store           ║"
-echo "  ║  Server: ssh -i wemember_key root@${SERVER_HOST}"
-echo "  ║  Logs:   docker compose logs -f           ║"
+echo "  ║  Site:  https://wemembers.store         ║"
+echo "  ║  Health: /api/health                    ║"
+echo "  ║  SSH:   ssh -i wemember_key root@${SERVER_HOST}"
+echo "  ║  Logs:  docker compose logs -f           ║"
 echo "  ╚══════════════════════════════════════════╝"
 echo ""
