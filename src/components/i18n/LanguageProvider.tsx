@@ -29,10 +29,11 @@ export function LanguageProvider({ children, initialLang = "zh" }: { children: R
   }
 
   function translate(key: string, params?: Record<string, string | number>): string {
+    // Prefer current lang dict; fall back to key only (dicts load async)
     let text = dict[key] || key;
     if (params) {
       for (const [k, v] of Object.entries(params)) {
-        text = text.replace(`{${k}}`, String(v));
+        text = text.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
       }
     }
     return text;

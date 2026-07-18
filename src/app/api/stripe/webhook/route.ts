@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/db";
+import { fulfillVoucherPurchase } from "@/lib/voucher-purchase";
+import { applyStripeTopupCredit } from "@/lib/funding";
 
 // POST /api/stripe/webhook
 export async function POST(request: NextRequest) {
@@ -20,9 +22,13 @@ export async function POST(request: NextRequest) {
 
   try {
     switch (event.type) {
-      // Connected account onboarding 完成
       case "account.updated": {
-        const account = event.data.object as any;
+        const account = event.data.object as {
+          metadata?: { userId?: string };
+          charges_enabled?: boolean;
+          payouts_enabled?: boolean;
+          details_submitted?: boolean;
+        };
         if (account.metadata?.userId) {
           const chargesEnabled = account.charges_enabled;
           const payoutsEnabled = account.payouts_enabled;
@@ -30,13 +36,12 @@ export async function POST(request: NextRequest) {
           await prisma.stripeAccount.update({
             where: { userId: account.metadata.userId },
             data: {
-              chargesEnabled,
-              payoutsEnabled,
-              detailsSubmitted: account.details_submitted,
+              chargesEnabled: !!chargesEnabled,
+              payoutsEnabled: !!payoutsEnabled,
+              detailsSubmitted: !!account.details_submitted,
             },
           });
 
-          // 同步到 TokenAccount
           if (chargesEnabled) {
             await prisma.tokenAccount.upsert({
               where: { userId: account.metadata.userId },
@@ -54,35 +59,34 @@ export async function POST(request: NextRequest) {
         break;
       }
 
-      // 充值成功
       case "checkout.session.completed": {
-        const session = event.data.object as any;
-        if (session.metadata?.type === "topup" && session.metadata?.userId) {
+        const session = event.data.object as {
+          id: string;
+          amount_total: number | null;
+          metadata?: Record<string, string>;
+          payment_status?: string;
+        };
+        const meta = session.metadata || {};
+
+        if (meta.type === "topup" && meta.userId) {
           const amountCents = session.amount_total || 0;
+          if (amountCents > 0) {
+            await applyStripeTopupCredit({
+              userId: meta.userId,
+              amountCents,
+              stripeSessionId: session.id,
+            });
+          }
+        }
 
-          const tokenAccount = await prisma.tokenAccount.upsert({
-            where: { userId: session.metadata.userId },
-            create: {
-              userId: session.metadata.userId,
-              balance: amountCents,
-              frozenBalance: 0,
-              totalEarned: amountCents,
-              totalSpent: 0,
-            },
-            update: {
-              balance: { increment: amountCents },
-              totalEarned: { increment: amountCents },
-            },
-          });
-
-          await prisma.tokenTransaction.create({
-            data: {
-              accountId: tokenAccount.id,
-              amount: amountCents,
-              type: "stripe_topup",
-              description: `Stripe 充值 S$${(amountCents / 100).toFixed(2)}`,
-              balanceAfter: tokenAccount.balance,
-            },
+        if (meta.type === "voucher_purchase" && meta.userId && meta.campaignId) {
+          await fulfillVoucherPurchase({
+            customerId: meta.userId,
+            campaignId: meta.campaignId,
+            amountSgd: Number(meta.amountSgd),
+            spendNowSgd: Number(meta.spendNowSgd || 0),
+            sellerId: meta.sellerId || null,
+            stripeSessionId: session.id,
           });
         }
         break;

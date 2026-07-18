@@ -26,6 +26,9 @@ export default async function CampaignsPage() {
     holiday: { zh: "节日", en: "Holiday", icon: "🎉" },
     event: { zh: "活动", en: "Event", icon: "📅" },
     launch: { zh: "新品", en: "Launch", icon: "🚀" },
+    lucky_draw: { zh: "抽奖", en: "Lucky draw", icon: "🎰" },
+    lucky_draw_v2: { zh: "抽奖券", en: "Draw voucher", icon: "🎰" },
+    voucher_sale: { zh: "代金券", en: "Voucher", icon: "🏷️" },
   };
 
   const statusBadge: Record<string, { variant: "green" | "orange" | "slate"; zh: string; en: string }> = {

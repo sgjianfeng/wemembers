@@ -24,10 +24,10 @@ export default async function BusinessLayout({ children }: { children: React.Rea
   ];
 
   const staffTabs = [
-    { icon: "📊", label: "Overview", href: "/business" },
-    { icon: "📷", label: "Redeem", href: "/business/scan" },
-    { icon: "👥", label: "Members", href: "/business/members" },
-    { icon: "🏪", label: "Store", href: "/business/store" },
+    { icon: "📊", label: t("business.tabs.staffOverview", lang as "zh" | "en"), href: "/business" },
+    { icon: "📷", label: t("business.tabs.redeem", lang as "zh" | "en"), href: "/business/scan" },
+    { icon: "👥", label: t("business.tabs.members", lang as "zh" | "en"), href: "/business/members" },
+    { icon: "🏪", label: t("business.tabs.store", lang as "zh" | "en"), href: "/business/store" },
   ];
 
   return (

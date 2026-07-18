@@ -25,6 +25,19 @@ export default async function StorePage({ params }: { params: Promise<{ slug: st
     orderBy: { createdAt: "desc" },
   });
 
+  const drawCampaigns = await prisma.campaign.findMany({
+    where: {
+      businessId: store.business.id,
+      type: { in: ["lucky_draw_v2", "voucher_sale"] },
+      status: "active",
+      endDate: { gt: new Date() },
+      slug: { not: null },
+    },
+    orderBy: { endDate: "asc" },
+    take: 10,
+    select: { id: true, name: true, slug: true, description: true, color: true, endDate: true },
+  });
+
   const session = await getSession();
   const isLoggedIn = !!session;
 
@@ -43,17 +56,60 @@ export default async function StorePage({ params }: { params: Promise<{ slug: st
 
       <div className="px-4 -mt-4 pb-8">
         <div className="bg-white rounded-t-2xl pt-5 px-1">
+          {drawCampaigns.length > 0 && (
+            <div className="px-3 mb-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-semibold text-slate-900">
+                  {t("store.public.drawTitle", lang)}
+                </h2>
+                <span className="text-xs text-slate-400">{drawCampaigns.length}</span>
+              </div>
+              <div className="space-y-2">
+                {drawCampaigns.map((camp) => (
+                  <Link key={camp.id} href={`/voucher/${camp.slug}`}>
+                    <Card
+                      className="hover:border-[#1A6EFF]/30 border-l-4"
+                      style={{ borderLeftColor: camp.color || "#1A6EFF" }}
+                    >
+                      <CardContent className="p-3 flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 truncate">{camp.name}</p>
+                          {camp.description && (
+                            <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">{camp.description}</p>
+                          )}
+                          <p className="text-[10px] text-slate-400 mt-1">
+                            {t("store.public.until", lang)}
+                            {camp.endDate.toLocaleDateString(lang === "zh" ? "zh-CN" : "en-SG")}
+                          </p>
+                        </div>
+                        <span className="px-3 py-1 bg-[#1A6EFF] text-white text-[10px] rounded-full shrink-0">
+                          {t("store.public.buy", lang)}
+                        </span>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between px-3 mb-3">
             <h2 className="text-base font-semibold text-slate-900">{t("store.public.title", lang)}</h2>
-            <span className="text-xs text-slate-400">{coupons.length}{lang === "zh" ? "张" : ""}</span>
+            <span className="text-xs text-slate-400">
+              {coupons.length}
+              {t("store.public.countUnit", lang)}
+            </span>
           </div>
 
           {coupons.length > 0 ? (
             <div className="space-y-2 px-3">
               {coupons.map((c) => {
-                const displayValue = c.type === "percentage" ? `${(c.valueCents / 100).toFixed(0)}${lang === "zh" ? "折" : "% off"}`
-                  : c.type === "free_item" ? (lang === "zh" ? "免单" : "Free")
-                  : `S$${(c.valueCents / 100).toFixed(0)}`;
+                const displayValue =
+                  c.type === "percentage"
+                    ? `${(c.valueCents / 100).toFixed(0)}${t("store.public.percentOff", lang)}`
+                    : c.type === "free_item"
+                      ? t("store.public.free", lang)
+                      : `S$${(c.valueCents / 100).toFixed(0)}`;
                 const soldOut = c.remainingQuantity !== null && c.remainingQuantity <= 0;
                 return (
                   <Link key={c.id} href={`/coupons/${c.id}`}>
@@ -65,9 +121,17 @@ export default async function StorePage({ params }: { params: Promise<{ slug: st
                             <Badge variant="slate" size="sm">{c.pointsRequired}⭐</Badge>
                           </div>
                           <p className="text-sm font-medium text-slate-900 mt-1">{c.title}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">{lang === "zh" ? "剩余" : "Left"} {c.remainingQuantity ?? "∞"} {lang === "zh" ? "张" : ""} · {daysUntil(c.validUntil)}{lang === "zh" ? "天" : "d"}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            {t("store.public.left", lang)} {c.remainingQuantity ?? "∞"}{" "}
+                            {t("store.public.countUnit", lang)} · {daysUntil(c.validUntil)}
+                            {t("store.public.daysUnit", lang)}
+                          </p>
                         </div>
-                        {!soldOut && <span className="px-3 py-1 bg-[#1A6EFF] text-white text-[10px] rounded-full shrink-0">{lang === "zh" ? "领取" : "Claim"}</span>}
+                        {!soldOut && (
+                          <span className="px-3 py-1 bg-[#1A6EFF] text-white text-[10px] rounded-full shrink-0">
+                            {t("store.public.claim", lang)}
+                          </span>
+                        )}
                       </CardContent>
                     </Card>
                   </Link>
@@ -75,7 +139,10 @@ export default async function StorePage({ params }: { params: Promise<{ slug: st
               })}
             </div>
           ) : (
-            <div className="text-center py-16"><p className="text-4xl mb-3">🎫</p><p className="text-sm text-slate-400">{t("store.public.noCoupons", lang) || (lang === "zh" ? "暂无可领取代金券" : "No vouchers available")}</p></div>
+            <div className="text-center py-16">
+              <p className="text-4xl mb-3">🎫</p>
+              <p className="text-sm text-slate-400">{t("store.public.noCoupons", lang)}</p>
+            </div>
           )}
         </div>
 

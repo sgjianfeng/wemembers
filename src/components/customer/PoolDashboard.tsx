@@ -5,7 +5,9 @@ import { Badge } from "@/components/ui/Badge";
 import { useLang } from "@/components/i18n/LanguageProvider";
 
 export interface CountdownItem {
+  prizeKey?: string;
   prizeName: string;
+  prizeIcon?: string;
   targetCents: number;
   currentCents: number;
   progress: number;
@@ -18,7 +20,11 @@ interface PoolDashboardProps {
   countdowns: CountdownItem[];
   instantPoolSgd: string;
   dailyAvgVelocity: number; // in cents
-  pool?: { instantPool?: { sgd?: string }; midPool?: { sgd?: string }; grandPool?: { sgd?: string } };
+  pool?: {
+    instantPool?: { sgd?: string };
+    deferredPool?: { sgd?: string };
+    grandPool?: { sgd?: string };
+  };
 }
 
 function formatSgd(cents: number): string {
@@ -30,8 +36,8 @@ function formatSgd(cents: number): string {
 }
 
 const PRIZE_ICONS: Record<string, string> = {
+  iPad: "📲",
   iPhone: "📱",
-  MacBook: "💻",
   BYD: "🚗",
 };
 
@@ -41,7 +47,11 @@ function CountdownCard({ item }: { item: CountdownItem }) {
   const current = Math.max(0, item.currentCents);
   const target = Math.max(1, item.targetCents);
   const pct = Math.min(100, Math.max(0, (current / target) * 100));
-  const icon = PRIZE_ICONS[item.prizeName] || "🎁";
+  const icon =
+    item.prizeIcon ||
+    PRIZE_ICONS[item.prizeName] ||
+    PRIZE_ICONS[item.prizeKey || ""] ||
+    "🎁";
 
   // Days display — cap absurd predictions
   let daysLabel: string;

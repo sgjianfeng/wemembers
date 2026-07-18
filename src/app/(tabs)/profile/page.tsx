@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { formatPoints } from "@/lib/utils";
 import Link from "next/link";
 import { ProfileReferral } from "./ProfileReferral";
+import { ProfileEditName } from "./ProfileEditName";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 import { t } from "@/lib/i18n";
 import { cookies } from "next/headers";
 
@@ -63,6 +65,7 @@ export default async function ProfilePage() {
               <Badge variant="slate" size="sm" className="!bg-white/20 !text-white">{tier.label}</Badge>
             </div>
             <p className="text-sm text-white/70 mt-0.5">⭐ {formatPoints(user.pointsBalance)} {t("profile.points", lang)}</p>
+            <ProfileEditName initialName={user.displayName || ""} />
           </div>
         </div>
 
@@ -137,10 +140,12 @@ export default async function ProfilePage() {
       )}
 
       {/* 登出 */}
-      <div className="px-4 mt-6 pb-4">
-        <form action="/auth/login" className="text-center">
-          <span className="text-xs text-slate-300">{t("profile.version", lang)}</span>
-        </form>
+      <div className="px-4 mt-6 pb-4 space-y-3">
+        <LogoutButton
+          label={lang === "en" ? "Log out" : "退出登录"}
+          variant="outline"
+        />
+        <p className="text-center text-xs text-slate-300">{t("profile.version", lang)}</p>
       </div>
     </div>
   );

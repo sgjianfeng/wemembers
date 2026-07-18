@@ -10,7 +10,7 @@ export default function WithdrawPage() {
   const router = useRouter();
   const [balance, setBalance] = useState(0);
   const [amount, setAmount] = useState("");
-  const [method, setMethod] = useState("wechat");
+  const [method, setMethod] = useState("paynow");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success?: boolean; error?: string; message?: string } | null>(null);
 
@@ -66,14 +66,16 @@ export default function WithdrawPage() {
           />
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">到账方式</label>
+            <label className="block text-sm font-medium text-slate-700 mb-2">到账方式（申请后人工打款）</label>
             <div className="flex gap-2">
               {[
+                { key: "paynow", label: "PayNow", icon: "🇸🇬" },
+                { key: "bank", label: "银行转账", icon: "🏦" },
                 { key: "wechat", label: "微信", icon: "💬" },
-                { key: "alipay", label: "支付宝", icon: "🔵" },
               ].map((m) => (
                 <button
                   key={m.key}
+                  type="button"
                   onClick={() => setMethod(m.key)}
                   className={`flex-1 py-3 rounded-xl border-2 text-sm font-medium transition-colors ${
                     method === m.key ? "border-green-400 bg-green-50 text-green-700" : "border-slate-100 text-slate-400"
@@ -83,6 +85,9 @@ export default function WithdrawPage() {
                 </button>
               ))}
             </div>
+            <p className="text-[10px] text-slate-400 mt-2 text-center">
+              MVP：先扣推广余额并记录申请，财务按方式人工到账（非自动 Stripe）
+            </p>
           </div>
 
           {result && (

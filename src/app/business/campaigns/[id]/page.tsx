@@ -7,10 +7,12 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import Link from "next/link";
 import { CampaignActions } from "./CampaignActions";
+import { CampaignShare } from "./CampaignShare";
 import { DrawButton } from "./DrawButton";
 import { PrizeEditor } from "./PrizeEditor";
 import { ManualEntryButton } from "./ManualEntryButton";
 import { timeAgo } from "@/lib/utils";
+import { parseRulesSnapshot, getTemplate } from "@/lib/templates";
 
 const typeIcons: Record<string, string> = {
   promotion: "🏷️",
@@ -19,6 +21,8 @@ const typeIcons: Record<string, string> = {
   event: "📅",
   launch: "🚀",
   lucky_draw: "🎰",
+  lucky_draw_v2: "🎰",
+  voucher_sale: "🏷️",
 };
 
 const typeLabels: Record<string, Record<string, string>> = {
@@ -28,6 +32,8 @@ const typeLabels: Record<string, Record<string, string>> = {
   event: { zh: "活动", en: "Event" },
   launch: { zh: "新品", en: "New Launch" },
   lucky_draw: { zh: "幸运抽奖", en: "Lucky Draw" },
+  lucky_draw_v2: { zh: "抽奖券", en: "Draw voucher" },
+  voucher_sale: { zh: "代金券", en: "Voucher sale" },
 };
 
 const campaignStatusLabels: Record<string, Record<string, string>> = {
@@ -96,6 +102,15 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
   const icon = typeIcons[campaign.type] || typeIcons.promotion;
   const typeLabel = typeLabels[campaign.type] || typeLabels.promotion;
   const cs = campaignStatusLabels[campaign.status] || campaignStatusLabels.draft;
+  const rules = parseRulesSnapshot(campaign.rulesSnapshot);
+  const tplMeta = campaign.templateId ? getTemplate(campaign.templateId) : undefined;
+
+  let partnerIds: string[] = [];
+  try {
+    partnerIds = JSON.parse(campaign.partnerIds || "[]");
+  } catch {
+    /* ignore */
+  }
 
   return (
     <div className="pb-4">
@@ -120,10 +135,69 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
         </div>
         {tags.length > 0 && (
           <div className="flex gap-1 flex-wrap mt-2">
-            {tags.map((t) => <span key={t} className="px-2 py-0.5 bg-white/60 text-slate-600 text-[10px] rounded-full">{t}</span>)}
+            {tags.map((tag) => <span key={tag} className="px-2 py-0.5 bg-white/60 text-slate-600 text-[10px] rounded-full">{tag}</span>)}
           </div>
         )}
       </div>
+
+      {/* Share + print QR for draw / voucher campaigns */}
+      {campaign.slug &&
+        (campaign.type === "lucky_draw_v2" || campaign.type === "voucher_sale") && (
+          <div className="px-4 mt-4">
+            <CampaignShare
+              slug={campaign.slug}
+              campaignName={campaign.name}
+              sellerId={session.userId}
+            />
+          </div>
+        )}
+
+      {/* Template rules snapshot */}
+      {rules && (
+        <div className="px-4 mt-4">
+          <Card className="border-slate-100 bg-slate-50">
+            <CardContent className="p-3 space-y-1">
+              <p className="text-xs font-semibold text-slate-700">
+                {tplMeta ? `${tplMeta.icon} ${lang === "en" ? tplMeta.nameEn : tplMeta.nameZh}` : "模板规则"}
+              </p>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                {lang === "en" ? (
+                  <>
+                    Seller {rules.sellerCommissionPercent}% of paid
+                    {rules.kind === "draw" || campaign.type === "lucky_draw_v2"
+                      ? ` · Redeem ${campaign.budgetPercent ?? 20}% pot → seller ${rules.sellerCommissionPercent}% + platform ${rules.platformFeePercent}% + pool (full balance at buy)`
+                      : rules.prizePoolPercent > 0
+                        ? ` · Prize pool ${rules.prizePoolPercent}%`
+                        : " · No prize pool"}
+                    {rules.allowDiscount ? ` · Discount ${rules.discountPercent}%` : " · No discount"}
+                    {rules.shareSellingEnabled ? " · Share selling on" : ""}
+                    {` · Tiers: ${rules.enabledTiers.map((a) => `S$${a}`).join(", ")}`}
+                    {partnerIds.length > 0 ? ` · ${partnerIds.length} partner(s)` : ""}
+                  </>
+                ) : (
+                  <>
+                    卖家佣金 {rules.sellerCommissionPercent}%（实付）
+                    {rules.kind === "draw" || campaign.type === "lucky_draw_v2"
+                      ? ` · 核销 ${campaign.budgetPercent ?? 20}% 分账：卖家 ${rules.sellerCommissionPercent}% + 平台 ${rules.platformFeePercent}% + 奖池（购券余额全额，未消费无佣金）`
+                      : rules.prizePoolPercent > 0
+                        ? ` · 奖池 ${rules.prizePoolPercent}%`
+                        : " · 无奖池"}
+                    {rules.allowDiscount ? ` · 折扣 ${rules.discountPercent}%` : " · 不打折"}
+                    {rules.shareSellingEnabled ? " · 分享卖货开" : ""}
+                    {` · 面额 ${rules.enabledTiers.map((a) => `S$${a}`).join(" / ")}`}
+                    {partnerIds.length > 0 ? ` · 伙伴 ${partnerIds.length} 家` : ""}
+                  </>
+                )}
+              </p>
+              {campaign.slug && (
+                <p className="text-[11px] text-slate-400">
+                  slug: <span className="font-mono text-slate-600">{campaign.slug}</span>
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="px-4 mt-4">

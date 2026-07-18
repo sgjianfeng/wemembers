@@ -37,23 +37,33 @@ export function TopHeader({
 
   const textClass = isTransparent ? "text-white" : "text-slate-900";
 
-  // ── Left: Back button (default/transparent) or brand (landing) ──
+  // ── Left: Back button (default/transparent) or brand lockup (landing) ──
   const leftSlot = isLanding ? (
     <Link
       href="/"
-      className={cn(
-        "flex items-center gap-1.5 font-bold text-sm shrink-0",
-        textClass
-      )}
+      className="group flex items-center gap-2 min-w-0 shrink-0"
+      aria-label="WeMembers"
     >
-      <Image
-        src="/logo.png"
-        alt="WeMembers"
-        width={80}
-        height={24}
-        className="h-6 w-auto"
-        priority
-      />
+      {/* 圆形 W 标 — 主视觉，略大于字标 */}
+      <span className="flex items-center justify-center shrink-0 rounded-full bg-[#240444] p-0.5 shadow-md ring-1 ring-white/25">
+        <Image
+          src="/logo-mark.png"
+          alt=""
+          width={36}
+          height={36}
+          className="h-8 w-8 object-contain"
+          priority
+        />
+      </span>
+      {/* 字标：副级，略小一号 */}
+      <span className="flex flex-col justify-center min-w-0 leading-none gap-0.5">
+        <span className="text-[12px] font-semibold tracking-tight text-white truncate">
+          WeMembers
+        </span>
+        <span className="text-[10px] font-semibold tracking-[0.12em] text-amber-300">
+          .store
+        </span>
+      </span>
     </Link>
   ) : (
     <button
@@ -104,7 +114,7 @@ export function TopHeader({
 
   return (
     <div className={containerClass}>
-      <div className="flex items-center h-11 px-3">
+      <div className={cn("flex items-center px-3", isLanding ? "h-12" : "h-11")}>
         {leftSlot}
         {centerSlot}
         {rightSlot}

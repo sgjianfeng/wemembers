@@ -5,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { formatMoney, timeAgo } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { cookies } from "next/headers";
+import { WithdrawButton } from "./WithdrawButton";
+import { VoucherShowQr } from "./VoucherShowQr";
 
 export default async function BalancePage() {
   const session = await getSession();
@@ -16,7 +18,13 @@ export default async function BalancePage() {
   // ── 所有有效券的余额汇总 ──
   const activeVouchers = await prisma.voucher.findMany({
     where: { customerId: session.userId, status: "active" },
-    select: { balanceCents: true, id: true },
+    select: {
+      balanceCents: true,
+      id: true,
+      amountCents: true,
+      campaign: { select: { name: true, slug: true, type: true } },
+    },
+    orderBy: { createdAt: "desc" },
   });
   const totalBalance = activeVouchers.reduce(
     (sum, v) => sum + v.balanceCents,
@@ -72,12 +80,77 @@ export default async function BalancePage() {
               S${formatMoney(totalBalance)}
             </p>
             <p className="text-xs text-white/60 mt-1">
-              {activeVouchers.length}{" "}
-              {lang === "en" ? "voucher(s)" : "张券"}
+              {t("balance.voucherCount", lang, { count: activeVouchers.length })}
+            </p>
+            <p className="text-[11px] text-white/90 mt-2 font-medium">
+              {t("balance.trustLine", lang)}
             </p>
           </CardContent>
         </Card>
       </div>
+
+      {/* 可核销的券列表 */}
+      {activeVouchers.length > 0 && (
+        <div className="px-4 mt-6">
+          <h2 className="text-sm font-semibold text-slate-900 mb-3">
+            {t("balance.myVouchers", lang)}
+          </h2>
+          <div className="space-y-2">
+            {activeVouchers.map((v) => {
+              const isDraw = v.campaign?.type === "lucky_draw_v2";
+              return (
+              <Card key={v.id}>
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span
+                          className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                            isDraw
+                              ? "bg-orange-50 text-orange-700"
+                              : "bg-blue-50 text-blue-700"
+                          }`}
+                        >
+                          {isDraw
+                            ? t("balance.badge.draw", lang)
+                            : t("balance.badge.discount", lang)}
+                        </span>
+                        <p className="text-sm font-medium text-slate-900 truncate">
+                          {v.campaign?.name || t("seller.type.draw", lang)}
+                        </p>
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-mono break-all mt-0.5">
+                        {t("balance.voucherId", lang)}: {v.id}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-amber-600">
+                        S${formatMoney(v.balanceCents)}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        {t("balance.face", lang)} S${formatMoney(v.amountCents)}
+                      </p>
+                    </div>
+                  </div>
+                  {isDraw && (
+                    <p className="text-[10px] text-slate-400 mt-2">
+                      {t("balance.drawWeightHint", lang)}
+                    </p>
+                  )}
+                  <VoucherShowQr voucherId={v.id} lang={lang} />
+                  <WithdrawButton
+                    voucherId={v.id}
+                    balanceSgd={formatMoney(v.balanceCents)}
+                    lang={lang}
+                    mode={isDraw ? "draw" : "voucher"}
+                  />
+                </CardContent>
+              </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 消费记录 */}
       <div className="px-4 mt-6">

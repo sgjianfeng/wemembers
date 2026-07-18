@@ -15,12 +15,15 @@ export async function POST(request: NextRequest) {
   }
 
   const origin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const isBiz = session.role === "business";
+  const successPath = isBiz ? "/business/tokens?topup=success" : "/my-tokens?topup=success";
+  const cancelPath = isBiz ? "/business/tokens?topup=cancel" : "/my-tokens?topup=cancel";
 
   const url = await createCheckoutSession({
     userId: session.userId,
     amountSgd,
-    successUrl: `${origin}/business/tokens?topup=success`,
-    cancelUrl: `${origin}/business/tokens?topup=cancel`,
+    successUrl: `${origin}${successPath}`,
+    cancelUrl: `${origin}${cancelPath}`,
   });
 
   return NextResponse.json({ data: { url } });

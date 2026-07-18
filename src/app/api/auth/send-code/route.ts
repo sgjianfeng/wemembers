@@ -9,9 +9,11 @@ import { sendVerificationCode } from "@/lib/email";
 // 自动判断 email 还是 phone
 export async function POST(request: NextRequest) {
   try {
-    const { contact, purpose } = await request.json();
+    const body = await request.json();
+    const purpose = body.purpose as string;
+    const raw = typeof body.contact === "string" ? body.contact.trim() : "";
 
-    if (!contact || !purpose) {
+    if (!raw || !purpose) {
       return NextResponse.json({ error: "缺少参数" }, { status: 400 });
     }
 
@@ -19,8 +21,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "无效的用途" }, { status: 400 });
     }
 
-    // 判断是邮箱还是手机号
-    const isEmail = contact.includes("@");
+    // 判断是邮箱还是手机号；邮箱统一小写，避免大小写匹配失败
+    const isEmail = raw.includes("@");
+    const contact = isEmail ? raw.toLowerCase() : raw.replace(/\s+/g, "");
 
     // 检查是否已注册
     if (purpose === "register") {

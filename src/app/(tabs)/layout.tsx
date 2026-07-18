@@ -5,13 +5,12 @@ import { BottomNav } from "@/components/ui/BottomNav";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
-  const { lang } = useLang();
-
+  const { t } = useLang();
   const tabs = [
-    { icon: "🏠", label: "首页", href: "/home" },
-    { icon: "🎫", label: "券包", href: "/wallet" },
-    { icon: "💳", label: lang === "zh" ? "余额" : "Balance", href: "/balance" },
-    { icon: "👤", label: "我的", href: "/profile" },
+    { icon: "🏠", label: t("tabs.home"), href: "/home" },
+    { icon: "🎫", label: t("tabs.wallet"), href: "/wallet" },
+    { icon: "💳", label: t("tabs.balance"), href: "/balance" },
+    { icon: "👤", label: t("tabs.profile"), href: "/profile" },
   ];
 
   return (

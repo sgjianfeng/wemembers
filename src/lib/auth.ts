@@ -6,7 +6,7 @@ const JWT_SECRET = new TextEncoder().encode(
 );
 
 const COOKIE_NAME = "gwm_token";
-const EXPIRES_IN = "7d";
+const DAY = 60 * 60 * 24;
 
 export type JWTPayload = {
   userId: string;
@@ -14,11 +14,42 @@ export type JWTPayload = {
   storeId?: string;
 };
 
-export async function signToken(payload: JWTPayload): Promise<string> {
+export type AuthRole = JWTPayload["role"];
+
+/**
+ * 按角色控制会话时长（安全 vs 便利）：
+ * - 客户：默认 30 天，勾选「记住」→ 180 天
+ * - 商家/店员：默认 7 天，勾选「记住」→ 30 天
+ * - 管理员：固定 7 天（仅验证码，不可拉长）
+ */
+export function getSessionDuration(
+  role: AuthRole,
+  rememberMe = false
+): { maxAgeSec: number; expiresIn: string; labelDays: number } {
+  if (role === "admin") {
+    return { maxAgeSec: 7 * DAY, expiresIn: "7d", labelDays: 7 };
+  }
+  if (role === "business" || role === "staff") {
+    if (rememberMe) {
+      return { maxAgeSec: 30 * DAY, expiresIn: "30d", labelDays: 30 };
+    }
+    return { maxAgeSec: 7 * DAY, expiresIn: "7d", labelDays: 7 };
+  }
+  // customer
+  if (rememberMe) {
+    return { maxAgeSec: 180 * DAY, expiresIn: "180d", labelDays: 180 };
+  }
+  return { maxAgeSec: 30 * DAY, expiresIn: "30d", labelDays: 30 };
+}
+
+export async function signToken(
+  payload: JWTPayload,
+  expiresIn = "7d"
+): Promise<string> {
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime(EXPIRES_IN)
+    .setExpirationTime(expiresIn)
     .sign(JWT_SECRET);
 }
 
@@ -38,15 +69,29 @@ export async function getSession(): Promise<JWTPayload | null> {
   return verifyToken(token);
 }
 
-export async function setSession(token: string): Promise<void> {
+export async function setSession(
+  token: string,
+  maxAgeSec = 7 * DAY
+): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: maxAgeSec,
   });
+}
+
+/** 登录成功后按角色签发 JWT + Cookie */
+export async function issueSession(
+  payload: JWTPayload,
+  rememberMe = false
+): Promise<{ maxAgeSec: number; expiresIn: string; labelDays: number }> {
+  const duration = getSessionDuration(payload.role, rememberMe);
+  const token = await signToken(payload, duration.expiresIn);
+  await setSession(token, duration.maxAgeSec);
+  return duration;
 }
 
 export async function clearSession(): Promise<void> {
@@ -64,6 +109,9 @@ export async function hashPassword(password: string): Promise<string> {
     .join("");
 }
 
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+export async function verifyPassword(
+  password: string,
+  hash: string
+): Promise<boolean> {
   return (await hashPassword(password)) === hash;
 }

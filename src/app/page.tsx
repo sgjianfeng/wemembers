@@ -54,7 +54,7 @@ const content = {
         icon: "🎰",
         title: "幸运抽奖",
         subtitle: "买券即抽 · 消费留余额 · 大奖倒计时",
-        desc: "买 S$100 代金券 → 消费 S$70 → 剩 S$30 余额。每笔购买即时抽一次奖，100% 中现金。余额消费后再抽一次延迟大奖，赢 iPhone、BYD 海豹！",
+        desc: "买 S$100 代金券 → 消费 S$70 → 剩 S$30 余额。每笔购买即时抽一次奖，100% 中现金。余额消费后再抽一次延迟大奖，赢 iPad、iPhone、BYD 海豹！",
         features: [
           { title: "买券即时抽", body: "每笔购券即时抽奖，100% 中现金奖励" },
           { title: "消费留余额", body: "消费多少扣多少，余额留用下次，灵活省钱" },
@@ -128,7 +128,7 @@ const content = {
         icon: "🎰",
         title: "Lucky Draw",
         subtitle: "Buy & Draw · Spend & Save · Grand Prize",
-        desc: "Buy S$100 voucher → Spend S$70 → Keep S$30 balance. Every purchase triggers an instant draw (100% win rate). After spending the balance, enter the deferred grand prize draw — win iPhones, BYD Seal & more!",
+        desc: "Buy S$100 voucher → Spend S$70 → Keep S$30 balance. Every purchase triggers an instant draw (100% win rate). After spending the balance, enter the deferred grand prize draw — win iPad, iPhone, BYD Seal & more!",
         features: [
           { title: "Instant Draw", body: "Every purchase triggers a draw, 100% cash win rate" },
           { title: "Spend & Save", body: "Pay only what you spend, balance rolls over — flexible savings" },
@@ -200,24 +200,23 @@ export default function HomePage() {
         )}
       </TopHeader>
 
-      {/* ── Hero ── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 px-5 pt-8 pb-24 text-white">
-        {/* Decorative blobs */}
-        <div className="absolute top-[-100px] right-[-80px] w-72 h-72 bg-blue-500/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-[-60px] left-[-60px] w-64 h-64 bg-violet-500/15 rounded-full blur-3xl" />
+      {/* ── Hero（紧凑） ── */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 px-4 pt-4 pb-14 text-white">
+        <div className="absolute top-[-80px] right-[-60px] w-56 h-56 bg-blue-500/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-[-40px] left-[-40px] w-48 h-48 bg-violet-500/15 rounded-full blur-3xl" />
 
         <div className="relative z-10 max-w-sm mx-auto text-center">
-          <span className="inline-block px-3 py-1 rounded-full bg-white/10 text-xs font-medium text-white/80 backdrop-blur mb-6">
+          <span className="inline-block px-2.5 py-0.5 rounded-full bg-white/10 text-[10px] font-medium text-white/75 backdrop-blur mb-3">
             {t.hero.badge}
           </span>
 
           {/* ── Role Tabs ── */}
-          <div className="flex gap-1.5 justify-center mb-6">
+          <div className="flex gap-1 justify-center mb-3">
             <button
               onClick={() => switchRoleView("consumer")}
-              className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${
                 roleView === "consumer"
-                  ? "bg-white text-slate-900 shadow-lg"
+                  ? "bg-white text-slate-900 shadow-md"
                   : "bg-white/10 text-white/60 hover:bg-white/20"
               }`}
             >
@@ -226,9 +225,9 @@ export default function HomePage() {
             <button
               data-role-switch="business"
               onClick={() => switchRoleView("business")}
-              className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${
                 roleView === "business"
-                  ? "bg-white text-slate-900 shadow-lg"
+                  ? "bg-white text-slate-900 shadow-md"
                   : "bg-white/10 text-white/60 hover:bg-white/20"
               }`}
             >
@@ -238,28 +237,28 @@ export default function HomePage() {
 
           {roleView === "business" ? (
             <>
-              <h1 className="text-4xl font-extrabold tracking-tight mb-3">
+              <h1 className="text-3xl font-extrabold tracking-tight mb-1.5">
                 <span className="bg-gradient-to-r from-blue-400 to-sky-300 bg-clip-text text-transparent">
                   {t.hero.title}
                 </span>
               </h1>
-              <p className="text-xl font-semibold text-white/90 mb-2">{t.hero.subtitle}</p>
-              <p className="text-sm text-white/50 mb-8">{t.hero.desc}</p>
+              <p className="text-base font-semibold text-white/90 mb-1">{t.hero.subtitle}</p>
+              <p className="text-xs text-white/50 mb-4">{t.hero.desc}</p>
             </>
           ) : (
             <>
-              <h1 className="text-4xl font-extrabold tracking-tight mb-3">
+              <h1 className="text-3xl font-extrabold tracking-tight mb-1.5 leading-tight">
                 <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
                   {isZh ? "🎰 买券抽大奖" : "🎰 Buy & Win Big"}
                 </span>
               </h1>
-              <p className="text-xl font-semibold text-white/90 mb-2">
+              <p className="text-sm font-semibold text-white/90 mb-1">
                 {isZh ? "100% 中奖 · 即时到账 · 延迟赢大奖" : "100% Win · Instant Cash · Grand Prize"}
               </p>
-              <p className="text-sm text-white/50 mb-8">
+              <p className="text-xs text-white/50 mb-4 leading-snug">
                 {isZh
-                  ? "买券抽一次即时奖，余额消费后再抽一次延迟大奖！"
-                  : "Instant draw on purchase, grand prize draw after spending!"}
+                  ? "买券抽一次即时奖，余额到店花；核销再进大奖池"
+                  : "Buy → instant win + spendable balance · redeems fund grand prizes"}
               </p>
             </>
           )}
@@ -267,29 +266,29 @@ export default function HomePage() {
           {session ? (
             <Link
               href={session.role === "business" ? "/business" : "/home"}
-              className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-slate-900 rounded-full font-semibold text-sm shadow-xl shadow-black/20 hover:bg-white/95 transition-all active:scale-[0.98]"
+              className="inline-flex items-center gap-2 px-7 py-2.5 bg-white text-slate-900 rounded-full font-semibold text-sm shadow-lg shadow-black/20 hover:bg-white/95 transition-all active:scale-[0.98]"
             >
               {session.role === "business" ? t.nav.dashboard : t.nav.home}
-              <span className="text-lg">→</span>
+              <span className="text-base">→</span>
             </Link>
           ) : roleView === "consumer" ? (
             <Link
               href="/auth/register"
-              className="inline-flex items-center justify-center gap-2 px-10 py-3.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full font-bold text-sm shadow-xl shadow-orange-300/30 hover:from-amber-500 hover:to-orange-600 transition-all active:scale-[0.98]"
+              className="inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-300/30 hover:from-amber-500 hover:to-orange-600 transition-all active:scale-[0.98]"
             >
               🎰 {isZh ? "免费注册，立即抽奖" : "Sign Up Free & Win Now"}
             </Link>
           ) : (
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
               <Link
                 href="/auth/register"
-                className="inline-flex items-center justify-center px-8 py-3.5 bg-white text-slate-900 rounded-full font-semibold text-sm shadow-xl shadow-black/20 hover:bg-white/95 transition-all active:scale-[0.98]"
+                className="inline-flex items-center justify-center px-7 py-2.5 bg-white text-slate-900 rounded-full font-semibold text-sm shadow-lg shadow-black/20 hover:bg-white/95 transition-all active:scale-[0.98]"
               >
                 {t.hero.cta}
               </Link>
               <Link
                 href="/auth/login"
-                className="inline-flex items-center justify-center px-8 py-3.5 text-white/70 rounded-full font-medium text-sm border border-white/15 hover:bg-white/10 hover:text-white transition-all"
+                className="inline-flex items-center justify-center px-7 py-2.5 text-white/70 rounded-full font-medium text-sm border border-white/15 hover:bg-white/10 hover:text-white transition-all"
               >
                 {t.nav.login}
               </Link>
@@ -443,16 +442,16 @@ export default function HomePage() {
 // Prize card config — real product images from Unsplash
 const GRAND_PRIZES = [
   {
+    key: "iPad", emoji: "📲", labelZh: "iPad", labelEn: "iPad",
+    targetSgd: "3,000", targetCents: 300000,
+    img: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=600&h=400&fit=crop&auto=format",
+    color: "from-slate-600 to-slate-800", accent: "#6e6e73",
+  },
+  {
     key: "iPhone", emoji: "📱", labelZh: "iPhone 17", labelEn: "iPhone 17",
     targetSgd: "5,000", targetCents: 500000,
     img: "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=600&h=400&fit=crop&auto=format",
     color: "from-slate-700 to-slate-900", accent: "#0071e3",
-  },
-  {
-    key: "MacBook", emoji: "💻", labelZh: "MacBook Pro", labelEn: "MacBook Pro",
-    targetSgd: "10,000", targetCents: 1000000,
-    img: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&h=400&fit=crop&auto=format",
-    color: "from-slate-800 to-gray-900", accent: "#6e6e73",
   },
   {
     key: "BYD", emoji: "🚗", labelZh: "BYD 海豹", labelEn: "BYD Seal",
@@ -508,39 +507,84 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
 
   return (
     <>
-      {/* ══════ Section 1 — Scenario Demo Card ══════ */}
-      <section className="relative -mt-6 px-5 pb-5">
+      {/* ══════ Section 1 — Scenario Demo（更清晰的三步） ══════ */}
+      <section className="relative -mt-5 px-4 pb-4">
         <div className="max-w-sm mx-auto">
-          <div className="bg-white rounded-2xl shadow-lg border border-amber-100 overflow-hidden">
-            {/* Demo banner */}
-            <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2.5 flex items-center justify-center gap-2">
-              <span className="text-white text-xs font-bold tracking-wider uppercase">
-                {isZh ? "💡 场景演示" : "💡 HOW IT WORKS"}
+          <div className="bg-white rounded-2xl shadow-md border border-amber-100/80 overflow-hidden">
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1.5 flex items-center justify-center">
+              <span className="text-white text-[11px] font-bold tracking-wide">
+                {isZh ? "💡 三步看懂怎么玩" : "💡 How it works in 3 steps"}
               </span>
             </div>
-            <div className="p-4">
-              {/* Flow: spend → ticket → instant prize */}
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex-1 bg-slate-50 rounded-xl p-2.5 text-center">
-                  <p className="text-[10px] text-slate-400 mb-0.5">{isZh ? "消费" : "Spend"}</p>
-                  <p className="text-lg font-extrabold text-slate-900">S$100</p>
+            <div className="p-3 space-y-2.5">
+              {/* Numbered steps — clearer than 3 equal boxes */}
+              <ol className="space-y-2">
+                <li className="flex items-start gap-2.5">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-slate-800 text-white text-[10px] font-bold flex items-center justify-center mt-0.5">
+                    1
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-slate-900">
+                      {isZh ? "PayNow 买预付券" : "PayNow buy prepaid voucher"}
+                      <span className="ml-1.5 text-slate-500 font-bold">S$100</span>
+                    </p>
+                    <p className="text-[10px] text-slate-500 leading-snug">
+                      {isZh
+                        ? "入账余额 = 实付金额，可跨店花，用不完可提现"
+                        : "Balance = amount paid · network spend · withdrawable"}
+                    </p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center mt-0.5">
+                    2
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-slate-900">
+                      {isZh ? "100% 抽即时小奖" : "100% instant small prize"}
+                      <span className="ml-1.5 text-emerald-600 font-bold">🎉 +S$10</span>
+                    </p>
+                    <p className="text-[10px] text-slate-500 leading-snug">
+                      {isZh
+                        ? "购券当场开奖，必中小奖（示例）"
+                        : "Draw right after purchase — guaranteed small win (example)"}
+                    </p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center mt-0.5">
+                    3
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-slate-900">
+                      {isZh ? "到店花余额 · 冲大奖池" : "Spend in-store · fund grand pool"}
+                    </p>
+                    <p className="text-[10px] text-slate-500 leading-snug">
+                      {isZh
+                        ? "核销金额约 20% 进奖池；核销越多，大奖权重越高"
+                        : "~20% of each redeem funds prizes; more spend → higher weight"}
+                    </p>
+                  </div>
+                </li>
+              </ol>
+
+              {/* Mini money strip */}
+              <div className="flex items-center justify-between gap-1 rounded-xl bg-slate-50 border border-slate-100 px-2.5 py-2 text-center">
+                <div className="flex-1">
+                  <p className="text-[9px] text-slate-400">{isZh ? "你付" : "You pay"}</p>
+                  <p className="text-sm font-extrabold text-slate-800">S$100</p>
                 </div>
-                <span className="text-slate-300 text-lg">→</span>
-                <div className="flex-1 bg-blue-50 rounded-xl p-2.5 text-center">
-                  <p className="text-[10px] text-slate-400 mb-0.5">{isZh ? "获券" : "Voucher"}</p>
-                  <p className="text-lg font-extrabold text-blue-600">S$100</p>
+                <span className="text-slate-300 text-xs">→</span>
+                <div className="flex-1">
+                  <p className="text-[9px] text-slate-400">{isZh ? "余额可花" : "Balance"}</p>
+                  <p className="text-sm font-extrabold text-blue-600">S$100</p>
                 </div>
-                <span className="text-slate-300 text-lg">→</span>
-                <div className="flex-1 bg-green-50 rounded-xl p-2.5 text-center border-2 border-green-200">
-                  <p className="text-[10px] text-slate-400 mb-0.5">{isZh ? "即时中奖" : "Instant Win"}</p>
-                  <p className="text-lg font-extrabold text-green-600">🎉 S$10</p>
+                <span className="text-slate-300 text-xs">+</span>
+                <div className="flex-1">
+                  <p className="text-[9px] text-slate-400">{isZh ? "即时奖" : "Instant"}</p>
+                  <p className="text-sm font-extrabold text-emerald-600">S$10</p>
                 </div>
               </div>
-              <p className="text-[11px] text-slate-500 text-center leading-relaxed">
-                {isZh
-                  ? "买 S$100 代金券 → 即时抽中 S$10 现金奖！余额 S$90 继续消费，同时自动进入大奖池"
-                  : "Buy S$100 voucher → win S$10 instantly! S$90 balance + auto-enter grand prize pool"}
-              </p>
             </div>
           </div>
         </div>

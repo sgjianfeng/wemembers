@@ -100,7 +100,7 @@ async function main() {
     {
       name: "🎰 WeM Lucky Draw — VivoCity",
       slug: "wem-lucky",
-      description: "Buy a voucher, win an instant prize, and enter the grand pool for iPhone, MacBook & BYD!",
+      description: "Buy a voucher, win an instant prize, and enter the grand pool for iPad, iPhone & BYD!",
     },
     {
       name: "🎰 WeM Lucky Draw — NEX",
@@ -135,9 +135,9 @@ async function main() {
         endDate: daysFromNow(90),
         drawDate: daysFromNow(90),
         budgetPercent: 20,
-        instantPoolRatio: 10,
-        midPoolRatio: 60,
-        grandPoolRatio: 30,
+        instantPoolRatio: 20,
+        midPoolRatio: 0,
+        grandPoolRatio: 80,
         entryMethod: "receipt",
         receiptMinSpend: 0,
         slug: def.slug,
@@ -145,10 +145,9 @@ async function main() {
         joinable: true,
         storeIds: JSON.stringify([store!.id]),
         voucherTiers: JSON.stringify([
-          { min: 20, max: 20, tier: "small", instantPrizeCap: 2 },
-          { min: 50, max: 50, tier: "medium", instantPrizeCap: 8 },
-          { min: 100, max: 100, tier: "large", instantPrizeCap: 20 },
-          { min: 200, max: 200, tier: "large", instantPrizeCap: 20 },
+          { min: 50, max: 50, tier: "small", instantPrizeCap: 8 },
+          { min: 100, max: 100, tier: "medium", instantPrizeCap: 20 },
+          { min: 200, max: 200, tier: "large", instantPrizeCap: 40 },
         ]),
       },
     });

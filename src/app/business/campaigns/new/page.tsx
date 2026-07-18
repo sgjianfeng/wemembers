@@ -1,74 +1,203 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent } from "@/components/ui/Card";
+import { useLang } from "@/components/i18n/LanguageProvider";
 
-const types = [
-  { key: "promotion", icon: "🏷️", label: "促销活动" },
-  { key: "seasonal", icon: "🌸", label: "季节限定" },
-  { key: "holiday", icon: "🎉", label: "节日活动" },
-  { key: "event", icon: "📅", label: "特别事件" },
-  { key: "launch", icon: "🚀", label: "新品发布" },
-  { key: "lucky_draw", icon: "🎰", label: "幸运抽奖" },
-  { key: "lucky_draw_v2", icon: "🎰", label: "幸运抽奖 V2" },
-];
+interface GrandPrizeEdit {
+  id: string;
+  name: string;
+  icon: string;
+  targetCents: number;
+}
+
+interface TemplateDto {
+  id: string;
+  nameZh: string;
+  nameEn: string;
+  icon: string;
+  taglineZh: string;
+  taglineEn: string;
+  lockedSummaryZh: string;
+  editable: string[];
+  rules: {
+    allowDiscount: boolean;
+    discountPercentDefault: number;
+    discountPercentMin: number;
+    discountPercentMax: number;
+    sellerCommissionPercent: number;
+    platformFeePercent: number;
+    prizePoolPercent: number;
+    shareSellingDefault: boolean;
+    tiers: { amountSgd: number; enabledByDefault: boolean }[];
+  };
+  prizePack?: {
+    grandPrizes?: {
+      id: string;
+      name?: string;
+      nameZh?: string;
+      icon: string;
+      targetCents: number;
+    }[];
+  } | null;
+}
+
+const PRIZE_ICONS = ["📲", "📱", "🚗", "🎁", "💻", "🎧", "⌚", "🎮", "☕", "🍰", "🎫", "🏆", "💎", "🛵"];
+
+interface PartnerOption {
+  id: string;
+  businessName: string | null;
+  name: string | null;
+}
 
 const colors = ["#FF6B35", "#1A6EFF", "#16A34A", "#DC2626", "#8B5CF6", "#F59E0B", "#EC4899", "#06B6D4"];
 
 export default function NewCampaignPage() {
   const router = useRouter();
+  const { t: tr, lang } = useLang();
+  const [templates, setTemplates] = useState<TemplateDto[]>([]);
+  const [partners, setPartners] = useState<PartnerOption[]>([]);
+  const [step, setStep] = useState<"pick" | "configure">("pick");
+  const [templateId, setTemplateId] = useState<string | null>(null);
+
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [type, setType] = useState("promotion");
-  const [color, setColor] = useState("#FF6B35");
+  const [color, setColor] = useState("#1A6EFF");
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
   const [endDate, setEndDate] = useState(() => {
-    const d = new Date(); d.setDate(d.getDate() + 30);
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
     return d.toISOString().slice(0, 10);
   });
-  const [tagInput, setTagInput] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
-  const [drawDate, setDrawDate] = useState(() => {
-    const d = new Date(); d.setDate(d.getDate() + 30);
-    return d.toISOString().slice(0, 10);
-  });
-  const [minSpendCents, setMinSpendCents] = useState(0);
-  const [maxEntries, setMaxEntries] = useState(0);
-  const [entryMethod, setEntryMethod] = useState<"auto" | "receipt">("auto");
-  const [receiptMinSpend, setReceiptMinSpend] = useState(5000);
-  const [ticketsPerUnit, setTicketsPerUnit] = useState(1);
-  const [budgetPercent, setBudgetPercent] = useState(20);
-  const [slug, setSlug] = useState("");
+  const [discountPercent, setDiscountPercent] = useState(20);
+  const [enabledTiers, setEnabledTiers] = useState<number[]>([50, 100, 200]);
+  const [shareSelling, setShareSelling] = useState(true);
+  const [selectedPartners, setSelectedPartners] = useState<string[]>([]);
+  const [grandPrizes, setGrandPrizes] = useState<GrandPrizeEdit[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  function addTag() {
-    const t = tagInput.trim();
-    if (t && !tags.includes(t)) { setTags([...tags, t]); setTagInput(""); }
+  const selected = useMemo(
+    () => templates.find((t) => t.id === templateId) || null,
+    [templates, templateId]
+  );
+
+  useEffect(() => {
+    (async () => {
+      const [tr, pr] = await Promise.all([
+        fetch("/api/business/campaigns/templates"),
+        fetch("/api/business/partners"),
+      ]);
+      if (tr.ok) {
+        const j = await tr.json();
+        setTemplates(j.data || []);
+      }
+      if (pr.ok) {
+        const j = await pr.json();
+        const list = j.data || [];
+        // Each row links two businesses; collect both ends (create API ignores self)
+        const opts: PartnerOption[] = [];
+        for (const row of list) {
+          if (row.status && row.status !== "active") continue;
+          if (row.partner?.id) {
+            opts.push({
+              id: row.partner.id,
+              businessName: row.partner.businessName ?? null,
+              name: null,
+            });
+          }
+          if (row.business?.id) {
+            opts.push({
+              id: row.business.id,
+              businessName: row.business.businessName ?? null,
+              name: null,
+            });
+          }
+        }
+        const seen = new Set<string>();
+        setPartners(opts.filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true))));
+      }
+    })();
+  }, []);
+
+  function pickTemplate(t: TemplateDto) {
+    setTemplateId(t.id);
+    setDiscountPercent(t.rules.discountPercentDefault);
+    setEnabledTiers(
+      t.rules.tiers.filter((x) => x.enabledByDefault).map((x) => x.amountSgd)
+    );
+    setShareSelling(t.rules.shareSellingDefault || t.id === "share_boost");
+    setGrandPrizes(
+      (t.prizePack?.grandPrizes || []).map((g) => ({
+        id: g.id,
+        name: g.name || g.nameZh || g.id,
+        icon: g.icon,
+        targetCents: g.targetCents,
+      }))
+    );
+    setName("");
+    setDescription("");
+    setStep("configure");
+    setError("");
+  }
+
+  function updateGrandPrize(index: number, patch: Partial<GrandPrizeEdit>) {
+    setGrandPrizes((prev) =>
+      prev.map((p, i) => (i === index ? { ...p, ...patch } : p))
+    );
+  }
+
+  function toggleTier(amount: number) {
+    setEnabledTiers((prev) =>
+      prev.includes(amount) ? prev.filter((a) => a !== amount) : [...prev, amount].sort((a, b) => a - b)
+    );
+  }
+
+  function togglePartner(id: string) {
+    setSelectedPartners((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   }
 
   async function handleCreate() {
-    if (!name) { setError("请输入活动名称"); return; }
-    setLoading(true); setError("");
+    if (!templateId) return;
+    if (!name.trim()) {
+      setError(tr("campaignNew.errName"));
+      return;
+    }
+    if (enabledTiers.length === 0) {
+      setError(tr("campaignNew.errTiers"));
+      return;
+    }
+    setLoading(true);
+    setError("");
 
     const res = await fetch("/api/business/campaigns", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        name, description, type, color, startDate, endDate, tags,
-        ...(type === "lucky_draw" || type === "lucky_draw_v2" ? {
-          drawDate: drawDate || undefined,
-          minSpendCents: minSpendCents > 0 ? minSpendCents : undefined,
-          maxEntries: maxEntries > 0 ? maxEntries : undefined,
-          entryMethod,
-          receiptMinSpend: entryMethod === "receipt" ? receiptMinSpend : undefined,
-          ticketsPerUnit: entryMethod === "receipt" ? ticketsPerUnit : undefined,
-          budgetPercent: entryMethod === "receipt" ? budgetPercent : undefined,
-          slug: slug || undefined,
-        } : {}),
+        templateId,
+        name: name.trim(),
+        description: description.trim() || undefined,
+        color,
+        startDate,
+        endDate,
+        discountPercent: selected?.rules.allowDiscount ? discountPercent : 0,
+        enabledTiers,
+        shareSellingEnabled: templateId === "share_boost" ? true : shareSelling,
+        partnerIds: selectedPartners,
+        grandPrizes:
+          grandPrizes.length > 0
+            ? grandPrizes.map((g) => ({
+                id: g.id,
+                name: g.name.trim(),
+                icon: g.icon,
+                targetCents: g.targetCents,
+              }))
+            : undefined,
       }),
     });
 
@@ -76,134 +205,337 @@ export default function NewCampaignPage() {
       const d = await res.json();
       router.push(`/business/campaigns/${d.data.id}`);
     } else {
-      const d = await res.json();
-      setError(d.error || "创建失败");
+      const d = await res.json().catch(() => ({}));
+      setError(d.error || tr("campaignNew.errCreate"));
+      setLoading(false);
     }
-    setLoading(false);
+  }
+
+  const selectedTitle =
+    lang === "en"
+      ? selected?.nameEn || selected?.nameZh
+      : selected?.nameZh;
+  const selectedTagline =
+    lang === "en"
+      ? selected?.taglineEn || selected?.taglineZh
+      : selected?.taglineZh;
+
+  if (step === "pick") {
+    return (
+      <div className="pb-8 min-h-screen">
+        <div className="px-4 py-3 border-b border-slate-100">
+          <h1 className="text-lg font-semibold">{tr("campaignNew.pickTitle")}</h1>
+          <p className="text-xs text-slate-400 mt-0.5">{tr("campaignNew.pickSubtitle")}</p>
+        </div>
+
+        <div className="px-4 mt-4 space-y-3">
+          {templates.length === 0 && (
+            <p className="text-sm text-slate-400 text-center py-8">
+              {tr("campaignNew.loadingTemplates")}
+            </p>
+          )}
+          {templates.map((tpl) => (
+            <button
+              key={tpl.id}
+              type="button"
+              onClick={() => pickTemplate(tpl)}
+              className="w-full text-left"
+            >
+              <Card className="hover:border-[#1A6EFF]/40 transition-colors active:scale-[0.99]">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl">{tpl.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {lang === "en" ? tpl.nameEn || tpl.nameZh : tpl.nameZh}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {lang === "en" ? tpl.taglineEn || tpl.taglineZh : tpl.taglineZh}
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                        {tpl.lockedSummaryZh}
+                      </p>
+                    </div>
+                    <span className="text-[#1A6EFF] text-xs font-medium shrink-0">
+                      {tr("campaignNew.useTemplate")}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            </button>
+          ))}
+
+          <p className="text-[11px] text-slate-400 text-center pt-2 px-2">
+            {tr("network.footerHint")}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="pb-4 min-h-screen flex flex-col">
-      <div className="px-4 py-3 border-b border-slate-100">
-        <h1 className="text-lg font-semibold">创建活动</h1>
-        <p className="text-xs text-slate-400 mt-0.5">创建一个活动来批量管理代金券</p>
+      <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setStep("pick")}
+          className="text-sm text-slate-500"
+        >
+          {tr("campaignNew.backTemplates")}
+        </button>
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold truncate">
+            {selected?.icon} {selectedTitle || tr("campaignNew.configure")}
+          </h1>
+          <p className="text-xs text-slate-400 mt-0.5 truncate">{selectedTagline}</p>
+        </div>
       </div>
 
       <div className="flex-1 px-4 mt-4 space-y-4">
-        <Input label="活动名称 *" placeholder="如：夏日清凉节" value={name} onChange={(e) => setName(e.target.value)} />
-        <Input label="活动描述" placeholder="简要描述活动内容" value={description} onChange={(e) => setDescription(e.target.value)} />
+        <Card className="border-blue-100 bg-blue-50/60">
+          <CardContent className="p-3">
+            <p className="text-xs font-medium text-blue-900">{tr("network.bannerTitle")}</p>
+            <p className="text-[11px] text-blue-800/80 mt-1 leading-relaxed">
+              {tr("network.bannerBody")}
+            </p>
+          </CardContent>
+        </Card>
 
-        {/* 类型选择 */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">活动类型</label>
-          <div className="flex gap-1.5 flex-wrap">
-            {types.map((t) => (
-              <button key={t.key} onClick={() => setType(t.key)} className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${type === t.key ? "bg-[#1A6EFF] text-white" : "bg-slate-100 text-slate-500"}`}>
-                {t.icon} {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        {selected && (
+          <Card className="bg-slate-50 border-slate-100">
+            <CardContent className="p-3">
+              <p className="text-[11px] font-medium text-slate-500 mb-1">
+                {tr("campaignNew.lockedRules")}
+              </p>
+              <p className="text-xs text-slate-600 leading-relaxed">{selected.lockedSummaryZh}</p>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* 颜色 */}
+        <Input
+          label={tr("campaignNew.name")}
+          placeholder={tr("campaignNew.namePh")}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <Input
+          label={tr("campaignNew.desc")}
+          placeholder={tr("campaignNew.descPh")}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">标签颜色</label>
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            {tr("campaignNew.color")}
+          </label>
           <div className="flex gap-2">
             {colors.map((c) => (
-              <button key={c} onClick={() => setColor(c)} className={`w-7 h-7 rounded-full transition-transform ${color === c ? "scale-125 ring-2 ring-offset-2 ring-slate-400" : ""}`} style={{ backgroundColor: c }} />
+              <button
+                key={c}
+                type="button"
+                onClick={() => setColor(c)}
+                className={`w-7 h-7 rounded-full transition-transform ${
+                  color === c ? "scale-125 ring-2 ring-offset-2 ring-slate-400" : ""
+                }`}
+                style={{ backgroundColor: c }}
+              />
             ))}
           </div>
         </div>
 
-        {/* 日期 */}
         <div className="grid grid-cols-2 gap-3">
-          <Input label="开始日期" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          <Input label="结束日期" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <Input
+            label={tr("campaignNew.startDate")}
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
+          <Input
+            label={tr("campaignNew.endDate")}
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
         </div>
 
-        {/* 抽奖专用设置 */}
-        {(type === "lucky_draw" || type === "lucky_draw_v2") && (
-          <div className="space-y-3 p-4 bg-amber-50 rounded-xl border border-amber-100">
-            <h3 className="text-sm font-semibold text-amber-800">🎰 抽奖设置</h3>
-
-            {/* 参与模式 */}
+        {selected?.editable?.includes("grandPrizes") && grandPrizes.length > 0 && (
+          <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">参与方式</label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEntryMethod("auto")}
-                  className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-                    entryMethod === "auto" ? "bg-amber-500 text-white" : "bg-white text-slate-500"
-                  }`}
-                >
-                  🤖 消费自动
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEntryMethod("receipt")}
-                  className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-                    entryMethod === "receipt" ? "bg-amber-500 text-white" : "bg-white text-slate-500"
-                  }`}
-                >
-                  📸 收据上传
-                </button>
-              </div>
+              <label className="block text-sm font-medium text-slate-700">
+                {tr("campaignNew.grandPrizes")}
+              </label>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                {tr("campaignNew.grandPrizesHint")}
+              </p>
             </div>
-
-            <Input label="计划开奖日期" type="date" value={drawDate} onChange={(e) => setDrawDate(e.target.value)} />
-
-            {/* 收据模式专属 */}
-            {entryMethod === "receipt" ? (
-              <>
-                <Input label="公开页面标识 (slug)" value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"))} placeholder="如: byd-lucky-draw-2026" />
-                <Input label="消费门槛 (分)" type="number" value={receiptMinSpend} onChange={(e) => setReceiptMinSpend(Number(e.target.value))} prefix="S$" placeholder="客户消费满多少可获得抽奖券" />
-                <Input label="每满门槛得几张券" type="number" value={ticketsPerUnit} onChange={(e) => setTicketsPerUnit(Number(e.target.value))} />
-                <Input label="预算占比 (%)" type="number" value={budgetPercent} onChange={(e) => setBudgetPercent(Number(e.target.value))} prefix="%" />
-              </>
-            ) : (
-              <>
-                <Input label="消费门槛 (分, 0=无门槛)" type="number" value={minSpendCents} onChange={(e) => setMinSpendCents(Number(e.target.value))} prefix="S$" />
-                <Input label="参与上限 (0=不限)" type="number" value={maxEntries} onChange={(e) => setMaxEntries(Number(e.target.value))} />
-              </>
-            )}
+            {grandPrizes.map((g, idx) => (
+              <Card key={g.id} className="border-slate-100">
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {PRIZE_ICONS.map((ic) => (
+                      <button
+                        key={ic}
+                        type="button"
+                        onClick={() => updateGrandPrize(idx, { icon: ic })}
+                        className={`w-8 h-8 rounded-lg text-base ${
+                          g.icon === ic ? "bg-blue-50 ring-2 ring-[#1A6EFF]" : "bg-slate-50"
+                        }`}
+                      >
+                        {ic}
+                      </button>
+                    ))}
+                  </div>
+                  <Input
+                    label={tr("campaignNew.prizeName")}
+                    value={g.name}
+                    onChange={(e) => updateGrandPrize(idx, { name: e.target.value })}
+                    placeholder={tr("campaignNew.prizeNamePh")}
+                  />
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      {tr("campaignNew.targetSgd")}
+                    </label>
+                    <input
+                      type="number"
+                      min={100}
+                      max={1000000}
+                      step={100}
+                      value={Math.round(g.targetCents / 100)}
+                      onChange={(e) =>
+                        updateGrandPrize(idx, {
+                          targetCents: Math.round(Number(e.target.value || 0) * 100),
+                        })
+                      }
+                      className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      {tr("campaignNew.targetHint")}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
 
-        {/* 标签 */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">活动标签</label>
-          <div className="flex gap-1 mb-2">
-            <Input placeholder="输入标签，回车添加" value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())} />
-            <Button size="sm" variant="outline" onClick={addTag}>添加</Button>
-          </div>
-          <div className="flex gap-1 flex-wrap">
-            {tags.map((t) => (
-              <span key={t} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-full flex items-center gap-1">
-                {t} <button onClick={() => setTags(tags.filter(x => x !== t))} className="text-slate-400">×</button>
+        {selected?.rules.allowDiscount && (
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              {tr("campaignNew.discountRate", {
+                min: selected.rules.discountPercentMin,
+                max: selected.rules.discountPercentMax,
+              })}
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min={selected.rules.discountPercentMin}
+                max={selected.rules.discountPercentMax}
+                value={discountPercent}
+                onChange={(e) => setDiscountPercent(Number(e.target.value))}
+                className="flex-1"
+              />
+              <span className="text-sm font-semibold text-[#1A6EFF] w-12 text-right">
+                {discountPercent}%
               </span>
-            ))}
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              {tr("campaignNew.discountExample", {
+                paid: (50 * (100 - discountPercent) / 100).toFixed(0),
+                commission: ((50 * (100 - discountPercent) / 100) * 0.05).toFixed(2),
+              })}
+            </p>
           </div>
-        </div>
+        )}
 
-        {/* 说明 */}
-        <Card className="bg-blue-50 border-blue-100">
-          <CardContent className="p-4">
-            <p className="text-sm font-medium text-blue-700 mb-2">💡 活动创建后可以</p>
-            <ul className="text-xs text-blue-600 space-y-1">
-              <li>• 批量创建代金券并关联到本活动</li>
-              <li>• 统一设置推广奖励和领券赠品</li>
-              <li>• 查看活动维度的领取/核销/转化数据</li>
-              <li>• 对比不同活动的效果</li>
-            </ul>
-          </CardContent>
-        </Card>
+        {selected && (
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              {tr("campaignNew.openTiers")}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {selected.rules.tiers.map((tier) => {
+                const on = enabledTiers.includes(tier.amountSgd);
+                return (
+                  <button
+                    key={tier.amountSgd}
+                    type="button"
+                    onClick={() => toggleTier(tier.amountSgd)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium ${
+                      on ? "bg-[#1A6EFF] text-white" : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    S${tier.amountSgd}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {templateId !== "share_boost" && selected?.editable.includes("shareSelling") && (
+          <label className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+            <div>
+              <p className="text-sm font-medium text-slate-800">{tr("campaignNew.shareSelling")}</p>
+              <p className="text-[11px] text-slate-400">{tr("campaignNew.shareSellingHint")}</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={shareSelling}
+              onChange={(e) => setShareSelling(e.target.checked)}
+              className="h-5 w-5"
+            />
+          </label>
+        )}
+
+        {templateId === "share_boost" && (
+          <Card className="bg-violet-50 border-violet-100">
+            <CardContent className="p-3">
+              <p className="text-xs text-violet-700">{tr("campaignNew.shareBoostLocked")}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            {tr("campaignNew.invitePartners")}
+          </label>
+          {partners.length === 0 ? (
+            <p className="text-xs text-slate-400">{tr("campaignNew.noPartners")}</p>
+          ) : (
+            <div className="space-y-2">
+              {partners.map((p) => {
+                const on = selectedPartners.includes(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => togglePartner(p.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-sm border ${
+                      on
+                        ? "border-[#1A6EFF] bg-blue-50 text-slate-900"
+                        : "border-slate-100 bg-white text-slate-600"
+                    }`}
+                  >
+                    <span>{p.businessName || p.name || p.id.slice(0, 8)}</span>
+                    <span className="text-xs">
+                      {on ? tr("campaignNew.selected") : tr("campaignNew.select")}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {error && <p className="text-sm text-red-500 text-center">{error}</p>}
       </div>
 
       <div className="px-4 py-3 border-t border-slate-100 bg-white">
-        <Button className="w-full" size="lg" onClick={handleCreate} loading={loading}>创建活动</Button>
+        <Button className="w-full" size="lg" onClick={handleCreate} loading={loading}>
+          {tr("campaignNew.create")}
+        </Button>
       </div>
     </div>
   );

@@ -13,10 +13,13 @@
     "db:push": "npx prisma db push",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:seed-prod": "npx tsx prisma/seed-prod.ts",
+    "db:seed-month": "npx tsx prisma/seed-month.ts",
     "db:reset": "npx prisma db push --force-reset && npx tsx prisma/seed.ts",
+    "db:reset-month": "npx prisma db push --force-reset && npx tsx prisma/seed-month.ts",
     "test": "npx tsx tests/run-all.ts",
     "test:unit": "npx jest --config jest.config.ts",
-    "test:e2e": "npx playwright test"
+    "test:e2e": "npx playwright test",
+    "test:e2e:full": "npx playwright test tests/e2e/full-business-flow.spec.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

@@ -1,118 +1,75 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { drawInstantV2, resolveTier, calculateTierWeight } from "@/lib/draw-v2";
+import {
+  fulfillVoucherPurchase,
+  VoucherPurchaseError,
+} from "@/lib/voucher-purchase";
 
+/**
+ * POST /api/voucher/purchase?slug=
+ * Direct fulfill (tests / offline). Production UI should use /api/voucher/checkout.
+ * Body: { amountSgd, spendNowSgd?, sellerId?, skipPayment?: boolean }
+ *
+ * When STRIPE_SECRET_KEY is set and skipPayment is not true, returns 402 with hint to use checkout.
+ * Set ALLOW_DIRECT_VOUCHER_PURCHASE=true to always allow (local/dev/e2e).
+ */
 export async function POST(request: NextRequest) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
-  const { searchParams } = new URL(request.url);
-  const slug = searchParams.get("slug");
-  if (!slug) return NextResponse.json({ error: "Missing slug" }, { status: 400 });
+    const { searchParams } = new URL(request.url);
+    const slug = searchParams.get("slug");
+    if (!slug) return NextResponse.json({ error: "缺少活动标识" }, { status: 400 });
 
-  const body = await request.json();
-  const { amountSgd, spendNowSgd } = body;
-  const amountCents = Math.round((amountSgd || 0) * 100);
-  const spendNowCents = Math.round((spendNowSgd || 0) * 100);
+    const body = await request.json();
+    const { amountSgd, spendNowSgd, sellerId, skipPayment } = body;
 
-  if (amountCents <= 0 || spendNowCents < 0 || spendNowCents > amountCents * 0.8) {
-    return NextResponse.json({ error: "余额不能低于券面的 20%" }, { status: 400 });
-  }
+    const allowDirect =
+      process.env.ALLOW_DIRECT_VOUCHER_PURCHASE === "true" ||
+      process.env.NODE_ENV === "test" ||
+      skipPayment === true ||
+      !process.env.STRIPE_SECRET_KEY;
 
-  // Validate campaign
-  const campaign = await prisma.campaign.findUnique({
-    where: { slug, type: "lucky_draw_v2", status: "active" },
-  });
-  if (!campaign || new Date() < campaign.startDate || new Date() > campaign.endDate) {
-    return NextResponse.json({ error: "Campaign not available" }, { status: 404 });
-  }
+    if (!allowDirect) {
+      return NextResponse.json(
+        {
+          error: "请使用 Stripe 支付购券",
+          code: "USE_CHECKOUT",
+          checkout: `/api/voucher/checkout?slug=${encodeURIComponent(slug)}`,
+        },
+        { status: 402 }
+      );
+    }
 
-  // Resolve tier
-  const tier = resolveTier(amountSgd);
-  if (!tier) return NextResponse.json({ error: "Invalid voucher amount" }, { status: 400 });
+    const campaign = await prisma.campaign.findFirst({
+      where: {
+        slug,
+        status: "active",
+        type: { in: ["lucky_draw_v2", "voucher_sale"] },
+      },
+      select: { id: true },
+    });
+    if (!campaign) {
+      return NextResponse.json({ error: "活动不可用" }, { status: 404 });
+    }
 
-  // Calculate pool contribution
-  const budgetPercent = campaign.budgetPercent || 20;
-  const prizePoolContribution = Math.round(amountCents * budgetPercent / 100);
-  const balanceCents = amountCents - spendNowCents;
-  const weight = calculateTierWeight(amountCents, tier.tier, balanceCents);
-
-  // Create voucher
-  const voucher = await prisma.voucher.create({
-    data: {
+    const data = await fulfillVoucherPurchase({
       customerId: session.userId,
       campaignId: campaign.id,
-      amountCents,
-      usedCents: spendNowCents,
-      balanceCents,
-      prizePoolContribution,
-      drawWeight: weight,
-      tier: tier.tier,
-    },
-  });
-
-  // Record first spend (in-store consumption)
-  if (spendNowCents > 0) {
-    // 当场消费不扣费：奖池已从券面总额计提，售券方实收 100%
-    const store = await prisma.store.findFirst({
-      where: { businessId: campaign.businessId },
+      amountSgd: Number(amountSgd),
+      spendNowSgd: Number(spendNowSgd || 0),
+      sellerId: sellerId || null,
+      stripeSessionId: null,
     });
-    if (store) {
-      await prisma.voucherUsage.create({
-        data: {
-          voucherId: voucher.id,
-          storeId: store.id,
-          amountCents: spendNowCents,
-          feeCents: 0, // 售券方不承担获客成本
-          storeIncome: spendNowCents, // 全额实收
-        },
-      });
+
+    return NextResponse.json({ data });
+  } catch (error) {
+    if (error instanceof VoucherPurchaseError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
     }
+    console.error("voucher purchase error:", error);
+    return NextResponse.json({ error: "购券失败" }, { status: 500 });
   }
-
-  // Instant draw (100% win)
-  const instantPoolCents = campaign.instantPoolCents || 0;
-  const instantResult = drawInstantV2(tier, instantPoolCents);
-
-  // Record instant draw
-  const drawRecord = await prisma.voucherDraw.create({
-    data: {
-      voucherId: voucher.id,
-      drawType: "instant",
-      won: true,
-      prizeName: instantResult.prize.name,
-      prizeIcon: instantResult.prize.icon,
-      valueCents: instantResult.prize.valueCents,
-      weightAtTime: weight,
-    },
-  });
-
-  // Update campaign counters atomically
-  await prisma.campaign.update({
-    where: { id: campaign.id },
-    data: {
-      entryCount: { increment: 1 },
-      totalTicketCount: { increment: 1 },
-      instantPoolCents: { increment: prizePoolContribution },
-    },
-  });
-
-  return NextResponse.json({
-    data: {
-      voucher: {
-        id: voucher.id,
-        amountSgd: (amountCents / 100).toFixed(2),
-        balanceSgd: (balanceCents / 100).toFixed(2),
-        tier: voucher.tier,
-        drawWeight: weight,
-      },
-      instantPrize: {
-        name: instantResult.prize.name,
-        icon: instantResult.prize.icon,
-        valueSgd: (instantResult.prize.valueCents / 100).toFixed(2),
-      },
-      grandPoolEntry: tier.tier !== "small",
-    },
-  });
 }

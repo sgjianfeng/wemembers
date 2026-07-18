@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/Button";
 import { timeAgo } from "@/lib/utils";
 import { TopUpButton } from "./TopUpButton";
 import { WithdrawButton } from "./WithdrawButton";
+import { StripeSetupButton } from "./StripeSetupButton";
+import { releaseMaturedHolds } from "@/lib/tokens";
 
 export default async function TokenRechargePage({
   searchParams,
@@ -17,6 +19,9 @@ export default async function TokenRechargePage({
 }) {
   const session = await getSession();
   if (!session || session.role !== "business") redirect("/auth/login");
+
+  // Auto-release T+1 matured redeem / commission holds
+  await releaseMaturedHolds(session.userId);
 
   const sp = await searchParams;
   const c = await cookies();
@@ -53,6 +58,10 @@ export default async function TokenRechargePage({
     stripe_topup: { zh: "Stripe 充值", en: "Stripe Top-Up", color: "text-green-600" },
     withdrawal: { zh: "提现", en: "Withdrawal", color: "text-red-600" },
     settlement_earn: { zh: "跨店结算", en: "Cross-store Settlement", color: "text-amber-600" },
+    voucher_redeem_income: { zh: "核销收入", en: "Redeem income", color: "text-amber-600" },
+    voucher_spend_income: { zh: "购券即用", en: "Spend-at-buy", color: "text-amber-600" },
+    seller_commission: { zh: "卖券佣金", en: "Seller commission", color: "text-green-600" },
+    t1_release: { zh: "T+1 解冻", en: "T+1 unlock", color: "text-blue-600" },
   };
 
   return (
@@ -108,46 +117,22 @@ export default async function TokenRechargePage({
                     <p className="text-xs text-slate-400">{t("business.tokens.stripePendingDesc", lang)}</p>
                   </div>
                 </div>
-                <a
-                  href={`/api/stripe/account`}
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    const res = await fetch("/api/stripe/account", { method: "POST" });
-                    const data = await res.json();
-                    if (data.data?.url) window.location.href = data.data.url;
-                  }}
-                  className="inline-block px-4 py-2 bg-[#1A6EFF] text-white text-sm rounded-full"
-                >
-                  {t("business.tokens.stripeSetup", lang)}
-                </a>
+                <StripeSetupButton label={t("business.tokens.stripeSetup", lang)} />
               </div>
             ) : (
               <div>
                 <p className="text-xs text-slate-400 mb-2">{t("business.tokens.stripeSetupHint", lang)}</p>
-                <a
-                  href="#"
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    const res = await fetch("/api/stripe/account", { method: "POST" });
-                    const data = await res.json();
-                    if (data.data?.url) window.location.href = data.data.url;
-                  }}
-                  className="inline-block px-4 py-2 bg-[#1A6EFF] text-white text-sm rounded-full"
-                >
-                  {t("business.tokens.stripeSetup", lang)}
-                </a>
+                <StripeSetupButton label={t("business.tokens.stripeSetup", lang)} />
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Top-up + Withdraw */}
-        {isStripeReady && (
-          <div className="flex gap-2">
-            <TopUpButton />
-            <WithdrawButton balance={balance} />
-          </div>
-        )}
+        {/* Top-up always available (Checkout); withdraw needs Connect ready */}
+        <div className="flex gap-2">
+          <TopUpButton />
+          {isStripeReady && <WithdrawButton balance={balance} />}
+        </div>
 
         {/* Status messages */}
         {sp.onboarding === "success" && (
@@ -172,10 +157,10 @@ export default async function TokenRechargePage({
                   <div key={tx.id} className="flex items-center justify-between px-3 py-2.5 bg-white rounded-lg border border-slate-50">
                     <div className="min-w-0">
                       <p className="text-xs text-slate-600 truncate">{tx.description}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">
+                      <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
                         <Badge variant="slate" size="sm">{lang === "zh" ? style.zh : style.en}</Badge>
-                        <span className="ml-1">{timeAgo(tx.createdAt)}</span>
-                      </p>
+                        <span>{timeAgo(tx.createdAt)}</span>
+                      </div>
                     </div>
                     <span className={`text-sm font-semibold shrink-0 ml-2 ${tx.amount > 0 ? "text-green-600" : "text-red-500"}`}>
                       {tx.amount > 0 ? "+" : ""}S${(Math.abs(tx.amount) / 100).toFixed(2)}

@@ -11,9 +11,21 @@ export const metadata: Metadata = {
   title: "WeMembers — 会员+代金券平台",
   description: "一站式商户营销平台：会员管理、代金券、幸运抽奖",
   icons: {
-    icon: "/favicon-32x32.png",
-    apple: "/apple-icon.png",
+    icon: [
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: "/favicon.ico",
   },
+  appleWebApp: {
+    capable: true,
+    title: "WeMembers",
+    statusBarStyle: "default",
+  },
+  manifest: "/site.webmanifest",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

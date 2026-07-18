@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { signToken, setSession } from "@/lib/auth";
+import { issueSession } from "@/lib/auth";
 import { SIGNUP_BONUS } from "@/types";
 
 // POST /api/auth/register
@@ -131,17 +131,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 签发 JWT
-    const token = await signToken({
-      userId: user.id,
-      role: user.role as "admin" | "business" | "customer" | "staff",
-    });
-
-    await setSession(token);
+    // 签发 JWT（按角色默认时长；新用户不勾「记住」）
+    await issueSession(
+      {
+        userId: user.id,
+        role: user.role as "admin" | "business" | "customer" | "staff",
+      },
+      false
+    );
 
     return NextResponse.json({
       data: {
-        token,
         user: {
           id: user.id,
           role: user.role,

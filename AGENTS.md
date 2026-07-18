@@ -14,7 +14,7 @@ WeMembers is a **Singapore-dollar (S$), mobile-first merchant marketing platform
 
 - **Voucher System** — Issue, claim, redeem, gift coupons. Prepaid voucher V2 with prize-pool contributions. Cross-store redemption and settlement.
 - **Membership System** — Points earning/spending, tier progression (regular → silver → gold → platinum), daily check-in, achievement badges.
-- **Lucky Draw (V2)** — Voucher purchases trigger draws with 100% win rate. Triple pool system (instant / mid / grand) with countdown timers. Campaign marketplace for cross-store prize pools.
+- **Lucky Draw (V2)** — Voucher purchases trigger draws with 100% win rate. Dual pool (instant + deferred prizes) with shared countdown timers. Campaign marketplace for cross-store prize pools.
 
 **Four user roles** share a single `User` table with a `role` discriminator:
 | Role       | Dashboard     | Capabilities |

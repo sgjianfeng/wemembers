@@ -51,10 +51,22 @@ async function cleanupCampaignData(businessId: string, customerId?: string) {
   await testPrisma.voucherUsage.deleteMany({ where: { voucher: { campaign: { businessId } } } });
   await testPrisma.voucher.deleteMany({ where: { campaign: { businessId } } });
   await testPrisma.campaign.deleteMany({ where: { businessId } });
+  // Token income holds reference TokenAccount — delete txs first
+  const accounts = await testPrisma.tokenAccount.findMany({
+    where: { userId: { in: [businessId, customerId].filter(Boolean) as string[] } },
+    select: { id: true },
+  });
+  if (accounts.length) {
+    await testPrisma.tokenTransaction.deleteMany({
+      where: { accountId: { in: accounts.map((a) => a.id) } },
+    });
+  }
+  await testPrisma.tokenAccount.deleteMany({
+    where: { userId: { in: [businessId, customerId].filter(Boolean) as string[] } },
+  });
   if (customerId) {
     await testPrisma.user.deleteMany({ where: { id: customerId } });
   }
-  await testPrisma.tokenAccount.deleteMany({ where: { userId: businessId } });
   await testPrisma.store.deleteMany({ where: { businessId } });
   await testPrisma.user.deleteMany({ where: { id: businessId } });
 }
@@ -87,9 +99,9 @@ describe("Voucher Purchase Flow (Integration)", () => {
         startDate: new Date(Date.now() - 86400000),
         endDate: new Date(Date.now() + 86400000 * 30),
         budgetPercent: 20,
-        instantPoolRatio: 10,
-        midPoolRatio: 60,
-        grandPoolRatio: 30,
+        instantPoolRatio: 20,
+        midPoolRatio: 0,
+        grandPoolRatio: 80,
         voucherTiers: JSON.stringify([
           { min: 10, max: 40, tier: "small", instantPrizeCap: 2 },
           { min: 50, max: 99, tier: "medium", instantPrizeCap: 8 },
@@ -125,7 +137,7 @@ describe("Voucher Purchase Flow (Integration)", () => {
       expect(json.data.campaign.slug).toBe(campaignV2.slug);
       expect(json.data.pool).toBeDefined();
       expect(json.data.pool.instantPool).toBeDefined();
-      expect(json.data.pool.midPool).toBeDefined();
+      expect(json.data.pool.deferredPool).toBeDefined();
       expect(json.data.pool.grandPool).toBeDefined();
       expect(json.data.countdown).toBeDefined();
       expect(Array.isArray(json.data.countdown)).toBe(true);
@@ -140,7 +152,7 @@ describe("Voucher Purchase Flow (Integration)", () => {
       expect(typeof cd.accelerating).toBe("boolean");
     });
 
-    test("pool status returns all three pool ratios from campaign", async () => {
+    test("pool status returns dual pool ratios (instant + deferred)", async () => {
       const { GET } = await import("@/app/api/campaign/pool-status/route");
       const url = `http://localhost/api/campaign/pool-status?slug=${campaignV2.slug}`;
       const req = new Request(url, { method: "GET" });
@@ -148,9 +160,10 @@ describe("Voucher Purchase Flow (Integration)", () => {
       const res = await GET(req as any);
       const json = await res.json();
 
-      expect(json.data.pool.instantPool.ratio).toBe(10);
-      expect(json.data.pool.midPool.ratio).toBe(60);
-      expect(json.data.pool.grandPool.ratio).toBe(30);
+      expect(json.data.pool.instantPool.ratio).toBe(20);
+      expect(json.data.pool.deferredPool.ratio).toBe(80);
+      expect(json.data.pool.grandPool.ratio).toBe(80);
+      expect(json.data.pool.midPool).toBeUndefined();
     });
 
     test("pool summary shows draw statistics", async () => {
@@ -163,8 +176,8 @@ describe("Voucher Purchase Flow (Integration)", () => {
 
       expect(json.data.draws).toBeDefined();
       expect(json.data.draws.instant).toBeDefined();
-      expect(json.data.draws.mid).toBeDefined();
-      expect(json.data.draws.grand).toBeDefined();
+      expect(json.data.draws.deferred).toBeDefined();
+      expect(json.data.draws.mid).toBeUndefined();
       expect(typeof json.data.draws.instant.total).toBe("number");
     });
 
@@ -207,7 +220,7 @@ describe("Voucher Purchase Flow (Integration)", () => {
       expect(res.status).toBe(200);
       expect(json.data.voucher).toBeDefined();
       expect(json.data.voucher.id).toBeDefined();
-      expect(json.data.voucher.tier).toBe("large");
+      expect(json.data.voucher.tier).toBe("medium"); // S$100
       expect(json.data.voucher.drawWeight).toBeGreaterThan(0);
       expect(json.data.instantPrize).toBeDefined();
       expect(json.data.instantPrize.name).toBeDefined();
@@ -220,7 +233,7 @@ describe("Voucher Purchase Flow (Integration)", () => {
         include: { draws: true },
       });
       expect(voucher).toBeTruthy();
-      expect(voucher!.tier).toBe("large");
+      expect(voucher!.tier).toBe("medium");
       expect(voucher!.amountCents).toBe(10000);
 
       // Verify draw record was created
@@ -232,13 +245,12 @@ describe("Voucher Purchase Flow (Integration)", () => {
       setMockSession(null);
     });
 
-    test("small tier voucher excludes grand pool entry", async () => {
+    test("S$50 entry tier also enters grand pool (1× weight)", async () => {
       setMockSession({ userId: customer.id, role: "customer" });
 
       const { POST } = await import("@/app/api/voucher/purchase/route");
-      const url = `http://localhost/api/campaign/pool-status?slug=${campaignV2.slug}`;
       const req = mockRequest(
-        { amountSgd: 20, spendNowSgd: 0 },
+        { amountSgd: 50, spendNowSgd: 0 },
         { url: `http://localhost/api/voucher/purchase?slug=${campaignV2.slug}`, method: "POST" },
       );
 
@@ -247,7 +259,8 @@ describe("Voucher Purchase Flow (Integration)", () => {
 
       expect(res.status).toBe(200);
       expect(json.data.voucher.tier).toBe("small");
-      expect(json.data.grandPoolEntry).toBe(false);
+      expect(json.data.grandPoolEntry).toBe(true);
+      expect(json.data.voucher.drawWeight).toBeGreaterThan(0);
 
       setMockSession(null);
     });
@@ -354,12 +367,12 @@ describe("Voucher Purchase Flow (Integration)", () => {
       setMockSession(null);
     });
 
-    test("pool total increases after purchase", async () => {
+    test("model A: pure purchase does not grow prize pool; full balance kept", async () => {
+      setMockSession({ userId: customer.id, role: "customer" });
+
       const before = await testPrisma.campaign.findUnique({
         where: { id: campaignV2.id },
       });
-
-      setMockSession({ userId: customer.id, role: "customer" });
 
       const { POST } = await import("@/app/api/voucher/purchase/route");
       const url = `http://localhost/api/voucher/purchase?slug=${campaignV2.slug}`;
@@ -369,15 +382,162 @@ describe("Voucher Purchase Flow (Integration)", () => {
       );
 
       const res = await POST(req as any);
+      const json = await res.json();
       expect(res.status).toBe(200);
+      // Full face on balance
+      expect(json.data.voucher.balanceSgd).toBe("100.00");
+      expect(json.data.split.prizePoolCents).toBe(0);
 
       const after = await testPrisma.campaign.findUnique({
         where: { id: campaignV2.id },
       });
-      // instantPoolCents should increase by prizePoolContribution
-      // prizePoolContribution = 10000 * 20% = 2000 cents
-      expect(after!.instantPoolCents).toBeGreaterThan(before!.instantPoolCents);
-      expect(after!.instantPoolCents - before!.instantPoolCents).toBeGreaterThanOrEqual(2000);
+      expect(after!.instantPoolCents).toBe(before!.instantPoolCents);
+
+      const v = await testPrisma.voucher.findUnique({ where: { id: json.data.voucher.id } });
+      expect(v!.prizePoolContribution).toBe(0);
+
+      setMockSession(null);
+    });
+
+    test("partial redeem: pot 20% splits platform+pool; store 80% T+1; no seller if none", async () => {
+      setMockSession({ userId: customer.id, role: "customer" });
+      const { POST: purchase } = await import("@/app/api/voucher/purchase/route");
+      const buyRes = await purchase(
+        mockRequest(
+          { amountSgd: 100, spendNowSgd: 0 },
+          { url: `http://localhost/api/voucher/purchase?slug=${campaignV2.slug}`, method: "POST" }
+        ) as any
+      );
+      const buyJson = await buyRes.json();
+      expect(buyRes.status).toBe(200);
+      const voucherId = buyJson.data.voucher.id;
+      // No spend → no seller commission yet
+      expect(buyJson.data.voucher.sellerCommissionSgd).toBe("0.00");
+      expect(buyJson.data.split.sellerCommissionCents).toBe(0);
+
+      const beforeAcct = await testPrisma.tokenAccount.findUnique({
+        where: { userId: business.id },
+      });
+      const frozenBefore = beforeAcct?.frozenBalance ?? 0;
+      const beforeCamp = await testPrisma.campaign.findUnique({ where: { id: campaignV2.id } });
+      const smallBefore = beforeCamp!.instantPoolCents;
+      const grandBefore = beforeCamp!.grandPoolCents ?? 0;
+
+      setMockSession({ userId: business.id, role: "business" });
+      const { POST: redeem } = await import("@/app/api/voucher/redeem/route");
+      const redeemRes = await redeem(
+        mockRequest({ voucherId, amountCents: 1500 }, { method: "POST" }) as any
+      );
+      const redeemJson = await redeemRes.json();
+      expect(redeemRes.status).toBe(200);
+      expect(redeemJson.data.usage.storeIncomeSgd).toBe("12.00"); // 80% of 15
+      expect(redeemJson.data.usage.feeSgd).toBe("3.00"); // pot 20%
+      // pot 300: platform floor(1500*1.5%)=22, pool=278, no seller
+      expect(redeemJson.data.usage.prizePoolSgd).toBe("2.78");
+      expect(redeemJson.data.usage.platformFeeSgd).toBe("0.22");
+      expect(redeemJson.data.usage.sellerCommissionSgd).toBe("0.00");
+      expect(redeemJson.data.voucher.remainingBalanceSgd).toBe("85.00");
+
+      const afterAcct = await testPrisma.tokenAccount.findUnique({
+        where: { userId: business.id },
+      });
+      expect(afterAcct!.frozenBalance).toBe(frozenBefore + 1200);
+
+      const afterCamp = await testPrisma.campaign.findUnique({ where: { id: campaignV2.id } });
+      // pot pool 278 → small 20% = 55, grand 80% = 223
+      expect(afterCamp!.instantPoolCents).toBe(smallBefore + 55);
+      expect(afterCamp!.grandPoolCents).toBe(grandBefore + 223);
+      const v = await testPrisma.voucher.findUnique({ where: { id: voucherId } });
+      expect(v!.prizePoolContribution).toBe(278);
+
+      setMockSession(null);
+    });
+
+    test("seller commission only after redeem, taken from pot", async () => {
+      setMockSession({ userId: customer.id, role: "customer" });
+      const { POST: purchase } = await import("@/app/api/voucher/purchase/route");
+      const buyRes = await purchase(
+        mockRequest(
+          { amountSgd: 100, spendNowSgd: 0, sellerId: business.id },
+          { url: `http://localhost/api/voucher/purchase?slug=${campaignV2.slug}`, method: "POST" }
+        ) as any
+      );
+      const buyJson = await buyRes.json();
+      expect(buyRes.status).toBe(200);
+      expect(buyJson.data.split.sellerCommissionCents).toBe(0);
+
+      const sellerBefore = await testPrisma.tokenAccount.findUnique({
+        where: { userId: business.id },
+      });
+      const frozenSellerBefore = sellerBefore?.frozenBalance ?? 0;
+
+      setMockSession({ userId: business.id, role: "business" });
+      const { POST: redeem } = await import("@/app/api/voucher/redeem/route");
+      const redeemRes = await redeem(
+        mockRequest({ voucherId: buyJson.data.voucher.id, amountCents: 10_000 }, { method: "POST" }) as any
+      );
+      const redeemJson = await redeemRes.json();
+      expect(redeemRes.status).toBe(200);
+      // full S$100 redeem: seller 5% = 500, platform 150, pool 1350, store 8000
+      expect(redeemJson.data.usage.sellerCommissionSgd).toBe("5.00");
+      expect(redeemJson.data.usage.platformFeeSgd).toBe("1.50");
+      expect(redeemJson.data.usage.prizePoolSgd).toBe("13.50");
+      expect(redeemJson.data.usage.storeIncomeSgd).toBe("80.00");
+
+      const sellerAfter = await testPrisma.tokenAccount.findUnique({
+        where: { userId: business.id },
+      });
+      // store 8000 + seller 500 (same business is seller and redeemer)
+      expect(sellerAfter!.frozenBalance).toBe(frozenSellerBefore + 8000 + 500);
+
+      setMockSession(null);
+    });
+
+    test("customer withdraw: 5% fee, small pool only, weight 0", async () => {
+      setMockSession({ userId: customer.id, role: "customer" });
+      const { POST: purchase } = await import("@/app/api/voucher/purchase/route");
+      const buyRes = await purchase(
+        mockRequest(
+          { amountSgd: 100, spendNowSgd: 0 },
+          { url: `http://localhost/api/voucher/purchase?slug=${campaignV2.slug}`, method: "POST" }
+        ) as any
+      );
+      const buyJson = await buyRes.json();
+      expect(buyRes.status).toBe(200);
+      const voucherId = buyJson.data.voucher.id;
+
+      const beforeCamp = await testPrisma.campaign.findUnique({ where: { id: campaignV2.id } });
+      const smallBefore = beforeCamp!.instantPoolCents;
+      const grandBefore = beforeCamp!.grandPoolCents ?? 0;
+
+      const { POST: withdraw } = await import("@/app/api/voucher/withdraw/route");
+      const prize = await testPrisma.voucherDraw.findFirst({
+        where: { voucherId, drawType: "instant", won: true },
+      });
+      const prizeCents = prize?.valueCents || 0;
+
+      const wRes = await withdraw(
+        mockRequest({ voucherId }, { method: "POST" }) as any
+      );
+      const wJson = await wRes.json();
+      expect(wRes.status).toBe(200);
+      expect(wJson.data.feeSgd).toBe("5.00");
+      // net = 95 - clawback of instant prize face
+      const expectedNet = Math.max(0, 9500 - prizeCents);
+      expect(wJson.data.netSgd).toBe((expectedNet / 100).toFixed(2));
+      expect(Number(wJson.data.clawbackSgd)).toBeCloseTo(Math.min(prizeCents, 9500) / 100, 2);
+      expect(wJson.data.split.smallPoolSgd).toBe("4.00"); // no seller → 3%+1%
+      expect(wJson.data.drawWeight).toBe(0);
+      expect(wJson.data.status).toBe("withdrawn");
+
+      const afterCamp = await testPrisma.campaign.findUnique({ where: { id: campaignV2.id } });
+      // small pool: fee 400 + clawback prize
+      const claw = Math.min(prizeCents, 9500);
+      expect(afterCamp!.instantPoolCents).toBe(smallBefore + 400 + claw);
+      expect(afterCamp!.grandPoolCents).toBe(grandBefore); // grand untouched
+      const v = await testPrisma.voucher.findUnique({ where: { id: voucherId } });
+      expect(v!.balanceCents).toBe(0);
+      expect(v!.drawWeight).toBe(0);
 
       setMockSession(null);
     });
@@ -424,34 +584,25 @@ describe("V2 Algorithm (integration-level sanity checks)", () => {
   });
 
   describe("calculateTierWeight", () => {
-    test("small tier always returns 0", () => {
-      expect(drawV2.calculateTierWeight(2000, "small")).toBe(0);
-      expect(drawV2.calculateTierWeight(4000, "small")).toBe(0);
-      expect(drawV2.calculateTierWeight(100, "small")).toBe(0);
+    test("entry small redeemed 1×; holding balance 0.2×", () => {
+      expect(drawV2.calculateTierWeight(5000, "small", 0, 0, 5000)).toBe(5000);
+      expect(drawV2.calculateTierWeight(5000, "small", 5000, 0, 0)).toBe(1000);
     });
 
-    test("medium tier returns 1x amountCents", () => {
-      expect(drawV2.calculateTierWeight(5000, "medium")).toBe(5000);
-      expect(drawV2.calculateTierWeight(7500, "medium")).toBe(7500);
-      expect(drawV2.calculateTierWeight(9900, "medium")).toBe(9900);
+    test("medium redeemed 2×; holding balance 0.2×", () => {
+      expect(drawV2.calculateTierWeight(10000, "medium", 0, 0, 10000)).toBe(20000);
+      expect(drawV2.calculateTierWeight(10000, "medium", 10000, 0, 0)).toBe(2000);
     });
 
-    test("large tier returns 2x amountCents", () => {
-      expect(drawV2.calculateTierWeight(10000, "large")).toBe(20000);
-      expect(drawV2.calculateTierWeight(50000, "large")).toBe(100000);
-      expect(drawV2.calculateTierWeight(1, "large")).toBe(2);
+    test("large redeemed 3×", () => {
+      expect(drawV2.calculateTierWeight(20000, "large", 0, 0, 20000)).toBe(60000);
     });
 
-    test("share boosts do not apply to small tier", () => {
-      expect(drawV2.calculateTierWeight(1000, "small", 5)).toBe(0);
-      expect(drawV2.calculateTierWeight(1000, "small", 100)).toBe(0);
-    });
-
-    test("share boosts stack correctly on medium and large", () => {
-      // medium + 1 boost = 2x
-      expect(drawV2.calculateTierWeight(5000, "medium", 0, 1)).toBe(10000);
-      // large + 3 boosts = 5x (base 2x + 3x)
-      expect(drawV2.calculateTierWeight(10000, "large", 0, 3)).toBe(50000);
+    test("share boosts stack on redeem weight", () => {
+      // medium 2× redeem + 1 share face
+      expect(drawV2.calculateTierWeight(10000, "medium", 0, 1, 10000)).toBe(30000);
+      // large 3× redeem + 3 shares face
+      expect(drawV2.calculateTierWeight(20000, "large", 0, 3, 20000)).toBe(60000 + 60000);
     });
   });
 
@@ -507,15 +658,13 @@ describe("V2 Algorithm (integration-level sanity checks)", () => {
 
   describe("resolveTier", () => {
     test("maps amounts to correct tiers", () => {
-      expect(drawV2.resolveTier(20)!.tier).toBe("small");
-      expect(drawV2.resolveTier(20)!.tier).toBe("small");
-      expect(drawV2.resolveTier(50)!.tier).toBe("medium");
-      expect(drawV2.resolveTier(50)!.tier).toBe("medium");
-      expect(drawV2.resolveTier(100)!.tier).toBe("large");
+      expect(drawV2.resolveTier(50)!.tier).toBe("small");
+      expect(drawV2.resolveTier(100)!.tier).toBe("medium");
       expect(drawV2.resolveTier(200)!.tier).toBe("large");
     });
 
     test("returns null for amounts below minimum", () => {
+      expect(drawV2.resolveTier(20)).toBeNull();
       expect(drawV2.resolveTier(9)).toBeNull();
       expect(drawV2.resolveTier(0)).toBeNull();
       expect(drawV2.resolveTier(-5)).toBeNull();

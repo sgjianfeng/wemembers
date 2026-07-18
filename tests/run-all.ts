@@ -333,24 +333,24 @@ async function run() {
     if (!Array.isArray(j.data)) throw new Error("Not an array");
   });
 
-  await ok("Purchase voucher S$20 (small tier)", async () => {
+  await ok("Purchase voucher S$50 (entry tier, grand pool 1×)", async () => {
     const r = await post(`/api/voucher/purchase?slug=${v2slug}`, {
-      amountSgd: 20, spendNowSgd: 5,
+      amountSgd: 50, spendNowSgd: 5,
     }, custToken);
     const j = await r.json();
     if (r.status !== 200) throw new Error(j.error || `Status ${r.status}`);
     if (!j.data.instantPrize) throw new Error("No instant prize");
     if (!j.data.voucher) throw new Error("No voucher");
-    if (!j.data.grandPoolEntry) throw new Error("Small tier should not enter grand pool");
+    if (!j.data.grandPoolEntry) throw new Error("Entry tier should enter grand pool");
   });
 
-  await ok("Purchase voucher S$50 (medium tier, grand pool entry)", async () => {
+  await ok("Purchase voucher S$100 (main tier, grand pool 2×)", async () => {
     const r = await post(`/api/voucher/purchase?slug=${v2slug}`, {
-      amountSgd: 50, spendNowSgd: 0,
+      amountSgd: 100, spendNowSgd: 0,
     }, custToken);
     const j = await r.json();
     if (r.status !== 200) throw new Error(j.error || `Status ${r.status}`);
-    if (!j.data.grandPoolEntry) throw new Error("Medium tier should enter grand pool");
+    if (!j.data.grandPoolEntry) throw new Error("Main tier should enter grand pool");
   });
 
   await ok("Share boost adds weight", async () => {

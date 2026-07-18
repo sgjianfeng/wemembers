@@ -33,10 +33,10 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
     ? SERVICE_CATEGORIES.find((c) => c.value === business.businessCategory)?.label
     : business.businessCategory;
 
-  const typeLabels: Record<string, Record<string, string>> = {
-    fixed_amount: { zh: "定额减免", en: "Fixed Amount" },
-    percentage: { zh: "折扣券", en: "Discount" },
-    free_item: { zh: "免单券", en: "Free Item" },
+  const typeKey: Record<string, string> = {
+    fixed_amount: "shop.type.fixed",
+    percentage: "shop.type.percent",
+    free_item: "shop.type.free",
   };
 
   return (
@@ -55,7 +55,10 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
         <div className="bg-white rounded-t-2xl pt-5 px-1">
           <div className="flex items-center justify-between px-3 mb-3">
             <h2 className="text-base font-semibold text-slate-900">{t("shop.title", lang)}</h2>
-            <span className="text-xs text-slate-400">{coupons.length}{lang === "zh" ? "张" : ""}</span>
+            <span className="text-xs text-slate-400">
+              {coupons.length}
+              {t("shop.countUnit", lang)}
+            </span>
           </div>
 
           {coupons.length > 0 ? (
@@ -63,10 +66,13 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
               {coupons.map((c) => {
                 const daysLeft = daysUntil(c.validUntil);
                 const soldOut = c.remainingQuantity !== null && c.remainingQuantity <= 0;
-                const typeLabel = (typeLabels[c.type] || typeLabels.fixed_amount)[lang] || c.type;
-                const displayValue = c.type === "percentage" ? `${(c.valueCents / 100).toFixed(0)}${lang === "zh" ? "折" : "% off"}`
-                  : c.type === "free_item" ? (lang === "zh" ? "免单" : "Free")
-                  : `S$${(c.valueCents / 100).toFixed(0)}`;
+                const typeLabel = t(typeKey[c.type] || "shop.type.fixed", lang);
+                const displayValue =
+                  c.type === "percentage"
+                    ? `${(c.valueCents / 100).toFixed(0)}${t("shop.percentOff", lang)}`
+                    : c.type === "free_item"
+                      ? t("shop.free", lang)
+                      : `S$${(c.valueCents / 100).toFixed(0)}`;
 
                 return (
                   <Link key={c.id} href={`/coupons/${c.id}`}>
@@ -74,20 +80,39 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
                       <CardContent className="p-3">
                         <div className="flex items-center justify-between">
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2"><p className="text-base font-bold text-[#FF6B35]">{displayValue}</p><Badge variant="slate" size="sm">{typeLabel}</Badge></div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-base font-bold text-[#FF6B35]">{displayValue}</p>
+                              <Badge variant="slate" size="sm">{typeLabel}</Badge>
+                            </div>
                             <p className="text-sm font-medium text-slate-900 mt-1">{c.title}</p>
                             {c.description && <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{c.description}</p>}
                           </div>
                           <div className="text-right shrink-0 ml-3">
-                            <span className="text-xs text-slate-400">{soldOut ? (lang === "zh" ? "已领完" : "Sold out") : `${c.pointsRequired}⭐`}</span>
-                            <p className="text-[10px] text-slate-400 mt-1">{daysLeft > 0 ? `${daysLeft}${lang === "zh" ? "天后到期" : "d left"}` : (lang === "zh" ? "即将到期" : "Soon")}</p>
+                            <span className="text-xs text-slate-400">
+                              {soldOut ? t("shop.soldOut", lang) : `${c.pointsRequired}⭐`}
+                            </span>
+                            <p className="text-[10px] text-slate-400 mt-1">
+                              {daysLeft > 0
+                                ? t("shop.daysLeft", lang, { days: daysLeft })
+                                : t("shop.soon", lang)}
+                            </p>
                           </div>
                         </div>
                         <div className="mt-2 pt-2 border-t border-dashed border-slate-50 flex items-center gap-2">
-                          <span className="text-[10px] text-slate-400">{lang === "zh" ? "剩余" : "Left"} {c.remainingQuantity ?? "∞"} {lang === "zh" ? "张" : ""}</span>
+                          <span className="text-[10px] text-slate-400">
+                            {t("shop.left", lang)} {c.remainingQuantity ?? "∞"}{" "}
+                            {t("shop.countUnit", lang)}
+                          </span>
                           <span className="text-[10px] text-slate-400">·</span>
-                          <span className="text-[10px] text-slate-400">{lang === "zh" ? "已领" : "Claimed"} {c.claimedCount} {lang === "zh" ? "次" : ""}</span>
-                          {!soldOut && <span className="ml-auto inline-block px-2 py-0.5 bg-[#1A6EFF] text-white text-[10px] rounded-full">{lang === "zh" ? "领取" : "Claim"}</span>}
+                          <span className="text-[10px] text-slate-400">
+                            {t("shop.claimed", lang)} {c.claimedCount}{" "}
+                            {t("shop.claimTimes", lang)}
+                          </span>
+                          {!soldOut && (
+                            <span className="ml-auto inline-block px-2 py-0.5 bg-[#1A6EFF] text-white text-[10px] rounded-full">
+                              {t("shop.claim", lang)}
+                            </span>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -96,7 +121,11 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
               })}
             </div>
           ) : (
-            <div className="text-center py-16 px-4"><p className="text-4xl mb-3">🎫</p><p className="text-sm text-slate-400">{t("shop.noCoupons", lang) || (lang === "zh" ? "该商家暂未发布代金券" : "No vouchers yet")}</p><p className="text-xs text-slate-300 mt-1">{lang === "zh" ? "请稍后再来" : "Check back later"}</p></div>
+            <div className="text-center py-16 px-4">
+              <p className="text-4xl mb-3">🎫</p>
+              <p className="text-sm text-slate-400">{t("shop.noCoupons", lang)}</p>
+              <p className="text-xs text-slate-300 mt-1">{t("shop.checkLater", lang)}</p>
+            </div>
           )}
         </div>
 

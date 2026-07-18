@@ -1,81 +1,57 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { createTransfer, MIN_WITHDRAWAL_CENTS } from "@/lib/stripe";
+import { createTransfer } from "@/lib/stripe";
+import {
+  applyBusinessWithdrawLedger,
+  precheckBusinessWithdraw,
+} from "@/lib/funding";
 
-// POST /api/stripe/withdraw — 提现
+// POST /api/stripe/withdraw — 提现（仅可用余额；先释放已到期 T+1 冻结）
 export async function POST(request: NextRequest) {
-  const session = await getSession();
-  if (!session || session.role !== "business") {
-    return NextResponse.json({ error: "无权操作" }, { status: 403 });
-  }
-
-  const { amountCents } = await request.json();
-  if (!amountCents || amountCents < MIN_WITHDRAWAL_CENTS) {
-    return NextResponse.json(
-      { error: `提现金额至少 S$${(MIN_WITHDRAWAL_CENTS / 100).toFixed(0)}` },
-      { status: 400 }
-    );
-  }
-
-  // 查余额
-  const account = await prisma.tokenAccount.findUnique({
-    where: { userId: session.userId },
-  });
-  if (!account || account.balance < amountCents) {
-    return NextResponse.json({ error: "可用余额不足" }, { status: 400 });
-  }
-
-  // 查 Stripe 账户
-  const stripeAccount = await prisma.stripeAccount.findUnique({
-    where: { userId: session.userId },
-  });
-  if (!stripeAccount || !stripeAccount.chargesEnabled) {
-    return NextResponse.json(
-      { error: "提现前请先完成收款账户设置" },
-      { status: 400 }
-    );
-  }
-
   try {
-    // Stripe Transfer
-    await createTransfer({
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const amountCents = Number(body.amountCents);
+
+    const check = await precheckBusinessWithdraw({
+      userId: session.userId,
+      role: session.role,
       amountCents,
-      stripeAccountId: stripeAccount.stripeAccountId,
-      description: "WeMembers 余额提现",
     });
+    if (!check.ok) {
+      return NextResponse.json({ error: check.message, code: check.code }, { status: check.status });
+    }
 
-    // 扣余额
-    const updated = await prisma.tokenAccount.update({
-      where: { userId: session.userId },
-      data: {
-        balance: { decrement: amountCents },
-        totalSpent: { increment: amountCents },
-      },
-    });
+    try {
+      await createTransfer({
+        amountCents: check.amountCents,
+        stripeAccountId: check.stripeAccountId,
+        description: "WeMembers 余额提现",
+      });
+    } catch (error: unknown) {
+      console.error("withdrawal stripe transfer error:", error);
+      const msg = error instanceof Error ? error.message : "提现失败";
+      return NextResponse.json({ error: msg }, { status: 500 });
+    }
 
-    await prisma.tokenTransaction.create({
-      data: {
-        accountId: updated.id,
-        amount: -amountCents,
-        type: "withdrawal",
-        description: `提现 S$${(amountCents / 100).toFixed(2)}`,
-        balanceAfter: updated.balance,
-      },
+    const ledger = await applyBusinessWithdrawLedger({
+      userId: session.userId,
+      amountCents: check.amountCents,
     });
 
     return NextResponse.json({
       data: {
         success: true,
-        amount: amountCents / 100,
-        balance: updated.balance,
+        amount: ledger.amountSgd,
+        balance: ledger.balance,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("withdrawal error:", error);
-    return NextResponse.json(
-      { error: error?.message || "提现失败" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "提现失败" }, { status: 500 });
   }
 }

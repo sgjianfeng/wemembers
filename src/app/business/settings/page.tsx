@@ -2,10 +2,10 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { SERVICE_CATEGORIES } from "@/types";
 import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
+import { SettingsEditForm } from "./SettingsEditForm";
+import Link from "next/link";
 
 export default async function BusinessSettingsPage() {
   const session = await getSession();
@@ -22,13 +22,13 @@ export default async function BusinessSettingsPage() {
       businessCategory: true,
       email: true,
       phone: true,
+      displayName: true,
       createdAt: true,
     },
   });
 
   if (!user) redirect("/auth/login");
 
-  const categoryLabel = SERVICE_CATEGORIES.find((c) => c.value === user.businessCategory)?.label;
   const shopUrl = user.businessSlug
     ? `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/shop/${user.businessSlug}`
     : null;
@@ -40,18 +40,32 @@ export default async function BusinessSettingsPage() {
       </div>
 
       <div className="px-4 mt-4 space-y-4">
-        {/* {t("business.settings.shopInfo", lang)} */}
+        <SettingsEditForm
+          initial={{
+            businessName: user.businessName || "",
+            businessCategory: user.businessCategory || "",
+            displayName: user.displayName || "",
+            phone: user.phone || "",
+            email: user.email || "",
+          }}
+        />
+
         <Card>
-          <CardContent className="p-4">
-            <h3 className="text-sm font-semibold text-slate-900 mb-3">{t("business.settings.shopInfo", lang)}</h3>
-            <div className="space-y-2 text-sm">
-              <Info label={t("business.settings.shopName", lang)} value={user.businessName || t("business.settings.notSet", lang)} />
-              <Info label={t("business.settings.category", lang)} value={categoryLabel || t("business.settings.notSet", lang)} />
-              <Info label={t("business.settings.email", lang)} value={user.email || t("business.settings.notSet", lang)} />
-              <Info label={t("business.settings.phone", lang)} value={user.phone || t("business.settings.notSet", lang)} />
-              <Info label={t("business.settings.registeredAt", lang)} value={user.createdAt.toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US")} />
-              <Info label={t("business.settings.slug", lang)} value={user.businessSlug || t("business.settings.notGenerated", lang)} />
-            </div>
+          <CardContent className="p-4 space-y-2 text-sm">
+            <Info
+              label={t("business.settings.slug", lang)}
+              value={user.businessSlug || t("business.settings.notGenerated", lang)}
+            />
+            <Info
+              label={t("business.settings.registeredAt", lang)}
+              value={user.createdAt.toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US")}
+            />
+            <Link href="/business/stores" className="block text-xs text-[#1A6EFF] pt-1">
+              {lang === "en" ? "Manage stores →" : "管理门店 →"}
+            </Link>
+            <Link href="/business/tokens" className="block text-xs text-[#1A6EFF]">
+              {lang === "en" ? "Top-up & withdraw →" : "充值与提现 →"}
+            </Link>
           </CardContent>
         </Card>
 

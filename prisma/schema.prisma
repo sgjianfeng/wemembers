@@ -328,11 +328,14 @@ model TokenTransaction {
   description  String                  // 人类可读描述
   referenceId  String?                 // 关联的券/会员ID
   balanceAfter Int                     // 交易后余额
+  availableAt  DateTime?               // T+1: frozen until this time
+  releasedAt   DateTime?               // when hold moved frozen → available
   createdAt    DateTime @default(now())
 
   account      TokenAccount @relation(fields: [accountId], references: [id])
 
   @@index([accountId, createdAt])
+  @@index([accountId, availableAt, releasedAt])
 }
 
 model TokenPurchase {
@@ -645,13 +648,14 @@ model Campaign {
   totalRedemptions Int     @default(0)      // 总核销
   entryCount      Int      @default(0)      // 抽奖参与人数
   totalTicketCount Int     @default(0)      // 已发放券数
-  instantPoolCents Int      @default(0)      // 即时奖池（分）= 总消费 × 20% × 10%
+  instantPoolCents Int      @default(0)      // 小奖/即时池累计（分）
+  grandPoolCents   Int      @default(0)      // 延迟大奖池累计（分）
 
   // 收据抽奖
   entryMethod     String   @default("auto")        // auto | receipt
   receiptMinSpend Int?                             // 最低消费门槛（分），null=无门槛
   ticketsPerUnit  Int      @default(1)             // 每满 minSpend 几张券
-  budgetPercent   Int      @default(20)            // 预算占比 %
+  budgetPercent   Int      @default(20)            // 核销 pot 占比 %
   joinCount           Int      @default(0)      // 已参与门店数
   slug            String?  @unique                 // 公开页 URL
 
@@ -663,11 +667,16 @@ model Campaign {
 
   // V2 voucher draw fields
   voucherTiers      String?                    // JSON: [{"min":10,"max":40,"tier":"small","instantPrizeCap":2},...]
-  instantPoolRatio  Int      @default(10)      // 即时池占比 %
-  midPoolRatio      Int      @default(60)      // 中奖池占比 %
-  grandPoolRatio    Int      @default(30)      // 梦想池占比 %
+  instantPoolRatio  Int      @default(20)      // 小奖池占比 %（核销进池后切割）
+  midPoolRatio      Int      @default(0)       // deprecated: mid tier removed, always 0
+  grandPoolRatio    Int      @default(80)      // 延迟大奖池占比 %
+
   dailyAvgVelocity  Float    @default(0)       // 7日均速
   lastVelocityUpdate DateTime?                  // 上次速度更新时间
+
+  // Template system (platform catalog → store instance)
+  templateId        String?                    // voucher_discount | draw_standard | share_boost
+  rulesSnapshot     String?                    // JSON RulesSnapshot locked at create
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -707,13 +716,20 @@ model Voucher {
   customerId            String
   campaignId            String
   storeId               String?                // 售券门店
+  sellerId              String?                // 卖家/分享人 userId（拿佣金）
+  stripeSessionId       String?  @unique       // Stripe Checkout session（幂等）
   amountCents           Int                    // 券面金额（分）
+  paidCents             Int      @default(0)   // 顾客实付（分）
+  sellerCommissionCents Int      @default(0)   // 卖家佣金（分）
+  platformFeeCents      Int      @default(0)
   usedCents             Int      @default(0)   // 已消费金额
   balanceCents          Int                    // 剩余余额
-  prizePoolContribution Int                    // 奖池贡献
+  withdrawnCents        Int      @default(0)   // 已提现（面值）累计
+  instantPrizeClawedCents Int    @default(0)   // 提现时已扣回的即时奖面值
+  prizePoolContribution Int                    // 奖池贡献（小+大合计）
   drawWeight            Int                    // 大奖池权重
   tier                  String                 // small / medium / large
-  status                String   @default("active") // active / exhausted / expired
+  status                String   @default("active") // active / exhausted / expired / withdrawn
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -725,6 +741,7 @@ model Voucher {
 
   @@index([customerId, status])
   @@index([campaignId, createdAt])
+  @@index([sellerId])
 }
 
 model VoucherUsage {
@@ -746,7 +763,7 @@ model VoucherUsage {
 model VoucherDraw {
   id           String   @id @default(cuid())
   voucherId    String
-  drawType     String                // "instant" | "mid" | "grand"
+  drawType     String                // "instant" | "grand" (legacy "mid" treated as deferred)
   won          Boolean  @default(false)
   prizeName    String?
   prizeIcon    String?

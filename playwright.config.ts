@@ -19,5 +19,10 @@ export default defineConfig({
     url: "http://localhost:3000",
     reuseExistingServer: true,
     timeout: 30000,
+    env: {
+      ...process.env,
+      // E2E may still call direct purchase; Checkout is tested separately
+      ALLOW_DIRECT_VOUCHER_PURCHASE: "true",
+    },
   },
 });

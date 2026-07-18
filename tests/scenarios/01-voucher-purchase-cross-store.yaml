@@ -27,7 +27,7 @@ steps:
     set: { cust_token: "$.data.token" }
 
   - name: A创建活动
-    api: { method: POST, path: /api/business/campaigns, body: { name: "A店抽奖", type: lucky_draw_v2, startDate: "2026-06-01T00:00:00Z", endDate: "2026-12-31T00:00:00Z", slug: "s1a", budgetPercent: 20, instantPoolRatio: 10, midPoolRatio: 60, grandPoolRatio: 30 }, cookie: "${token_a}", expect: 200 }
+    api: { method: POST, path: /api/business/campaigns, body: { name: "A店抽奖", type: lucky_draw_v2, startDate: "2026-06-01T00:00:00Z", endDate: "2026-12-31T00:00:00Z", slug: "s1a", budgetPercent: 20, instantPoolRatio: 10, midPoolRatio: 0, grandPoolRatio: 90 }, cookie: "${token_a}", expect: 200 }
   - name: B创建活动入网
     api: { method: POST, path: /api/business/campaigns, body: { name: "B店抽奖", type: lucky_draw_v2, startDate: "2026-06-01T00:00:00Z", endDate: "2026-12-31T00:00:00Z", slug: "s1b", budgetPercent: 20 }, cookie: "${token_b}", expect: 200 }
 
