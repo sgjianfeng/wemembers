@@ -54,11 +54,11 @@ const content = {
         icon: "🎰",
         title: "幸运抽奖",
         subtitle: "买券即抽 · 消费留余额 · 大奖倒计时",
-        desc: "买 S$100 代金券 → 消费 S$70 → 剩 S$30 余额。每笔购买即时抽一次奖，100% 中现金。余额消费后再抽一次延迟大奖，赢 iPad、iPhone、BYD 海豹！",
+        desc: "买 S$100 代金券 → 消费 S$70 → 剩 S$30 余额。每笔购买即时抽一次奖，100% 中现金。到店核销进大奖池，看倒计时开奖，赢 iPad、iPhone、BYD 海豹！",
         features: [
           { title: "买券即时抽", body: "每笔购券即时抽奖，100% 中现金奖励" },
           { title: "消费留余额", body: "消费多少扣多少，余额留用下次，灵活省钱" },
-          { title: "再抽大奖", body: "余额消费后触发延迟开奖，赢手机汽车大礼" },
+          { title: "倒计时大奖", body: "核销冲奖池，进度与倒计时可见，开奖赢大礼" },
         ],
         gradient: "from-violet-500 to-violet-600",
         bg: "bg-violet-50",
@@ -128,11 +128,11 @@ const content = {
         icon: "🎰",
         title: "Lucky Draw",
         subtitle: "Buy & Draw · Spend & Save · Grand Prize",
-        desc: "Buy S$100 voucher → Spend S$70 → Keep S$30 balance. Every purchase triggers an instant draw (100% win rate). After spending the balance, enter the deferred grand prize draw — win iPad, iPhone, BYD Seal & more!",
+        desc: "Buy S$100 voucher → Spend S$70 → Keep S$30 balance. Every purchase triggers an instant draw (100% win rate). Redeems fund the grand pool — watch the countdown and win iPad, iPhone, BYD Seal & more!",
         features: [
           { title: "Instant Draw", body: "Every purchase triggers a draw, 100% cash win rate" },
           { title: "Spend & Save", body: "Pay only what you spend, balance rolls over — flexible savings" },
-          { title: "Grand Prize", body: "Full balance use triggers deferred draw for big-ticket prizes" },
+          { title: "Countdown Prize", body: "Redeems fund the pool — progress & countdown, then big wins" },
         ],
         gradient: "from-violet-500 to-violet-600",
         bg: "bg-violet-50",
@@ -275,12 +275,14 @@ export default function HomePage() {
                 </span>
               </h1>
               <p className="text-sm font-semibold text-white/90 mb-1">
-                {isZh ? "100% 中奖 · 即时到账 · 延迟赢大奖" : "100% Win · Instant Cash · Grand Prize"}
+                {isZh
+                  ? "100% 中奖 · 即时到账 · 倒计时赢大奖"
+                  : "100% Win · Instant Cash · Countdown Grand Prize"}
               </p>
               <p className="text-xs text-white/50 mb-4 leading-snug">
                 {isZh
-                  ? "买券抽一次即时奖，余额到店花；核销再进大奖池"
-                  : "Buy → instant win + spendable balance · redeems fund grand prizes"}
+                  ? "买券抽一次即时奖，余额到店花；核销进大奖池，看倒计时开奖"
+                  : "Buy → instant win + spendable balance · redeems fund the countdown pool"}
               </p>
             </>
           )}
