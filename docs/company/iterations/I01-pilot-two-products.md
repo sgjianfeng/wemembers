@@ -76,12 +76,25 @@
 | 即时小奖 | 100% 有一条 |
 | 大奖池权重 | 有进池记录/展示 |
 
-## 公开链接（部署建活动后填写）
+## 公开链接（Test 验账 · 2026-07-19 已上线）
 
 | 产品 | URL |
 |------|-----|
-| S$10 代金 | `https://wemembers.store/voucher/________` |
-| 抽奖三档 | `https://wemembers.store/voucher/________` |
+| S$10 代金 | https://wemembers.store/voucher/meow-bbq-s10-voucher |
+| 抽奖三档 | https://wemembers.store/voucher/meow-bbq-draw-3tier |
+
+### Test 支付（现网 `sk_test`）
+
+1. 用 **顾客账号** 登录（手机号注册/登录）  
+2. 打开上表链接 → 选面额 → 去支付  
+3. Checkout 选 **Card**（Test 已开卡；Live 仍仅 PayNow）  
+4. 卡号 `4242 4242 4242 4242` · 任意未来有效期 · CVC 任意 · 邮编任意  
+5. 成功回跳后看余额/即时奖；`/balance` 可对账  
+
+| 活动 | 选 | 期望实付 |
+|------|----|----------|
+| 代金 | S$10 | **S$8.00**（20% off） |
+| 抽奖 | 建议先 S$50 | **S$50.00**（无折扣） |
 
 ## 市场一句话
 
