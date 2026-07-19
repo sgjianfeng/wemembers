@@ -197,27 +197,51 @@ export default function HomePage() {
     <div className="min-h-screen bg-white">
       {/* ── Top Header ── */}
       <TopHeader variant="landing">
-        {/* 顶栏：商家账号可进后台；消费者视图不把「管理后台」当主叙事 */}
-        {session?.role === "business" || session?.role === "staff" ? (
+        {/* 未登录 → 登录；已登录 → 显示名称（区分消费者 / 商家） */}
+        {!session ? (
+          <Link
+            href="/auth/login"
+            className="text-xs font-medium text-white/85 hover:text-white transition-colors px-2 py-1 rounded-full border border-white/20"
+          >
+            {t.nav.login}
+          </Link>
+        ) : session.role === "business" || session.role === "staff" ? (
           <Link
             href="/business"
-            className="text-xs font-medium text-white/80 hover:text-white transition-colors"
+            className="flex items-center gap-1.5 max-w-[9.5rem] text-left hover:opacity-90 transition-opacity"
+            title={session.businessName || session.displayName || ""}
           >
-            {t.nav.dashboard}
-          </Link>
-        ) : session?.role === "customer" ? (
-          <Link
-            href="/home"
-            className="text-xs font-medium text-white/80 hover:text-white transition-colors"
-          >
-            {t.nav.home}
+            <span className="shrink-0 text-[9px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded bg-sky-500/25 text-sky-200 border border-sky-400/30">
+              {session.role === "staff"
+                ? isZh
+                  ? "店员"
+                  : "Staff"
+                : isZh
+                  ? "商家"
+                  : "Biz"}
+            </span>
+            <span className="text-xs font-medium text-white truncate">
+              {session.businessName ||
+                session.displayName ||
+                session.email ||
+                (isZh ? "商家账号" : "Business")}
+            </span>
           </Link>
         ) : (
           <Link
-            href="/auth/login"
-            className="text-xs font-medium text-white/80 hover:text-white transition-colors"
+            href="/home"
+            className="flex items-center gap-1.5 max-w-[9.5rem] text-left hover:opacity-90 transition-opacity"
+            title={session.displayName || session.phone || ""}
           >
-            {t.nav.login}
+            <span className="shrink-0 text-[9px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded bg-amber-500/25 text-amber-100 border border-amber-400/30">
+              {isZh ? "用户" : "You"}
+            </span>
+            <span className="text-xs font-medium text-white truncate">
+              {session.displayName ||
+                session.phone ||
+                session.email ||
+                (isZh ? "我的" : "Me")}
+            </span>
           </Link>
         )}
       </TopHeader>
