@@ -23,7 +23,10 @@ export async function POST(request: NextRequest) {
     }
 
     const isEmail = raw.includes("@");
-    const contact = isEmail ? raw.toLowerCase() : raw.replace(/\s+/g, "");
+    const { normalizeSingaporePhone } = await import("@/lib/utils");
+    const contact = isEmail
+      ? raw.toLowerCase()
+      : normalizeSingaporePhone(raw);
 
     const record = await prisma.verificationCode.findFirst({
       where: {

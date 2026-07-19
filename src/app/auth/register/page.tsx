@@ -19,7 +19,13 @@ type RoleChoice = "customer" | "business";
 function normalizeContact(raw: string): string {
   const t = raw.trim();
   if (t.includes("@")) return t.toLowerCase();
-  return t.replace(/\s+/g, "");
+  // 与后端一致：SG 8 位补 +65，避免 Vonage 422
+  const d = t.replace(/[^\d+]/g, "");
+  if (d.startsWith("+")) return d;
+  const digits = d.replace(/\D/g, "");
+  if (digits.startsWith("65") && digits.length === 10) return `+${digits}`;
+  if (/^[89]\d{7}$/.test(digits)) return `+65${digits}`;
+  return digits || t;
 }
 
 export default function RegisterPage() {

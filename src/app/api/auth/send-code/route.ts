@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { generateCode } from "@/lib/utils";
+import { generateCode, normalizeSingaporePhone } from "@/lib/utils";
 import { sendVerificationSMS } from "@/lib/sms";
 import { sendVerificationCode } from "@/lib/email";
 
@@ -21,9 +21,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "无效的用途" }, { status: 400 });
     }
 
-    // 判断是邮箱还是手机号；邮箱统一小写，避免大小写匹配失败
+    // 判断是邮箱还是手机号；邮箱统一小写；手机号规范为 +65…
     const isEmail = raw.includes("@");
-    const contact = isEmail ? raw.toLowerCase() : raw.replace(/\s+/g, "");
+    const contact = isEmail
+      ? raw.toLowerCase()
+      : normalizeSingaporePhone(raw);
 
     // 检查是否已注册
     if (purpose === "register") {

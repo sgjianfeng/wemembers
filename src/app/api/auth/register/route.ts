@@ -25,7 +25,10 @@ export async function POST(request: NextRequest) {
     }
 
     const isEmail = rawContact.includes("@");
-    const contact = isEmail ? rawContact.toLowerCase() : rawContact.replace(/\s+/g, "");
+    const { normalizeSingaporePhone } = await import("@/lib/utils");
+    const contact = isEmail
+      ? rawContact.toLowerCase()
+      : normalizeSingaporePhone(rawContact);
 
     let businessUen: string | null = null;
     if (role === "business") {

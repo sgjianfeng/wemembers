@@ -24,6 +24,25 @@ export function formatMoney(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
+/**
+ * 规范化新加坡手机号为 E.164（+65XXXXXXXX）。
+ * 接受：91251676 / 65 9125 1676 / +6591251676
+ * 非 SG 格式原样返回（已带 + 的国际号）。
+ */
+export function normalizeSingaporePhone(raw: string): string {
+  const digits = raw.replace(/[^\d+]/g, "");
+  if (digits.startsWith("+")) {
+    // +65xxxxxxxx
+    if (digits.startsWith("+65") && digits.length === 11) return digits;
+    return digits;
+  }
+  let d = digits.replace(/\D/g, "");
+  if (d.startsWith("65") && d.length === 10) return `+${d}`;
+  // SG 8 位手机（通常 8/9 开头）
+  if (/^[89]\d{7}$/.test(d)) return `+65${d}`;
+  return d ? (d.startsWith("65") ? `+${d}` : d) : raw.trim();
+}
+
 export function timeAgo(date: Date): string {
   const now = new Date();
   const diff = now.getTime() - date.getTime();
