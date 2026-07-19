@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLang } from "@/components/i18n/LanguageProvider";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -30,6 +30,7 @@ function normalizeContact(raw: string): string {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t, lang } = useLang();
   const [step, setStep] = useState<Step>("role");
   const [role, setRole] = useState<RoleChoice>("customer");
@@ -42,6 +43,15 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // /auth/register?role=customer|business — 从首页分流，跳过身份选择
+  useEffect(() => {
+    const r = searchParams.get("role");
+    if (r === "customer" || r === "business") {
+      setRole(r);
+      setStep("details");
+    }
+  }, [searchParams]);
 
   const contactNorm = normalizeContact(contact);
   const isEmail = contactNorm.includes("@");

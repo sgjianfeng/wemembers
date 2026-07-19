@@ -160,29 +160,18 @@ export default function HomePage() {
   const { lang } = useLang();
   const t = content[lang as keyof typeof content] || content.zh;
   const [session, setSession] = useState<any>(null);
-  // 首屏固定 consumer，避免 SSR 与 localStorage 不一致导致 hydration 失败
-  const [roleView, setRoleView] = useState<"business" | "consumer">("consumer");
   const isZh = lang === "zh";
+  const isCustomer = session?.role === "customer";
+  const isMerchant =
+    session?.role === "business" || session?.role === "staff";
 
-  function switchRoleView(v: "business" | "consumer") {
-    setRoleView(v);
-    try {
-      localStorage.setItem("wem_role_view", v);
-    } catch {
-      /* ignore */
-    }
-  }
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("wem_role_view");
-      if (saved === "business" || saved === "consumer") {
-        setRoleView(saved);
-      }
-    } catch {
-      /* ignore */
-    }
-  }, []);
+  // 商家会话访问用户注册/登录前先退出，避免 middleware 踢回 /business
+  const custRegisterHref = isMerchant
+    ? `/api/auth/logout?next=${encodeURIComponent("/auth/register?role=customer")}`
+    : "/auth/register?role=customer";
+  const custLoginHref = isMerchant
+    ? `/api/auth/logout?next=${encodeURIComponent("/auth/login?tab=customer")}`
+    : "/auth/login?tab=customer";
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -195,92 +184,38 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* ── Top Header ── */}
+      {/*
+        产品 IA：/ = 消费者站；商家站 = /for-business
+        不再用「我是消费者 / 我是商家」双 Tab 混在同一首页
+      */}
       <TopHeader variant="landing">
-        {/*
-          顶栏跟随「我是消费者 / 商家」Tab + 真实会话：
-          - 消费者 Tab 只展示消费者身份；商家会话不在此冒充用户名
-          - 商家 Tab 同理
-          单账号单角色：要换身份需登录另一角色账号
-        */}
-        {(() => {
-          const isBizSession =
-            session?.role === "business" || session?.role === "staff";
-          const isCustSession = session?.role === "customer";
-          const loginClass =
-            "text-xs font-medium text-white/85 hover:text-white transition-colors px-2 py-1 rounded-full border border-white/20";
-
-          if (roleView === "consumer") {
-            if (isCustSession) {
-              return (
-                <Link
-                  href="/home"
-                  className="flex items-center gap-1.5 max-w-[9.5rem] text-left hover:opacity-90 transition-opacity"
-                  title={session.displayName || session.phone || ""}
-                >
-                  <span className="shrink-0 text-[9px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded bg-amber-500/25 text-amber-100 border border-amber-400/30">
-                    {isZh ? "用户" : "You"}
-                  </span>
-                  <span className="text-xs font-medium text-white truncate">
-                    {session.displayName ||
-                      session.phone ||
-                      session.email ||
-                      (isZh ? "我的" : "Me")}
-                  </span>
-                </Link>
-              );
-            }
-            // 未登录，或当前是商家会话：消费者视图只给「用户登录」
-            return (
-              <Link href="/auth/login?tab=customer" className={loginClass}>
-                {isBizSession
-                  ? isZh
-                    ? "用户登录"
-                    : "Customer login"
-                  : t.nav.login}
-              </Link>
-            );
-          }
-
-          // roleView === business
-          if (isBizSession) {
-            return (
-              <Link
-                href="/business"
-                className="flex items-center gap-1.5 max-w-[9.5rem] text-left hover:opacity-90 transition-opacity"
-                title={session.businessName || session.displayName || ""}
-              >
-                <span className="shrink-0 text-[9px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded bg-sky-500/25 text-sky-200 border border-sky-400/30">
-                  {session.role === "staff"
-                    ? isZh
-                      ? "店员"
-                      : "Staff"
-                    : isZh
-                      ? "商家"
-                      : "Biz"}
-                </span>
-                <span className="text-xs font-medium text-white truncate">
-                  {session.businessName ||
-                    session.displayName ||
-                    session.email ||
-                    (isZh ? "商家账号" : "Business")}
-                </span>
-              </Link>
-            );
-          }
-          return (
-            <Link href="/auth/login?tab=business" className={loginClass}>
-              {isCustSession
-                ? isZh
-                  ? "商家登录"
-                  : "Business login"
-                : t.nav.login}
-            </Link>
-          );
-        })()}
+        {isCustomer ? (
+          <Link
+            href="/home"
+            className="flex items-center gap-1.5 max-w-[9.5rem] text-left hover:opacity-90 transition-opacity"
+            title={session.displayName || session.phone || ""}
+          >
+            <span className="shrink-0 text-[9px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded bg-amber-500/25 text-amber-100 border border-amber-400/30">
+              {isZh ? "用户" : "You"}
+            </span>
+            <span className="text-xs font-medium text-white truncate">
+              {session.displayName ||
+                session.phone ||
+                session.email ||
+                (isZh ? "我的" : "Me")}
+            </span>
+          </Link>
+        ) : (
+          <Link
+            href={custLoginHref}
+            className="text-xs font-medium text-white/85 hover:text-white transition-colors px-2 py-1 rounded-full border border-white/20"
+          >
+            {t.nav.login}
+          </Link>
+        )}
       </TopHeader>
 
-      {/* ── Hero（紧凑） ── */}
+      {/* ── Hero：仅消费者 ── */}
       <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 px-4 pt-4 pb-14 text-white">
         <div className="absolute top-[-80px] right-[-60px] w-56 h-56 bg-blue-500/20 rounded-full blur-3xl" />
         <div className="absolute bottom-[-40px] left-[-40px] w-48 h-48 bg-violet-500/15 rounded-full blur-3xl" />
@@ -290,258 +225,67 @@ export default function HomePage() {
             {t.hero.badge}
           </span>
 
-          {/* ── Role Tabs ── */}
-          <div className="flex gap-1 justify-center mb-3">
-            <button
-              onClick={() => switchRoleView("consumer")}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${
-                roleView === "consumer"
-                  ? "bg-white text-slate-900 shadow-md"
-                  : "bg-white/10 text-white/60 hover:bg-white/20"
-              }`}
-            >
-              👤 {isZh ? "我是消费者" : "For Consumers"}
-            </button>
-            <button
-              data-role-switch="business"
-              onClick={() => switchRoleView("business")}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${
-                roleView === "business"
-                  ? "bg-white text-slate-900 shadow-md"
-                  : "bg-white/10 text-white/60 hover:bg-white/20"
-              }`}
-            >
-              🏪 {isZh ? "我是商家" : "For Business"}
-            </button>
-          </div>
+          <h1 className="text-3xl font-extrabold tracking-tight mb-1.5 leading-tight">
+            <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
+              {isZh ? "🎰 买券抽大奖" : "🎰 Buy & Win Big"}
+            </span>
+          </h1>
+          <p className="text-sm font-semibold text-white/90 mb-1">
+            {isZh
+              ? "100% 中奖 · 即时到账 · 倒计时赢大奖"
+              : "100% Win · Instant Cash · Countdown Grand Prize"}
+          </p>
+          <p className="text-xs text-white/50 mb-5 leading-snug">
+            {isZh
+              ? "买券抽一次即时奖，余额到店花；核销进大奖池，看倒计时开奖"
+              : "Buy → instant win + spendable balance · redeems fund the countdown pool"}
+          </p>
 
-          {roleView === "business" ? (
-            <>
-              <h1 className="text-3xl font-extrabold tracking-tight mb-1.5">
-                <span className="bg-gradient-to-r from-blue-400 to-sky-300 bg-clip-text text-transparent">
-                  {t.hero.title}
-                </span>
-              </h1>
-              <p className="text-base font-semibold text-white/90 mb-1">{t.hero.subtitle}</p>
-              <p className="text-xs text-white/50 mb-4">{t.hero.desc}</p>
-            </>
-          ) : (
-            <>
-              <h1 className="text-3xl font-extrabold tracking-tight mb-1.5 leading-tight">
-                <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
-                  {isZh ? "🎰 买券抽大奖" : "🎰 Buy & Win Big"}
-                </span>
-              </h1>
-              <p className="text-sm font-semibold text-white/90 mb-1">
-                {isZh
-                  ? "100% 中奖 · 即时到账 · 倒计时赢大奖"
-                  : "100% Win · Instant Cash · Countdown Grand Prize"}
-              </p>
-              <p className="text-xs text-white/50 mb-4 leading-snug">
-                {isZh
-                  ? "买券抽一次即时奖，余额到店花；核销进大奖池，看倒计时开奖"
-                  : "Buy → instant win + spendable balance · redeems fund the countdown pool"}
-              </p>
-            </>
-          )}
-
-          {/* 主 CTA 跟角色 Tab；首页通用，不挂具体商家活动 */}
-          {roleView === "consumer" ? (
-            <div className="flex flex-col items-center gap-2">
-              {session?.role === "customer" ? (
-                <Link
-                  href="/home"
-                  className="inline-flex items-center gap-2 px-7 py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-300/30 hover:from-amber-500 hover:to-orange-600 transition-all active:scale-[0.98]"
-                >
-                  {isZh ? "进入我的首页" : "Go to my home"}
-                  <span className="text-base">→</span>
-                </Link>
-              ) : (
-                <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                  <Link
-                    href="/auth/register"
-                    className="inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-300/30 hover:from-amber-500 hover:to-orange-600 transition-all active:scale-[0.98]"
-                  >
-                    🎰 {isZh ? "免费注册" : "Sign up free"}
-                  </Link>
-                  <Link
-                    href="/auth/login"
-                    className="inline-flex items-center justify-center px-7 py-2.5 text-white/80 rounded-full font-medium text-sm border border-white/20 hover:bg-white/10 hover:text-white transition-all"
-                  >
-                    {t.nav.login}
-                  </Link>
-                </div>
-              )}
-              {(session?.role === "business" || session?.role === "staff") && (
-                <p className="text-[10px] text-white/40 mt-0.5">
-                  {isZh
-                    ? "当前是商家登录 · 管店请点上方「我是商家」"
-                    : "Logged in as business · switch to For Business to manage"}
-                </p>
-              )}
-            </div>
-          ) : session?.role === "business" || session?.role === "staff" ? (
+          {isCustomer ? (
             <Link
-              href="/business"
-              className="inline-flex items-center gap-2 px-7 py-2.5 bg-white text-slate-900 rounded-full font-semibold text-sm shadow-lg shadow-black/20 hover:bg-white/95 transition-all active:scale-[0.98]"
+              href="/home"
+              className="inline-flex items-center gap-2 px-7 py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-300/30 hover:from-amber-500 hover:to-orange-600 transition-all active:scale-[0.98]"
             >
-              {t.nav.dashboard}
+              {isZh ? "进入我的首页" : "Go to my home"}
               <span className="text-base">→</span>
             </Link>
           ) : (
             <div className="flex flex-col sm:flex-row gap-2 justify-center">
               <Link
-                href="/auth/register"
-                className="inline-flex items-center justify-center px-7 py-2.5 bg-white text-slate-900 rounded-full font-semibold text-sm shadow-lg shadow-black/20 hover:bg-white/95 transition-all active:scale-[0.98]"
+                href={custRegisterHref}
+                className="inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-300/30 hover:from-amber-500 hover:to-orange-600 transition-all active:scale-[0.98]"
               >
-                {t.hero.cta}
+                🎰 {isZh ? "免费注册" : "Sign up free"}
               </Link>
               <Link
-                href="/auth/login"
-                className="inline-flex items-center justify-center px-7 py-2.5 text-white/70 rounded-full font-medium text-sm border border-white/15 hover:bg-white/10 hover:text-white transition-all"
+                href={custLoginHref}
+                className="inline-flex items-center justify-center px-7 py-2.5 text-white/80 rounded-full font-medium text-sm border border-white/20 hover:bg-white/10 hover:text-white transition-all"
               >
                 {t.nav.login}
               </Link>
             </div>
           )}
+          {isMerchant && (
+            <p className="text-[10px] text-white/40 mt-2">
+              {isZh
+                ? "检测到商家会话：点注册/登录会先退出商家再进入用户流程"
+                : "Merchant session detected — register/login will switch to customer"}
+            </p>
+          )}
         </div>
       </section>
 
-      {/* ── Consumer View ── */}
-      {roleView === "consumer" ? (
-        <ConsumerView isZh={isZh} lang={lang} />
-      ) : (
-        <>
-      {/* ── Stats ── */}
-      <section className="relative -mt-8 px-5">
-        <div className="max-w-sm mx-auto">
-          <div className="grid grid-cols-3 gap-3">
-            {t.stats.map((s, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-slate-100 py-4 px-2 text-center shadow-sm">
-                <p className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                  {s.valuePrefix && <span className="text-base">{s.value}</span>}
-                  {s.valueAlt || s.value}
-                  <span className="text-sm font-normal text-slate-400 ml-0.5">{s.unit}</span>
-                </p>
-                <p className="text-[11px] text-slate-400 mt-1">{s.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <ConsumerView isZh={isZh} lang={lang} />
 
-      {/* ── Pillars ── */}
-      <section className="px-5 pt-16 pb-8 max-w-sm mx-auto">
-        <div className="text-center mb-10">
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">
-            {lang === "zh" ? "核心能力" : "What you get"}
-          </h2>
-          <p className="text-sm text-slate-400">
-            {lang === "zh" ? "代金券发得出 · 抽奖玩得动 · 到店核销" : "Vouchers · lucky draws · in-store redeem"}
-          </p>
-        </div>
-
-        <div className="space-y-6">
-          {t.pillars.map((p, i) => (
-            <div key={i} className="group relative bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-              {/* Color accent bar at top */}
-              <div className={`h-1.5 bg-gradient-to-r ${p.gradient}`} />
-
-              <div className="p-5">
-                {/* Header */}
-                <div className="flex items-center gap-4 mb-4">
-                  <div className={`w-12 h-12 rounded-xl ${p.bg} flex items-center justify-center text-2xl shrink-0`}>
-                    {p.icon}
-                  </div>
-                  <div>
-                    <h3 className={`text-lg font-bold ${p.text}`}>{p.title}</h3>
-                    <p className="text-xs text-slate-400">{p.subtitle}</p>
-                  </div>
-                </div>
-
-                <p className="text-sm text-slate-500 leading-relaxed mb-4">{p.desc}</p>
-
-                {/* Feature pills */}
-                <div className="space-y-2">
-                  {p.features.map((f, j) => (
-                    <div key={j} className="flex items-start gap-2.5">
-                      <div className={`w-5 h-5 rounded-md ${p.bg} ${p.text} flex items-center justify-center shrink-0 mt-0.5`}>
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-slate-700">{f.title}</p>
-                        <p className="text-[11px] text-slate-400">{f.body}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── How It Works ── */}
-      <section className="px-5 py-16 bg-slate-50">
-        <div className="max-w-sm mx-auto">
-          <h2 className="text-2xl font-bold text-slate-900 text-center mb-2">{t.flow.title}</h2>
-          <p className="text-sm text-slate-400 text-center mb-8">
-            {lang === "zh" ? "注册企业 → 发券/开抽奖 → 门店贴码" : "Company → vouchers & draws → store QR"}
-          </p>
-
-          <div className="space-y-6">
-            {t.flow.steps.map((s, i) => (
-              <div key={i} className="flex gap-4">
-                {/* Number & line */}
-                <div className="flex flex-col items-center shrink-0">
-                  <div className="w-10 h-10 rounded-full bg-white border-2 border-blue-100 flex items-center justify-center text-sm font-bold text-blue-600 shadow-sm">
-                    {s.num}
-                  </div>
-                  {i < t.flow.steps.length - 1 && (
-                    <div className="w-0.5 flex-1 bg-blue-100 my-1" />
-                  )}
-                </div>
-                {/* Content */}
-                <div className="pb-6">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xl">{s.icon}</span>
-                    <h3 className="font-semibold text-slate-900">{s.title}</h3>
-                  </div>
-                  <p className="text-sm text-slate-500">{s.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA ── */}
-      <section className="px-5 py-16">
-        <div className="max-w-sm mx-auto text-center">
-          <div className="bg-gradient-to-br from-slate-900 to-blue-950 rounded-3xl p-8 text-white shadow-xl">
-            <p className="text-3xl mb-3">🚀</p>
-            <h2 className="text-xl font-bold mb-2">{t.cta.title}</h2>
-            <p className="text-white/60 text-sm mb-6">{t.cta.desc}</p>
-            {!session && (
-              <Link
-                href="/auth/register"
-                className="inline-flex items-center justify-center px-8 py-3.5 bg-white text-slate-900 rounded-full font-semibold text-sm shadow-lg hover:bg-white/95 transition-all active:scale-[0.98]"
-              >
-                {t.cta.button}
-              </Link>
-            )}
-          </div>
-        </div>
-      </section>
-
-        </>
-      )}
-
-      {/* ── Footer ── */}
-      <footer className="px-5 pb-10 text-center">
-        <p className="text-xs text-slate-300">{t.footer}</p>
+      {/* ── Footer：消费者站底部商家入口 ── */}
+      <footer className="px-5 pb-10 pt-4 text-center border-t border-slate-100">
+        <p className="text-xs text-slate-300 mb-3">{t.footer}</p>
+        <Link
+          href="/for-business"
+          className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-[#1A6EFF] transition-colors"
+        >
+          {isZh ? "我是商家 · 入驻与发券 →" : "For business · Issue vouchers →"}
+        </Link>
       </footer>
     </div>
   );
