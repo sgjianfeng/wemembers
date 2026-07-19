@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { spendTokens } from "@/lib/tokens";
-import { TOKEN_COSTS } from "@/types";
+import { storeIdsAllows } from "@/lib/utils";
+
 
 // POST /api/business/redeem — 扫码核销
 export async function POST(request: NextRequest) {
@@ -12,8 +12,45 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { qrCode } = await request.json();
+    const body = await request.json();
+    const qrCode = body.qrCode as string;
+    const bodyStoreId =
+      typeof body.storeId === "string" ? body.storeId.trim() : "";
     if (!qrCode) return NextResponse.json({ error: "缺少核销码" }, { status: 400 });
+
+    // 门店：店员固定 JWT；企业必须传 body.storeId
+    let storeId: string | null =
+      session.role === "staff" ? session.storeId || null : bodyStoreId || null;
+
+    let businessId = session.userId;
+    if (session.role === "staff") {
+      if (!session.storeId) {
+        return NextResponse.json({ error: "店员未绑定门店" }, { status: 403 });
+      }
+      const st = await prisma.store.findUnique({
+        where: { id: session.storeId },
+        select: { id: true, businessId: true },
+      });
+      if (!st) return NextResponse.json({ error: "门店不存在" }, { status: 404 });
+      storeId = st.id;
+      businessId = st.businessId;
+    } else {
+      if (!storeId) {
+        return NextResponse.json(
+          { error: "请选择本次核销的门店" },
+          { status: 400 }
+        );
+      }
+      const st = await prisma.store.findFirst({
+        where: { id: storeId, businessId: session.userId },
+        select: { id: true, businessId: true },
+      });
+      if (!st) {
+        return NextResponse.json({ error: "门店无效或不属于本企业" }, { status: 400 });
+      }
+      storeId = st.id;
+      businessId = st.businessId;
+    }
 
     // 查找券
     const claim = await prisma.customerCoupon.findUnique({
@@ -24,24 +61,55 @@ export async function POST(request: NextRequest) {
     if (!claim) return NextResponse.json({ error: "无效的核销码" }, { status: 404 });
     if (claim.status !== "available") return NextResponse.json({ error: `该券已${claim.status === "used" ? "使用" : "过期"}` }, { status: 400 });
 
-    // 跨商家核销判断
-    const isCrossStore = claim.coupon.businessId !== session.userId;
+    // 适用门店限制（实体券绑定后的线上券：仅本店）
+    if (!storeIdsAllows(claim.coupon.storeIds, storeId)) {
+      return NextResponse.json(
+        { error: "该券不适用于当前门店" },
+        { status: 403 }
+      );
+    }
+
+    // 若来自实体券：再校验实体码本店 + 未作废
+    const physical = await prisma.physicalTicket.findFirst({
+      where: {
+        OR: [
+          { customerCouponId: claim.id },
+          { code: qrCode },
+        ],
+      },
+      include: { store: { select: { name: true } } },
+    });
+    if (physical) {
+      if (physical.status === "redeemed" || physical.status === "void") {
+        return NextResponse.json(
+          { error: physical.status === "void" ? "该券已作废" : "该券已核销" },
+          { status: 400 }
+        );
+      }
+      if (physical.storeId !== storeId) {
+        return NextResponse.json(
+          { error: `本券仅限「${physical.store.name}」使用` },
+          { status: 403 }
+        );
+      }
+    }
+
+    // 跨商家核销判断（按企业 businessId）
+    const isCrossStore = claim.coupon.businessId !== businessId;
     let settlementMessage = "";
     let settlementId: string | null = null;
 
     if (isCrossStore) {
-      // 检查是否有合作关系
       const partnership = await prisma.businessPartner.findFirst({
         where: {
           status: "active",
           OR: [
-            { businessId: session.userId, partnerId: claim.coupon.businessId },
-            { businessId: claim.coupon.businessId, partnerId: session.userId },
+            { businessId, partnerId: claim.coupon.businessId },
+            { businessId: claim.coupon.businessId, partnerId: businessId },
           ],
         },
       });
 
-      // 检查券本身是否允许跨商家核销
       if (!partnership) {
         return NextResponse.json({ error: "该券不属于本店，且双方未建立合作关系" }, { status: 403 });
       }
@@ -49,9 +117,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "该券不支持跨商家核销" }, { status: 403 });
       }
     }
-
-    // 扣 Token
-    const tokenResult = await spendTokens(session.userId, TOKEN_COSTS.redeem_verify, "redeem_verify", `核销「${claim.coupon.title}」`);
 
     // 更新状态
     await prisma.customerCoupon.update({
@@ -65,16 +130,28 @@ export async function POST(request: NextRequest) {
       data: { usedCount: { increment: 1 } },
     });
 
-    // 记录核销
+    // 实体券绑定后按线上核销：同步纸码状态，防双花
+    if (physical && physical.status !== "redeemed") {
+      await prisma.physicalTicket.update({
+        where: { id: physical.id },
+        data: {
+          status: "redeemed",
+          redeemedAt: new Date(),
+          redeemedById: session.userId,
+        },
+      });
+    }
+
+    // 记录核销（绑定门店）
     const log = await prisma.redemptionLog.create({
       data: {
-        businessId: session.userId,
+        businessId,
         customerId: claim.customerId,
         couponId: claim.couponId,
         customerCouponId: claim.id,
         amountSaved: claim.coupon.valueCents / 100,
         staffUserId: session.userId,
-        storeId: session.storeId || null,
+        storeId,
         isCrossStore,
         issuerBusinessId: isCrossStore ? claim.coupon.businessId : null,
       },
@@ -302,7 +379,6 @@ export async function POST(request: NextRequest) {
         success: true,
         couponTitle: claim.coupon.title,
         value: claim.coupon.valueCents / 100,
-        tokenBalance: tokenResult.balanceAfter,
         promoterMessage: promoterMessage || undefined,
         pointsAwarded: pointsAwarded > 0 ? pointsAwarded : undefined,
         tierUpgraded,

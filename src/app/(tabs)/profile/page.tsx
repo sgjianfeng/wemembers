@@ -23,7 +23,7 @@ export default async function ProfilePage() {
     where: { id: session.userId },
     include: { tokenAccount: { select: { balance: true } } },
   });
-  if (!user) redirect("/auth/login");
+  if (!user) redirect("/api/auth/logout?next=/auth/login");
 
   // 获取徽章
   const userBadges = await prisma.userBadge.findMany({
@@ -123,21 +123,6 @@ export default async function ProfilePage() {
       <div className="px-4 mt-4">
         <ProfileReferral />
       </div>
-
-      {/* Token 余额 */}
-      {user.tokenAccount && (
-        <div className="px-4 mt-4">
-          <Card>
-            <CardContent className="p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">🪙</span>
-                <span className="text-sm text-slate-600">{t("profile.tokenBalance", lang)}</span>
-              </div>
-              <span className="text-sm font-semibold text-amber-600">{user.tokenAccount.balance.toLocaleString()}</span>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       {/* 登出 */}
       <div className="px-4 mt-6 pb-4 space-y-3">

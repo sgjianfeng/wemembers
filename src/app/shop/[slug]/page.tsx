@@ -24,6 +24,12 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
   const session = await getSession();
   const isLoggedIn = !!session;
 
+  const stores = await prisma.store.findMany({
+    where: { businessId: business.id },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, name: true, slug: true, address: true },
+  });
+
   const coupons = await prisma.coupon.findMany({
     where: { businessId: business.id, status: "published", validUntil: { gt: new Date() } },
     orderBy: { createdAt: "desc" },
@@ -53,6 +59,40 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
 
       <div className="px-4 -mt-4 pb-8">
         <div className="bg-white rounded-t-2xl pt-5 px-1">
+          {stores.length > 0 && (
+            <div className="px-3 mb-5">
+              <h2 className="text-base font-semibold text-slate-900 mb-3">
+                {lang === "en" ? "Stores" : "门店"}
+              </h2>
+              <div className="space-y-2">
+                {stores.map((s) => (
+                  <Link
+                    key={s.id}
+                    href={`/shop/${business.businessSlug}/${s.slug}`}
+                  >
+                    <Card className="hover:border-[#1A6EFF]/30">
+                      <CardContent className="p-3 flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 truncate">
+                            🏪 {s.name}
+                          </p>
+                          {s.address && (
+                            <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                              {s.address}
+                            </p>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-[#1A6EFF] shrink-0">
+                          {lang === "en" ? "Open →" : "进入 →"}
+                        </span>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between px-3 mb-3">
             <h2 className="text-base font-semibold text-slate-900">{t("shop.title", lang)}</h2>
             <span className="text-xs text-slate-400">

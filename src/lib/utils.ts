@@ -38,6 +38,81 @@ export function timeAgo(date: Date): string {
   return date.toLocaleDateString("zh-CN");
 }
 
+/**
+ * 英文 URL 标识：仅 a-z 0-9 与连字符，用于 shop slug / 搜索 / 二维码。
+ * 中文店名会去掉非 ASCII，不足时用 fallback。
+ */
+export function toEnglishSlug(input: string, fallback = "shop"): string {
+  const base = input
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+  return base || fallback;
+}
+
+/** 生成唯一感较强的英文 slug（带短随机后缀） */
+export function makeBusinessSlug(name: string, email?: string | null): string {
+  const fromName = toEnglishSlug(name, "");
+  const fromEmail = email
+    ? toEnglishSlug(email.split("@")[0] || "", "")
+    : "";
+  const base = fromName || fromEmail || "shop";
+  const suffix = Math.random().toString(36).slice(2, 6);
+  return `${base}-${suffix}`.slice(0, 48);
+}
+
+/** 校验用户自定义英文标识 */
+export function isValidBusinessSlug(slug: string): boolean {
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) && slug.length >= 2 && slug.length <= 48;
+}
+
+/**
+ * 新加坡 UEN 宽松校验（新式 9–10 位 + 校验字母，或常见 9–10 位字母数字）。
+ * 存库统一大写。
+ */
+export function normalizeUen(raw: string): string {
+  return raw.replace(/\s+/g, "").toUpperCase();
+}
+
+export function isValidSingaporeUen(raw: string): boolean {
+  const u = normalizeUen(raw);
+  // 新格式示例: 201912345A (4位年 + 5位序号 + 字母)
+  if (/^[0-9]{9}[A-Z]$/.test(u)) return true;
+  // 10 位变体
+  if (/^[0-9]{10}[A-Z]$/.test(u)) return true;
+  // 旧式 / 其他实体: 8–9 位数字 + 字母
+  if (/^[0-9]{8,9}[A-Z]$/.test(u)) return true;
+  // 部分实体以字母开头 (T / S / R 等)
+  if (/^[A-Z][0-9]{2}[A-Z][0-9]{4}[A-Z]$/.test(u)) return true;
+  return false;
+}
+
+/** 解析 JSON storeIds；null/空 = 全部门店适用 */
+export function parseStoreIdsJson(raw: string | null | undefined): string[] | null {
+  if (!raw || !raw.trim()) return null;
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return null;
+    const ids = arr.filter((x): x is string => typeof x === "string" && x.length > 0);
+    return ids.length ? ids : null;
+  } catch {
+    return null;
+  }
+}
+
+export function storeIdsAllows(
+  storeIdsJson: string | null | undefined,
+  storeId: string | null | undefined
+): boolean {
+  if (!storeId) return true;
+  const ids = parseStoreIdsJson(storeIdsJson);
+  if (ids === null) return true; // 全部门店
+  return ids.includes(storeId);
+}
+
 export function daysUntil(date: Date): number {
   const now = new Date();
   const diff = date.getTime() - now.getTime();

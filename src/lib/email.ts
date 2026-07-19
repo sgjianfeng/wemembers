@@ -47,6 +47,10 @@ export async function sendVerificationCode(
   email: string,
   code: string
 ): Promise<{ success: boolean; error?: string }> {
+  // 开发闸门：未 live 时邮件不真发，把验证码打到终端方便本地联调
+  if (shouldLogOnly(email)) {
+    console.log(`[EMAIL GATE] verification code for ${email}: ${code}`);
+  }
   const html = `<div style="max-width:480px;margin:0 auto;padding:32px;font-family:-apple-system,BlinkMacSystemFont,sans-serif"><div style="text-align:center;margin-bottom:24px"><h1 style="color:#FF6B35;margin:0">WeMembers</h1></div><p style="color:#333;font-size:16px">您的验证码是：</p><div style="background:#FFF5F0;border-radius:12px;padding:20px;text-align:center;margin:16px 0"><span style="font-size:36px;font-weight:800;letter-spacing:8px;color:#FF6B35">${code}</span></div><p style="color:#999;font-size:13px">验证码 5 分钟内有效，请勿转发他人。</p><hr style="border:none;border-top:1px solid #f0f0f0;margin:24px 0"/><p style="color:#bbb;font-size:11px;text-align:center">Powered by WeMembers</p></div>`;
   return sendEmail(email, "验证码 - WeMembers", html);
 }

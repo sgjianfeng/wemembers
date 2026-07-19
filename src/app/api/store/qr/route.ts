@@ -1,59 +1,105 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { generateQrCodeSvg } from "@/lib/qr";
+import { generateQrCodePng, generateQrCodeSvg } from "@/lib/qr";
 
-// GET /api/store/qr — 获取门店二维码 SVG
+// GET /api/store/qr?storeId=&size=&format=svg|png&download=1
+// 门店顾客页二维码（SVG 预览 / PNG 下载）
 export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session || (session.role !== "business" && session.role !== "staff")) {
     return NextResponse.json({ error: "无权操作" }, { status: 403 });
   }
 
-  let storeSlug: string | null = null;
+  const { searchParams } = new URL(request.url);
+  const size = Math.min(
+    parseInt(searchParams.get("size") || "200", 10) || 200,
+    1024
+  );
+  const format = (searchParams.get("format") || "svg").toLowerCase();
+  const download = searchParams.get("download") === "1";
+
+  type StoreRow = {
+    id: string;
+    name: string;
+    slug: string;
+    business: { businessSlug: string | null; businessName: string | null };
+  };
+
+  let store: StoreRow | null = null;
 
   if (session.role === "staff" && session.storeId) {
-    const store = await prisma.store.findUnique({
+    store = await prisma.store.findUnique({
       where: { id: session.storeId },
-      select: { slug: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        business: { select: { businessSlug: true, businessName: true } },
+      },
     });
-    storeSlug = store?.slug || null;
   } else {
-    const { searchParams } = new URL(request.url);
     const storeId = searchParams.get("storeId");
     if (storeId) {
-      const store = await prisma.store.findUnique({
+      store = await prisma.store.findFirst({
         where: { id: storeId, businessId: session.userId },
-        select: { slug: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          business: { select: { businessSlug: true, businessName: true } },
+        },
       });
-      storeSlug = store?.slug || null;
     } else {
-      // 取该公司的第一个门店
-      const store = await prisma.store.findFirst({
+      store = await prisma.store.findFirst({
         where: { businessId: session.userId },
         orderBy: { createdAt: "asc" },
-        select: { slug: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          business: { select: { businessSlug: true, businessName: true } },
+        },
       });
-      storeSlug = store?.slug || null;
     }
   }
 
-  if (!storeSlug)
+  if (!store) {
     return NextResponse.json({ error: "门店不存在" }, { status: 404 });
+  }
 
-  const size = parseInt(
-    new URL(request.url).searchParams.get("size") || "200"
-  );
-  const origin = request.nextUrl.origin;
-  const svg = await generateQrCodeSvg(
-    `${origin}/store/${storeSlug}`,
-    Math.min(size, 600)
-  );
+  const origin =
+    process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+  const targetUrl = store.business.businessSlug
+    ? `${origin}/shop/${store.business.businessSlug}/${store.slug}`
+    : `${origin}/store/${store.slug}`;
 
-  return new NextResponse(svg, {
-    headers: {
-      "Content-Type": "image/svg+xml",
-      "Cache-Control": "public, max-age=3600",
-    },
-  });
+  const safeName = (store.name || "store")
+    .replace(/[^\w\u4e00-\u9fff-]+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 40);
+
+  if (format === "png") {
+    const png = await generateQrCodePng(targetUrl, Math.max(size, 256));
+    const headers: Record<string, string> = {
+      "Content-Type": "image/png",
+      "Cache-Control": "private, max-age=300",
+    };
+    if (download) {
+      headers["Content-Disposition"] =
+        `attachment; filename="${safeName}-qr.png"`;
+    }
+    return new NextResponse(new Uint8Array(png), { headers });
+  }
+
+  const svg = await generateQrCodeSvg(targetUrl, size);
+  const headers: Record<string, string> = {
+    "Content-Type": "image/svg+xml",
+    "Cache-Control": "private, max-age=300",
+  };
+  if (download) {
+    headers["Content-Disposition"] =
+      `attachment; filename="${safeName}-qr.svg"`;
+  }
+  return new NextResponse(svg, { headers });
 }

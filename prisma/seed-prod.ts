@@ -66,7 +66,7 @@ async function main() {
         businessCategory: "food",
         businessSlug: "wem-demo-cafe",
         passwordHash: PW,
-        tokenAccount: { create: { balance: 500, totalEarned: 500 } },
+        tokenAccount: { create: { balance: 0, frozenBalance: 0, totalEarned: 0, totalSpent: 0 } },
       },
     });
     console.log(`  ✅ Created business: ${bizEmail}`);

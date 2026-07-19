@@ -23,7 +23,8 @@ model User {
   businessName     String?
   businessLogo     String?
   businessCategory String?   // cafe, retail, food, beauty, etc.
-  businessSlug     String?   @unique // URL 友好标识
+  businessSlug     String?   @unique // 英文标识 company-slug（URL / 搜索）
+  businessUen      String?   @unique // 新加坡 UEN（企业唯一主体）
 
   // 客户专用字段
   pointsBalance    Int       @default(0)
@@ -73,6 +74,8 @@ model User {
   businessReceiptGroups ReceiptGroup[] @relation("BusinessReceiptGroups")
   businessReceipts  Receipt[]          @relation("BusinessReceipts")
   uploadedReceipts  Receipt[]          @relation("UploadedReceipts")
+  physicalBatches   PhysicalBatch[]    @relation("BusinessPhysicalBatches")
+  claimedPhysicalTickets PhysicalTicket[] @relation("PhysicalTicketCustomer")
 }
 
 // ──── 验证码 ────
@@ -133,6 +136,8 @@ model Store {
   voucherUsages   VoucherUsage[]
   receiptGroups   ReceiptGroup[]
   receipts        Receipt[]
+  physicalBatches PhysicalBatch[]
+  physicalTickets PhysicalTicket[]
 
   @@unique([businessId, name])
 }
@@ -221,6 +226,9 @@ model Coupon {
   allowCollaboration Boolean  @default(false)   // 允许合作商家核销
   promotionFeeRate   Int?                       // 推广费率（%），默认20
   partnerIds         String?                    // 合作商家 ID 列表 JSON
+
+  // 适用门店：JSON string[]；null = 企业下全部门店可展示/核销
+  storeIds           String?
 
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -842,4 +850,58 @@ model ReceiptItem {                        // 明细行（采购单/小票）
   receipt    Receipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
 
   @@index([receiptId])
+}
+
+// ──── 实体券（本店印刷 · 可扫码绑定 · 一次用完）────
+// 决策：docs/company/decisions/2026-07-18-physical-tickets.md
+
+model PhysicalBatch {
+  id           String   @id @default(cuid())
+  businessId   String
+  storeId      String                 // 仅本店
+  type         String                 // voucher | draw
+  title        String                 // 印刷标题
+  description  String?
+  valueCents   Int      @default(0)   // 代金面值（分）；抽奖可为 0
+  quantity     Int                    // 生成张数
+  validUntil   DateTime?
+  campaignId   String?                // 抽奖可选关联线上活动
+  couponId     String?                // 代金：模板券（claim 时发 CustomerCoupon）
+  /// 视觉模版：store_classic | store_bold（系统精修，商家不可自由设计）
+  visualTemplateId String  @default("store_classic")
+  /// 主题色（有限色板 hex），null = 模版默认
+  themeColor   String?
+  status       String   @default("active") // active | void
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business     User     @relation("BusinessPhysicalBatches", fields: [businessId], references: [id])
+  store        Store    @relation(fields: [storeId], references: [id])
+  tickets      PhysicalTicket[]
+
+  @@index([businessId, createdAt])
+  @@index([storeId])
+}
+
+model PhysicalTicket {
+  id               String   @id @default(cuid())
+  batchId          String
+  storeId          String                 // 冗余，核销校验本店
+  code             String   @unique       // 长码 / QR 路径 /c/{code}
+  status           String   @default("printed") // printed | claimed | redeemed | void
+  customerId       String?
+  customerCouponId String?  @unique       // 绑定后关联的线上券
+  claimedAt        DateTime?
+  redeemedAt       DateTime?
+  redeemedById     String?                // 核销店员/企业 userId
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  batch            PhysicalBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  store            Store         @relation(fields: [storeId], references: [id])
+  customer         User?         @relation("PhysicalTicketCustomer", fields: [customerId], references: [id])
+
+  @@index([batchId])
+  @@index([storeId, status])
+  @@index([customerId])
 }

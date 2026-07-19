@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent } from "@/components/ui/Card";
-import { TOKEN_COSTS } from "@/types";
+
 import { AiGenerateButton } from "./AiGenerateButton";
 
 type CouponType = "fixed_amount" | "percentage" | "free_item";
@@ -123,7 +123,7 @@ export default function CreateCouponPage() {
             <div key={s} className={`w-2 h-2 rounded-full ${s <= step ? "bg-[#1A6EFF]" : "bg-slate-200"}`} />
           ))}
         </div>
-        <span className="text-xs text-slate-400">消耗 {TOKEN_COSTS.coupon_create}🪙</span>
+        <span className="text-xs text-slate-400">免费创建</span>
       </div>
 
       <div className="flex-1 px-4 overflow-auto">
@@ -458,7 +458,7 @@ export default function CreateCouponPage() {
                 { label: "数量", value: unlimited ? "不限量" : `${quantity}张` },
                 { label: "每人限领", value: `${perCustomer}张` },
                 { label: "转赠", value: isGiftable ? "允许" : "禁止" },
-                { label: "消耗Token", value: `${TOKEN_COSTS.coupon_create} 🪙` },
+
               ].map((item) => (
                 <div key={item.label} className="flex justify-between text-xs">
                   <span className="text-slate-500">{item.label}</span>

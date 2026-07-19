@@ -148,6 +148,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
               slug={campaign.slug}
               campaignName={campaign.name}
               sellerId={session.userId}
+              campaignId={campaign.id}
             />
           </div>
         )}

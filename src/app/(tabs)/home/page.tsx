@@ -103,7 +103,7 @@ export default async function CustomerHome() {
     }),
   ]);
 
-  if (!user) redirect("/auth/login");
+  if (!user) redirect("/api/auth/logout?next=/auth/login");
 
   // Re-fetch entries with actual campaign IDs
   const campaignIds = activeDraws.map((d) => d.id);
@@ -213,16 +213,6 @@ export default async function CustomerHome() {
           </div>
         </div>
       </div>
-
-      {/* ── Token balance bar ── */}
-      {user.tokenAccount && user.tokenAccount.balance > 0 && (
-        <Link href="/my-tokens" className="block px-4 py-2 bg-amber-50 border-b border-amber-100">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-amber-700">{t("home.tokenBalance", lang)}</span>
-            <span className="text-sm font-semibold text-amber-800">{user.tokenAccount.balance}</span>
-          </div>
-        </Link>
-      )}
 
       <div className="px-4 mt-4 space-y-4">
         {/* ── COUNTDOWN CARD ── */}

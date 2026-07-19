@@ -26,6 +26,18 @@ export default async function MembersPage({
 
   const isBusiness = session.role === "business";
 
+  // 店员 JWT 的 userId 是店员本人，会员属于企业 businessId
+  let businessId = session.userId;
+  if (session.role === "staff") {
+    if (!session.storeId) redirect("/auth/login");
+    const st = await prisma.store.findUnique({
+      where: { id: session.storeId },
+      select: { businessId: true },
+    });
+    if (!st) redirect("/auth/login");
+    businessId = st.businessId;
+  }
+
   const tierDisplay: Record<string, { label: string; variant: "slate" | "amber" | "purple" | "blue" }> = {
     regular: { label: t("business.members.filterRegular", lang), variant: "slate" },
     silver: { label: t("business.members.filterSilver", lang), variant: "blue" },
@@ -34,7 +46,7 @@ export default async function MembersPage({
   };
 
   const where: any = {
-    businessId: session.userId,
+    businessId,
     ...(search
       ? {
           customer: {
@@ -125,13 +137,12 @@ export default async function MembersPage({
           })}
         </form>
 
-        <form className="flex gap-1.5 ml-auto">
+        <form method="get" className="flex gap-1.5 ml-auto items-center">
           <input type="hidden" name="search" value={search} />
           <input type="hidden" name="tier" value={tierFilter} />
           <select
             name="sort"
             defaultValue={sort}
-            onChange={(e) => e.target.form?.submit()}
             className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-500 border-0 focus:outline-none focus:ring-2 focus:ring-[#1A6EFF]"
           >
             {sorts.map((s) => (
@@ -140,6 +151,12 @@ export default async function MembersPage({
               </option>
             ))}
           </select>
+          <button
+            type="submit"
+            className="text-[11px] px-2 py-1 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"
+          >
+            {lang === "en" ? "Sort" : "排序"}
+          </button>
         </form>
       </div>
 

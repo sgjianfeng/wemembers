@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { spendTokens } from "@/lib/tokens";
-import { TOKEN_COSTS } from "@/types";
 import { generateQrCode } from "@/lib/utils";
 
 // GET /api/business/coupons — 券列表
@@ -44,13 +42,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "请填写必要字段" }, { status: 400 });
     }
 
-    // 扣 Token
-    const result = await spendTokens(session.userId, TOKEN_COSTS.coupon_create, "coupon_create", `创建代金券「${title}」`);
-
-    if (!result.success) {
-      return NextResponse.json({ error: `Token余额不足，需要 ${TOKEN_COSTS.coupon_create} Token，当前余额 ${result.balanceAfter}` }, { status: 402 });
-    }
-
+    // 建券不再扣运营 Token：平台服务费从核销分账收取
     const coupon = await prisma.coupon.create({
       data: {
         businessId: session.userId,
@@ -89,7 +81,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ data: coupon, meta: { tokenBalance: result.balanceAfter } });
+    return NextResponse.json({ data: coupon });
   } catch (error) {
     console.error("create coupon error:", error);
     return NextResponse.json({ error: "创建失败" }, { status: 500 });

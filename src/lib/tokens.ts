@@ -130,7 +130,11 @@ export async function releaseMaturedHolds(userId: string): Promise<number> {
   return released;
 }
 
-// Token 消耗
+/**
+ * 现金钱包扣减（单位：分）。
+ * 不再用于运营 Token；建券/核销等不调用此函数。
+ * 保留给提现、管理员调整等现金场景。
+ */
 export async function spendTokens(
   userId: string,
   amount: number,
@@ -140,7 +144,7 @@ export async function spendTokens(
 ): Promise<{ success: boolean; balanceAfter: number; error?: string }> {
   const account = await prisma.tokenAccount.findUnique({ where: { userId } });
   if (!account || account.balance < amount) {
-    return { success: false, balanceAfter: account?.balance ?? 0, error: "Token 余额不足" };
+    return { success: false, balanceAfter: account?.balance ?? 0, error: "账户余额不足" };
   }
 
   await prisma.tokenAccount.update({
@@ -162,7 +166,10 @@ export async function spendTokens(
   return { success: true, balanceAfter: account.balance - amount };
 }
 
-// Token 发放
+/**
+ * 现金钱包入账（单位：分）。
+ * 不再用于注册赠送运营 Token。
+ */
 export async function grantTokens(
   userId: string,
   amount: number,

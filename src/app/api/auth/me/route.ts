@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { clearSession, getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 // GET /api/auth/me — 获取当前用户信息
@@ -20,7 +20,9 @@ export async function GET() {
     });
 
     if (!user) {
-      return NextResponse.json({ error: "用户不存在" }, { status: 404 });
+      // 清库后残留 JWT：清 cookie，避免前端以为仍登录
+      await clearSession();
+      return NextResponse.json({ error: "用户不存在" }, { status: 401 });
     }
 
     return NextResponse.json({

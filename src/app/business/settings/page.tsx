@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
 import { SettingsEditForm } from "./SettingsEditForm";
+import { BrandLogoUpload } from "./BrandLogoUpload";
 import Link from "next/link";
 
 export default async function BusinessSettingsPage() {
@@ -18,7 +19,9 @@ export default async function BusinessSettingsPage() {
     where: { id: session.userId },
     select: {
       businessName: true,
+      businessLogo: true,
       businessSlug: true,
+      businessUen: true,
       businessCategory: true,
       email: true,
       phone: true,
@@ -27,22 +30,45 @@ export default async function BusinessSettingsPage() {
     },
   });
 
-  if (!user) redirect("/auth/login");
+  if (!user) redirect("/api/auth/logout?next=/auth/login");
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const firstStore = await prisma.store.findFirst({
+    where: { businessId: session.userId },
+    orderBy: { createdAt: "asc" },
+    select: { slug: true },
+  });
   const shopUrl = user.businessSlug
-    ? `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/shop/${user.businessSlug}`
+    ? firstStore
+      ? `${appUrl}/shop/${user.businessSlug}/${firstStore.slug}`
+      : `${appUrl}/shop/${user.businessSlug}`
     : null;
 
   return (
-    <div className="pb-4">
+    <div className="pb-4 overflow-x-hidden max-w-full">
       <div className="px-4 py-3 border-b border-slate-100 sticky top-0 bg-white z-10">
-        <h1 className="text-lg font-semibold">{t("business.settings.title", lang)}</h1>
+        <h1 className="text-lg font-semibold">
+          {t("business.settings.title", lang)}
+        </h1>
+        <p className="text-xs text-slate-400 mt-0.5">
+          {lang === "en"
+            ? "Legal entity & brand — stores are managed separately"
+            : "公司主体与品牌信息 · 门店请在「门店」中管理"}
+        </p>
       </div>
 
-      <div className="px-4 mt-4 space-y-4">
+      <div className="px-4 mt-4 space-y-4 min-w-0 max-w-full">
+        <BrandLogoUpload
+          lang={lang}
+          initialUrl={user.businessLogo || null}
+        />
+
         <SettingsEditForm
+          shopBaseUrl={appUrl}
           initial={{
             businessName: user.businessName || "",
+            businessSlug: user.businessSlug || "",
+            businessUen: user.businessUen || "",
             businessCategory: user.businessCategory || "",
             displayName: user.displayName || "",
             phone: user.phone || "",
@@ -50,12 +76,8 @@ export default async function BusinessSettingsPage() {
           }}
         />
 
-        <Card>
-          <CardContent className="p-4 space-y-2 text-sm">
-            <Info
-              label={t("business.settings.slug", lang)}
-              value={user.businessSlug || t("business.settings.notGenerated", lang)}
-            />
+        <Card className="min-w-0 overflow-hidden">
+          <CardContent className="p-4 space-y-2 text-sm min-w-0">
             <Info
               label={t("business.settings.registeredAt", lang)}
               value={user.createdAt.toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US")}
@@ -64,22 +86,20 @@ export default async function BusinessSettingsPage() {
               {lang === "en" ? "Manage stores →" : "管理门店 →"}
             </Link>
             <Link href="/business/tokens" className="block text-xs text-[#1A6EFF]">
-              {lang === "en" ? "Top-up & withdraw →" : "充值与提现 →"}
+              {lang === "en" ? "Wallet & withdraw →" : "账户与提现 →"}
             </Link>
           </CardContent>
         </Card>
 
-        {/* {t("business.settings.qrCode", lang)} */}
-        <Card>
-          <CardContent className="p-4">
-            <h3 className="text-sm font-semibold text-slate-900 mb-3">{t("business.settings.qrCode", lang)}</h3>
-            <p className="text-xs text-slate-500 mb-4">
-              {t("business.settings.qrHint", lang)}
-            </p>
+        <Card className="min-w-0 overflow-hidden">
+          <CardContent className="p-4 min-w-0">
+            <h3 className="text-sm font-semibold text-slate-900 mb-3">
+              {t("business.settings.qrCode", lang)}
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">{t("business.settings.qrHint", lang)}</p>
 
             {shopUrl ? (
-              <div className="space-y-4">
-                {/* QR Code Image */}
+              <div className="space-y-4 min-w-0">
                 <div className="flex justify-center">
                   <div className="w-48 h-48 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100 overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -91,15 +111,17 @@ export default async function BusinessSettingsPage() {
                   </div>
                 </div>
 
-                {/* URL Display */}
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-400 mb-1">{t("business.settings.shopUrl", lang)}</p>
+                <div className="bg-slate-50 rounded-lg p-3 min-w-0">
+                  <p className="text-xs text-slate-400 mb-1">
+                    {t("business.settings.shopUrl", lang)}
+                  </p>
                   <p className="text-sm font-mono text-slate-700 break-all">{shopUrl}</p>
                 </div>
 
-                {/* Tips */}
-                <div className="p-3 bg-[#1A6EFF]/5 rounded-xl">
-                  <h4 className="text-xs font-semibold text-[#1A6EFF] mb-2">{t("business.settings.usageTitle", lang)}</h4>
+                <div className="p-3 bg-[#1A6EFF]/5 rounded-xl min-w-0">
+                  <h4 className="text-xs font-semibold text-[#1A6EFF] mb-2">
+                    {t("business.settings.usageTitle", lang)}
+                  </h4>
                   <ul className="text-xs text-slate-500 space-y-1">
                     <li>{t("business.settings.usage1", lang)}</li>
                     <li>{t("business.settings.usage2", lang)}</li>
@@ -124,9 +146,11 @@ export default async function BusinessSettingsPage() {
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between">
-      <span className="text-slate-400 text-xs">{label}</span>
-      <span className="text-slate-900 text-xs font-medium">{value}</span>
+    <div className="flex justify-between gap-3 min-w-0">
+      <span className="text-slate-400 text-xs shrink-0">{label}</span>
+      <span className="text-slate-900 text-xs font-medium text-right break-all min-w-0">
+        {value}
+      </span>
     </div>
   );
 }

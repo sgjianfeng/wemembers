@@ -15,6 +15,7 @@ export interface ApiResponse<T = unknown> {
   };
 }
 
+/** @deprecated 运营 Token 体系已下线；平台收入来自服务费。保留空结构避免旧 import 炸裂。 */
 export interface TokenPackage {
   id: string;
   name: string;
@@ -25,25 +26,23 @@ export interface TokenPackage {
   recommended?: boolean;
 }
 
-export const TOKEN_PACKAGES: TokenPackage[] = [
-  { id: "trial", name: "体验包", price: 10, tokens: 1200, bonus: "20%", color: "slate" },
-  { id: "basic", name: "基础包", price: 100, tokens: 15000, bonus: "50%", color: "blue", recommended: true },
-  { id: "growth", name: "成长包", price: 500, tokens: 100000, bonus: "100%", color: "purple" },
-  { id: "enterprise", name: "企业包", price: 2000, tokens: 500000, bonus: "150%", color: "amber" },
-];
+/** 已下线：不再售卖运营 Token 包 */
+export const TOKEN_PACKAGES: TokenPackage[] = [];
 
+/** 已下线：建券/核销等不再扣 Token，由平台服务费覆盖 */
 export const TOKEN_COSTS = {
-  coupon_create: 10,
-  sms_notify: 30,
-  email_notify: 5,
-  redeem_verify: 2,
-  member_add: 5,
-  export_report: 50,
+  coupon_create: 0,
+  sms_notify: 0,
+  email_notify: 0,
+  redeem_verify: 0,
+  member_add: 0,
+  export_report: 0,
 } as const;
 
+/** 已下线：注册不再赠送运营 Token */
 export const SIGNUP_BONUS = {
-  business: 500,
-  customer: 100,
+  business: 0,
+  customer: 0,
 } as const;
 
 export const SERVICE_CATEGORIES = [

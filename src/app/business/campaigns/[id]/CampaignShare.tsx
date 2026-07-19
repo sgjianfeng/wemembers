@@ -9,10 +9,12 @@ interface Props {
   slug: string;
   campaignName: string;
   sellerId?: string;
+  /** 活动 id，用于跳转台卡/分发打印页 */
+  campaignId?: string;
 }
 
-export function CampaignShare({ slug, campaignName, sellerId }: Props) {
-  const { t } = useLang();
+export function CampaignShare({ slug, campaignName, sellerId, campaignId }: Props) {
+  const { t, lang } = useLang();
   const [copied, setCopied] = useState(false);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -105,14 +107,30 @@ export function CampaignShare({ slug, campaignName, sellerId }: Props) {
           {copied ? t("share.copied") : t("share.copy")}
         </Button>
 
-        <a
-          href={qrUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block text-center text-xs text-[#1A6EFF]"
-        >
-          {t("share.openPrint")}
-        </a>
+        {campaignId ? (
+          <a
+            href={`/business/campaigns/${campaignId}/print`}
+            className="block w-full text-center rounded-full bg-[#1A6EFF] text-white text-xs font-semibold py-2.5"
+          >
+            {lang === "en"
+              ? "Print table tent / distributor cards"
+              : "打印餐桌台卡 / 分发版活动卡"}
+          </a>
+        ) : (
+          <a
+            href={qrUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block text-center text-xs text-[#1A6EFF]"
+          >
+            {t("share.openPrint")}
+          </a>
+        )}
+        <p className="text-[10px] text-slate-400 text-center leading-relaxed">
+          {lang === "en"
+            ? "Activity card ≠ paper ticket (PT-). Distributor cards bind seller for commission."
+            : "活动卡 ≠ 实体券 PT-。分发版绑定推广人/店员，核销后计佣。"}
+        </p>
       </CardContent>
     </Card>
   );

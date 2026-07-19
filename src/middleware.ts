@@ -12,6 +12,7 @@ const PUBLIC_STARTS = [
   "/p",
   "/seller",
   "/promoter",
+  "/c", // 实体券扫码绑定
 ];
 
 const STAFF_BLOCKED = [
@@ -24,16 +25,22 @@ const STAFF_BLOCKED = [
   "/business/lucky-draw",
   "/business/partners",
   "/business/settlements",
+  "/business/physical",
 ];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 静态资源和 API 放行
+  // 静态资源和 API 放行（含 PWA manifest，避免被踢到 login 形成异常请求）
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/") ||
-    pathname.startsWith("/favicon.ico")
+    pathname.startsWith("/uploads/") ||
+    pathname === "/favicon.ico" ||
+    pathname === "/site.webmanifest" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml"
   ) {
     return NextResponse.next();
   }

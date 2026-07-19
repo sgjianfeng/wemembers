@@ -4,39 +4,170 @@ import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
+import { resolveStaffStore } from "@/lib/current-store";
+import { prisma } from "@/lib/db";
+import Link from "next/link";
 
-export default async function BusinessLayout({ children }: { children: React.ReactNode }) {
+/** 经 Route Handler 清 cookie，避免 Server Component 改 Cookie 报错 */
+const STALE_SESSION_CLEAR = "/api/auth/logout?next=/auth/login";
+
+export default async function BusinessLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const session = await getSession();
   if (!session) redirect("/auth/login");
 
-  const c = await cookies();
-  const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
+  // 清库后 JWT 仍在：必须先清 cookie，否则 login ↔ business 无限 redirect（replaceState 爆炸）
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { id: true, role: true, businessName: true },
+  });
+  if (
+    !dbUser ||
+    (dbUser.role !== "business" && dbUser.role !== "staff")
+  ) {
+    redirect(STALE_SESSION_CLEAR);
+  }
 
-  const businessTabs = [
-    { icon: "📊", label: t("business.tabs.overview", lang as "zh" | "en"), href: "/business" },
-    { icon: "👥", label: t("business.tabs.members", lang as "zh" | "en"), href: "/business/members" },
-    { icon: "🎫", label: t("business.tabs.coupons", lang as "zh" | "en"), href: "/business/coupons" },
-    { icon: "🎰", label: t("business.tabs.luckyDraw", lang as "zh" | "en"), href: "/business/lucky-draw" },
-    { icon: "📅", label: t("business.tabs.campaigns", lang as "zh" | "en"), href: "/business/campaigns" },
-    { icon: "🧾", label: t("business.tabs.receipt", lang as "zh" | "en"), href: "/business/receipt" },
-    { icon: "🏪", label: t("business.tabs.stores", lang as "zh" | "en"), href: "/business/stores" },
-    { icon: "🤝", label: t("business.tabs.partners", lang as "zh" | "en"), href: "/business/partners" },
+  const c = await cookies();
+  const lang = (c.get("gwm_lang")?.value === "en" ? "en" : "zh") as "zh" | "en";
+
+  /**
+   * 底栏：主路径 4 个 + 「更多」
+   * 主：概览 / 核销 / 门店 / 活动（日常最高频）
+   * 更多：会员、券、抽奖、实体券、票据、合作、账户、设置
+   */
+  const businessPrimary = [
+    {
+      icon: "📊",
+      label: t("business.tabs.overview", lang),
+      href: "/business",
+      exact: true,
+    },
+    {
+      icon: "📷",
+      label: t("business.tabs.redeem", lang),
+      href: "/business/scan",
+    },
+    {
+      icon: "🏪",
+      label: t("business.tabs.stores", lang),
+      href: "/business/stores",
+    },
+    {
+      icon: "📅",
+      label: t("business.tabs.campaigns", lang),
+      href: "/business/campaigns",
+    },
+  ];
+
+  const businessMore = [
+    {
+      icon: "👥",
+      label: t("business.tabs.members", lang),
+      href: "/business/members",
+    },
+    {
+      icon: "🎫",
+      label: t("business.tabs.coupons", lang),
+      href: "/business/coupons",
+    },
+    {
+      icon: "🎰",
+      label: t("business.tabs.luckyDraw", lang),
+      href: "/business/lucky-draw",
+    },
+    {
+      icon: "🖨️",
+      label: lang === "en" ? "Print tickets" : "实体券",
+      href: "/business/physical",
+    },
+    {
+      icon: "🧾",
+      label: t("business.tabs.receipt", lang),
+      href: "/business/receipt",
+    },
+    {
+      icon: "🤝",
+      label: t("business.tabs.partners", lang),
+      href: "/business/partners",
+    },
+    {
+      icon: "💰",
+      label: lang === "en" ? "Wallet" : "账户",
+      href: "/business/tokens",
+    },
+    {
+      icon: "⚙️",
+      label: lang === "en" ? "Settings" : "设置",
+      href: "/business/settings",
+    },
   ];
 
   const staffTabs = [
-    { icon: "📊", label: t("business.tabs.staffOverview", lang as "zh" | "en"), href: "/business" },
-    { icon: "📷", label: t("business.tabs.redeem", lang as "zh" | "en"), href: "/business/scan" },
-    { icon: "👥", label: t("business.tabs.members", lang as "zh" | "en"), href: "/business/members" },
-    { icon: "🏪", label: t("business.tabs.store", lang as "zh" | "en"), href: "/business/store" },
+    {
+      icon: "📊",
+      label: lang === "en" ? "Store" : "本店",
+      href: "/business",
+      exact: true,
+    },
+    {
+      icon: "📷",
+      label: t("business.tabs.redeem", lang),
+      href: "/business/scan",
+    },
+    {
+      icon: "👥",
+      label: t("business.tabs.members", lang),
+      href: "/business/members",
+    },
+    {
+      icon: "🏪",
+      label: t("business.tabs.store", lang),
+      href: "/business/store",
+    },
   ];
+
+  // 顶栏：企业显示公司名；店员显示固定门店名（无「当前门店」切换）
+  let leftLabel = lang === "en" ? "Company" : "企业后台";
+  let leftHref = "/business";
+
+  if (dbUser.role === "business") {
+    leftLabel = dbUser.businessName || leftLabel;
+    leftHref = "/business/settings";
+  } else if (dbUser.role === "staff") {
+    const store = await resolveStaffStore(session.storeId);
+    leftLabel = store?.name
+      ? `🏪 ${store.name}`
+      : lang === "en"
+        ? "Store staff"
+        : "门店账号";
+    leftHref = "/business";
+  }
 
   return (
     <>
-      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-slate-50 px-3 h-10 flex items-center justify-end">
+      <div className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-50 px-3 h-11 flex items-center justify-between gap-2">
+        <Link
+          href={leftHref}
+          className="min-w-0 text-xs font-semibold text-slate-800 truncate max-w-[70%]"
+        >
+          {leftLabel}
+        </Link>
         <LanguageSwitcher />
       </div>
       <main className="pb-16 min-h-screen">{children}</main>
-      <BottomNav tabs={session.role === "staff" ? staffTabs : businessTabs} />
+      {dbUser.role === "staff" ? (
+        <BottomNav tabs={staffTabs} />
+      ) : (
+        <BottomNav
+          tabs={businessPrimary}
+          moreItems={businessMore}
+          moreLabel={lang === "en" ? "More" : "更多"}
+        />
+      )}
     </>
   );
 }

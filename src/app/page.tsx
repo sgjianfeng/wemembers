@@ -11,15 +11,15 @@ const content = {
     hero: {
       badge: "🎉 全新上线",
       title: "WeMembers",
-      subtitle: "一站式商户营销平台",
-      desc: "代金券发券核销 · 会员积分等级 · 幸运抽奖活动",
-      cta: "免费开始使用",
+      subtitle: "代金券 · 抽奖券平台",
+      desc: "发券核销 · 买券抽奖 · 零月费起步",
+      cta: "零成本开始",
       secondary: "了解更多 ↓",
     },
     stats: [
-      { value: "3", unit: "大模块", label: "券·会员·抽奖" },
-      { value: "5", unit: "分钟", label: "商家上线时间" },
-      { value: "S$", valuePrefix: true, valueAlt: "0", unit: "月费", label: "免费使用" },
+      { value: "2", unit: "大能力", label: "代金券 · 抽奖" },
+      { value: "5", unit: "分钟", label: "企业上线" },
+      { value: "$0", unit: "", label: "零成本开始" },
     ],
     pillars: [
       {
@@ -68,32 +68,32 @@ const content = {
     flow: {
       title: "三步开始",
       steps: [
-        { num: "1", icon: "🏢", title: "注册企业", desc: "30秒完成注册，自动创建门店与 Stripe 收款账户" },
-        { num: "2", icon: "🎫", title: "创建代金券", desc: "选类型、设面值、定积分，一键发布到店铺页" },
-        { num: "3", icon: "📱", title: "贴码营业", desc: "打印店铺二维码贴在收银台。客户扫码领券，核销自动积分" },
+        { num: "1", icon: "🏢", title: "注册企业", desc: "公司名 + UEN，邮箱验证，零月费开通账号" },
+        { num: "2", icon: "🎫", title: "创建代金券 / 抽奖", desc: "发定额代金券，或上线买券即抽的幸运抽奖活动" },
+        { num: "3", icon: "🏪", title: "加门店 · 贴码", desc: "添加门店、打印二维码，顾客扫码买券，到店核销" },
       ],
     },
     cta: {
       title: "准备好了吗？",
-      desc: "注册即赠 Token，零成本开始。",
+      desc: "零成本开始。无月费，先发券、再开抽奖。",
       button: "🎉 免费注册，立即开始",
     },
-    footer: "Powered by WeMembers · 简单好用的商户营销工具",
+    footer: "Powered by WeMembers · 代金券与抽奖券平台",
   },
   en: {
     nav: { signUp: "Sign Up", login: "Login", dashboard: "Dashboard", home: "Home" },
     hero: {
       badge: "🎉 Just Launched",
       title: "WeMembers",
-      subtitle: "All-in-One Merchant Platform",
-      desc: "Vouchers · Membership · Lucky Draw — launch in minutes",
-      cta: "Get Started Free",
+      subtitle: "Vouchers · Lucky Draw",
+      desc: "Issue vouchers · run prize draws · start at $0",
+      cta: "Start at $0",
       secondary: "Learn More ↓",
     },
     stats: [
-      { value: "3", unit: "Modules", label: "Vouchers·Members·Draw" },
-      { value: "5", unit: "min", label: "Setup Time" },
-      { value: "S$", valuePrefix: true, valueAlt: "0", unit: "/mo", label: "Free to Use" },
+      { value: "2", unit: "pillars", label: "Vouchers · Draw" },
+      { value: "5", unit: "min", label: "Company setup" },
+      { value: "$0", unit: "", label: "Start free" },
     ],
     pillars: [
       {
@@ -142,17 +142,17 @@ const content = {
     flow: {
       title: "How It Works",
       steps: [
-        { num: "1", icon: "🏢", title: "Register", desc: "Sign up in 30s. Auto-creates store + Stripe account" },
-        { num: "2", icon: "🎫", title: "Create Voucher", desc: "Pick type, set value, define points. One-click publish" },
-        { num: "3", icon: "📱", title: "Go Live", desc: "Print QR for counter. Customers scan, claim & auto-redeem" },
+        { num: "1", icon: "🏢", title: "Register company", desc: "Company name + UEN, email verify — $0 / month" },
+        { num: "2", icon: "🎫", title: "Vouchers & draws", desc: "Issue prepaid vouchers or buy-and-draw lucky campaigns" },
+        { num: "3", icon: "🏪", title: "Add stores · QR", desc: "Open outlets, print QR — customers buy, you redeem in-store" },
       ],
     },
     cta: {
-      title: "Ready to Start?",
-      desc: "Free token bonus on signup. Zero cost to begin.",
-      button: "🎉 Sign Up Free & Start Now",
+      title: "Ready?",
+      desc: "Start at zero cost. No monthly fee — issue vouchers, then run draws.",
+      button: "🎉 Sign up free & start",
     },
-    footer: "Powered by WeMembers · Simple merchant marketing tools",
+    footer: "Powered by WeMembers · Vouchers & lucky-draw platform",
   },
 };
 
@@ -160,23 +160,37 @@ export default function HomePage() {
   const { lang } = useLang();
   const t = content[lang as keyof typeof content] || content.zh;
   const [session, setSession] = useState<any>(null);
-  const [roleView, setRoleView] = useState<"business" | "consumer">(() => {
-    if (typeof window !== "undefined") {
-      return (localStorage.getItem("wem_role_view") as "business" | "consumer") || "consumer";
-    }
-    return "consumer";
-  });
+  // 首屏固定 consumer，避免 SSR 与 localStorage 不一致导致 hydration 失败
+  const [roleView, setRoleView] = useState<"business" | "consumer">("consumer");
   const isZh = lang === "zh";
 
   function switchRoleView(v: "business" | "consumer") {
     setRoleView(v);
-    try { localStorage.setItem("wem_role_view", v); } catch {}
+    try {
+      localStorage.setItem("wem_role_view", v);
+    } catch {
+      /* ignore */
+    }
   }
 
   useEffect(() => {
-    fetch("/api/auth/me").then(r => r.json()).then(d => {
-      if (d.data?.id) setSession(d.data);
-    }).catch(() => {});
+    try {
+      const saved = localStorage.getItem("wem_role_view");
+      if (saved === "business" || saved === "consumer") {
+        setRoleView(saved);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.data?.id) setSession(d.data);
+      })
+      .catch(() => {});
   }, []);
 
   return (
@@ -324,10 +338,10 @@ export default function HomePage() {
       <section className="px-5 pt-16 pb-8 max-w-sm mx-auto">
         <div className="text-center mb-10">
           <h2 className="text-2xl font-bold text-slate-900 mb-2">
-            {lang === "zh" ? "三大核心功能" : "Three Core Products"}
+            {lang === "zh" ? "核心能力" : "What you get"}
           </h2>
           <p className="text-sm text-slate-400">
-            {lang === "zh" ? "覆盖商户营销全流程" : "End-to-end merchant marketing"}
+            {lang === "zh" ? "代金券发得出 · 抽奖玩得动 · 到店核销" : "Vouchers · lucky draws · in-store redeem"}
           </p>
         </div>
 
@@ -378,7 +392,7 @@ export default function HomePage() {
         <div className="max-w-sm mx-auto">
           <h2 className="text-2xl font-bold text-slate-900 text-center mb-2">{t.flow.title}</h2>
           <p className="text-sm text-slate-400 text-center mb-8">
-            {lang === "zh" ? "从注册到营业，只需三步" : "From signup to live in three steps"}
+            {lang === "zh" ? "注册企业 → 发券/开抽奖 → 门店贴码" : "Company → vouchers & draws → store QR"}
           </p>
 
           <div className="space-y-6">

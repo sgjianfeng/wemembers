@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import {
+  isValidBusinessSlug,
+  isValidSingaporeUen,
+  normalizeUen,
+} from "@/lib/utils";
 
 // GET /api/business/settings
 export async function GET() {
@@ -15,6 +20,7 @@ export async function GET() {
       select: {
         businessName: true,
         businessSlug: true,
+        businessUen: true,
         businessCategory: true,
         email: true,
         phone: true,
@@ -44,6 +50,8 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const data: {
       businessName?: string;
+      businessSlug?: string;
+      businessUen?: string | null;
       businessCategory?: string | null;
       displayName?: string | null;
       phone?: string | null;
@@ -56,6 +64,49 @@ export async function PATCH(request: NextRequest) {
       }
       data.businessName = name.slice(0, 80);
     }
+
+    if (typeof body.businessUen === "string") {
+      const u = body.businessUen.trim();
+      if (u) {
+        if (!isValidSingaporeUen(u)) {
+          return NextResponse.json({ error: "UEN 格式无效" }, { status: 400 });
+        }
+        const uen = normalizeUen(u);
+        const taken = await prisma.user.findFirst({
+          where: { businessUen: uen, id: { not: session.userId } },
+          select: { id: true },
+        });
+        if (taken) {
+          return NextResponse.json({ error: "该 UEN 已被其他账号使用" }, { status: 409 });
+        }
+        data.businessUen = uen;
+      }
+    }
+
+    if (typeof body.businessSlug === "string") {
+      const slug = body.businessSlug.trim().toLowerCase().replace(/^-+|-+$/g, "");
+      if (!isValidBusinessSlug(slug)) {
+        return NextResponse.json(
+          { error: "英文标识须为 2–48 位小写字母、数字或连字符" },
+          { status: 400 }
+        );
+      }
+      const taken = await prisma.user.findFirst({
+        where: {
+          businessSlug: slug,
+          id: { not: session.userId },
+        },
+        select: { id: true },
+      });
+      if (taken) {
+        return NextResponse.json(
+          { error: "该英文标识已被占用，请换一个" },
+          { status: 409 }
+        );
+      }
+      data.businessSlug = slug;
+    }
+
     if (typeof body.businessCategory === "string") {
       data.businessCategory = body.businessCategory.trim().slice(0, 40) || null;
     }
@@ -76,12 +127,15 @@ export async function PATCH(request: NextRequest) {
       select: {
         businessName: true,
         businessSlug: true,
+        businessUen: true,
         businessCategory: true,
         email: true,
         phone: true,
         displayName: true,
       },
     });
+
+    // 企业改名不再自动改门店名（门店独立）
 
     return NextResponse.json({ data: user });
   } catch (error) {

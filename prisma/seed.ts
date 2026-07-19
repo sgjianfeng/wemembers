@@ -226,7 +226,7 @@ async function main() {
         passwordHash: PW,
         createdAt: daysAgo(def.signupDaysAgo),
         tokenAccount: {
-          create: { balance: def.tokenBalance, totalEarned: def.tokenBalance },
+          create: { balance: 0, frozenBalance: 0, totalEarned: 0, totalSpent: 0 },
         },
       },
     });

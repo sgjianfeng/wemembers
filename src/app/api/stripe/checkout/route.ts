@@ -16,8 +16,12 @@ export async function POST(request: NextRequest) {
 
   const origin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const isBiz = session.role === "business";
-  const successPath = isBiz ? "/business/tokens?topup=success" : "/my-tokens?topup=success";
-  const cancelPath = isBiz ? "/business/tokens?topup=cancel" : "/my-tokens?topup=cancel";
+  // 顾客现金充值已下线；仅商户钱包充值
+  if (!isBiz) {
+    return NextResponse.json({ error: "顾客请使用购券余额，无需 Token 充值" }, { status: 400 });
+  }
+  const successPath = "/business/tokens?topup=success";
+  const cancelPath = "/business/tokens?topup=cancel";
 
   const url = await createCheckoutSession({
     userId: session.userId,

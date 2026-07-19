@@ -5,7 +5,7 @@ import { AdminLogoutButton } from "@/components/admin/AdminLogoutButton";
 const navItems = [
   { icon: "📊", label: "平台概览", href: "/admin" },
   { icon: "🏢", label: "商家管理", href: "/admin/businesses" },
-  { icon: "🪙", label: "Token管理", href: "/admin/tokens" },
+  { icon: "💰", label: "账户余额", href: "/admin/tokens" },
   { icon: "⚙️", label: "系统配置", href: "/admin/system" },
 ];
 

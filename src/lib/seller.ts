@@ -42,6 +42,15 @@ export async function getEligibleSeller(
     };
   }
 
+  // 店员：可作活动分发归因（专属活动卡）
+  if (user.role === "staff" && user.status === "active") {
+    return {
+      userId: user.id,
+      kind: "promoter", // 佣金路径与推广人共用 sellerId
+      displayName: user.displayName || "店员",
+    };
+  }
+
   // Promoter: customer (or any non-business) with active PromoterAccount
   if (user.promoterAccount?.isActive) {
     return {

@@ -18,6 +18,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { voucherId, amountCents } = body;
+    const bodyStoreId =
+      typeof body.storeId === "string" ? body.storeId.trim() : "";
 
     if (!voucherId || !amountCents || amountCents <= 0) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
@@ -54,7 +56,14 @@ export async function POST(request: NextRequest) {
     let redeemerStore: { id: string; businessId: string; name?: string | null } | null = null;
     let redeemerBusinessId: string;
 
-    if (session.storeId) {
+    // 门店：店员固定 JWT storeId；企业必须传 body.storeId（从具体门店进入核销）
+    if (session.role === "staff") {
+      if (!session.storeId) {
+        return NextResponse.json(
+          { error: "店员未绑定门店，无法核销" },
+          { status: 403 }
+        );
+      }
       redeemerStore = await prisma.store.findUnique({
         where: { id: session.storeId },
         select: { id: true, businessId: true, name: true },
@@ -65,13 +74,24 @@ export async function POST(request: NextRequest) {
       redeemerBusinessId = redeemerStore.businessId;
     } else if (session.role === "business") {
       redeemerBusinessId = session.userId;
+      if (!bodyStoreId) {
+        return NextResponse.json(
+          { error: "请选择本次核销的门店" },
+          { status: 400 }
+        );
+      }
       redeemerStore = await prisma.store.findFirst({
-        where: { businessId: session.userId },
-        orderBy: { createdAt: "asc" },
+        where: { id: bodyStoreId, businessId: session.userId },
         select: { id: true, businessId: true, name: true },
       });
+      if (!redeemerStore) {
+        return NextResponse.json(
+          { error: "门店无效或不属于本企业" },
+          { status: 400 }
+        );
+      }
     } else {
-      return NextResponse.json({ error: "Staff must be assigned to a store" }, { status: 403 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
     /**
