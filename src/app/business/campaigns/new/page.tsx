@@ -73,6 +73,7 @@ export default function NewCampaignPage() {
     return d.toISOString().slice(0, 10);
   });
   const [discountPercent, setDiscountPercent] = useState(20);
+  // 抽奖默认三档；代金模板会在选模板时改成含 S$10 的默认
   const [enabledTiers, setEnabledTiers] = useState<number[]>([50, 100, 200]);
   const [shareSelling, setShareSelling] = useState(true);
   const [selectedPartners, setSelectedPartners] = useState<string[]>([]);

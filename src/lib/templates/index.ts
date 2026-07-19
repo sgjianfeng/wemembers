@@ -90,10 +90,22 @@ export interface CampaignTemplate {
   >;
 }
 
-const DEFAULT_TIERS: VoucherTierTemplate[] = [
+/** 抽奖默认三档 50 / 100 / 200（与 draw-v2 对齐） */
+const DRAW_TIERS: VoucherTierTemplate[] = [
   { amountSgd: 50, tier: "small", instantPrizeCapSgd: 8, enabledByDefault: true },
   { amountSgd: 100, tier: "medium", instantPrizeCapSgd: 20, enabledByDefault: true },
   { amountSgd: 200, tier: "large", instantPrizeCapSgd: 40, enabledByDefault: true },
+];
+
+/**
+ * 纯代金券档位：含试点 S$10（无抽奖）。
+ * 与抽奖三档分离 — 见 product decisions 2026-07-19。
+ */
+const VOUCHER_TIERS: VoucherTierTemplate[] = [
+  { amountSgd: 10, tier: "small", instantPrizeCapSgd: 0, enabledByDefault: true },
+  { amountSgd: 50, tier: "small", instantPrizeCapSgd: 0, enabledByDefault: false },
+  { amountSgd: 100, tier: "medium", instantPrizeCapSgd: 0, enabledByDefault: false },
+  { amountSgd: 200, tier: "large", instantPrizeCapSgd: 0, enabledByDefault: false },
 ];
 
 /** Snapshot stored on Campaign at create time */
@@ -146,7 +158,7 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
       instantPoolRatio: 0,
       midPoolRatio: 0,
       grandPoolRatio: 0,
-      tiers: DEFAULT_TIERS.map((t) => ({ ...t })),
+      tiers: VOUCHER_TIERS.map((t) => ({ ...t })),
       prizePackId: "none",
     },
     editable: [
@@ -183,7 +195,7 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
       instantPoolRatio: 20,
       midPoolRatio: 0,
       grandPoolRatio: 80,
-      tiers: DEFAULT_TIERS.map((t) => ({ ...t })),
+      tiers: DRAW_TIERS.map((t) => ({ ...t })),
       /** Default prize pack; store may rename / retarget prizes */
       prizePackId: "default_grand_v1",
     },
@@ -221,7 +233,7 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
       instantPoolRatio: 0,
       midPoolRatio: 0,
       grandPoolRatio: 0,
-      tiers: DEFAULT_TIERS.map((t) => ({ ...t })),
+      tiers: VOUCHER_TIERS.map((t) => ({ ...t })),
       prizePackId: "none",
     },
     editable: [

@@ -84,10 +84,16 @@ export async function POST(request: NextRequest) {
       isDraw ? "余额全额可用 · 到店核销 20% 进奖池" : null,
     ].filter(Boolean);
 
+    // Live: PayNow only (SG). Test keys: also enable card so 4242… can 验账.
+    const stripeKey = process.env.STRIPE_SECRET_KEY || "";
+    const isTestStripe = stripeKey.startsWith("sk_test");
+    const paymentMethodTypes: ("paynow" | "card")[] = isTestStripe
+      ? ["card", "paynow"]
+      : ["paynow"];
+
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "payment",
-      // Voucher purchase: PayNow only (SGD, lower friction in SG; no card)
-      payment_method_types: ["paynow"],
+      payment_method_types: paymentMethodTypes,
       customer_email: undefined,
       line_items: [
         {

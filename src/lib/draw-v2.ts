@@ -107,12 +107,19 @@ export function allocateDeferredToPrizes(
  * - large (200): boost · grand 3× · instant cap S$40
  */
 export const DEFAULT_VOUCHER_TIERS: VoucherTierConfig[] = [
+  /** 纯代金试点面额（无抽奖即时奖上限） */
+  { min: 10, max: 10, tier: "small", instantPrizeCap: 0 },
   { min: 50, max: 50, tier: "small", instantPrizeCap: 8 },
   { min: 100, max: 100, tier: "medium", instantPrizeCap: 20 },
   { min: 200, max: 200, tier: "large", instantPrizeCap: 40 },
 ];
 
-export const FIXED_VOUCHER_AMOUNTS = [50, 100, 200] as const;
+/** 抽奖默认三档（与 draw_standard 模板一致） */
+export const DRAW_FACE_AMOUNTS = [50, 100, 200] as const;
+/** 纯代金默认可开面额（试点含 S$10） */
+export const VOUCHER_FACE_AMOUNTS = [10, 50, 100, 200] as const;
+/** @deprecated 使用 DRAW_FACE_AMOUNTS；保留兼容旧引用 */
+export const FIXED_VOUCHER_AMOUNTS = DRAW_FACE_AMOUNTS;
 
 // Grand prize targets (in cents) — ladder: iPad → iPhone → BYD
 export const GRAND_PRIZE_TARGETS = {
@@ -191,14 +198,15 @@ export function calculateTierWeight(
  * 判断券面金额属于哪个档位
  */
 export function resolveTier(amountSgd: number): VoucherTierConfig | null {
-  // amountSgd is in SGD
+  // amountSgd is in SGD — exact ladder match first
   for (const t of DEFAULT_VOUCHER_TIERS) {
     if (amountSgd >= t.min && amountSgd <= t.max) return t;
   }
   // Fallback: map nearest known ladder
-  if (amountSgd >= 200) return DEFAULT_VOUCHER_TIERS[2];
-  if (amountSgd >= 100) return DEFAULT_VOUCHER_TIERS[1];
-  if (amountSgd >= 50) return DEFAULT_VOUCHER_TIERS[0];
+  if (amountSgd >= 200) return DEFAULT_VOUCHER_TIERS.find((t) => t.min === 200) ?? null;
+  if (amountSgd >= 100) return DEFAULT_VOUCHER_TIERS.find((t) => t.min === 100) ?? null;
+  if (amountSgd >= 50) return DEFAULT_VOUCHER_TIERS.find((t) => t.min === 50) ?? null;
+  if (amountSgd >= 10) return DEFAULT_VOUCHER_TIERS.find((t) => t.min === 10) ?? null;
   return null;
 }
 
