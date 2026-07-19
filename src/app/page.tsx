@@ -287,7 +287,7 @@ export default function HomePage() {
             </>
           )}
 
-          {/* 主 CTA 跟「我是消费者 / 商家」标签走，不跟登录身份硬绑 */}
+          {/* 主 CTA 跟角色 Tab；首页通用，不挂具体商家活动 */}
           {roleView === "consumer" ? (
             <div className="flex flex-col items-center gap-2">
               {session?.role === "customer" ? (
@@ -299,28 +299,21 @@ export default function HomePage() {
                   <span className="text-base">→</span>
                 </Link>
               ) : (
-                <Link
-                  href="/auth/register?redirect=/voucher/meow-bbq-draw-3tier"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-300/30 hover:from-amber-500 hover:to-orange-600 transition-all active:scale-[0.98]"
-                >
-                  🎰 {isZh ? "免费注册，去买券抽奖" : "Sign up & buy to win"}
-                </Link>
+                <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  <Link
+                    href="/auth/register"
+                    className="inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-300/30 hover:from-amber-500 hover:to-orange-600 transition-all active:scale-[0.98]"
+                  >
+                    🎰 {isZh ? "免费注册" : "Sign up free"}
+                  </Link>
+                  <Link
+                    href="/auth/login"
+                    className="inline-flex items-center justify-center px-7 py-2.5 text-white/80 rounded-full font-medium text-sm border border-white/20 hover:bg-white/10 hover:text-white transition-all"
+                  >
+                    {t.nav.login}
+                  </Link>
+                </div>
               )}
-              <div className="flex flex-wrap gap-2 justify-center text-[11px]">
-                <Link
-                  href="/voucher/meow-bbq-s10-voucher"
-                  className="text-white/70 underline-offset-2 hover:text-white hover:underline"
-                >
-                  {isZh ? "S$10 代金券" : "S$10 voucher"}
-                </Link>
-                <span className="text-white/30">·</span>
-                <Link
-                  href="/voucher/meow-bbq-draw-3tier"
-                  className="text-white/70 underline-offset-2 hover:text-white hover:underline"
-                >
-                  {isZh ? "抽奖三档" : "Lucky draw"}
-                </Link>
-              </div>
               {(session?.role === "business" || session?.role === "staff") && (
                 <p className="text-[10px] text-white/40 mt-0.5">
                   {isZh
