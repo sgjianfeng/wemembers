@@ -37,8 +37,11 @@
 | G1 | Health | `curl https://wemembers.store/api/health` → ok |
 | G2 | 生产表面审计 | `npm run audit:prod` → pages/apis 无 P0 |
 | G3 | 消费者主路径 E2E | `npm run test:e2e:customer-prod` → pass |
-| G4 | 产品验收表 | `acceptance-consumer.md` / `acceptance.md` 本迭代项已勾或明确「不做」 |
+| G3b | 商家主路径 E2E | `npm run test:e2e:business-prod` → pass |
+| G4 | 产品验收表 | `acceptance-consumer.md` / `acceptance-purchase-test.md` 本迭代项已勾或明确「不做」 |
 | G5 | 市场演示脚本 | 只含已绿步骤 |
+
+一键：`npm run gate:prod`（G2+G3+G3b）
 
 任一红：**禁止**对用户说「可以用了」。
 

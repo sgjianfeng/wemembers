@@ -21,7 +21,9 @@
     "test:e2e": "npx playwright test",
     "test:e2e:full": "npx playwright test tests/e2e/full-business-flow.spec.ts",
     "audit:prod": "node scripts/prod-audit.mjs",
-    "test:e2e:customer-prod": "PLAYWRIGHT_BASE_URL=https://wemembers.store npx playwright test tests/e2e/customer-flow-prod.spec.ts --config=playwright.prod.config.ts"
+    "test:e2e:customer-prod": "PLAYWRIGHT_BASE_URL=https://wemembers.store npx playwright test tests/e2e/customer-flow-prod.spec.ts --config=playwright.prod.config.ts",
+    "test:e2e:business-prod": "PLAYWRIGHT_BASE_URL=https://wemembers.store npx playwright test tests/e2e/business-flow-prod.spec.ts --config=playwright.prod.config.ts",
+    "gate:prod": "npm run audit:prod && npm run test:e2e:customer-prod && npm run test:e2e:business-prod"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

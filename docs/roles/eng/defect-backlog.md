@@ -5,13 +5,13 @@
 
 ## 最近审计摘要
 
-| 检查 | 结果 |
-|------|------|
-| HTTP 表面（公开页 + 未登录保护页） | 大体 OK；未登录保护页 307→login 符合预期 |
-| API health / draws / discover / pool | 200 |
-| 发短信 register | 200（+65 规范化后） |
-| Playwright `customer-flow-prod` | **5/5 pass**（注册、登录会话、主页面） |
-| 客户 cookie 进 `/business/*` | 曾 **403 JSON** → 修为重定向本角色首页 |
+| 检查 | 结果 | 时间 |
+|------|------|------|
+| HTTP 表面 | OK | 07-19 |
+| Playwright `customer-flow-prod` | **5/5** | 07-19 |
+| Playwright `business-flow-prod` | **5/5**（Meow OTP→后台页→活动/门店） | 07-19 |
+| 购券 Test 真付 | 手工清单 `acceptance-purchase-test.md` | 待大股东 |
+| 客户越权 `/business/*` | 307→`/home` | 07-19 |
 
 ## P0 — 主路径阻塞
 
@@ -21,7 +21,7 @@
 | D-002 | 短信 Vonage 422（无 +65） | ✅ 已修 | normalizeSingaporePhone |
 | D-003 | 商家会话点用户注册跳 /business | ✅ 已修 | 入口分离 + logout next |
 | D-004 | 消费者/商家入口混乱 | ✅ 已修 | `/` vs `/for-business` |
-| D-005 | 越权访问返回 JSON 403 白屏 | 🔧 本提交 | middleware 改 redirect |
+| D-005 | 越权访问返回 JSON 403 白屏 | ✅ 已修 | middleware 改 redirect |
 | D-006 | 登录 UI 偶发点不中（E2E） | 🔄 | API 登录已绿；UI 待跟进 |
 
 ## P1 — 已发布能力受损
@@ -55,4 +55,7 @@
 ```bash
 npm run audit:prod
 npm run test:e2e:customer-prod
+npm run test:e2e:business-prod
+# 三门禁一次跑：
+npm run gate:prod
 ```
