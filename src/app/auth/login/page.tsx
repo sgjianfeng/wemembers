@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { TopHeader } from "@/components/ui/TopHeader";
@@ -92,7 +92,15 @@ function PasswordField({
 export default function LoginPage() {
   const router = useRouter();
   const { t } = useLang();
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<IntentTab>("customer");
+
+  useEffect(() => {
+    const q = searchParams.get("tab");
+    if (q === "customer" || q === "business" || q === "admin") {
+      setTab(q);
+    }
+  }, [searchParams]);
   // admin 默认验证码；客户/商家默认密码
   const [mode, setMode] = useState<Mode>("password");
   const [contact, setContact] = useState("");

@@ -197,53 +197,87 @@ export default function HomePage() {
     <div className="min-h-screen bg-white">
       {/* ── Top Header ── */}
       <TopHeader variant="landing">
-        {/* 未登录 → 登录；已登录 → 显示名称（区分消费者 / 商家） */}
-        {!session ? (
-          <Link
-            href="/auth/login"
-            className="text-xs font-medium text-white/85 hover:text-white transition-colors px-2 py-1 rounded-full border border-white/20"
-          >
-            {t.nav.login}
-          </Link>
-        ) : session.role === "business" || session.role === "staff" ? (
-          <Link
-            href="/business"
-            className="flex items-center gap-1.5 max-w-[9.5rem] text-left hover:opacity-90 transition-opacity"
-            title={session.businessName || session.displayName || ""}
-          >
-            <span className="shrink-0 text-[9px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded bg-sky-500/25 text-sky-200 border border-sky-400/30">
-              {session.role === "staff"
+        {/*
+          顶栏跟随「我是消费者 / 商家」Tab + 真实会话：
+          - 消费者 Tab 只展示消费者身份；商家会话不在此冒充用户名
+          - 商家 Tab 同理
+          单账号单角色：要换身份需登录另一角色账号
+        */}
+        {(() => {
+          const isBizSession =
+            session?.role === "business" || session?.role === "staff";
+          const isCustSession = session?.role === "customer";
+          const loginClass =
+            "text-xs font-medium text-white/85 hover:text-white transition-colors px-2 py-1 rounded-full border border-white/20";
+
+          if (roleView === "consumer") {
+            if (isCustSession) {
+              return (
+                <Link
+                  href="/home"
+                  className="flex items-center gap-1.5 max-w-[9.5rem] text-left hover:opacity-90 transition-opacity"
+                  title={session.displayName || session.phone || ""}
+                >
+                  <span className="shrink-0 text-[9px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded bg-amber-500/25 text-amber-100 border border-amber-400/30">
+                    {isZh ? "用户" : "You"}
+                  </span>
+                  <span className="text-xs font-medium text-white truncate">
+                    {session.displayName ||
+                      session.phone ||
+                      session.email ||
+                      (isZh ? "我的" : "Me")}
+                  </span>
+                </Link>
+              );
+            }
+            // 未登录，或当前是商家会话：消费者视图只给「用户登录」
+            return (
+              <Link href="/auth/login?tab=customer" className={loginClass}>
+                {isBizSession
+                  ? isZh
+                    ? "用户登录"
+                    : "Customer login"
+                  : t.nav.login}
+              </Link>
+            );
+          }
+
+          // roleView === business
+          if (isBizSession) {
+            return (
+              <Link
+                href="/business"
+                className="flex items-center gap-1.5 max-w-[9.5rem] text-left hover:opacity-90 transition-opacity"
+                title={session.businessName || session.displayName || ""}
+              >
+                <span className="shrink-0 text-[9px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded bg-sky-500/25 text-sky-200 border border-sky-400/30">
+                  {session.role === "staff"
+                    ? isZh
+                      ? "店员"
+                      : "Staff"
+                    : isZh
+                      ? "商家"
+                      : "Biz"}
+                </span>
+                <span className="text-xs font-medium text-white truncate">
+                  {session.businessName ||
+                    session.displayName ||
+                    session.email ||
+                    (isZh ? "商家账号" : "Business")}
+                </span>
+              </Link>
+            );
+          }
+          return (
+            <Link href="/auth/login?tab=business" className={loginClass}>
+              {isCustSession
                 ? isZh
-                  ? "店员"
-                  : "Staff"
-                : isZh
-                  ? "商家"
-                  : "Biz"}
-            </span>
-            <span className="text-xs font-medium text-white truncate">
-              {session.businessName ||
-                session.displayName ||
-                session.email ||
-                (isZh ? "商家账号" : "Business")}
-            </span>
-          </Link>
-        ) : (
-          <Link
-            href="/home"
-            className="flex items-center gap-1.5 max-w-[9.5rem] text-left hover:opacity-90 transition-opacity"
-            title={session.displayName || session.phone || ""}
-          >
-            <span className="shrink-0 text-[9px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded bg-amber-500/25 text-amber-100 border border-amber-400/30">
-              {isZh ? "用户" : "You"}
-            </span>
-            <span className="text-xs font-medium text-white truncate">
-              {session.displayName ||
-                session.phone ||
-                session.email ||
-                (isZh ? "我的" : "Me")}
-            </span>
-          </Link>
-        )}
+                  ? "商家登录"
+                  : "Business login"
+                : t.nav.login}
+            </Link>
+          );
+        })()}
       </TopHeader>
 
       {/* ── Hero（紧凑） ── */}
