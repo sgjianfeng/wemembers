@@ -200,10 +200,8 @@ test("3. Logout and password login", async ({ page }) => {
   test.skip(!registered, "register failed");
   test.setTimeout(90000);
 
-  // Clear session
-  await page.goto(`${BASE}/api/auth/logout?next=${encodeURIComponent("/auth/login?tab=customer")}`, {
-    waitUntil: "domcontentloaded",
-  });
+  // Clear session cookies (avoid GET /api/auth/logout SSL redirect quirks)
+  await page.context().clearCookies();
   await page.goto(`${BASE}/auth/login?tab=customer`, {
     waitUntil: "domcontentloaded",
   });
@@ -225,18 +223,25 @@ test("3. Logout and password login", async ({ page }) => {
   const pw = page.locator('input[type="password"]').first();
   if (await pw.isVisible().catch(() => false)) {
     await pw.fill(PASSWORD);
-    await page.getByRole("button", { name: /登录|Login|Sign in/i }).first().click();
+    const loginBtn = page.getByRole("button", { name: /^登录$|Login|Sign in/i }).first();
+    const [resp] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes("/api/auth/login") && r.request().method() === "POST",
+        { timeout: 20000 }
+      ),
+      loginBtn.click(),
+    ]);
+    const body = await resp.json().catch(() => ({}));
+    expect(resp.status(), JSON.stringify(body)).toBe(200);
   } else {
     // OTP login fallback
     await page.getByRole("button", { name: /验证码|Code|发送/i }).first().click();
     await page.waitForTimeout(1200);
     const code = fetchCode(phone, "login");
     await fillCode(page, code);
-    const loginBtn = page.getByRole("button", { name: /登录|Login|验证/i });
-    if (await loginBtn.isVisible().catch(() => false)) await loginBtn.click();
   }
 
-  await page.waitForURL("**/home", { timeout: 30000 });
+  await page.waitForURL(/\/home/, { timeout: 30000 });
   await expect(page).toHaveURL(/\/home/);
   await expect(page).not.toHaveURL(/\/business/);
 });
@@ -253,18 +258,21 @@ test("4. Customer main pages load (no 5xx, not kicked to business)", async ({
   });
   const phoneInput = page
     .locator(
-      'input[type="tel"], input[placeholder*="手机"], input[placeholder*="9123"], input[placeholder*="Phone"]'
+      'input[type="tel"], input[placeholder*="手机"], input[placeholder*="9123"], input[placeholder*="Phone"], input[placeholder*="邮箱"]'
     )
     .first();
-  if (await phoneInput.isVisible().catch(() => false)) {
-    await phoneInput.fill(phoneLocal);
-    const pw = page.locator('input[type="password"]').first();
-    if (await pw.isVisible().catch(() => false)) {
-      await pw.fill(PASSWORD);
-      await page.getByRole("button", { name: /登录|Login|Sign in/i }).first().click();
-      await page.waitForURL("**/home", { timeout: 30000 }).catch(() => {});
-    }
-  }
+  await phoneInput.waitFor({ state: "visible", timeout: 15000 });
+  await phoneInput.fill(phoneLocal);
+  const pw = page.locator('input[type="password"]').first();
+  await pw.fill(PASSWORD);
+  const loginBtn = page.getByRole("button", { name: /^登录$|Login|Sign in/i }).first();
+  await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().includes("/api/auth/login") && r.request().method() === "POST"
+    ),
+    loginBtn.click(),
+  ]);
+  await page.waitForURL(/\/home/, { timeout: 30000 });
 
   const pages: { path: string; name: string; ok?: RegExp }[] = [
     { path: "/home", name: "home" },

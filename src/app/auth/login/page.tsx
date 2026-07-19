@@ -114,9 +114,17 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [pendingRole, setPendingRole] = useState<string>("customer");
 
-  const normalizedContact = contact.includes("@")
-    ? contact.trim().toLowerCase()
-    : contact.trim().replace(/\s+/g, "");
+  // 与后端一致：SG 手机规范为 +65…，避免登录查不到号
+  const normalizedContact = (() => {
+    const raw = contact.trim();
+    if (raw.includes("@")) return raw.toLowerCase();
+    const d = raw.replace(/[^\d+]/g, "");
+    if (d.startsWith("+")) return d;
+    const digits = d.replace(/\D/g, "");
+    if (digits.startsWith("65") && digits.length === 10) return `+${digits}`;
+    if (/^[89]\d{7}$/.test(digits)) return `+65${digits}`;
+    return digits || raw;
+  })();
 
   const isAdminTab = tab === "admin";
   const showPasswordForm = !isAdminTab && mode === "password";
