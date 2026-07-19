@@ -547,16 +547,16 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
             })}
           </div>
 
-          {/* CTA */}
+          {/* CTA — 消费者注册（带 role=customer） */}
           <div className="mt-5 text-center">
             <a
-              href="/auth/register"
+              href="/auth/register?role=customer"
               className="inline-flex items-center justify-center gap-2 px-10 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-200 hover:from-amber-600 hover:to-orange-600 transition-all active:scale-[0.98]"
             >
-              🎰 {isZh ? "免费注册，立即抽奖" : "Sign Up Free & Win Now"}
+              🎰 {isZh ? "免费注册" : "Sign up free"}
             </a>
             <p className="text-[10px] text-slate-400 mt-2">
-              {isZh ? "100% 中奖 · 零成本参与 · 随时提现" : "100% Win · Free to Join · Cash Out Anytime"}
+              {isZh ? "100% 中奖 · 到店核销 · 倒计时大奖" : "100% Win · Redeem in-store · Countdown prizes"}
             </p>
           </div>
         </div>
