@@ -197,12 +197,20 @@ export default function HomePage() {
     <div className="min-h-screen bg-white">
       {/* ── Top Header ── */}
       <TopHeader variant="landing">
-        {session ? (
+        {/* 顶栏：商家账号可进后台；消费者视图不把「管理后台」当主叙事 */}
+        {session?.role === "business" || session?.role === "staff" ? (
           <Link
-            href={session.role === "business" ? "/business" : "/home"}
+            href="/business"
             className="text-xs font-medium text-white/80 hover:text-white transition-colors"
           >
-            {session.role === "business" ? t.nav.dashboard : t.nav.home}
+            {t.nav.dashboard}
+          </Link>
+        ) : session?.role === "customer" ? (
+          <Link
+            href="/home"
+            className="text-xs font-medium text-white/80 hover:text-white transition-colors"
+          >
+            {t.nav.home}
           </Link>
         ) : (
           <Link
@@ -277,20 +285,55 @@ export default function HomePage() {
             </>
           )}
 
-          {session ? (
+          {/* 主 CTA 跟「我是消费者 / 商家」标签走，不跟登录身份硬绑 */}
+          {roleView === "consumer" ? (
+            <div className="flex flex-col items-center gap-2">
+              {session?.role === "customer" ? (
+                <Link
+                  href="/home"
+                  className="inline-flex items-center gap-2 px-7 py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-300/30 hover:from-amber-500 hover:to-orange-600 transition-all active:scale-[0.98]"
+                >
+                  {isZh ? "进入我的首页" : "Go to my home"}
+                  <span className="text-base">→</span>
+                </Link>
+              ) : (
+                <Link
+                  href="/auth/register?redirect=/voucher/meow-bbq-draw-3tier"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-300/30 hover:from-amber-500 hover:to-orange-600 transition-all active:scale-[0.98]"
+                >
+                  🎰 {isZh ? "免费注册，去买券抽奖" : "Sign up & buy to win"}
+                </Link>
+              )}
+              <div className="flex flex-wrap gap-2 justify-center text-[11px]">
+                <Link
+                  href="/voucher/meow-bbq-s10-voucher"
+                  className="text-white/70 underline-offset-2 hover:text-white hover:underline"
+                >
+                  {isZh ? "S$10 代金券" : "S$10 voucher"}
+                </Link>
+                <span className="text-white/30">·</span>
+                <Link
+                  href="/voucher/meow-bbq-draw-3tier"
+                  className="text-white/70 underline-offset-2 hover:text-white hover:underline"
+                >
+                  {isZh ? "抽奖三档" : "Lucky draw"}
+                </Link>
+              </div>
+              {(session?.role === "business" || session?.role === "staff") && (
+                <p className="text-[10px] text-white/40 mt-0.5">
+                  {isZh
+                    ? "当前是商家登录 · 管店请点上方「我是商家」"
+                    : "Logged in as business · switch to For Business to manage"}
+                </p>
+              )}
+            </div>
+          ) : session?.role === "business" || session?.role === "staff" ? (
             <Link
-              href={session.role === "business" ? "/business" : "/home"}
+              href="/business"
               className="inline-flex items-center gap-2 px-7 py-2.5 bg-white text-slate-900 rounded-full font-semibold text-sm shadow-lg shadow-black/20 hover:bg-white/95 transition-all active:scale-[0.98]"
             >
-              {session.role === "business" ? t.nav.dashboard : t.nav.home}
+              {t.nav.dashboard}
               <span className="text-base">→</span>
-            </Link>
-          ) : roleView === "consumer" ? (
-            <Link
-              href="/auth/register"
-              className="inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-300/30 hover:from-amber-500 hover:to-orange-600 transition-all active:scale-[0.98]"
-            >
-              🎰 {isZh ? "免费注册，立即抽奖" : "Sign Up Free & Win Now"}
             </Link>
           ) : (
             <div className="flex flex-col sm:flex-row gap-2 justify-center">
