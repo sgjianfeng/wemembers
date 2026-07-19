@@ -77,35 +77,54 @@ export async function middleware(request: NextRequest) {
 
   const { role } = payload;
 
+  const roleHome = (r: string) => {
+    if (r === "admin") return "/admin";
+    if (r === "business" || r === "staff") return "/business";
+    return "/home";
+  };
+
+  // 页面越权：重定向到本角色首页（不要 JSON 403 白屏）
+  const denyPage = () =>
+    NextResponse.redirect(new URL(roleHome(role), request.url));
+
   // Admin
-  if (pathname.startsWith("/admin/") && role !== "admin") {
-    return NextResponse.json({ error: "无权访问" }, { status: 403 });
+  if (
+    (pathname === "/admin" || pathname.startsWith("/admin/")) &&
+    role !== "admin"
+  ) {
+    return denyPage();
   }
 
-  // Business 区域
-  if (pathname.startsWith("/business/")) {
+  // Business 区域（含 /business 本体，不仅 /business/）
+  if (pathname === "/business" || pathname.startsWith("/business/")) {
     if (role !== "business" && role !== "staff") {
-      return NextResponse.json({ error: "无权访问" }, { status: 403 });
+      return denyPage();
     }
     // Staff 不能访问特定页面
     if (
       role === "staff" &&
-      STAFF_BLOCKED.some((r) => pathname.startsWith(r))
+      STAFF_BLOCKED.some((r) => pathname === r || pathname.startsWith(r + "/"))
     ) {
-      return NextResponse.json({ error: "无权访问" }, { status: 403 });
+      return NextResponse.redirect(new URL("/business", request.url));
     }
     return NextResponse.next();
   }
 
   // Customer 路由
   const customerRoutes = [
-    "/home", "/wallet", "/card", "/profile", "/my-tokens", "/redeem",
+    "/home",
+    "/wallet",
+    "/card",
+    "/profile",
+    "/my-tokens",
+    "/redeem",
+    "/balance",
   ];
   if (
-    customerRoutes.some((r) => pathname.startsWith(r)) &&
+    customerRoutes.some((r) => pathname === r || pathname.startsWith(r + "/")) &&
     role !== "customer"
   ) {
-    return NextResponse.json({ error: "无权访问" }, { status: 403 });
+    return denyPage();
   }
 
   return NextResponse.next();
