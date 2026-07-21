@@ -7,6 +7,7 @@ import { t } from "@/lib/i18n";
 import { cookies } from "next/headers";
 import { WithdrawButton } from "./WithdrawButton";
 import { VoucherShowQr } from "./VoucherShowQr";
+import { SplitButton } from "./SplitButton";
 
 export default async function BalancePage() {
   const session = await getSession();
@@ -138,6 +139,10 @@ export default async function BalancePage() {
                     </p>
                   )}
                   <VoucherShowQr voucherId={v.id} lang={lang} />
+                  <SplitButton
+                    voucherId={v.id}
+                    balanceCents={v.balanceCents}
+                  />
                   <WithdrawButton
                     voucherId={v.id}
                     balanceSgd={formatMoney(v.balanceCents)}
