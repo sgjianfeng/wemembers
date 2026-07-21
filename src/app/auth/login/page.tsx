@@ -20,6 +20,14 @@ function roleHome(role: string): string {
   return "/home";
 }
 
+/** Only same-origin relative paths (blocks open redirects). */
+function safeRedirectPath(raw: string | null): string | null {
+  if (!raw) return null;
+  if (!raw.startsWith("/") || raw.startsWith("//")) return null;
+  if (raw.startsWith("/auth")) return null;
+  return raw;
+}
+
 function EyeIcon({ open }: { open: boolean }) {
   if (open) {
     return (
@@ -71,7 +79,7 @@ function PasswordField({
           onKeyDown={onKeyDown}
           placeholder={placeholder}
           className={cn(
-            "flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 pr-11 text-sm",
+            "flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 pr-11 text-base",
             "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2",
             "focus-visible:ring-ring focus-visible:ring-offset-1 transition-colors"
           )}
@@ -113,6 +121,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [pendingRole, setPendingRole] = useState<string>("customer");
+  /** 本地非 live 时 API 返回的验证码，页面直接展示 */
+  const [devCode, setDevCode] = useState<string | null>(null);
 
   // 与后端一致：SG 手机规范为 +65…，避免登录查不到号
   const normalizedContact = (() => {
@@ -140,7 +150,8 @@ export default function LoginPage() {
   }
 
   function goHome(role: string) {
-    router.push(roleHome(role));
+    const redirect = safeRedirectPath(searchParams.get("redirect"));
+    router.push(redirect || roleHome(role));
   }
 
   async function handlePasswordLogin() {
@@ -184,6 +195,9 @@ export default function LoginPage() {
     const data = await res.json();
     setLoading(false);
     if (res.ok) {
+      setDevCode(
+        typeof data.data?.devCode === "string" ? data.data.devCode : null
+      );
       setMode("code-verify");
     } else {
       setError(data.error || t("common.error"));
@@ -456,6 +470,19 @@ export default function LoginPage() {
                 </p>
                 <p className="mt-1.5 text-xs text-slate-400">{t("auth.login.codeHint")}</p>
               </div>
+              {devCode && (
+                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3">
+                  <p className="text-[11px] font-medium text-amber-800">
+                    本地开发 · 未真发短信
+                  </p>
+                  <p className="mt-1 text-center text-2xl font-bold tracking-[0.35em] text-amber-900">
+                    {devCode}
+                  </p>
+                  <p className="mt-1 text-center text-[11px] text-amber-700">
+                    请输入上方 6 位验证码
+                  </p>
+                </div>
+              )}
               <CodeInput length={6} onComplete={handleVerify} error={error} />
               {loading && (
                 <p className="mt-3 text-center text-xs text-slate-400">{t("auth.login.verifying")}</p>

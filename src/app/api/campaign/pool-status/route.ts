@@ -24,9 +24,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing slug parameter" }, { status: 400 });
   }
 
-  const campaign = await prisma.campaign.findUnique({
+  const campaign = await prisma.campaign.findFirst({
     where: {
-      slug,
+      OR: [{ slug }, { id: slug }],
       type: { in: ["lucky_draw", "lucky_draw_v2", "voucher_sale"] },
     },
     include: {

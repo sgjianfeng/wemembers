@@ -36,8 +36,10 @@ export function LanguageProvider({
   }
 
   const translate = useMemo(() => {
+    const zhFallback = getLangDict("zh");
     return (key: string, params?: Record<string, string | number>): string => {
-      let text = dict[key] || key;
+      // 与服务端 t() 一致：当前语言 → 中文 → key，避免新 key 热更新失败时裸奔
+      let text = dict[key] || zhFallback[key] || key;
       if (params) {
         for (const [k, v] of Object.entries(params)) {
           text = text.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));

@@ -3,10 +3,12 @@ import { prisma } from "@/lib/db";
 import { generateCode, normalizeSingaporePhone } from "@/lib/utils";
 import { sendVerificationSMS } from "@/lib/sms";
 import { sendVerificationCode } from "@/lib/email";
+import { shouldLogOnly } from "@/lib/messaging";
 
 // POST /api/auth/send-code
 // Body: { contact: string, purpose: "login"|"register" }
 // 自动判断 email 还是 phone
+// 本地 / 非 live：响应里带 devCode，页面可直接展示（不真发短信）
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -80,7 +82,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ data: { message: "验证码已发送" } });
+    // 非 live：把验证码带回前端，避免只靠终端 log（Turbopack / 后台进程时常看不见）
+    const logOnly = shouldLogOnly(contact);
+    if (logOnly) {
+      console.log(
+        `[send-code] DEV code for ${contact} (${purpose}): ${code}`
+      );
+    }
+
+    return NextResponse.json({
+      data: {
+        message: "验证码已发送",
+        ...(logOnly ? { devCode: code } : {}),
+      },
+    });
   } catch (error) {
     console.error("send-code error:", error);
     return NextResponse.json({ error: "发送失败" }, { status: 500 });

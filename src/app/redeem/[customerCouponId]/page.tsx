@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { t } from "@/lib/i18n";
 import { cookies } from "next/headers";
 import { Badge } from "@/components/ui/Badge";
+import { TopHeader } from "@/components/ui/TopHeader";
 import { daysUntil } from "@/lib/utils";
 import { GiftSheet } from "./GiftSheet";
 
@@ -21,7 +22,16 @@ export default async function RedeemPage({ params }: { params: Promise<{ custome
     include: { coupon: { include: { business: { select: { businessName: true } } } } },
   });
 
-  if (!claim) return <div className="min-h-screen flex items-center justify-center text-slate-400"><p>{t("redeem.notFound", lang)}</p></div>;
+  if (!claim) {
+    return (
+      <div className="min-h-screen flex flex-col bg-white">
+        <TopHeader fallbackUrl="/wallet" />
+        <div className="flex-1 flex items-center justify-center text-slate-400">
+          <p>{t("redeem.notFound", lang)}</p>
+        </div>
+      </div>
+    );
+  }
 
   const daysLeft = daysUntil(claim.coupon.validUntil);
   const formattedCode = claim.qrCode.match(/.{1,4}/g)?.join(" ") || claim.qrCode;
@@ -29,6 +39,7 @@ export default async function RedeemPage({ params }: { params: Promise<{ custome
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
+      <TopHeader fallbackUrl="/wallet" />
       <div className="flex-1 flex flex-col items-center justify-center px-6">
         {/* Coupon Info */}
         <p className="text-xs text-slate-400 mb-1">{claim.coupon.business?.businessName}</p>

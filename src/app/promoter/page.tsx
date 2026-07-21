@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { TopHeader } from "@/components/ui/TopHeader";
 
 export default function PromoterPage() {
   const router = useRouter();
@@ -43,13 +44,22 @@ export default function PromoterPage() {
     setGenerating(null);
   }
 
-  if (loading) return <div className="p-8 text-center text-slate-400">加载中...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <TopHeader fallbackUrl="/profile" />
+        <div className="p-8 text-center text-slate-400">加载中...</div>
+      </div>
+    );
+  }
 
   const isActive = account?.isActive ?? false;
 
   if (!isActive) {
     return (
-      <div className="min-h-screen flex flex-col justify-center px-6 bg-slate-50">
+      <div className="min-h-screen flex flex-col bg-slate-50">
+        <TopHeader fallbackUrl="/profile" />
+        <div className="flex-1 flex flex-col justify-center px-6">
         <div className="text-center">
           <p className="text-6xl mb-4">💸</p>
           <h1 className="text-xl font-bold text-slate-900">推广赚钱</h1>
@@ -80,12 +90,14 @@ export default function PromoterPage() {
 
           <p className="text-xs text-slate-400 mt-4">开启即表示同意推广协议 · 零成本 · 零风险</p>
         </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="pb-4">
+    <div className="pb-4 min-h-screen">
+      <TopHeader fallbackUrl="/profile" title="推广中心" />
       <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
         <h1 className="text-lg font-semibold">推广中心</h1>
         <Badge variant="green">已开启</Badge>

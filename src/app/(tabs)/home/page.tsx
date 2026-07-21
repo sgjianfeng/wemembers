@@ -1,52 +1,92 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
-import { Card, CardContent } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { formatPoints } from "@/lib/utils";
+import { formatMoney } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { DailyCheckIn } from "@/components/customer/DailyCheckIn";
-import { CountdownCard } from "@/components/customer/CountdownCard";
-import { VoucherTabs } from "./VoucherTabs";
+import {
+  allocateDeferredToPrizes,
+  allocatePrizePools,
+  estimatePoolCountdown,
+  SMALL_POOL_RATIO,
+} from "@/lib/draw-v2";
+import {
+  normalizeCampaignGrandPrizes,
+  parseRulesSnapshot,
+} from "@/lib/templates";
+import {
+  HomeDrawsSection,
+  type HomeDrawItem,
+} from "@/components/customer/HomeDrawsSection";
+import { HomeVouchersSection } from "@/components/customer/HomeVouchersSection";
+import { HomeStoresSection } from "@/components/customer/HomeStoresSection";
+import { HomeHotStoresSection } from "@/components/customer/HomeHotStoresSection";
+import { listHotStores } from "@/lib/discover-stores";
 
-/* ─── Tier config ─── */
-const TIER_THRESHOLDS: Record<string, { next: string | null; threshold: number }> = {
-  regular: { next: "silver", threshold: 500 },
-  silver: { next: "gold", threshold: 2000 },
-  gold: { next: "platinum", threshold: 10000 },
-  platinum: { next: null, threshold: Infinity },
-};
+const DRAW_TYPES = ["lucky_draw", "lucky_draw_v2", "voucher_sale"] as const;
 
-const TIER_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  regular: { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" },
-  silver: { bg: "bg-zinc-100", text: "text-zinc-600", border: "border-zinc-300" },
-  gold: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
-  platinum: { bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200" },
-};
+// All draw/voucher campaigns land on /voucher/[slug]; legacy /draw/[slug] redirects there
+function campaignHref(_type: string, id: string, slug: string | null): string {
+  return `/voucher/${slug || id}`;
+}
 
-/* ─── Helpers ─── */
-function couponAttractiveness(c: {
-  type: string;
-  valueCents: number;
-  remainingQuantity: number | null;
-  claimedCount: number;
-}): number {
-  let score = 0;
-  // Discount magnitude
-  if (c.type === "free_item") score += 100;
-  else if (c.type === "percentage") score += c.valueCents / 100; // 70 = 70% off
-  else score += c.valueCents / 200; // $15 off = 7.5
+function poolMeta(campaign: {
+  instantPoolCents: number;
+  grandPoolCents: number;
+  instantPoolRatio: number;
+  dailyAvgVelocity: number;
+  rulesSnapshot: string | null;
+  voucherContributions?: number;
+}) {
+  let small = campaign.instantPoolCents || 0;
+  let grand = campaign.grandPoolCents || 0;
+  const contributed = campaign.voucherContributions || 0;
+  if (small === 0 && grand === 0 && contributed > 0) {
+    const alloc = allocatePrizePools(
+      contributed,
+      campaign.instantPoolRatio ?? SMALL_POOL_RATIO
+    );
+    small = alloc.instantPoolCents;
+    grand = alloc.deferredPoolCents;
+  }
 
-  // Scarcity bonus
-  if (c.remainingQuantity !== null && c.remainingQuantity <= 10) score += 20;
-  if (c.remainingQuantity !== null && c.remainingQuantity <= 3) score += 10;
+  const snapshot = parseRulesSnapshot(campaign.rulesSnapshot);
+  const grandPrizes =
+    snapshot?.grandPrizes && snapshot.grandPrizes.length > 0
+      ? snapshot.grandPrizes
+      : normalizeCampaignGrandPrizes(snapshot?.prizePackId || "default_grand_v1");
 
-  // Popularity
-  score += Math.min(c.claimedCount / 10, 15);
+  const poolConfigs = allocateDeferredToPrizes(grand, grandPrizes);
+  const countdown = estimatePoolCountdown(
+    poolConfigs,
+    campaign.dailyAvgVelocity ?? 0
+  );
+  const best = countdown
+    .filter((c) => c.progress < 100)
+    .sort((a, b) => a.daysPredicted - b.daysPredicted)[0];
 
-  return score;
+  // Per-prize progress (ladder order, smallest target first), top 3
+  const prizes = countdown
+    .slice()
+    .sort((a, b) => a.targetCents - b.targetCents)
+    .slice(0, 3)
+    .map((c) => ({
+      key: c.prizeKey,
+      name: c.prizeName,
+      icon: c.prizeIcon,
+      progress: c.progress,
+    }));
+
+  return {
+    smallPoolSgd: (small / 100).toFixed(0),
+    grandPoolSgd: (grand / 100).toFixed(0),
+    // Hide absurd ETAs (velocity≈0 makes raw estimate astronomical)
+    grandDaysPredicted:
+      best && best.daysPredicted <= 365 ? best.daysPredicted : null,
+    grandProgress: best?.progress ?? (countdown[0]?.progress ?? null),
+    prizes,
+  };
 }
 
 export default async function CustomerHome() {
@@ -56,36 +96,67 @@ export default async function CustomerHome() {
   const c = await cookies();
   const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
 
-  /* ─── Parallel data fetch ─── */
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
 
   const [
     user,
+    activeCampaigns,
+    myVouchers,
+    memberships,
     monthlySavings,
-    totalSavings,
-    activeDraws,
-    allCoupons,
-    myClaimedIds,
+    discoverCoupons,
+    hotStores,
   ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.userId },
-      include: { tokenAccount: { select: { balance: true } } },
+      select: { id: true, displayName: true, phone: true },
+    }),
+    prisma.campaign.findMany({
+      where: {
+        type: { in: [...DRAW_TYPES] },
+        status: "active",
+        endDate: { gt: new Date() },
+      },
+      include: { business: { select: { businessName: true } } },
+      orderBy: { endDate: "asc" },
+      take: 8,
+    }),
+    prisma.voucher.findMany({
+      where: { customerId: session.userId, status: "active" },
+      include: {
+        campaign: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            slug: true,
+            businessId: true,
+            business: { select: { id: true, businessName: true, businessSlug: true } },
+          },
+        },
+        store: { select: { name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.membership.findMany({
+      where: { customerId: session.userId },
+      include: {
+        business: {
+          select: {
+            id: true,
+            businessName: true,
+            businessSlug: true,
+          },
+        },
+      },
+      orderBy: [{ isFavorite: "desc" }, { visitsCount: "desc" }],
+      take: 12,
     }),
     prisma.redemptionLog.aggregate({
       where: { customerId: session.userId, redeemedAt: { gte: monthStart } },
       _sum: { amountSaved: true },
-    }),
-    prisma.redemptionLog.aggregate({
-      where: { customerId: session.userId },
-      _sum: { amountSaved: true },
-    }),
-    prisma.campaign.findMany({
-      where: { type: "lucky_draw", status: "active", endDate: { gt: new Date() } },
-      include: { business: { select: { businessName: true } } },
-      orderBy: { endDate: "asc" },
-      take: 3,
     }),
     prisma.coupon.findMany({
       where: {
@@ -93,263 +164,287 @@ export default async function CustomerHome() {
         validUntil: { gt: new Date() },
         OR: [{ remainingQuantity: { gte: 1 } }, { remainingQuantity: null }],
       },
-      include: { business: { select: { id: true, businessName: true } } },
+      include: { business: { select: { businessName: true } } },
       orderBy: { claimedCount: "desc" },
-      take: 30,
+      take: 6,
     }),
-    prisma.customerCoupon.findMany({
-      where: { customerId: session.userId, status: "available" },
-      select: { couponId: true },
-    }),
+    listHotStores(8),
   ]);
 
   if (!user) redirect("/api/auth/logout?next=/auth/login");
 
-  // Re-fetch entries with actual campaign IDs
-  const campaignIds = activeDraws.map((d) => d.id);
-  const entries = campaignIds.length > 0
-    ? await prisma.luckyDrawEntry.findMany({
-        where: { customerId: session.userId, campaignId: { in: campaignIds } },
-        include: { tickets: { select: { id: true } } },
-      })
-    : [];
+  // Pool contributions for active campaigns
+  const campaignIds = activeCampaigns.map((x) => x.id);
+  const contribRows =
+    campaignIds.length > 0
+      ? await prisma.voucher.groupBy({
+          by: ["campaignId"],
+          where: { campaignId: { in: campaignIds } },
+          _sum: { prizePoolContribution: true },
+          _count: { id: true },
+        })
+      : [];
+  const contribMap = new Map(
+    contribRows.map((r) => [
+      r.campaignId,
+      {
+        sum: r._sum.prizePoolContribution || 0,
+        count: r._count.id,
+      },
+    ])
+  );
 
-  /* ─── Derived data ─── */
-  const tier = TIER_THRESHOLDS[user.membershipTier] || TIER_THRESHOLDS.regular;
-  const tierColor = TIER_COLORS[user.membershipTier] || TIER_COLORS.regular;
-  const tierLabel = t(`home.tier.${user.membershipTier}`, lang);
-  const progress = tier.next
-    ? Math.min(100, Math.round((user.lifetimePoints / tier.threshold) * 100))
-    : 100;
+  const myCountByCampaign = new Map<string, number>();
+  for (const v of myVouchers) {
+    myCountByCampaign.set(v.campaignId, (myCountByCampaign.get(v.campaignId) || 0) + 1);
+  }
 
-  const savedThisMonth = monthlySavings._sum.amountSaved || 0;
-  const savedTotal = totalSavings._sum.amountSaved || 0;
+  // V1 ticket counts
+  const v1Ids = activeCampaigns.filter((d) => d.type === "lucky_draw").map((d) => d.id);
+  const v1Entries =
+    v1Ids.length > 0
+      ? await prisma.luckyDrawEntry.findMany({
+          where: { customerId: session.userId, campaignId: { in: v1Ids } },
+          include: { tickets: { select: { id: true } } },
+        })
+      : [];
+  for (const e of v1Entries) {
+    myCountByCampaign.set(e.campaignId, e.tickets.length);
+  }
 
-  // Build draw cards data
-  const drawCards = activeDraws.map((d) => {
-    const entry = entries.find((e) => e.campaignId === d.id);
+  const toDrawItem = (
+    d: (typeof activeCampaigns)[0],
+    joined: boolean
+  ): HomeDrawItem => {
+    const meta = poolMeta({
+      instantPoolCents: d.instantPoolCents,
+      grandPoolCents: d.grandPoolCents,
+      instantPoolRatio: d.instantPoolRatio,
+      dailyAvgVelocity: d.dailyAvgVelocity,
+      rulesSnapshot: d.rulesSnapshot,
+      voucherContributions: contribMap.get(d.id)?.sum || 0,
+    });
+    const kind = d.type as HomeDrawItem["kind"];
     return {
       id: d.id,
       name: d.name,
-      slug: d.slug,
-      drawDate: d.drawDate?.toISOString() || null,
-      endDate: d.endDate.toISOString(),
-      grandPoolSgd: ((d.instantPoolCents || 0) / 100).toFixed(2),
-      totalTicketCount: d.totalTicketCount,
       businessName: d.business?.businessName || "",
-      myTicketCount: entry?.tickets.length || 0,
+      href: campaignHref(d.type, d.id, d.slug),
+      kind,
+      endDate: d.endDate.toISOString(),
+      smallPoolSgd: meta.smallPoolSgd,
+      grandPoolSgd: meta.grandPoolSgd,
+      myCount: myCountByCampaign.get(d.id) || 0,
+      grandDaysPredicted: meta.grandDaysPredicted,
+      grandProgress: meta.grandProgress,
+      prizes: meta.prizes,
+      joined,
     };
+  };
+
+  const joinedIds = new Set(
+    [...myCountByCampaign.entries()].filter(([, n]) => n > 0).map(([id]) => id)
+  );
+
+  const myDraws = activeCampaigns
+    .filter((d) => joinedIds.has(d.id))
+    .map((d) => toDrawItem(d, true));
+
+  const openDraws = activeCampaigns
+    .filter((d) => d.type === "lucky_draw_v2" || d.type === "voucher_sale" || d.type === "lucky_draw")
+    .map((d) => toDrawItem(d, joinedIds.has(d.id)));
+
+  const totalBalanceCents = myVouchers.reduce((s, v) => s + v.balanceCents, 0);
+  const savedThisMonth = monthlySavings._sum.amountSaved || 0;
+
+  // Stores: memberships + businesses from vouchers not already listed
+  const bizCampaignCounts = await prisma.campaign.groupBy({
+    by: ["businessId"],
+    where: {
+      businessId: { in: memberships.map((m) => m.businessId) },
+      status: "active",
+      endDate: { gt: new Date() },
+    },
+    _count: { id: true },
   });
+  const campaignCountMap = new Map(
+    bizCampaignCounts.map((r) => [r.businessId, r._count.id])
+  );
 
-  // Score and sort coupons
-  const scoredCoupons = allCoupons
-    .map((c) => ({
-      id: c.id,
-      title: c.title,
-      type: c.type,
-      valueCents: c.valueCents,
-      pointsRequired: c.pointsRequired,
-      remainingQuantity: c.remainingQuantity,
-      validUntil: c.validUntil.toISOString(),
-      claimedCount: c.claimedCount,
-      giftType: c.giftType,
-      business: { id: c.business.id, businessName: c.business.businessName },
-      isClaimed: myClaimedIds.findIndex((cl) => cl.couponId === c.id) !== -1,
-      _score: couponAttractiveness(c),
-    }))
-    .sort((a, b) => b._score - a._score);
+  const storeItems = memberships.map((m) => ({
+    businessId: m.business.id,
+    businessName: m.business.businessName || (lang === "zh" ? "商家" : "Business"),
+    businessSlug: m.business.businessSlug,
+    points: m.points,
+    tier: m.tier,
+    campaignCount: campaignCountMap.get(m.businessId) || 0,
+    isFavorite: m.isFavorite,
+  }));
 
-  // Top 3 deals for featured cards
-  const featuredDeals = scoredCoupons.slice(0, 3);
+  // Vouchers without membership still surface the merchant (store-centric)
+  if (storeItems.length === 0 && myVouchers.length > 0) {
+    const seen = new Set<string>();
+    for (const v of myVouchers) {
+      const b = v.campaign?.business;
+      if (!b || seen.has(b.id)) continue;
+      seen.add(b.id);
+      storeItems.push({
+        businessId: b.id,
+        businessName: b.businessName || (lang === "zh" ? "商家" : "Business"),
+        businessSlug: b.businessSlug,
+        points: 0,
+        tier: "regular",
+        campaignCount: 0,
+        isFavorite: false,
+      });
+    }
+  }
 
-  // Remaining (skip featured) for the tabbed list
-  const listCoupons = scoredCoupons.slice(3);
+  // Discover coupons not claimed
+  const claimedIds = await prisma.customerCoupon.findMany({
+    where: { customerId: session.userId, status: "available" },
+    select: { couponId: true },
+  });
+  const claimedSet = new Set(claimedIds.map((c) => c.couponId));
+  const openCoupons = discoverCoupons.filter((c) => !claimedSet.has(c.id)).slice(0, 4);
+
+  const displayName =
+    user.displayName || user.phone || (lang === "zh" ? "朋友" : "there");
 
   return (
     <div className="pb-4">
-      {/* ── IDENTITY CARD ── */}
-      <div className={`bg-gradient-to-br from-[#1A6EFF] via-blue-600 to-[#3B82F6] px-4 pt-6 pb-5 text-white`}>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-white/60 text-[11px] uppercase tracking-wide">
-              {lang === "zh" ? "我的积分" : "My Points"}
+      {/* Compact header — not platform points wall */}
+      <div className="px-4 pt-5 pb-3 border-b border-slate-50">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs text-slate-400">{t("home.greeting", lang)}</p>
+            <p className="text-lg font-semibold text-slate-900 truncate">{displayName}</p>
+          </div>
+          <Link
+            href="/balance"
+            className="shrink-0 text-right rounded-2xl bg-amber-50 border border-amber-100 px-3 py-2"
+          >
+            <p className="text-[10px] text-amber-700">{t("home.balancePeek", lang)}</p>
+            <p className="text-base font-bold text-amber-600">
+              S${formatMoney(totalBalanceCents)}
             </p>
-            <p className="text-4xl font-extrabold tracking-tight">{formatPoints(user.pointsBalance)}</p>
-          </div>
-          <div className={`px-3 py-1.5 rounded-full ${tierColor.bg} ${tierColor.text} text-xs font-semibold`}>
-            {tierLabel}
-          </div>
-        </div>
-
-        {/* Tier progress */}
-        {tier.next && (
-          <div className="mb-3">
-            <div className="flex justify-between text-[11px] text-white/60 mb-1">
-              <span>{t("home.toNextTier", lang, { name: t(`home.tier.${tier.next}`, lang), points: String(tier.threshold - user.lifetimePoints) })}</span>
-              <span>{user.lifetimePoints}/{tier.threshold}</span>
-            </div>
-            <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#FF6B35] rounded-full transition-all"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="text-center">
-            <p className="text-lg font-bold">S${savedTotal.toFixed(0)}</p>
-            <p className="text-[10px] text-white/50">{t("home.identity.totalSaved", lang)}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold">{user.streakDays}</p>
-            <p className="text-[10px] text-white/50">{lang === "zh" ? "连续签到" : "Streak"}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold">{myClaimedIds.length}</p>
-            <p className="text-[10px] text-white/50">{lang === "zh" ? "持有券" : "Vouchers"}</p>
-          </div>
+          </Link>
         </div>
       </div>
 
-      <div className="px-4 mt-4 space-y-4">
-        {/* ── COUNTDOWN CARD ── */}
-        <CountdownCard draws={drawCards} />
+      <div className="px-4 mt-4 space-y-6">
+        <HomeDrawsSection myDraws={myDraws} openDraws={openDraws} />
 
-        {/* ── FEATURED DEAL CARDS ── */}
-        {featuredDeals.length > 0 && (
-          <div className="space-y-2">
-            <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
-              <span>{t("home.section.hotDeals", lang)}</span>
-            </h2>
-            {featuredDeals.map((deal) => {
-              const displayValue =
-                deal.type === "percentage"
-                  ? `${(deal.valueCents / 100).toFixed(0)}${lang === "zh" ? "折" : "% OFF"}`
-                  : deal.type === "free_item"
-                  ? (lang === "zh" ? "免单" : "FREE")
-                  : `$${(deal.valueCents / 100).toFixed(0)}`;
-              const scarce = deal.remainingQuantity !== null && deal.remainingQuantity > 0 && deal.remainingQuantity <= 10;
-              const daysLeft = Math.ceil((new Date(deal.validUntil).getTime() - Date.now()) / 86400000);
-
-              return (
-                <Link key={deal.id} href={`/coupons/${deal.id}`}>
-                  <Card
-                    className={`overflow-hidden hover:shadow-md transition-all border-2 ${
-                      deal.isClaimed
-                        ? "border-green-200 bg-green-50/30"
-                        : scarce
-                        ? "border-red-200 bg-red-50/30"
-                        : deal.type === "free_item"
-                        ? "border-violet-200 bg-violet-50/30"
-                        : "border-[#FF6B35]/20 bg-orange-50/30"
-                    }`}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        {/* Big discount number */}
-                        <div className={`shrink-0 w-16 h-16 rounded-2xl flex flex-col items-center justify-center ${
-                          deal.type === "free_item"
-                            ? "bg-violet-100 text-violet-700"
-                            : deal.type === "percentage"
-                            ? "bg-[#FF6B35]/10 text-[#FF6B35]"
-                            : "bg-blue-100 text-blue-700"
-                        }`}>
-                          <span className="text-xl font-extrabold leading-none">
-                            {deal.type === "percentage"
-                              ? `${(deal.valueCents / 100).toFixed(0)}`
-                              : deal.type === "free_item"
-                              ? "🎁"
-                              : `$${(deal.valueCents / 100).toFixed(0)}`}
-                          </span>
-                          {deal.type === "percentage" && (
-                            <span className="text-[10px] font-bold">OFF</span>
-                          )}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <p className="text-sm font-semibold text-slate-900 truncate">{deal.title}</p>
-                            {scarce && (
-                              <Badge variant="orange" size="sm">
-                                {lang === "zh" ? `仅剩${deal.remainingQuantity}` : `${deal.remainingQuantity} left`}
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-slate-400">{deal.business.businessName}</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <Badge variant="slate" size="sm">{deal.pointsRequired}⭐</Badge>
-                            <span className="text-[10px] text-slate-400">
-                              {deal.claimedCount}{lang === "zh" ? "人已领" : " claimed"}
-                              {" · "}
-                              {daysLeft > 0
-                                ? (lang === "zh" ? `${daysLeft}天后到期` : `${daysLeft}d left`)
-                                : (lang === "zh" ? "今天到期" : "Today")}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="shrink-0 self-center">
-                          {deal.isClaimed ? (
-                            <span className="px-3 py-1.5 bg-green-100 text-green-600 text-[11px] rounded-full font-medium">
-                              {t("home.claimed", lang)}
-                            </span>
-                          ) : (
-                            <span className="px-3 py-1.5 bg-[#1A6EFF] text-white text-[11px] rounded-full font-medium">
-                              {t("home.claim", lang)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
+        {/* Sections render only with content — new users see discover, not stacked empty cards */}
+        {myVouchers.length > 0 && (
+          <HomeVouchersSection
+            lang={lang}
+            totalBalanceCents={totalBalanceCents}
+            vouchers={myVouchers.map((v) => ({
+              id: v.id,
+              campaignName: v.campaign?.name || "—",
+              kind: v.campaign?.type === "lucky_draw_v2" ? "draw" : "discount",
+              balanceCents: v.balanceCents,
+              amountCents: v.amountCents,
+              storeName: v.store?.name || null,
+            }))}
+            savedThisMonth={savedThisMonth}
+          />
         )}
 
-        {/* ── PRAISE CARD ── */}
-        {savedThisMonth > 0 ? (
-          <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-100">
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl mb-1">🎉</p>
-              <p className="text-sm font-semibold text-green-800">
-                {lang === "zh"
-                  ? `本月已省 S$${savedThisMonth.toFixed(0)}！`
-                  : `You saved S$${savedThisMonth.toFixed(0)} this month!`}
-              </p>
-              {savedThisMonth > 50 && (
-                <p className="text-xs text-green-600 mt-0.5">
-                  {lang === "zh" ? "太棒了，继续保持！" : "Amazing, keep it up!"}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        ) : savedTotal === 0 ? (
-          <Card className="bg-gradient-to-r from-slate-50 to-blue-50 border-slate-100">
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl mb-1">👋</p>
-              <p className="text-sm text-slate-600">{t("home.praise.default", lang)}</p>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {lang === "zh" ? "去领取你的第一张代金券吧！" : "Go claim your first voucher!"}
-              </p>
-            </CardContent>
-          </Card>
-        ) : null}
+        {storeItems.length > 0 && (
+          <HomeStoresSection lang={lang} stores={storeItems} />
+        )}
 
-        {/* ── DAILY CHECK-IN ── */}
-        <DailyCheckIn />
+        {/* Hot merchants for new & returning users */}
+        <HomeHotStoresSection lang={lang} stores={hotStores} />
 
-        {/* ── VOUCHER SECTION ── */}
-        <div className="pt-2">
-          <h2 className="text-sm font-semibold text-slate-900 mb-3">
-            {lang === "zh" ? "发现更多" : "Discover More"}
-          </h2>
-          <VoucherTabs coupons={listCoupons} lang={lang} />
-        </div>
+        {/* Light discover: free coupons preview + view all */}
+        <section className="space-y-2">
+          <div className="flex items-center justify-between px-0.5">
+            <h2 className="text-sm font-semibold text-slate-900">
+              {t("home.section.discoverCoupons", lang)}
+            </h2>
+            <Link
+              href="/discover/coupons"
+              className="text-xs font-medium text-[#1A6EFF]"
+            >
+              {t("home.vouchers.viewAll", lang)}
+            </Link>
+          </div>
+          {openCoupons.length > 0 ? (
+            openCoupons.map((coupon) => {
+              const display =
+                coupon.type === "percentage"
+                  ? `${(coupon.valueCents / 100).toFixed(0)}${t("home.deal.off", lang)}`
+                  : coupon.type === "free_item"
+                  ? t("home.deal.free", lang)
+                  : `S$${(coupon.valueCents / 100).toFixed(0)}`;
+              return (
+                <Link key={coupon.id} href={`/coupons/${coupon.id}`}>
+                  <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-white px-3 py-2.5 hover:border-[#1A6EFF]/30">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-[#FF6B35]">{display}</p>
+                      <p className="text-xs text-slate-800 truncate">{coupon.title}</p>
+                      <p className="text-[10px] text-slate-400 truncate">
+                        {coupon.business.businessName}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-[11px] font-medium text-white bg-[#1A6EFF] px-2.5 py-1 rounded-full">
+                      {t("home.claim", lang)}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })
+          ) : (
+            <div className="text-center py-5 px-4 rounded-2xl bg-slate-50 border border-slate-100">
+              <p className="text-sm text-slate-600">
+                {t("home.discover.emptyTitle", lang)}
+              </p>
+              <Link
+                href="/discover/coupons"
+                className="inline-flex mt-3 px-4 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-700"
+              >
+                {t("home.vouchers.viewAll", lang)}
+              </Link>
+            </div>
+          )}
+        </section>
+
+        {myDraws.length === 0 &&
+          openDraws.length === 0 &&
+          myVouchers.length === 0 &&
+          storeItems.length === 0 &&
+          openCoupons.length === 0 &&
+          hotStores.length === 0 && (
+            <div className="text-center py-6 px-4 rounded-2xl bg-slate-50 border border-slate-100">
+              <p className="text-sm text-slate-600">{t("home.discover.empty", lang)}</p>
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                {t("home.discover.emptyHint", lang)}
+              </p>
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                <Link
+                  href="/discover/draws"
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-700"
+                >
+                  {t("home.draws.browse", lang)}
+                </Link>
+                <Link
+                  href="/discover/coupons"
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-700"
+                >
+                  {t("discover.coupons.browse", lang)}
+                </Link>
+                <Link
+                  href="/discover/stores"
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-700"
+                >
+                  {t("discover.stores.browse", lang)}
+                </Link>
+              </div>
+            </div>
+          )}
       </div>
     </div>
   );

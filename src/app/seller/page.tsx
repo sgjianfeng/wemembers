@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { TopHeader } from "@/components/ui/TopHeader";
 import Link from "next/link";
 import { useLang } from "@/components/i18n/LanguageProvider";
 
@@ -86,17 +87,25 @@ export default function SellerPage() {
 
   if (error) {
     return (
-      <div className="p-6 text-center">
-        <p className="text-sm text-red-600">{error}</p>
-        <Link href="/auth/login" className="text-sm text-[#1A6EFF] mt-2 inline-block">
-          {t("seller.login")}
-        </Link>
+      <div className="min-h-screen bg-slate-50">
+        <TopHeader fallbackUrl="/profile" />
+        <div className="p-6 text-center">
+          <p className="text-sm text-red-600">{error}</p>
+          <Link href="/auth/login" className="text-sm text-[#1A6EFF] mt-2 inline-block">
+            {t("seller.login")}
+          </Link>
+        </div>
       </div>
     );
   }
 
   if (!data) {
-    return <div className="p-6 text-center text-sm text-slate-400">{t("seller.loading")}</div>;
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <TopHeader fallbackUrl="/profile" />
+        <div className="p-6 text-center text-sm text-slate-400">{t("seller.loading")}</div>
+      </div>
+    );
   }
 
   const kindLabel =
@@ -108,6 +117,7 @@ export default function SellerPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-10">
+      <TopHeader fallbackUrl="/profile" title={t("seller.title")} />
       <div className="px-4 py-4 border-b border-slate-100 bg-white">
         <h1 className="text-lg font-semibold">{t("seller.title")}</h1>
         <p className="text-xs text-slate-400 mt-0.5">{t("seller.subtitle")}</p>
@@ -282,7 +292,10 @@ export default function SellerPage() {
         </Card>
 
         <div className="flex gap-2">
-          <Link href="/business/tokens" className="flex-1">
+          <Link
+            href={data.kind === "business" ? "/business/tokens" : "/balance"}
+            className="flex-1"
+          >
             <Button variant="outline" className="w-full" size="sm">
               {t("seller.walletBtn")}
             </Button>

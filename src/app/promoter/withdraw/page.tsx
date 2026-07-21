@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent } from "@/components/ui/Card";
+import { TopHeader } from "@/components/ui/TopHeader";
 
 export default function WithdrawPage() {
   const router = useRouter();
@@ -44,7 +45,8 @@ export default function WithdrawPage() {
   }
 
   return (
-    <div className="pb-4">
+    <div className="pb-4 min-h-screen">
+      <TopHeader fallbackUrl="/promoter" title="提现" />
       <div className="px-4 py-3 border-b border-slate-100">
         <h1 className="text-lg font-semibold">提现</h1>
       </div>

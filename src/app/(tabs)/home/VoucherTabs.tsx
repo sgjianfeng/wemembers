@@ -27,14 +27,20 @@ const FILTERS = [
   { key: "free", labelKey: "home.filter.free" },
 ] as const;
 
-export function VoucherTabs({ coupons, lang: initialLang }: { coupons: CouponItem[]; lang: "zh" | "en" }) {
+export function VoucherTabs({
+  coupons,
+}: {
+  coupons: CouponItem[];
+  /** @deprecated reserved for SSR parity; client uses useLang() */
+  lang?: "zh" | "en";
+}) {
   const { t } = useLang();
   const [active, setActive] = useState<string>("all");
 
   const filtered = (() => {
     switch (active) {
       case "highDiscount":
-        return coupons.filter((c) => c.type === "percentage" && c.valueCents >= 7000); // 70%+ off
+        return coupons.filter((c) => c.type === "percentage" && c.valueCents >= 7000);
       case "limited":
         return coupons.filter((c) => c.remainingQuantity !== null && c.remainingQuantity <= 10);
       case "free":
@@ -44,39 +50,41 @@ export function VoucherTabs({ coupons, lang: initialLang }: { coupons: CouponIte
     }
   })();
 
-  const dateLocale = initialLang === "en" ? "en-US" : "zh-CN";
-
   return (
     <div>
-      {/* Filter Tabs */}
-      <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-4 px-4">
-        {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setActive(f.key)}
-            className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
-              active === f.key
-                ? "bg-[#1A6EFF] text-white shadow-sm"
-                : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-            }`}
-          >
-            {t(f.labelKey)}
-          </button>
-        ))}
-      </div>
+      {coupons.length > 0 && (
+        <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-4 px-4">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setActive(f.key)}
+              className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+                active === f.key
+                  ? "bg-[#1A6EFF] text-white shadow-sm"
+                  : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+              }`}
+            >
+              {t(f.labelKey)}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {/* Coupon List */}
       <div className="mt-3 space-y-2">
         {filtered.map((c) => {
           const displayValue =
             c.type === "percentage"
-              ? `${(c.valueCents / 100).toFixed(0)}${initialLang === "zh" ? "折" : "% off"}`
+              ? `${(c.valueCents / 100).toFixed(0)}${t("home.deal.off")}`
               : c.type === "free_item"
-              ? (initialLang === "zh" ? "免单" : "Free")
-              : `$${(c.valueCents / 100).toFixed(0)}`;
+              ? t("home.deal.free")
+              : `S$${(c.valueCents / 100).toFixed(0)}`;
           const soldOut = c.remainingQuantity !== null && c.remainingQuantity <= 0;
-          const scarce = c.remainingQuantity !== null && c.remainingQuantity > 0 && c.remainingQuantity <= 10;
-          const daysLeft = Math.ceil((new Date(c.validUntil).getTime() - Date.now()) / 86400000);
+          const scarce =
+            c.remainingQuantity !== null && c.remainingQuantity > 0 && c.remainingQuantity <= 10;
+          const daysLeft = Math.ceil(
+            (new Date(c.validUntil).getTime() - Date.now()) / 86400000
+          );
 
           return (
             <Link key={c.id} href={`/coupons/${c.id}`}>
@@ -94,24 +102,40 @@ export function VoucherTabs({ coupons, lang: initialLang }: { coupons: CouponIte
                 <CardContent className="p-3 flex items-center justify-between">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className={`text-base font-bold shrink-0 ${c.isClaimed ? "text-green-600" : "text-[#FF6B35]"}`}>
+                      <p
+                        className={`text-base font-bold shrink-0 ${
+                          c.isClaimed ? "text-green-600" : "text-[#FF6B35]"
+                        }`}
+                      >
                         {displayValue}
                       </p>
-                      <Badge variant="slate" size="sm">{c.pointsRequired}⭐</Badge>
+                      <Badge variant="slate" size="sm">
+                        {c.pointsRequired}⭐
+                      </Badge>
                       {c.giftType && c.giftType !== "none" && (
-                        <span className="text-xs">{c.giftType === "points" ? "⭐" : c.giftType === "lottery" ? "🎰" : "🎁"}</span>
+                        <span className="text-xs">
+                          {c.giftType === "points"
+                            ? "⭐"
+                            : c.giftType === "lottery"
+                            ? "🎰"
+                            : "🎁"}
+                        </span>
                       )}
                       {scarce && (
                         <Badge variant="orange" size="sm">
-                          {initialLang === "zh" ? `仅剩${c.remainingQuantity}` : `${c.remainingQuantity} left`}
+                          {t("home.deal.left", { n: String(c.remainingQuantity) })}
                         </Badge>
                       )}
                     </div>
                     <p className="text-sm font-medium text-slate-900 mt-1 truncate">{c.title}</p>
                     <p className="text-[10px] text-slate-400 mt-0.5">
                       {c.business.businessName}
-                      {" · "}{c.claimedCount}{initialLang === "zh" ? "人已领" : " claimed"}
-                      {" · "}{daysLeft > 0 ? (initialLang === "zh" ? `${daysLeft}天` : `${daysLeft}d`) : (initialLang === "zh" ? "今天到期" : "Today")}
+                      {" · "}
+                      {t("home.deal.claimed", { n: String(c.claimedCount) })}
+                      {" · "}
+                      {daysLeft > 0
+                        ? t("home.deal.daysLeft", { n: String(daysLeft) })
+                        : t("home.deal.today")}
                     </p>
                   </div>
                   <div className="ml-2 shrink-0">
@@ -125,7 +149,7 @@ export function VoucherTabs({ coupons, lang: initialLang }: { coupons: CouponIte
                       </span>
                     ) : (
                       <span className="px-3 py-1 bg-slate-200 text-slate-400 text-[10px] rounded-full font-medium">
-                        {initialLang === "zh" ? "已抢光" : "Gone"}
+                        {t("home.deal.soldOut")}
                       </span>
                     )}
                   </div>
@@ -136,9 +160,18 @@ export function VoucherTabs({ coupons, lang: initialLang }: { coupons: CouponIte
         })}
 
         {filtered.length === 0 && (
-          <div className="text-center py-12 text-slate-400">
+          <div className="text-center py-10 px-4 bg-slate-50 rounded-2xl border border-slate-100">
             <p className="text-4xl mb-2">🎫</p>
-            <p className="text-sm">{t("home.noCoupons")}</p>
+            <p className="text-sm font-medium text-slate-600">{t("home.discover.emptyTitle")}</p>
+            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+              {t("home.discover.emptyHint")}
+            </p>
+            <Link
+              href="/wallet"
+              className="inline-flex mt-4 px-4 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:border-[#1A6EFF] hover:text-[#1A6EFF] transition-colors"
+            >
+              {t("home.discover.goWallet")}
+            </Link>
           </div>
         )}
       </div>

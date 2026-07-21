@@ -3,12 +3,12 @@ import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { formatPoints } from "@/lib/utils";
 import Link from "next/link";
 import { ProfileReferral } from "./ProfileReferral";
 import { ProfileEditName } from "./ProfileEditName";
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { DailyCheckIn } from "@/components/customer/DailyCheckIn";
 import { t } from "@/lib/i18n";
 import { cookies } from "next/headers";
 
@@ -80,6 +80,11 @@ export default async function ProfilePage() {
         </div>
       </div>
 
+      {/* 每日签到（从首页降级到个人中心） */}
+      <div className="px-4 mt-4">
+        <DailyCheckIn />
+      </div>
+
       {/* 徽章 */}
       <div className="px-4 mt-4">
         <h3 className="text-sm font-semibold text-slate-900 mb-2">🏅 {t("profile.myBadges", lang)} ({userBadges.length}/12)</h3>
@@ -101,22 +106,71 @@ export default async function ProfilePage() {
         )}
       </div>
 
-      {/* 推广赚钱 */}
+      {/* 已实现功能入口 — 保证全部可从「我的」到达 */}
       <div className="px-4 mt-4">
-        <Link href="/promoter">
-          <Card className="border-dashed border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 hover:border-green-300 transition-colors">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">💸</span>
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">{t("profile.promoter", lang)}</p>
-                  <p className="text-xs text-slate-500">{t("profile.promoterDesc", lang)}</p>
-                </div>
-              </div>
-              <span className="text-slate-300">→</span>
-            </CardContent>
-          </Card>
-        </Link>
+        <h3 className="text-sm font-semibold text-slate-900 mb-2">
+          {t("profile.menu", lang)}
+        </h3>
+        <div className="space-y-2">
+          {(
+            [
+              {
+                href: "/wallet",
+                icon: "🎫",
+                title: t("profile.menu.wallet", lang),
+                desc: t("profile.menu.walletDesc", lang),
+              },
+              {
+                href: "/balance",
+                icon: "💳",
+                title: t("profile.menu.balance", lang),
+                desc: t("profile.menu.balanceDesc", lang),
+              },
+              {
+                href: "/card",
+                icon: "🪪",
+                title: t("profile.menu.card", lang),
+                desc: t("profile.menu.cardDesc", lang),
+              },
+              {
+                href: "/promoter",
+                icon: "💸",
+                title: t("profile.promoter", lang),
+                desc: t("profile.promoterDesc", lang),
+                accent: true,
+              },
+              {
+                href: "/seller",
+                icon: "📣",
+                title: t("profile.seller", lang),
+                desc: t("profile.sellerDesc", lang),
+              },
+            ] as const
+          ).map((item) => (
+            <Link key={item.href} href={item.href}>
+              <Card
+                className={
+                  "accent" in item && item.accent
+                    ? "border-dashed border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 hover:border-green-300 transition-colors"
+                    : "hover:border-[#1A6EFF]/30 transition-colors"
+                }
+              >
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-2xl shrink-0">{item.icon}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {item.title}
+                      </p>
+                      <p className="text-xs text-slate-500 truncate">{item.desc}</p>
+                    </div>
+                  </div>
+                  <span className="text-slate-300 shrink-0">→</span>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* 邀请好友 */}

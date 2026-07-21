@@ -9,6 +9,7 @@ const PUBLIC_STARTS = [
   "/api/stripe",
   "/for-business",
   "/voucher",
+  "/draw", // legacy V1 draw links redirect to /voucher
   "/p",
   "/seller",
   "/promoter",
@@ -119,6 +120,7 @@ export async function middleware(request: NextRequest) {
     "/my-tokens",
     "/redeem",
     "/balance",
+    "/discover",
   ];
   if (
     customerRoutes.some((r) => pathname === r || pathname.startsWith(r + "/")) &&

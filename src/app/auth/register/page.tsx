@@ -43,6 +43,8 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  /** 本地非 live 时 API 会返回验证码，直接展示在页面上 */
+  const [devCode, setDevCode] = useState<string | null>(null);
 
   // /auth/register?role=customer|business — 从首页分流，跳过身份选择
   useEffect(() => {
@@ -127,6 +129,9 @@ export default function RegisterPage() {
     setLoading(false);
 
     if (res.ok) {
+      setDevCode(
+        typeof data.data?.devCode === "string" ? data.data.devCode : null
+      );
       setStep("code");
     } else {
       setError(data.error || t("register.error.sendFailed"));
@@ -418,6 +423,19 @@ export default function RegisterPage() {
                 <p className="mt-0.5 text-sm font-medium text-slate-900 break-all">{contactNorm}</p>
                 <p className="mt-1.5 text-xs text-slate-400">{t("auth.login.codeHint")}</p>
               </div>
+              {devCode && (
+                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3">
+                  <p className="text-[11px] font-medium text-amber-800">
+                    本地开发 · 未真发短信
+                  </p>
+                  <p className="mt-1 text-center text-2xl font-bold tracking-[0.35em] text-amber-900">
+                    {devCode}
+                  </p>
+                  <p className="mt-1 text-center text-[11px] text-amber-700">
+                    请输入上方 6 位验证码
+                  </p>
+                </div>
+              )}
               <CodeInput length={6} onComplete={handleVerifyAndRegister} error={error} />
               {loading && (
                 <p className="mt-3 text-center text-xs text-slate-400">{t("auth.login.verifying")}</p>
