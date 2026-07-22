@@ -5,7 +5,8 @@ import { cookies } from "next/headers";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import Link from "next/link";
-import { timeAgo } from "@/lib/utils";
+import { resolveStoreLogo, timeAgo } from "@/lib/utils";
+import { BrandAvatar } from "@/components/ui/BrandAvatar";
 import { StoreEditForm } from "./StoreEditForm";
 import { StoreQrActions } from "./StoreQrActions";
 import { StoreStaffForm } from "./StoreStaffForm";
@@ -82,26 +83,36 @@ export default async function BusinessStoreDetailPage({
             {lang === "en" ? "All stores" : "全部门店"}
           </Link>
         </div>
-        <h1 className="text-lg font-semibold text-slate-900 mt-1">
-          🏪 {store.name}
-        </h1>
-        {store.address ? (
-          <p className="text-xs text-slate-400 mt-0.5">📍 {store.address}</p>
-        ) : (
-          <p className="text-xs text-amber-600 mt-0.5">
-            {lang === "en"
-              ? "No address yet — add unit number below"
-              : "尚未填写地址 — 请在下方编辑门牌"}
-          </p>
-        )}
-        {store.phone && (
-          <p className="text-xs text-slate-400 mt-0.5">📞 {store.phone}</p>
-        )}
-        <p className="text-[10px] text-slate-400 font-mono mt-1 break-all">
-          {store.business.businessSlug
-            ? `${store.business.businessSlug}/${store.slug}`
-            : store.slug}
-        </p>
+        <div className="flex items-start gap-3 mt-2">
+          <BrandAvatar
+            src={resolveStoreLogo(null, store.business.businessLogo)}
+            name={store.name}
+            size={48}
+            rounded="2xl"
+          />
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg font-semibold text-slate-900">
+              {store.name}
+            </h1>
+            {store.address ? (
+              <p className="text-xs text-slate-400 mt-0.5">📍 {store.address}</p>
+            ) : (
+              <p className="text-xs text-amber-600 mt-0.5">
+                {lang === "en"
+                  ? "No address yet — add unit number below"
+                  : "尚未填写地址 — 请在下方编辑门牌"}
+              </p>
+            )}
+            {store.phone && (
+              <p className="text-xs text-slate-400 mt-0.5">📞 {store.phone}</p>
+            )}
+            <p className="text-[10px] text-slate-400 font-mono mt-1 break-all">
+              {store.business.businessSlug
+                ? `${store.business.businessSlug}/${store.slug}`
+                : store.slug}
+            </p>
+          </div>
+        </div>
         <div className="mt-2">
           <StoreEditForm
             storeId={store.id}

@@ -46,3 +46,7 @@ test-results/
 # local dev receipt uploads (used when S3 is not configured)
 /public/uploads
 prisma/*.db-journal
+
+# production DB dumps / summaries (contain PII — never commit)
+/tmp/
+/tmp/prod-dumps/

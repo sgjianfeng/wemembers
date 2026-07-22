@@ -119,7 +119,11 @@ export default async function CustomerHome() {
         status: "active",
         endDate: { gt: new Date() },
       },
-      include: { business: { select: { businessName: true } } },
+      include: {
+        business: {
+          select: { businessName: true, businessLogo: true },
+        },
+      },
       orderBy: { endDate: "asc" },
       take: 8,
     }),
@@ -133,7 +137,14 @@ export default async function CustomerHome() {
             type: true,
             slug: true,
             businessId: true,
-            business: { select: { id: true, businessName: true, businessSlug: true } },
+            business: {
+              select: {
+                id: true,
+                businessName: true,
+                businessSlug: true,
+                businessLogo: true,
+              },
+            },
           },
         },
         store: { select: { name: true } },
@@ -148,6 +159,7 @@ export default async function CustomerHome() {
             id: true,
             businessName: true,
             businessSlug: true,
+            businessLogo: true,
           },
         },
       },
@@ -275,13 +287,14 @@ export default async function CustomerHome() {
     businessId: m.business.id,
     businessName: m.business.businessName || (lang === "zh" ? "商家" : "Business"),
     businessSlug: m.business.businessSlug,
+    businessLogo: m.business.businessLogo,
     points: m.points,
     tier: m.tier,
     campaignCount: campaignCountMap.get(m.businessId) || 0,
     isFavorite: m.isFavorite,
   }));
 
-  // Vouchers without membership still surface the merchant (store-centric)
+  // Vouchers without membership still surface the merchant (brand-level)
   if (storeItems.length === 0 && myVouchers.length > 0) {
     const seen = new Set<string>();
     for (const v of myVouchers) {
@@ -292,6 +305,7 @@ export default async function CustomerHome() {
         businessId: b.id,
         businessName: b.businessName || (lang === "zh" ? "商家" : "Business"),
         businessSlug: b.businessSlug,
+        businessLogo: b.businessLogo,
         points: 0,
         tier: "regular",
         campaignCount: 0,

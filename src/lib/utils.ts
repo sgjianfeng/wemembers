@@ -5,6 +5,37 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * Resolve local upload paths for mirror/dev against production assets.
+ * When NEXT_PUBLIC_MIRROR_ASSET_ORIGIN is set (e.g. https://wemembers.store),
+ * `/uploads/...` is rewritten so DB rows from a prod dump still show logos
+ * without syncing every file under public/uploads.
+ */
+export function resolveUploadUrl(
+  src?: string | null
+): string | null | undefined {
+  if (!src) return src;
+  if (!src.startsWith("/uploads/")) return src;
+  const origin = (
+    process.env.NEXT_PUBLIC_MIRROR_ASSET_ORIGIN ||
+    process.env.MIRROR_ASSET_ORIGIN ||
+    ""
+  ).replace(/\/$/, "");
+  if (!origin) return src;
+  return `${origin}${src}`;
+}
+
+/**
+ * Store display logo: per-store mark if set, else company brand logo.
+ * Store has no logoUrl column yet — pass null/undefined for storeLogo.
+ */
+export function resolveStoreLogo(
+  storeLogo?: string | null,
+  businessLogo?: string | null
+): string | null {
+  return storeLogo || businessLogo || null;
+}
+
 export function generateCode(length: number = 6): string {
   return Array.from({ length }, () => Math.floor(Math.random() * 10)).join("");
 }

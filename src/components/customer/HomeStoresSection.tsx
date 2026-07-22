@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/Card";
+import { BrandAvatar } from "@/components/ui/BrandAvatar";
 import { t, type Lang } from "@/lib/i18n";
 
 export interface HomeStoreItem {
   businessId: string;
   businessName: string;
   businessSlug: string | null;
+  businessLogo?: string | null;
   points: number;
   tier: string;
   campaignCount: number;
@@ -63,9 +65,11 @@ export function HomeStoresSection({
             <Link key={s.businessId} href={href}>
               <Card className="hover:border-[#1A6EFF]/30 transition-colors">
                 <CardContent className="p-3 flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#1A6EFF] to-[#3B82F6] flex items-center justify-center text-white text-lg shrink-0">
-                    🏪
-                  </div>
+                  <BrandAvatar
+                    src={s.businessLogo}
+                    name={s.businessName}
+                    size={44}
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <p className="text-sm font-semibold text-slate-900 truncate">

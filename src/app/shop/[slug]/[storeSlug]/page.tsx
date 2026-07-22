@@ -3,7 +3,8 @@ import { getSession } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { TopHeader } from "@/components/ui/TopHeader";
-import { daysUntil, storeIdsAllows } from "@/lib/utils";
+import { daysUntil, resolveStoreLogo, storeIdsAllows } from "@/lib/utils";
+import { BrandAvatar } from "@/components/ui/BrandAvatar";
 import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
 import Link from "next/link";
@@ -85,18 +86,15 @@ export default async function CompanyStorePage({
 
       <div className="bg-gradient-to-b from-[#1A6EFF] to-[#3B82F6] px-4 pt-8 pb-8 text-white">
         <div className="text-center">
-          {business.businessLogo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={business.businessLogo}
-              alt=""
-              className="w-20 h-20 rounded-2xl object-contain bg-white mx-auto p-1.5 shadow-lg"
+          <div className="mx-auto w-20 h-20 rounded-2xl bg-white shadow-lg flex items-center justify-center p-1.5">
+            <BrandAvatar
+              src={resolveStoreLogo(null, business.businessLogo)}
+              name={store.name}
+              size={68}
+              rounded="2xl"
+              className="!border-0"
             />
-          ) : (
-            <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto text-3xl">
-              🏪
-            </div>
-          )}
+          </div>
           <h1 className="text-xl font-bold mt-3">{store.name}</h1>
           <p className="text-white/70 text-xs mt-1 font-medium">
             {business.businessName}

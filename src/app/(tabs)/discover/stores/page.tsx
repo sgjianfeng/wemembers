@@ -4,6 +4,7 @@ import { t } from "@/lib/i18n";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/Card";
+import { BrandAvatar } from "@/components/ui/BrandAvatar";
 import { listHotStores, storeHref } from "@/lib/discover-stores";
 import { SERVICE_CATEGORIES } from "@/types";
 
@@ -77,9 +78,11 @@ export default async function DiscoverStoresPage() {
               <Link key={s.businessId} href={storeHref(s)}>
                 <Card className="hover:border-[#1A6EFF]/30 transition-colors">
                   <CardContent className="p-3 flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#1A6EFF] to-[#3B82F6] flex items-center justify-center text-white text-lg shrink-0">
-                      🏪
-                    </div>
+                    <BrandAvatar
+                      src={s.businessLogo}
+                      name={s.businessName}
+                      size={44}
+                    />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-900 truncate">
                         {s.businessName}

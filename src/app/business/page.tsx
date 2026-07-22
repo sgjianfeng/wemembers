@@ -2,8 +2,9 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/Card";
+import { BrandAvatar } from "@/components/ui/BrandAvatar";
 import Link from "next/link";
-import { timeAgo } from "@/lib/utils";
+import { resolveStoreLogo, timeAgo } from "@/lib/utils";
 import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
 import { resolveStaffStore } from "@/lib/current-store";
@@ -30,7 +31,12 @@ export default async function BusinessDashboard() {
   // ── 企业：公司 Dashboard ──
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    include: { tokenAccount: { select: { balance: true } } },
+    select: {
+      id: true,
+      businessName: true,
+      businessLogo: true,
+      tokenAccount: { select: { balance: true } },
+    },
   });
   if (!user) redirect("/api/auth/logout?next=/auth/login");
 
@@ -44,6 +50,7 @@ export default async function BusinessDashboard() {
     select: { id: true, name: true, slug: true, address: true },
     orderBy: { createdAt: "asc" },
   });
+
   const storeIds = stores.map((s) => s.id);
 
   const [
@@ -94,25 +101,41 @@ export default async function BusinessDashboard() {
     <div className="pb-4">
       <div className="bg-white border-b border-slate-100 px-4 py-3 sticky top-0 z-20">
         <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">
-              {lang === "en" ? "Company" : "企业后台"}
-            </p>
-            <Link href="/business/settings" className="group block min-w-0">
+          <Link
+            href="/business/settings"
+            className="group flex items-center gap-3 min-w-0 flex-1"
+          >
+            <BrandAvatar
+              src={user.businessLogo}
+              name={user.businessName}
+              size={44}
+              rounded="2xl"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">
+                {lang === "en" ? "Company" : "企业后台"}
+              </p>
               <p className="text-sm font-semibold text-slate-900 truncate group-active:opacity-70">
                 {user.businessName || t("business.overview.myStore", lang)}
                 <span className="ml-1.5 text-[10px] font-medium text-[#1A6EFF]">
                   {lang === "en" ? "Settings" : "设置"}
                 </span>
               </p>
-            </Link>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {lang === "en"
-                ? `${stores.length} store(s) · manage outlets separately`
-                : `${stores.length} 家门店 · 点「门店」进入具体店`}
-            </p>
-          </div>
-          <Link href="/business/tokens">
+              <p className="text-xs text-slate-400 mt-0.5">
+                {lang === "en"
+                  ? `${stores.length} store(s) · manage outlets separately`
+                  : `${stores.length} 家门店 · 点「门店」进入具体店`}
+              </p>
+              {!user.businessLogo && (
+                <p className="text-[10px] text-amber-600 mt-0.5">
+                  {lang === "en"
+                    ? "Upload brand logo in Settings"
+                    : "设置中可上传品牌 Logo"}
+                </p>
+              )}
+            </div>
+          </Link>
+          <Link href="/business/tokens" className="shrink-0">
             <div className="flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-100">
               <span className="text-xs">💰</span>
               <span className="text-sm font-semibold text-amber-700">S${balanceSgd}</span>
@@ -189,15 +212,23 @@ export default async function BusinessDashboard() {
                 <Link key={s.id} href={`/business/stores/${s.id}`}>
                   <Card className="hover:border-[#1A6EFF]/30 transition-colors">
                     <CardContent className="p-3 flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 truncate">
-                          🏪 {s.name}
-                        </p>
-                        {s.address && (
-                          <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                            {s.address}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <BrandAvatar
+                          src={resolveStoreLogo(null, user.businessLogo)}
+                          name={s.name}
+                          size={40}
+                          rounded="xl"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 truncate">
+                            {s.name}
                           </p>
-                        )}
+                          {s.address && (
+                            <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                              {s.address}
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <span className="text-[11px] text-[#1A6EFF] shrink-0 font-medium">
                         {lang === "en" ? "Open →" : "进入 →"}
@@ -375,16 +406,35 @@ async function StaffStoreHome({
     }),
   ]);
 
+  const staffBiz = await prisma.store.findUnique({
+    where: { id: store.id },
+    select: { business: { select: { businessLogo: true } } },
+  });
+
   return (
     <div className="pb-4">
       <div className="bg-white border-b border-slate-100 px-4 py-3">
         <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">
           {lang === "en" ? "Your store" : "本店工作台"}
         </p>
-        <p className="text-sm font-semibold text-slate-900">🏪 {store.name}</p>
-        {store.address && (
-          <p className="text-xs text-slate-400 mt-0.5">{store.address}</p>
-        )}
+        <div className="flex items-center gap-2.5 mt-1">
+          <BrandAvatar
+            src={resolveStoreLogo(null, staffBiz?.business.businessLogo)}
+            name={store.name}
+            size={40}
+            rounded="xl"
+          />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-slate-900 truncate">
+              {store.name}
+            </p>
+            {store.address && (
+              <p className="text-xs text-slate-400 mt-0.5 truncate">
+                {store.address}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="px-4 mt-4 grid grid-cols-2 gap-3">

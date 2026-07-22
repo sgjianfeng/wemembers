@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
 import { BottomNav } from "@/components/ui/BottomNav";
+import { BrandAvatar } from "@/components/ui/BrandAvatar";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
-import { resolveStaffStore } from "@/lib/current-store";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 
@@ -22,7 +22,7 @@ export default async function BusinessLayout({
   // 清库后 JWT 仍在：必须先清 cookie，否则 login ↔ business 无限 redirect（replaceState 爆炸）
   const dbUser = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, role: true, businessName: true },
+    select: { id: true, role: true, businessName: true, businessLogo: true },
   });
   if (
     !dbUser ||
@@ -133,18 +133,32 @@ export default async function BusinessLayout({
   // 顶栏：企业显示公司名；店员显示固定门店名（无「当前门店」切换）
   let leftLabel = lang === "en" ? "Company" : "企业后台";
   let leftHref = "/business";
+  let headerLogo: string | null = dbUser.businessLogo;
+  let headerLogoName: string | null = dbUser.businessName;
 
   if (dbUser.role === "business") {
     leftLabel = dbUser.businessName || leftLabel;
     leftHref = "/business/settings";
   } else if (dbUser.role === "staff") {
-    const store = await resolveStaffStore(session.storeId);
-    leftLabel = store?.name
-      ? `🏪 ${store.name}`
+    const storeRow = session.storeId
+      ? await prisma.store.findUnique({
+          where: { id: session.storeId },
+          select: {
+            name: true,
+            business: {
+              select: { businessLogo: true, businessName: true },
+            },
+          },
+        })
+      : null;
+    leftLabel = storeRow?.name
+      ? storeRow.name
       : lang === "en"
         ? "Store staff"
         : "门店账号";
     leftHref = "/business";
+    headerLogo = storeRow?.business.businessLogo ?? null;
+    headerLogoName = storeRow?.name ?? leftLabel;
   }
 
   return (
@@ -152,9 +166,19 @@ export default async function BusinessLayout({
       <div className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-50 px-3 h-11 flex items-center justify-between gap-2">
         <Link
           href={leftHref}
-          className="min-w-0 text-xs font-semibold text-slate-800 truncate max-w-[70%]"
+          className="min-w-0 flex items-center gap-2 max-w-[70%]"
         >
-          {leftLabel}
+          {(dbUser.role === "business" || dbUser.role === "staff") && (
+            <BrandAvatar
+              src={headerLogo}
+              name={headerLogoName}
+              size={24}
+              rounded="lg"
+            />
+          )}
+          <span className="text-xs font-semibold text-slate-800 truncate">
+            {leftLabel}
+          </span>
         </Link>
         <LanguageSwitcher />
       </div>

@@ -2,8 +2,9 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { BrandAvatar } from "@/components/ui/BrandAvatar";
 import { TopHeader } from "@/components/ui/TopHeader";
-import { daysUntil } from "@/lib/utils";
+import { daysUntil, resolveStoreLogo } from "@/lib/utils";
 import { SERVICE_CATEGORIES } from "@/types";
 import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
@@ -51,9 +52,40 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
 
       <div className="bg-gradient-to-b from-[#1A6EFF] to-[#3B82F6] px-4 pt-8 pb-8 text-white">
         <div className="text-center">
-          <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto text-3xl">🏢</div>
+          <div className="mx-auto w-20 h-20 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center overflow-hidden p-1">
+            {business.businessLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={business.businessLogo}
+                alt={business.businessName || "Logo"}
+                className="w-full h-full object-contain rounded-xl bg-white"
+              />
+            ) : (
+              <BrandAvatar
+                name={business.businessName}
+                size={72}
+                rounded="2xl"
+                className="!border-0"
+              />
+            )}
+          </div>
           <h1 className="text-xl font-bold mt-3">{business.businessName}</h1>
-          {categoryLabel && (<Badge variant="slate" size="md" className="!bg-white/20 !text-white mt-2">{categoryLabel}</Badge>)}
+          {categoryLabel && (
+            <Badge
+              variant="slate"
+              size="md"
+              className="!bg-white/20 !text-white mt-2"
+            >
+              {categoryLabel}
+            </Badge>
+          )}
+          {stores.length > 0 && (
+            <p className="text-xs text-white/75 mt-2">
+              {lang === "en"
+                ? `${stores.length} outlet(s) · pick a store below`
+                : `${stores.length} 家门店 · 下方选择具体店`}
+            </p>
+          )}
         </div>
       </div>
 
@@ -72,15 +104,23 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
                   >
                     <Card className="hover:border-[#1A6EFF]/30">
                       <CardContent className="p-3 flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-slate-900 truncate">
-                            🏪 {s.name}
-                          </p>
-                          {s.address && (
-                            <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                              {s.address}
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <BrandAvatar
+                            src={resolveStoreLogo(null, business.businessLogo)}
+                            name={s.name}
+                            size={40}
+                            rounded="xl"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-900 truncate">
+                              {s.name}
                             </p>
-                          )}
+                            {s.address && (
+                              <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                                {s.address}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         <span className="text-[10px] text-[#1A6EFF] shrink-0">
                           {lang === "en" ? "Open →" : "进入 →"}

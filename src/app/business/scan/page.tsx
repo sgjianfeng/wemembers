@@ -1,7 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { resolveStaffStore } from "@/lib/current-store";
 import ScanClient from "./ScanClient";
 
 export default async function ScanPage({
@@ -19,23 +18,39 @@ export default async function ScanPage({
 
   // 店员：固定本店
   if (session.role === "staff") {
-    const store = await resolveStaffStore(session.storeId);
+    const storeRow = session.storeId
+      ? await prisma.store.findUnique({
+          where: { id: session.storeId },
+          select: {
+            id: true,
+            name: true,
+            business: { select: { businessLogo: true } },
+          },
+        })
+      : null;
     return (
       <ScanClient
-        storeId={store?.id || null}
-        storeName={store?.name || null}
+        storeId={storeRow?.id || null}
+        storeName={storeRow?.name || null}
         stores={[]}
         locked
+        businessLogo={storeRow?.business.businessLogo}
       />
     );
   }
 
   // 企业：可选 query ?storeId= 指定门店；否则页面内选店（无全局「当前门店」）
-  const stores = await prisma.store.findMany({
-    where: { businessId: session.userId },
-    select: { id: true, name: true, address: true },
-    orderBy: { createdAt: "asc" },
-  });
+  const [stores, business] = await Promise.all([
+    prisma.store.findMany({
+      where: { businessId: session.userId },
+      select: { id: true, name: true, address: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { businessLogo: true },
+    }),
+  ]);
 
   const selected =
     (queryStoreId && stores.find((s) => s.id === queryStoreId)) || null;
@@ -50,6 +65,7 @@ export default async function ScanPage({
         address: s.address,
       }))}
       locked={false}
+      businessLogo={business?.businessLogo}
     />
   );
 }

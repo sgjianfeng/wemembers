@@ -4,6 +4,7 @@ export type DiscoverStoreItem = {
   businessId: string;
   businessName: string;
   businessSlug: string | null;
+  businessLogo: string | null;
   businessCategory: string | null;
   campaignCount: number;
   couponCount: number;
@@ -28,6 +29,7 @@ export async function listHotStores(limit = 50): Promise<DiscoverStoreItem[]> {
       id: true,
       businessName: true,
       businessSlug: true,
+      businessLogo: true,
       businessCategory: true,
       _count: {
         select: {
@@ -81,6 +83,7 @@ export async function listHotStores(limit = 50): Promise<DiscoverStoreItem[]> {
       businessId: b.id,
       businessName: b.businessName || "—",
       businessSlug: b.businessSlug,
+      businessLogo: b.businessLogo,
       businessCategory: b.businessCategory,
       campaignCount,
       couponCount,

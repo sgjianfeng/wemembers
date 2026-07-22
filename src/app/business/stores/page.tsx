@@ -3,8 +3,10 @@ import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
+import { resolveStoreLogo } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { BrandAvatar } from "@/components/ui/BrandAvatar";
 import { StoreCreateForm } from "./StoreCreateForm";
 import Link from "next/link";
 
@@ -17,7 +19,7 @@ export default async function StoresPage() {
 
   const business = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { businessSlug: true, businessName: true },
+    select: { businessSlug: true, businessName: true, businessLogo: true },
   });
 
   const stores = await prisma.store.findMany({
@@ -68,23 +70,33 @@ export default async function StoresPage() {
             <Card key={store.id}>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="min-w-0 flex-1 pr-2">
-                    <p className="text-sm font-semibold text-slate-900">
-                      🏪 {store.name}
-                    </p>
-                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                      {companySlug ? `${companySlug}/${store.slug}` : store.slug}
-                    </p>
-                    {store.address && (
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        📍 {store.address}
+                  <div className="flex items-start gap-2.5 min-w-0 flex-1 pr-2">
+                    <BrandAvatar
+                      src={resolveStoreLogo(null, business?.businessLogo)}
+                      name={store.name}
+                      size={44}
+                      rounded="xl"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {store.name}
                       </p>
-                    )}
-                    {store.phone && (
-                      <p className="text-xs text-slate-400">
-                        📞 {store.phone}
+                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                        {companySlug
+                          ? `${companySlug}/${store.slug}`
+                          : store.slug}
                       </p>
-                    )}
+                      {store.address && (
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          📍 {store.address}
+                        </p>
+                      )}
+                      {store.phone && (
+                        <p className="text-xs text-slate-400">
+                          📞 {store.phone}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img

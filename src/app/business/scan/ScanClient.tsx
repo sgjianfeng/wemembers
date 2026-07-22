@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/Input";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { useLang } from "@/components/i18n/LanguageProvider";
+import { BrandAvatar } from "@/components/ui/BrandAvatar";
+import { resolveStoreLogo } from "@/lib/utils";
 import Link from "next/link";
 
 type Tab = "voucher" | "coupon" | "physical";
@@ -22,11 +24,14 @@ export default function ScanClient({
   storeName,
   stores = [],
   locked = false,
+  businessLogo = null,
 }: {
   storeId: string | null;
   storeName: string | null;
   stores?: StoreOption[];
   locked?: boolean;
+  /** 企业品牌 logo；门店无专属图时使用 */
+  businessLogo?: string | null;
 }) {
   const { t, lang } = useLang();
   const router = useRouter();
@@ -317,17 +322,27 @@ export default function ScanClient({
                 onClick={() => pickStore(s.id)}
                 className="w-full text-left rounded-xl border border-slate-100 bg-white p-3 hover:border-[#1A6EFF]/40 active:bg-slate-50 transition-colors"
               >
-                <p className="text-sm font-semibold text-slate-900">
-                  🏪 {s.name}
-                </p>
-                {s.address && (
-                  <p className="text-[11px] text-slate-400 mt-0.5 truncate">
-                    {s.address}
-                  </p>
-                )}
-                <p className="text-[11px] text-[#1A6EFF] font-medium mt-1">
-                  {lang === "en" ? "Redeem here →" : "在此店核销 →"}
-                </p>
+                <div className="flex items-center gap-2.5">
+                  <BrandAvatar
+                    src={resolveStoreLogo(null, businessLogo)}
+                    name={s.name}
+                    size={40}
+                    rounded="xl"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-slate-900 truncate">
+                      {s.name}
+                    </p>
+                    {s.address && (
+                      <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+                        {s.address}
+                      </p>
+                    )}
+                    <p className="text-[11px] text-[#1A6EFF] font-medium mt-0.5">
+                      {lang === "en" ? "Redeem here →" : "在此店核销 →"}
+                    </p>
+                  </div>
+                </div>
               </button>
             ))}
           </div>

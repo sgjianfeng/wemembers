@@ -2,13 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
+import { BrandAvatar } from "@/components/ui/BrandAvatar";
+import { cn, resolveStoreLogo } from "@/lib/utils";
 
 export type StoreOption = {
   id: string;
   name: string;
   slug: string;
   address?: string | null;
+  /** 门店专属 logo（暂无字段时留空） */
+  logoUrl?: string | null;
 };
 
 interface Props {
@@ -16,6 +19,8 @@ interface Props {
   currentId: string | null;
   locked?: boolean; // staff
   lang?: "zh" | "en";
+  /** 企业品牌 logo，门店无专属图时回退 */
+  businessLogo?: string | null;
 }
 
 export function StoreSwitcher({
@@ -23,6 +28,7 @@ export function StoreSwitcher({
   currentId,
   locked = false,
   lang = "zh",
+  businessLogo = null,
 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -56,7 +62,12 @@ export function StoreSwitcher({
   if (locked || stores.length === 1) {
     return (
       <div className="flex items-center gap-1.5 rounded-full bg-slate-50 border border-slate-100 px-2.5 py-1 max-w-[160px]">
-        <span className="text-[11px] shrink-0">🏪</span>
+        <BrandAvatar
+          src={resolveStoreLogo(current?.logoUrl, businessLogo)}
+          name={current?.name}
+          size={18}
+          rounded="lg"
+        />
         <span className="text-[11px] font-medium text-slate-700 truncate">
           {current?.name || "—"}
         </span>
@@ -92,7 +103,12 @@ export function StoreSwitcher({
           loading && "opacity-60"
         )}
       >
-        <span className="shrink-0">🏪</span>
+        <BrandAvatar
+          src={resolveStoreLogo(current?.logoUrl, businessLogo)}
+          name={current?.name}
+          size={18}
+          rounded="lg"
+        />
         <span className="truncate">{current?.name || "—"}</span>
         <span className="text-slate-400 shrink-0">▾</span>
       </button>
@@ -115,16 +131,24 @@ export function StoreSwitcher({
                 type="button"
                 onClick={() => select(s.id)}
                 className={cn(
-                  "w-full text-left px-3 py-2 text-xs hover:bg-slate-50",
+                  "w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2",
                   s.id === current?.id && "bg-blue-50 text-[#1A6EFF] font-semibold"
                 )}
               >
-                <span className="block truncate">{s.name}</span>
-                {s.address && (
-                  <span className="block text-[10px] text-slate-400 truncate mt-0.5">
-                    {s.address}
-                  </span>
-                )}
+                <BrandAvatar
+                  src={resolveStoreLogo(s.logoUrl, businessLogo)}
+                  name={s.name}
+                  size={28}
+                  rounded="lg"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{s.name}</span>
+                  {s.address && (
+                    <span className="block text-[10px] text-slate-400 truncate mt-0.5">
+                      {s.address}
+                    </span>
+                  )}
+                </span>
               </button>
             ))}
             <a

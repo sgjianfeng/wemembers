@@ -2,7 +2,9 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { resolveStoreLogo } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/Card";
+import { BrandAvatar } from "@/components/ui/BrandAvatar";
 import { StoreQrActions } from "@/app/business/stores/[id]/StoreQrActions";
 import Link from "next/link";
 
@@ -49,18 +51,12 @@ export default async function StoreSettingsPage() {
       <div className="px-4 mt-4 space-y-4">
         <Card>
           <CardContent className="p-4 flex gap-3 items-start">
-            {store.business.businessLogo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={store.business.businessLogo}
-                alt=""
-                className="w-14 h-14 rounded-xl object-contain border border-slate-100 shrink-0"
-              />
-            ) : (
-              <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center text-2xl shrink-0">
-                🏪
-              </div>
-            )}
+            <BrandAvatar
+              src={resolveStoreLogo(null, store.business.businessLogo)}
+              name={store.name}
+              size={56}
+              rounded="xl"
+            />
             <div className="min-w-0">
               <h3 className="text-sm font-semibold text-slate-900">
                 {store.name}
