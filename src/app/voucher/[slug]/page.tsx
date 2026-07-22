@@ -33,8 +33,9 @@ function VoucherDrawInner() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
   const [confirming, setConfirming] = useState(false);
-
   const sellerId = searchParams.get("seller") || "";
+  const paidFlag = searchParams.get("paid");
+  const sessionIdParam = searchParams.get("session_id");
 
   const refreshPool = useCallback(async () => {
     const poolRes = await fetch(`/api/campaign/pool-status?slug=${slug}`).then((r) =>
@@ -63,23 +64,22 @@ function VoucherDrawInner() {
     load();
   }, [refreshPool]);
 
+  // 支付回跳确认：勿把 confirming 放进 deps（会 setState → 重跑 → cleanup cancel → 永远卡住）
   useEffect(() => {
-    const paid = searchParams.get("paid");
-    const sessionId = searchParams.get("session_id");
-    if (paid !== "1" || !sessionId || confirming || result) return;
+    if (paidFlag !== "1" || !sessionIdParam || result) return;
 
-    let cancelled = false;
+    let alive = true;
+    setConfirming(true);
+    setError("");
     (async () => {
-      setConfirming(true);
-      setError("");
       try {
         const res = await fetch("/api/voucher/confirm", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId }),
+          body: JSON.stringify({ sessionId: sessionIdParam }),
         });
         const d = await res.json();
-        if (cancelled) return;
+        if (!alive) return;
         if (res.ok) {
           setResult(d.data);
           await refreshPool();
@@ -87,18 +87,17 @@ function VoucherDrawInner() {
           setError(d.error || t("voucher.confirmPayFail"));
         }
       } catch {
-        if (!cancelled) {
-          setError(t("voucher.confirmPayFail"));
-        }
+        if (alive) setError(t("voucher.confirmPayFail"));
       } finally {
-        if (!cancelled) setConfirming(false);
+        if (alive) setConfirming(false);
       }
     })();
+
     return () => {
-      cancelled = true;
+      alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, confirming, result, refreshPool]);
+  }, [paidFlag, sessionIdParam, result, refreshPool]);
 
   async function handlePurchase() {
     if (!selectedAmount || selectedAmount <= 0) {
