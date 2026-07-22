@@ -4,6 +4,7 @@
  * Creates (idempotent by slug):
  *   A) meow-bbq-s10-voucher  — S$10 折扣代金 20% off · 无抽奖
  *   B) meow-bbq-draw-3tier   — 抽奖三档 50/100/200
+ *   C) meow-bbq-s2-voucher   — S$2 代金 · 无折扣 · Live PayNow 验账
  *
  * Usage (prod):
  *   cd /var/www/wemembers/current && node scripts/seed-meow-pilot-campaigns.mjs
@@ -28,12 +29,12 @@ const prisma = new PrismaClient();
 
 const MEOW_EMAIL = "meow.jianfeng@gmail.com";
 
-function buildVoucherSnapshot() {
+function buildVoucherSnapshot(enabledTiers = [10], discountPercent = 20) {
   return {
     templateId: "voucher_discount",
     kind: "voucher_discount",
-    allowDiscount: true,
-    discountPercent: 20,
+    allowDiscount: discountPercent > 0,
+    discountPercent,
     sellerCommissionPercent: 5,
     platformFeePercent: 1.5,
     prizePoolPercent: 0,
@@ -42,7 +43,7 @@ function buildVoucherSnapshot() {
     instantPoolRatio: 0,
     midPoolRatio: 0,
     grandPoolRatio: 0,
-    enabledTiers: [10],
+    enabledTiers,
     prizePackId: "none",
     snapshottedAt: new Date().toISOString(),
   };
@@ -184,7 +185,8 @@ async function main() {
   }
   const storeIdsJson = JSON.stringify(stores.map((s) => s.id));
 
-  const voucherSnap = buildVoucherSnapshot();
+  const voucherSnap = buildVoucherSnapshot([10], 20);
+  const voucherS2Snap = buildVoucherSnapshot([2], 0);
   const drawSnap = buildDrawSnapshot();
 
   const a = await upsertCampaign({
@@ -200,6 +202,19 @@ async function main() {
       { min: 10, max: 10, tier: "small", instantPrizeCap: 0 },
     ],
     color: "#1A6EFF",
+  });
+
+  const c = await upsertCampaign({
+    businessId: biz.id,
+    storeIdsJson,
+    slug: "meow-bbq-s2-voucher",
+    name: "Meow BBQ S$2 代金券（PayNow 验账）",
+    description:
+      "Live PayNow 小额验账 · 面值 S$2 · 无折扣 · 实付 S$2 · 入账=实付（老算法）· 无抽奖",
+    type: "voucher_sale",
+    snapshot: voucherS2Snap,
+    voucherTiers: [{ min: 2, max: 2, tier: "small", instantPrizeCap: 0 }],
+    color: "#0EA5E9",
   });
 
   const b = await upsertCampaign({
@@ -223,6 +238,14 @@ async function main() {
   console.log(JSON.stringify({
     business: biz.businessName,
     stores: stores.map((s) => s.name),
+    voucherS2: {
+      id: c.campaign.id,
+      slug: c.campaign.slug,
+      created: c.created,
+      url: `${base}/voucher/${c.campaign.slug}`,
+      face: "S$2",
+      pay: "S$2.00 (0% off)",
+    },
     voucher: {
       id: a.campaign.id,
       slug: a.campaign.slug,

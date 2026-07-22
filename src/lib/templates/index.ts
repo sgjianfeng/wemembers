@@ -98,15 +98,20 @@ const DRAW_TIERS: VoucherTierTemplate[] = [
 ];
 
 /**
- * 纯代金券档位：含试点 S$10（无抽奖）。
- * 与抽奖三档分离 — 见 product decisions 2026-07-19。
+ * 纯代金券档位：≥S$2（无抽奖）。与抽奖三档分离。
+ * 也允许创建时传入列表外的整数面额（≥2），见 buildRulesSnapshot。
  */
 const VOUCHER_TIERS: VoucherTierTemplate[] = [
+  { amountSgd: 2, tier: "small", instantPrizeCapSgd: 0, enabledByDefault: false },
+  { amountSgd: 5, tier: "small", instantPrizeCapSgd: 0, enabledByDefault: false },
   { amountSgd: 10, tier: "small", instantPrizeCapSgd: 0, enabledByDefault: true },
   { amountSgd: 50, tier: "small", instantPrizeCapSgd: 0, enabledByDefault: false },
   { amountSgd: 100, tier: "medium", instantPrizeCapSgd: 0, enabledByDefault: false },
   { amountSgd: 200, tier: "large", instantPrizeCapSgd: 0, enabledByDefault: false },
 ];
+
+/** 纯代金最低面额 SGD */
+export const VOUCHER_TEMPLATE_MIN_FACE_SGD = 2;
 
 /** Snapshot stored on Campaign at create time */
 export interface RulesSnapshot {
@@ -282,7 +287,16 @@ export function buildRulesSnapshot(input: BuildSnapshotInput): RulesSnapshot {
 
   const defaultTiers = rules.tiers.filter((t) => t.enabledByDefault).map((t) => t.amountSgd);
   const allowed = new Set(rules.tiers.map((t) => t.amountSgd));
-  let enabledTiers = (input.enabledTiers ?? defaultTiers).filter((a) => allowed.has(a));
+  let enabledTiers: number[];
+  if (rules.kind === "voucher_discount") {
+    // 代金：允许任意整数面额 ≥ S$2（不限于模板预置档）
+    const raw = (input.enabledTiers ?? defaultTiers).map((a) => Math.round(Number(a)));
+    enabledTiers = raw.filter(
+      (a) => Number.isFinite(a) && a >= VOUCHER_TEMPLATE_MIN_FACE_SGD
+    );
+  } else {
+    enabledTiers = (input.enabledTiers ?? defaultTiers).filter((a) => allowed.has(a));
+  }
   if (enabledTiers.length === 0) enabledTiers = defaultTiers;
 
   const shareSellingEnabled =

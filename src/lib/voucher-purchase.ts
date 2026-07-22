@@ -66,7 +66,13 @@ export class VoucherPurchaseError extends Error {
 export async function fulfillVoucherPurchase(
   input: FulfillVoucherInput
 ): Promise<FulfillVoucherResult> {
-  const faceCents = Math.round((input.amountSgd || 0) * 100);
+  const faceSgdRaw = Number(input.amountSgd || 0);
+  // 券面须为正整数 SGD
+  if (!Number.isFinite(faceSgdRaw) || faceSgdRaw <= 0 || Math.abs(faceSgdRaw - Math.round(faceSgdRaw)) > 1e-9) {
+    throw new VoucherPurchaseError("券面须为正整数金额");
+  }
+  const faceSgd = Math.round(faceSgdRaw);
+  const faceCents = faceSgd * 100;
   const spendNowCents = Math.round((input.spendNowSgd || 0) * 100);
 
   if (faceCents <= 0 || spendNowCents < 0) {
@@ -99,13 +105,18 @@ export async function fulfillVoucherPurchase(
     legacyDrawSnapshot(campaign.budgetPercent || 20);
 
   if (snapshot.enabledTiers?.length) {
-    const amountSgdInt = Math.round(faceCents / 100);
-    if (!snapshot.enabledTiers.includes(amountSgdInt)) {
+    if (!snapshot.enabledTiers.includes(faceSgd)) {
       throw new VoucherPurchaseError("该面额未开放");
     }
   }
 
-  const tier = resolveTier(input.amountSgd);
+  const isDraw = isDrawSnapshot(snapshot) || campaign.type === "lucky_draw_v2";
+  // 代金最低 S$2；抽奖仍走档位 ladder
+  if (!isDraw && faceSgd < 2) {
+    throw new VoucherPurchaseError("代金券面额至少 S$2");
+  }
+
+  const tier = resolveTier(faceSgd);
   if (!tier) throw new VoucherPurchaseError("无效券面金额");
 
   const resolvedSellerId = await resolvePurchaseSellerId({
@@ -115,7 +126,6 @@ export async function fulfillVoucherPurchase(
   });
   const split = computePurchaseSplit(faceCents, snapshot, Boolean(resolvedSellerId));
 
-  const isDraw = isDrawSnapshot(snapshot) || campaign.type === "lucky_draw_v2";
   // Draw: balance = face. Promo voucher: balance = paid (avoid over-issuance on discount).
   const creditCents = isDraw ? faceCents : split.paidCents;
   if (spendNowCents > creditCents * 0.8) {
@@ -335,12 +345,18 @@ export async function quoteVoucherPaidCents(
   const snapshot =
     parseRulesSnapshot(campaign.rulesSnapshot) ||
     legacyDrawSnapshot(campaign.budgetPercent || 20);
-  const faceCents = Math.round(amountSgd * 100);
+  if (!Number.isFinite(amountSgd) || amountSgd <= 0 || Math.abs(amountSgd - Math.round(amountSgd)) > 1e-9) {
+    throw new VoucherPurchaseError("券面须为正整数金额");
+  }
+  const faceSgd = Math.round(amountSgd);
+  const faceCents = faceSgd * 100;
   if (snapshot.enabledTiers?.length) {
-    const amountSgdInt = Math.round(faceCents / 100);
-    if (!snapshot.enabledTiers.includes(amountSgdInt)) {
+    if (!snapshot.enabledTiers.includes(faceSgd)) {
       throw new VoucherPurchaseError("该面额未开放");
     }
+  }
+  if (!isDrawSnapshot(snapshot) && faceSgd < 2) {
+    throw new VoucherPurchaseError("代金券面额至少 S$2");
   }
   const split = computePurchaseSplit(faceCents, snapshot, hasSeller);
   return {

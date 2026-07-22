@@ -107,7 +107,9 @@ export function allocateDeferredToPrizes(
  * - large (200): boost · grand 3× · instant cap S$40
  */
 export const DEFAULT_VOUCHER_TIERS: VoucherTierConfig[] = [
-  /** 纯代金试点面额（无抽奖即时奖上限） */
+  /** 纯代金小面额（≥S$2 试点 / PayNow 验账；无抽奖即时奖） */
+  { min: 2, max: 2, tier: "small", instantPrizeCap: 0 },
+  { min: 5, max: 5, tier: "small", instantPrizeCap: 0 },
   { min: 10, max: 10, tier: "small", instantPrizeCap: 0 },
   { min: 50, max: 50, tier: "small", instantPrizeCap: 8 },
   { min: 100, max: 100, tier: "medium", instantPrizeCap: 20 },
@@ -116,8 +118,10 @@ export const DEFAULT_VOUCHER_TIERS: VoucherTierConfig[] = [
 
 /** 抽奖默认三档（与 draw_standard 模板一致） */
 export const DRAW_FACE_AMOUNTS = [50, 100, 200] as const;
-/** 纯代金默认可开面额（试点含 S$10） */
-export const VOUCHER_FACE_AMOUNTS = [10, 50, 100, 200] as const;
+/** 纯代金默认可开面额（≥S$2） */
+export const VOUCHER_FACE_AMOUNTS = [2, 5, 10, 50, 100, 200] as const;
+/** 纯代金最低面额（SGD 整数） */
+export const VOUCHER_FACE_MIN_SGD = 2;
 /** @deprecated 使用 DRAW_FACE_AMOUNTS；保留兼容旧引用 */
 export const FIXED_VOUCHER_AMOUNTS = DRAW_FACE_AMOUNTS;
 
@@ -198,15 +202,21 @@ export function calculateTierWeight(
  * 判断券面金额属于哪个档位
  */
 export function resolveTier(amountSgd: number): VoucherTierConfig | null {
+  if (!Number.isFinite(amountSgd) || amountSgd <= 0) return null;
+  const amt = Math.round(amountSgd);
   // amountSgd is in SGD — exact ladder match first
   for (const t of DEFAULT_VOUCHER_TIERS) {
-    if (amountSgd >= t.min && amountSgd <= t.max) return t;
+    if (amt >= t.min && amt <= t.max) return t;
   }
   // Fallback: map nearest known ladder
-  if (amountSgd >= 200) return DEFAULT_VOUCHER_TIERS.find((t) => t.min === 200) ?? null;
-  if (amountSgd >= 100) return DEFAULT_VOUCHER_TIERS.find((t) => t.min === 100) ?? null;
-  if (amountSgd >= 50) return DEFAULT_VOUCHER_TIERS.find((t) => t.min === 50) ?? null;
-  if (amountSgd >= 10) return DEFAULT_VOUCHER_TIERS.find((t) => t.min === 10) ?? null;
+  if (amt >= 200) return DEFAULT_VOUCHER_TIERS.find((t) => t.min === 200) ?? null;
+  if (amt >= 100) return DEFAULT_VOUCHER_TIERS.find((t) => t.min === 100) ?? null;
+  if (amt >= 50) return DEFAULT_VOUCHER_TIERS.find((t) => t.min === 50) ?? null;
+  if (amt >= 10) return DEFAULT_VOUCHER_TIERS.find((t) => t.min === 10) ?? null;
+  // 纯代金小面额 ≥S$2（不在抽奖档里）
+  if (amt >= VOUCHER_FACE_MIN_SGD) {
+    return { min: amt, max: amt, tier: "small", instantPrizeCap: 0 };
+  }
   return null;
 }
 

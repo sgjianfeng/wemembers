@@ -27,7 +27,7 @@ function VoucherDrawInner() {
   const [campaign, setCampaign] = useState<any>(null);
   const [poolStatus, setPoolStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedAmount, setSelectedAmount] = useState(50);
+  const [selectedAmount, setSelectedAmount] = useState(0);
   const [spendNow, setSpendNow] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -43,6 +43,15 @@ function VoucherDrawInner() {
     if (poolRes.data) {
       setCampaign(poolRes.data.campaign);
       setPoolStatus(poolRes.data);
+      // 默认选中活动开放的最小面额（避免代金 S$2/S$10 却默认 50）
+      const tiers: number[] = poolRes.data.rules?.enabledTiers || [];
+      if (tiers.length > 0) {
+        setSelectedAmount((prev) =>
+          prev > 0 && tiers.includes(prev) ? prev : Math.min(...tiers)
+        );
+      } else {
+        setSelectedAmount((prev) => (prev > 0 ? prev : 50));
+      }
     }
   }, [slug]);
 
@@ -92,7 +101,11 @@ function VoucherDrawInner() {
   }, [searchParams, confirming, result, refreshPool]);
 
   async function handlePurchase() {
-    const amt = parseFloat(spendNow);
+    if (!selectedAmount || selectedAmount <= 0) {
+      setError(t("voucher.selectTier") || "请选择券面");
+      return;
+    }
+    const amt = spendNow === "" ? 0 : parseFloat(spendNow);
     if (isNaN(amt) || amt < 0 || amt > selectedAmount * 0.8) {
       setError(t("voucher.invalidSpend"));
       return;
