@@ -106,9 +106,13 @@ function VoucherDrawInner() {
       return;
     }
     const amt = spendNow === "" ? 0 : parseFloat(spendNow);
-    // 可选「先花」从券面余额扣，最多花 80%
-    if (isNaN(amt) || amt < 0 || amt > selectedAmount * 0.8) {
-      setError(t("voucher.invalidSpend"));
+    const maxSpend = isDraw ? selectedAmount * 0.8 : selectedAmount;
+    if (isNaN(amt) || amt < 0 || amt > maxSpend) {
+      setError(
+        isDraw
+          ? t("voucher.invalidSpend")
+          : t("voucher.invalidSpendVoucher") || "本次消费不能超过可花余额"
+      );
       return;
     }
     setSubmitting(true);
@@ -363,33 +367,36 @@ function VoucherDrawInner() {
                 </div>
               )}
 
-              <div className="mb-3">
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">
-                  {t("voucher.spendNow")}
-                </label>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-400 text-sm">S$</span>
-                  <input
-                    type="number"
-                    value={spendNow}
-                    onChange={(e) => setSpendNow(e.target.value)}
-                    placeholder={`max S$${(paidPreview * 0.8).toFixed(2)}`}
-                    className="flex-1 h-10 px-3 rounded-lg border border-slate-200 text-sm"
-                  />
-                  <span
-                    className={`text-xs px-2 py-1 rounded shrink-0 ${
-                      balancePreview >= paidPreview * 0.2
-                        ? "bg-green-50 text-green-600"
-                        : "bg-red-50 text-red-500"
-                    }`}
-                  >
-                    {t("voucher.balanceAfter")}: S${balancePreview.toFixed(2)}
-                  </span>
+              {/* 抽奖可保留「先花」；代金默认不展示（无最少留 20% 约束） */}
+              {isDraw && (
+                <div className="mb-3">
+                  <label className="block text-xs font-medium text-slate-500 mb-1.5">
+                    {t("voucher.spendNow")}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 text-sm">S$</span>
+                    <input
+                      type="number"
+                      value={spendNow}
+                      onChange={(e) => setSpendNow(e.target.value)}
+                      placeholder={`max S$${(creditPreview * 0.8).toFixed(0)}`}
+                      className="flex-1 h-10 px-3 rounded-lg border border-slate-200 text-sm"
+                    />
+                    <span
+                      className={`text-xs px-2 py-1 rounded shrink-0 ${
+                        balancePreview >= creditPreview * 0.2
+                          ? "bg-green-50 text-green-600"
+                          : "bg-red-50 text-red-500"
+                      }`}
+                    >
+                      {t("voucher.balanceAfter")}: S${balancePreview.toFixed(0)}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    {t("voucher.minRemain")} S${(creditPreview * 0.2).toFixed(0)}
+                  </p>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1">
-                  {t("voucher.minRemain")} S${(creditPreview * 0.2).toFixed(0)}
-                </p>
-              </div>
+              )}
 
               {isDraw && selectedAmount < 100 && (
                 <p className="text-[10px] text-amber-600 mb-3 text-center bg-amber-50 rounded-lg py-1.5">

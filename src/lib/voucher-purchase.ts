@@ -128,8 +128,12 @@ export async function fulfillVoucherPurchase(
 
   // Draw + 代金: 余额均按券面 F 入账；实付 P 记 paidCents（代金可 P<F）
   const creditCents = faceCents;
-  if (spendNowCents > creditCents * 0.8) {
+  // 抽奖：旧规则最多先花 80%；代金：可先花全部（无「最少留 20%」）
+  if (isDraw && spendNowCents > creditCents * 0.8) {
     throw new VoucherPurchaseError("余额不能低于可用额度的 20%");
+  }
+  if (!isDraw && spendNowCents > creditCents) {
+    throw new VoucherPurchaseError("本次消费不能超过可花余额");
   }
   const balanceCents = creditCents - spendNowCents;
 

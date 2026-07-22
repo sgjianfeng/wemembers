@@ -40,8 +40,8 @@ export async function POST(request: NextRequest) {
     }
     const faceCents = Math.round(amountSgd * 100);
     const spendNowCents = Math.round(spendNowSgd * 100);
-    if (spendNowCents < 0 || spendNowCents > faceCents * 0.8) {
-      return NextResponse.json({ error: "余额不能低于券面的 20%" }, { status: 400 });
+    if (spendNowCents < 0) {
+      return NextResponse.json({ error: "消费金额无效" }, { status: 400 });
     }
 
     const campaign = await prisma.campaign.findFirst({
@@ -50,10 +50,19 @@ export async function POST(request: NextRequest) {
         status: "active",
         type: { in: ["lucky_draw_v2", "voucher_sale"] },
       },
-      select: { id: true, name: true },
+      select: { id: true, name: true, type: true },
     });
     if (!campaign) {
       return NextResponse.json({ error: "活动不可用" }, { status: 404 });
+    }
+
+    const isDrawCampaign = campaign.type === "lucky_draw_v2";
+    // 抽奖保留「至少留 20%」；代金可先花到 0
+    if (isDrawCampaign && spendNowCents > faceCents * 0.8) {
+      return NextResponse.json({ error: "余额不能低于券面的 20%" }, { status: 400 });
+    }
+    if (!isDrawCampaign && spendNowCents > faceCents) {
+      return NextResponse.json({ error: "本次消费不能超过可花余额" }, { status: 400 });
     }
 
     const hasSeller = Boolean(sellerId);
