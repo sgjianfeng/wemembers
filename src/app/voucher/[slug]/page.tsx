@@ -106,6 +106,7 @@ function VoucherDrawInner() {
       return;
     }
     const amt = spendNow === "" ? 0 : parseFloat(spendNow);
+    // 可选「先花」从券面余额扣，最多花 80%
     if (isNaN(amt) || amt < 0 || amt > selectedAmount * 0.8) {
       setError(t("voucher.invalidSpend"));
       return;
@@ -199,11 +200,15 @@ function VoucherDrawInner() {
   const isActive = campaign.status === "active";
   const isDraw = campaign.isDraw !== false && campaign.type !== "voucher_sale";
   const discountPercent = poolStatus?.rules?.discountPercent ?? 0;
+  // 代金：付 P 得 F（F=券面）；抽奖：付=面=入账
+  const facePreview = selectedAmount;
   const paidPreview =
-    discountPercent > 0
-      ? (selectedAmount * (100 - discountPercent)) / 100
+    !isDraw && discountPercent > 0
+      ? Math.round((selectedAmount * (100 - discountPercent)) / 100)
       : selectedAmount;
-  const balancePreview = Math.max(0, paidPreview - (parseFloat(spendNow) || 0));
+  const creditPreview = isDraw ? paidPreview : facePreview;
+  const spendNowNum = spendNow === "" ? 0 : parseFloat(spendNow) || 0;
+  const balancePreview = Math.max(0, creditPreview - spendNowNum);
   const tier = resolveTier(selectedAmount);
   const paidCancelled = searchParams.get("paid") === "0";
 
@@ -303,33 +308,40 @@ function VoucherDrawInner() {
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
                     <p className="text-[10px] text-slate-400">{t("voucher.trust.face")}</p>
-                    <p className="text-sm font-bold text-slate-800">S${selectedAmount.toFixed(0)}</p>
+                    <p className="text-sm font-bold text-slate-800">
+                      S${facePreview.toFixed(0)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-[10px] text-slate-400">{t("voucher.trust.pay")}</p>
                     <p className="text-sm font-bold text-[#1A6EFF]">
-                      S${paidPreview.toFixed(2)}
+                      S${paidPreview.toFixed(0)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-400">{t("voucher.trust.credit")}</p>
+                    <p className="text-[10px] text-slate-400">
+                      {isDraw ? t("voucher.trust.credit") : t("voucher.trust.spendable")}
+                    </p>
                     <p className="text-sm font-bold text-emerald-600">
-                      S${paidPreview.toFixed(2)}
+                      S${creditPreview.toFixed(0)}
                     </p>
                   </div>
                 </div>
-                {discountPercent > 0 && (
+                {!isDraw && discountPercent > 0 && (
                   <p className="text-[10px] text-blue-700/80 mt-2 text-center">
-                    {t("voucher.listPay", {
-                      list: selectedAmount.toFixed(2),
-                      paid: paidPreview.toFixed(2),
+                    {t("voucher.payGetFace", {
+                      paid: paidPreview.toFixed(0),
+                      face: facePreview.toFixed(0),
                       pct: discountPercent,
                     })}
-                    {" · "}
-                    {t("voucher.balanceEqPaid")}
                   </p>
                 )}
-                {isDraw && discountPercent === 0 && (
+                {!isDraw && discountPercent === 0 && (
+                  <p className="text-[10px] text-slate-400 mt-2 text-center">
+                    {t("voucher.balanceEqFace")}
+                  </p>
+                )}
+                {isDraw && (
                   <p className="text-[10px] text-slate-400 mt-2 text-center">
                     {t("voucher.balanceEqPaid")}
                   </p>
@@ -375,7 +387,7 @@ function VoucherDrawInner() {
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  {t("voucher.minRemain")} S${(paidPreview * 0.2).toFixed(2)}
+                  {t("voucher.minRemain")} S${(creditPreview * 0.2).toFixed(0)}
                 </p>
               </div>
 
@@ -390,7 +402,7 @@ function VoucherDrawInner() {
               <Button className="w-full" size="lg" onClick={handlePurchase} loading={submitting}>
                 {isDraw
                   ? t("voucher.payDraw")
-                  : t("voucher.payAmount", { amount: paidPreview.toFixed(2) })}
+                  : t("voucher.payAmount", { amount: paidPreview.toFixed(0) })}
               </Button>
               <p className="text-[10px] text-slate-400 text-center mt-2">
                 {t("voucher.paynowHint")}

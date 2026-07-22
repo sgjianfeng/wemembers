@@ -126,8 +126,8 @@ export async function fulfillVoucherPurchase(
   });
   const split = computePurchaseSplit(faceCents, snapshot, Boolean(resolvedSellerId));
 
-  // Draw: balance = face. Promo voucher: balance = paid (avoid over-issuance on discount).
-  const creditCents = isDraw ? faceCents : split.paidCents;
+  // Draw + 代金: 余额均按券面 F 入账；实付 P 记 paidCents（代金可 P<F）
+  const creditCents = faceCents;
   if (spendNowCents > creditCents * 0.8) {
     throw new VoucherPurchaseError("余额不能低于可用额度的 20%");
   }
@@ -136,7 +136,6 @@ export async function fulfillVoucherPurchase(
   const weight = isDraw
     ? calculateTierWeight(faceCents, tier.tier, balanceCents, 0, spendNowCents)
     : 0;
-  // Redeem pot % (draw → leftover funds pool; voucher → leftover to store)
   const redeemFeePercent =
     campaign.budgetPercent && campaign.budgetPercent > 0
       ? campaign.budgetPercent
@@ -151,9 +150,8 @@ export async function fulfillVoucherPurchase(
         campaignId: campaign.id,
         sellerId: resolvedSellerId,
         stripeSessionId: input.stripeSessionId || null,
-        amountCents: creditCents, // face for draw; paid for discount voucher
-        paidCents: split.paidCents,
-        // Accrued on redeem only (model A) — start at 0
+        amountCents: creditCents, // face F
+        paidCents: split.paidCents, // cash P
         sellerCommissionCents: 0,
         platformFeeCents: 0,
         usedCents: spendNowCents,
@@ -175,7 +173,7 @@ export async function fulfillVoucherPurchase(
     throw e;
   }
 
-  // Immediate spend at purchase = same redeem economics (seller/platform/pool from 20% pot)
+  // Immediate spend at purchase — same redeem economics as API redeem
   if (spendNowCents > 0) {
     const store = await prisma.store.findFirst({
       where: { businessId: campaign.businessId },
@@ -188,12 +186,15 @@ export async function fulfillVoucherPurchase(
         amountCents: spendNowCents,
         storeId: store.id,
         redeemerBusinessId: campaign.businessId,
+        issuerBusinessId: campaign.businessId,
         budgetPercent: redeemFeePercent,
         sellerCommissionPercent: snapshot.sellerCommissionPercent,
         platformFeePercent: snapshot.platformFeePercent,
         sellerId: resolvedSellerId,
         label: isDraw ? "购券即用" : "购券即用·代金券",
         mode: productMode,
+        faceCents: creditCents,
+        paidCents: split.paidCents,
         recomputeWeight: isDraw
           ? {
               amountCents: creditCents,

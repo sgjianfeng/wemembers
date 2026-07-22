@@ -1,11 +1,13 @@
 /**
- * Apply model-A redeem split: store 80% + pot 20% (seller / platform / prize pool).
- * Prize pool portion is cut 20% small / 80% grand.
+ * Apply redeem split:
+ * - draw: Model A pot (store 80% + pot → seller/platform/prize pool)
+ * - voucher: cash-equivalent C=R×P/F; platform 1.5% + seller 5% on C
  */
 import { prisma } from "@/lib/db";
 import { grantBusinessIncomeHold } from "@/lib/tokens";
 import {
   splitRedeemAmount,
+  resolveSellerRewardRecipient,
   type ProductMode,
   type RedeemSplit,
 } from "@/lib/redeem-economics";
@@ -14,17 +16,22 @@ import { calculateTierWeight, splitPoolFunding } from "@/lib/draw-v2";
 export interface ApplyRedeemSplitArgs {
   voucherId: string;
   campaignId: string;
+  /** Face amount being redeemed (user balance units) */
   amountCents: number;
   storeId: string;
   redeemerBusinessId: string;
+  /** Issuing campaign business — for seller reward when cross-store */
+  issuerBusinessId?: string;
   budgetPercent: number;
   sellerCommissionPercent: number;
   platformFeePercent: number;
+  /** Promo attribution on voucher (optional) */
   sellerId: string | null;
   label: string;
-  /** draw funds prize pool; voucher returns leftover pot to store */
   mode?: ProductMode;
-  /** After redeem, new balance/used for weight (draw only) */
+  /** Voucher face & paid (for C = R×P/F). Required for accurate voucher split. */
+  faceCents?: number;
+  paidCents?: number;
   recomputeWeight?: {
     amountCents: number;
     tier: "small" | "medium" | "large";
@@ -38,15 +45,31 @@ export async function applyRedeemSplit(args: ApplyRedeemSplitArgs): Promise<{
   split: RedeemSplit;
   usageId: string;
   storeWallet: { balanceAfter: number; frozenAfter: number };
+  sellerRewardRecipientId: string | null;
 }> {
   const mode: ProductMode = args.mode === "voucher" ? "voucher" : "draw";
+  const issuerBusinessId = args.issuerBusinessId || args.redeemerBusinessId;
+
+  const sellerRewardRecipientId =
+    mode === "voucher"
+      ? resolveSellerRewardRecipient({
+          voucherSellerId: args.sellerId,
+          redeemerBusinessId: args.redeemerBusinessId,
+          issuerBusinessId,
+        })
+      : args.sellerId || null;
+
   const split = splitRedeemAmount({
     amountCents: args.amountCents,
     budgetPercent: args.budgetPercent,
     sellerCommissionPercent: args.sellerCommissionPercent,
     platformFeePercent: args.platformFeePercent,
-    hasSeller: Boolean(args.sellerId),
+    // draw: only pay seller cut if attributed; voucher: always compute 5%, pay to recipient
+    hasSeller:
+      mode === "voucher" ? true : Boolean(args.sellerId),
     mode,
+    faceCents: args.faceCents,
+    paidCents: args.paidCents,
   });
 
   const usage = await prisma.voucherUsage.create({
@@ -84,7 +107,6 @@ export async function applyRedeemSplit(args: ApplyRedeemSplitArgs): Promise<{
     },
   });
 
-  // Prize pool funding only for draw products
   if (mode === "draw" && split.prizePoolCents > 0) {
     const { smallCents, grandCents } = splitPoolFunding(split.prizePoolCents);
     await prisma.campaign.update({
@@ -96,20 +118,27 @@ export async function applyRedeemSplit(args: ApplyRedeemSplitArgs): Promise<{
     });
   }
 
+  // Store income (cash after fees). If seller reward goes to same business, still
+  // grant storeIncome separately; seller grant below may also hit same business.
   const storeWallet = await grantBusinessIncomeHold(
     args.redeemerBusinessId,
     split.storeIncomeCents,
     "voucher_redeem_income",
-    `${args.label} · 消费 S$${(split.amountCents / 100).toFixed(2)} · 实收 S$${(split.storeIncomeCents / 100).toFixed(2)}`,
+    mode === "voucher"
+      ? `${args.label} · 面额 S$${(split.redeemFaceCents / 100).toFixed(2)} · 现金当量 S$${(split.cashCents / 100).toFixed(2)} · 实收 S$${(split.storeIncomeCents / 100).toFixed(2)}`
+      : `${args.label} · 消费 S$${(split.amountCents / 100).toFixed(2)} · 实收 S$${(split.storeIncomeCents / 100).toFixed(2)}`,
     usage.id
   );
 
-  if (args.sellerId && split.sellerCommissionCents > 0) {
+  if (sellerRewardRecipientId && split.sellerCommissionCents > 0) {
+    const sameAsStore = sellerRewardRecipientId === args.redeemerBusinessId;
     await grantBusinessIncomeHold(
-      args.sellerId,
+      sellerRewardRecipientId,
       split.sellerCommissionCents,
       "seller_commission",
-      `卖券佣金（随核销）· S$${(split.sellerCommissionCents / 100).toFixed(2)}`,
+      sameAsStore
+        ? `卖券奖励（本店回己）· S$${(split.sellerCommissionCents / 100).toFixed(2)}`
+        : `卖券佣金（随核销）· S$${(split.sellerCommissionCents / 100).toFixed(2)}`,
       usage.id
     );
   }
@@ -140,5 +169,6 @@ export async function applyRedeemSplit(args: ApplyRedeemSplitArgs): Promise<{
       balanceAfter: storeWallet.balanceAfter,
       frozenAfter: storeWallet.frozenAfter,
     },
+    sellerRewardRecipientId,
   };
 }

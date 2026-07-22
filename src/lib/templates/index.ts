@@ -146,8 +146,8 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
     nameZh: "折扣代金券",
     nameEn: "Discount voucher",
     icon: "🏷️",
-    taglineZh: "折扣自设 ≥8%（高于分账 6.5% + 缓冲）· 余额=实付 · 可提现 · 无抽奖",
-    taglineEn: "Set discount ≥8% (above 6.5% fee split + buffer) · balance=paid · withdrawable · no draw",
+    taglineZh: "充 P 得 F（如 9 折充 90 得 100）· 核销按现金分账 · 可提现 · 无抽奖",
+    taglineEn: "Pay P get F (e.g. pay 90 get 100) · redeem fees on cash · withdrawable · no draw",
     rules: {
       kind: "voucher_discount",
       allowDiscount: true,

@@ -146,12 +146,15 @@ export async function POST(request: NextRequest) {
       amountCents: amount,
       storeId: redeemerStore.id,
       redeemerBusinessId,
+      issuerBusinessId: voucher.campaign?.businessId || redeemerBusinessId,
       budgetPercent,
       sellerCommissionPercent: snapshot.sellerCommissionPercent,
       platformFeePercent: snapshot.platformFeePercent,
       sellerId: voucher.sellerId,
       label: productMode === "draw" ? "核销抽奖券" : "核销代金券",
       mode: productMode,
+      faceCents: voucher.amountCents,
+      paidCents: voucher.paidCents || voucher.amountCents,
       recomputeWeight:
         productMode === "draw"
           ? {
