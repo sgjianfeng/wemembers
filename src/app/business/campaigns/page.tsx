@@ -61,11 +61,29 @@ export default async function CampaignsPage() {
               <Card className="hover:border-[#1A6EFF]/30 transition-colors border-l-4" style={{ borderLeftColor: c.color || "#1A6EFF" }}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <span className="text-lg">{ti.icon}</span>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">{c.name}</p>
-                        <p className="text-xs text-slate-500">{ti[lang]} · {t("business.campaigns.couponsCount", lang, { count: c.coupons.length })}</p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 truncate">{c.name}</p>
+                        <p className="text-xs text-slate-500">
+                          {ti[lang]}
+                          {" · "}
+                          <span
+                            className={
+                              c.productKind === "self_use"
+                                ? "text-slate-600 font-medium"
+                                : "text-amber-700 font-medium"
+                            }
+                          >
+                            {c.productKind === "self_use"
+                              ? lang === "en"
+                                ? "Self-use"
+                                : "自用券"
+                              : lang === "en"
+                                ? "Distribution"
+                                : "分发券"}
+                          </span>
+                        </p>
                       </div>
                     </div>
                     <Badge variant={sb.variant}>{sb[lang]}</Badge>

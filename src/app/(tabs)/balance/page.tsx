@@ -24,7 +24,10 @@ export default async function BalancePage() {
       id: true,
       shortCode: true,
       amountCents: true,
-      campaign: { select: { name: true, slug: true, type: true } },
+      productKind: true,
+      campaign: {
+        select: { name: true, slug: true, type: true, productKind: true },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -114,22 +117,33 @@ export default async function BalancePage() {
           <div className="space-y-2">
             {activeVouchers.map((v) => {
               const isDraw = v.campaign?.type === "lucky_draw_v2";
+              const isSelf =
+                v.productKind === "self_use" ||
+                v.campaign?.productKind === "self_use";
               return (
               <Card key={v.id}>
                 <CardContent className="p-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                         <span
                           className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                            isDraw
-                              ? "bg-orange-50 text-orange-700"
-                              : "bg-blue-50 text-blue-700"
+                            isSelf
+                              ? "bg-slate-100 text-slate-700"
+                              : isDraw
+                                ? "bg-orange-50 text-orange-700"
+                                : "bg-amber-50 text-amber-800"
                           }`}
                         >
-                          {isDraw
-                            ? t("balance.badge.draw", lang)
-                            : t("balance.badge.discount", lang)}
+                          {isSelf
+                            ? lang === "en"
+                              ? "Self-use"
+                              : "自用券"
+                            : isDraw
+                              ? t("balance.badge.draw", lang)
+                              : lang === "en"
+                                ? "Distribution"
+                                : "分发券"}
                         </span>
                         <p className="text-sm font-medium text-slate-900 truncate">
                           {v.campaign?.name || t("seller.type.draw", lang)}

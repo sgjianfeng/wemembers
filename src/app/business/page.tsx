@@ -475,6 +475,23 @@ async function StaffStoreHome({
             </CardContent>
           </Card>
         </Link>
+        <Link href="/business/issue-self" className="col-span-2">
+          <Card className="border-slate-200 hover:border-slate-400 transition-colors">
+            <CardContent className="p-3 flex items-center gap-3">
+              <span className="text-2xl">💵</span>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">
+                  {lang === "en" ? "Cash self-use voucher" : "现金发自用券"}
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  {lang === "en"
+                    ? "Collect cash → 6-digit code → redeem later"
+                    : "收现金 → 发 6 位短码 → 消费时核销"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <div className="px-4 mt-4 grid grid-cols-2 gap-2">

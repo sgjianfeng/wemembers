@@ -86,8 +86,15 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (campaign.status !== "active" && campaign.status !== "draft") {
-      return NextResponse.json({ error: "活动未进行中" }, { status: 400 });
+    if (campaign.status === "ended" || campaign.status === "deleted") {
+      return NextResponse.json({ error: "活动已结束" }, { status: 400 });
+    }
+    // Auto-activate draft self_use on first cash issue (counter convenience)
+    if (campaign.status === "draft") {
+      await prisma.campaign.update({
+        where: { id: campaign.id },
+        data: { status: "active" },
+      });
     }
 
     // Resolve customer: existing id, phone match, or create lightweight customer
