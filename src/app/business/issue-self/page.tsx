@@ -8,10 +8,17 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { useLang } from "@/components/i18n/LanguageProvider";
 import { VoucherTypeBadge } from "@/components/voucher/VoucherTypeBadge";
 
-type CampaignOpt = { id: string; name: string; productKind?: string; status?: string };
+type CampaignOpt = {
+  id: string;
+  name: string;
+  productKind?: string;
+  status?: string;
+  type?: string;
+};
 type StoreOpt = { id: string; name: string };
 
-const QUICK_AMOUNTS = [10, 20, 50, 100];
+const QUICK_VOUCHER = [10, 20, 50, 100];
+const QUICK_DRAW = [50, 100, 200];
 
 export default function IssueSelfPage() {
   const { t, lang } = useLang();
@@ -30,6 +37,8 @@ export default function IssueSelfPage() {
     shortCode: string;
     balanceSgd: string;
     campaignName?: string;
+    isDraw?: boolean;
+    instantPrize?: { name: string; icon: string; valueSgd: string } | null;
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -46,11 +55,12 @@ export default function IssueSelfPage() {
           (c.status === "active" || c.status === "draft")
       );
       setCampaigns(
-        list.map((c: CampaignOpt) => ({
+        list.map((c: CampaignOpt & { type?: string }) => ({
           id: c.id,
           name: c.name,
           productKind: c.productKind,
           status: c.status,
+          type: c.type,
         }))
       );
       if (list[0] && !campaignId) setCampaignId(list[0].id);
@@ -152,6 +162,8 @@ export default function IssueSelfPage() {
           shortCode: j.data.shortCode,
           balanceSgd: j.data.balanceSgd,
           campaignName: j.data.campaignName,
+          isDraw: j.data.isDraw,
+          instantPrize: j.data.instantPrize || null,
         });
         setCashConfirmed(false);
       }
@@ -160,6 +172,12 @@ export default function IssueSelfPage() {
     }
     setLoading(false);
   }
+
+  const selectedCamp = campaigns.find((c) => c.id === campaignId);
+  const isDrawCamp =
+    selectedCamp?.type === "lucky_draw_v2" ||
+    selectedCamp?.type === "lucky_draw";
+  const quickAmounts = isDrawCamp ? QUICK_DRAW : QUICK_VOUCHER;
 
   async function copyCode() {
     if (!result?.shortCode) return;
@@ -271,7 +289,7 @@ export default function IssueSelfPage() {
                 {t("issueSelf.amount")}
               </label>
               <div className="mt-1.5 flex flex-wrap gap-2">
-                {QUICK_AMOUNTS.map((a) => (
+                {quickAmounts.map((a) => (
                   <button
                     key={a}
                     type="button"
@@ -345,7 +363,21 @@ export default function IssueSelfPage() {
             <CardContent className="p-5 text-center space-y-3">
               <p className="text-sm font-medium text-green-800">
                 {t("issueSelf.ok")} · S${result.balanceSgd}
+                {result.isDraw ? (lang === "en" ? " · exclusive draw" : " · 独享抽奖") : ""}
               </p>
+              {result.instantPrize && (
+                <div className="rounded-xl bg-white/80 border border-violet-100 px-3 py-2">
+                  <p className="text-[10px] text-violet-600 font-medium">
+                    {lang === "en" ? "Instant prize (store pays)" : "即时小奖（本店兑付）"}
+                  </p>
+                  <p className="text-lg font-semibold text-slate-900 mt-0.5">
+                    {result.instantPrize.icon} {result.instantPrize.name}
+                    <span className="text-sm font-normal text-slate-500 ml-1">
+                      S${result.instantPrize.valueSgd}
+                    </span>
+                  </p>
+                </div>
+              )}
               <p className="text-[10px] text-slate-400 uppercase tracking-wide">
                 {lang === "en" ? "Show this code to staff" : "核销短码（给顾客 / 写小票）"}
               </p>

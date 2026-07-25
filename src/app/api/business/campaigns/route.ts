@@ -85,8 +85,8 @@ export async function POST(request: NextRequest) {
       // D-P1-4: self_use | distribution（默认分发）
       let productKind =
         bodyProductKind === "self_use" ? "self_use" : "distribution";
-      // 抽奖模板强制分发
-      if (templateId === "draw_standard" || templateId === "share_boost") {
+      // 分享 boost 强制分发（共赢）；draw_standard 可独享(self_use)或共赢(distribution)
+      if (templateId === "share_boost") {
         productKind = "distribution";
       }
 

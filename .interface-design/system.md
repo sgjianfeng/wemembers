@@ -19,16 +19,20 @@
 
 ## Signature
 
-- **VoucherTypeBadge / left rail:** self = slate (`#64748B` / `#F1F5F9`); distribution = amber (`#F59E0B` / `#FFF7ED`).
+- **Funds type (left rail / badge):**  
+  - **先收款**（自用 · 独享）= slate (`#64748B` / `#F1F5F9`)  
+  - **平台托管**（分发 · 共赢）= amber (`#F59E0B` / `#FFF7ED`)  
+- **Play badge:** 抽奖 = violet soft pill (`violet-50` / `violet-700`) — never replaces funds color.  
 - Brand CTA remains `#1A6EFF`.
 
 ## Key patterns
 
-- `VoucherTypePicker` — two large choice cards, single selection, then form.
-- Redeem — one scan CTA; type from code; success card copy branches.
-- Wallet — two strips never summed: distribution settle vs self-use sold/pending.
+- Type pickers — two large choice cards (代金：自用/分发；抽奖：独享/共赢).  
+- Redeem — one scan CTA; badge from code; success copy branches by funds type.  
+- Wallet — strips never summed: platform settle vs store-received / pending liability.
 
 ## Related docs
 
-- `docs/roles/product/decisions.md` D-P1-4 / D-P1-5
-- `docs/roles/product/ui-voucher-dual-type.md`
+- `docs/roles/product/decisions.md` D-P1-4 … D-P1-7  
+- `docs/roles/product/ui-voucher-dual-type.md`  
+- `docs/roles/product/ui-draw-dual-type.md`

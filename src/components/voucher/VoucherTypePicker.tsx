@@ -13,6 +13,7 @@ export function VoucherTypePicker({
 }) {
   const { t } = useLang();
 
+  // 先收款 vs 平台托管（代金→自用/分发，抽奖→独享/共赢）
   const cards: {
     id: ProductKind;
     title: string;
@@ -22,22 +23,22 @@ export function VoucherTypePicker({
   }[] = [
     {
       id: "self_use",
-      title: t("productKind.self"),
+      title: t("productKind.fundsSelf"),
       lines: [
-        t("productKind.selfL1"),
-        t("productKind.selfL2"),
-        t("productKind.selfL3"),
+        t("productKind.fundsSelfL1"),
+        t("productKind.fundsSelfL2"),
+        t("productKind.fundsSelfL3"),
       ],
       rail: "bg-slate-500",
       selectedRing: "border-slate-400 ring-2 ring-slate-200",
     },
     {
       id: "distribution",
-      title: t("productKind.dist"),
+      title: t("productKind.fundsDist"),
       lines: [
-        t("productKind.distL1"),
-        t("productKind.distL2"),
-        t("productKind.distL3"),
+        t("productKind.fundsDistL1"),
+        t("productKind.fundsDistL2"),
+        t("productKind.fundsDistL3"),
       ],
       rail: "bg-amber-500",
       selectedRing: "border-amber-400 ring-2 ring-amber-100",

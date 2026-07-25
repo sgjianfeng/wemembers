@@ -75,13 +75,21 @@ export default async function CampaignsPage() {
                                 : "text-amber-700 font-medium"
                             }
                           >
-                            {c.productKind === "self_use"
-                              ? lang === "en"
-                                ? "Self-use"
-                                : "自用券"
-                              : lang === "en"
-                                ? "Distribution"
-                                : "分发券"}
+                            {c.type === "lucky_draw_v2" || c.type === "lucky_draw"
+                              ? c.productKind === "self_use"
+                                ? lang === "en"
+                                  ? "Exclusive draw"
+                                  : "独享券"
+                                : lang === "en"
+                                  ? "Co-win draw"
+                                  : "共赢券"
+                              : c.productKind === "self_use"
+                                ? lang === "en"
+                                  ? "Self-use"
+                                  : "自用券"
+                                : lang === "en"
+                                  ? "Distribution"
+                                  : "分发券"}
                           </span>
                         </p>
                       </div>

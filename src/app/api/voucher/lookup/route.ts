@@ -41,10 +41,11 @@ function formatVoucher(voucher: VoucherRow) {
     campaignProductKind: voucher.campaign?.productKind,
     campaignType: voucher.campaign?.type,
   });
+  const isDraw = productMode === "draw";
   const budgetPercent =
     productKind === "self_use"
       ? 0
-      : productMode === "draw"
+      : isDraw
         ? voucher.campaign?.budgetPercent && voucher.campaign.budgetPercent > 0
           ? voucher.campaign.budgetPercent
           : 20
@@ -63,6 +64,7 @@ function formatVoucher(voucher: VoucherRow) {
     budgetPercent,
     productMode,
     productKind,
+    isDraw,
     campaignType: voucher.campaign?.type || null,
     campaignName: voucher.campaign?.name || "",
     campaignSlug: voucher.campaign?.slug || "",

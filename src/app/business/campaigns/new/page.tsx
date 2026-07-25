@@ -129,8 +129,10 @@ export default function NewCampaignPage() {
 
   const visibleTemplates = useMemo(() => {
     if (productKind === "self_use") {
-      // 自用：仅代金模板（无抽奖/分享 boost）
-      return templates.filter((t) => t.id === "voucher_discount");
+      // 先收款：代金(自用) + 抽奖(独享)；不要分享 boost
+      return templates.filter(
+        (t) => t.id === "voucher_discount" || t.id === "draw_standard"
+      );
     }
     return templates;
   }, [templates, productKind]);
@@ -139,14 +141,30 @@ export default function NewCampaignPage() {
     setTemplateId(t.id);
     setDiscountPercent(t.rules.discountPercentDefault);
     if (productKind === "self_use") {
-      // 自用默认常见面额含 10；可改
       const tiers = t.rules.tiers
         .filter((x) => x.enabledByDefault)
         .map((x) => x.amountSgd);
-      setEnabledTiers(tiers.length ? tiers : [10, 50, 100]);
+      // 独享抽奖默认 50/100/200；自用代金默认模板档
+      setEnabledTiers(
+        tiers.length
+          ? tiers
+          : t.id === "draw_standard"
+            ? [50, 100, 200]
+            : [10, 50, 100]
+      );
       setShareSelling(false);
-      setGrandPrizes([]);
       setSelectedPartners([]);
+      // 独享：可配置即时奖视觉，延迟奖作「本店奖」展示用，不进平台 pot
+      setGrandPrizes(
+        t.id === "draw_standard"
+          ? (t.prizePack?.grandPrizes || []).map((g) => ({
+              id: g.id,
+              name: g.name || g.nameZh || g.id,
+              icon: g.icon,
+              targetCents: g.targetCents,
+            }))
+          : []
+      );
     } else {
       setEnabledTiers(
         t.rules.tiers.filter((x) => x.enabledByDefault).map((x) => x.amountSgd)
@@ -288,7 +306,7 @@ export default function NewCampaignPage() {
           <p className="text-xs text-slate-400 mt-0.5">
             {productKind === "self_use"
               ? tr("campaignNew.pickSelfHint")
-              : tr("campaignNew.pickSubtitle")}
+              : tr("campaignNew.pickDistHint")}
           </p>
         </div>
 

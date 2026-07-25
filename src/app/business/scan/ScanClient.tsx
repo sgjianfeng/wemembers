@@ -58,6 +58,7 @@ export default function ScanClient({
     budgetPercent: number;
     productMode: ProductMode;
     productKind: ProductKind;
+    isDraw: boolean;
     campaignName: string;
     customerName: string;
     customerPhone?: string;
@@ -70,6 +71,7 @@ export default function ScanClient({
     amountSgd: string;
     productMode: ProductMode;
     productKind: ProductKind;
+    isDraw: boolean;
     campaignName: string;
     customerName: string;
     customerPhone?: string;
@@ -141,6 +143,10 @@ export default function ScanClient({
         : "voucher";
     const productKind: ProductKind =
       d.productKind === "self_use" ? "self_use" : "distribution";
+    const isDraw =
+      d.isDraw === true ||
+      productMode === "draw" ||
+      d.campaignType === "lucky_draw_v2";
     return {
       id: String(d.id),
       shortCode: (d.shortCode as string | null) || null,
@@ -152,6 +158,7 @@ export default function ScanClient({
         Number(d.budgetPercent) || (productMode === "draw" ? 20 : 0),
       productMode,
       productKind,
+      isDraw,
       campaignName: String(d.campaignName || ""),
       customerName: String(d.customerName || ""),
       customerPhone: d.customerPhone ? String(d.customerPhone) : undefined,
@@ -188,6 +195,7 @@ export default function ScanClient({
               amountSgd: m.amountSgd,
               productMode: m.productMode,
               productKind: m.productKind,
+              isDraw: m.isDraw,
               campaignName: m.campaignName,
               customerName: m.customerName,
               customerPhone: m.customerPhone,
@@ -267,10 +275,17 @@ export default function ScanClient({
       } else {
         const kind =
           json.data?.productKind === "self_use" ? "self_use" : "distribution";
+        const draw = voucherInfo?.isDraw === true;
         setVoucherResult({
           ok: true,
           message:
-            kind === "self_use" ? t("scan.successSelf") : t("scan.successDist"),
+            kind === "self_use"
+              ? draw
+                ? t("scan.successExclusive")
+                : t("scan.successSelf")
+              : draw
+                ? t("scan.successCoWin")
+                : t("scan.successDist"),
           remaining: json.data?.voucher?.remainingBalanceSgd,
           income: json.data?.usage?.storeIncomeSgd,
           fee: json.data?.usage?.feeSgd,
@@ -543,12 +558,11 @@ export default function ScanClient({
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <VoucherTypeBadge kind={c.productKind} size="sm" />
-                              {c.productMode === "draw" && (
-                                <Badge variant="orange" size="sm">
-                                  {t("scan.typeDraw")}
-                                </Badge>
-                              )}
+                              <VoucherTypeBadge
+                                kind={c.productKind}
+                                isDraw={c.isDraw}
+                                size="sm"
+                              />
                               <span className="text-sm font-semibold font-mono tracking-widest text-[#1A6EFF]">
                                 {c.shortCode || c.id.slice(0, 8)}
                               </span>
@@ -592,12 +606,11 @@ export default function ScanClient({
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
-                    <VoucherTypeBadge kind={voucherInfo.productKind} size="sm" />
-                    {voucherInfo.productMode === "draw" && (
-                      <Badge variant="orange" size="sm">
-                        {t("scan.typeDraw")}
-                      </Badge>
-                    )}
+                    <VoucherTypeBadge
+                      kind={voucherInfo.productKind}
+                      isDraw={voucherInfo.isDraw}
+                      size="sm"
+                    />
                     <Badge
                       variant={voucherInfo.status === "active" ? "green" : "slate"}
                       size="sm"
@@ -622,8 +635,10 @@ export default function ScanClient({
                 </div>
                 <p className="text-[11px] text-slate-400">
                   {voucherInfo.productKind === "self_use"
-                    ? t("scan.feeHintSelf")
-                    : voucherInfo.productMode === "draw"
+                    ? voucherInfo.isDraw
+                      ? t("scan.feeHintExclusive")
+                      : t("scan.feeHintSelf")
+                    : voucherInfo.isDraw
                       ? t("scan.feeHintDraw", {
                           pct: voucherInfo.budgetPercent || 20,
                           rest: 100 - (voucherInfo.budgetPercent || 20),

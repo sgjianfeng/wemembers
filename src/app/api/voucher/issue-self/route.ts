@@ -1,10 +1,15 @@
 // POST /api/voucher/issue-self
-// 自用券：现金（或店收）发券 — 钱已在店，系统只发权益
+// 自用 / 独享：现金（或店收）发券 — 钱已在店；抽奖独享可当场即时小奖（店兑）
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { allocateShortCode } from "@/lib/voucher-short-code";
 import { isSelfUse } from "@/lib/product-kind";
+import {
+  calculateTierWeight,
+  drawInstantV2,
+  resolveTier,
+} from "@/lib/draw-v2";
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,6 +33,7 @@ export async function POST(request: NextRequest) {
         : "";
     const customerIdBody =
       typeof body.customerId === "string" ? body.customerId.trim() : "";
+    const doInstantDraw = body.instantDraw !== false; // default true for draw
 
     let storeId =
       typeof body.storeId === "string" ? body.storeId.trim() : "";
@@ -75,6 +81,7 @@ export async function POST(request: NextRequest) {
         status: true,
         type: true,
         name: true,
+        instantPoolCents: true,
       },
     });
     if (!campaign) {
@@ -82,14 +89,16 @@ export async function POST(request: NextRequest) {
     }
     if (!isSelfUse(campaign.productKind)) {
       return NextResponse.json(
-        { error: "仅自用券活动可现金发券；分发券请走线上支付" },
+        {
+          error:
+            "仅「先收款」活动可柜台发券（自用/独享）；共赢/分发请走线上支付",
+        },
         { status: 400 }
       );
     }
     if (campaign.status === "ended" || campaign.status === "deleted") {
       return NextResponse.json({ error: "活动已结束" }, { status: 400 });
     }
-    // Auto-activate draft self_use on first cash issue (counter convenience)
     if (campaign.status === "draft") {
       await prisma.campaign.update({
         where: { id: campaign.id },
@@ -97,7 +106,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Resolve customer: existing id, phone match, or create lightweight customer
+    const isDraw =
+      campaign.type === "lucky_draw_v2" || campaign.type === "lucky_draw";
+    const faceSgd = amountCents / 100;
+    const tierResolved = resolveTier(faceSgd);
+    const tier = (tierResolved?.tier || "medium") as "small" | "medium" | "large";
+
+    // Resolve customer
     let customerId = customerIdBody;
     if (!customerId && customerPhone) {
       const phone = customerPhone.replace(/\s/g, "");
@@ -118,7 +133,6 @@ export async function POST(request: NextRequest) {
       customerId = user.id;
     }
     if (!customerId) {
-      // Walk-in placeholder customer owned by business flow
       const walkIn = await prisma.user.create({
         data: {
           role: "customer",
@@ -129,6 +143,10 @@ export async function POST(request: NextRequest) {
       });
       customerId = walkIn.id;
     }
+
+    const weight = isDraw
+      ? calculateTierWeight(amountCents, tier, amountCents, 0, 0)
+      : 0;
 
     const shortCode = await allocateShortCode();
     const voucher = await prisma.voucher.create({
@@ -142,8 +160,8 @@ export async function POST(request: NextRequest) {
         balanceCents: amountCents,
         usedCents: 0,
         prizePoolContribution: 0,
-        drawWeight: 0,
-        tier: "medium",
+        drawWeight: weight,
+        tier,
         status: "active",
         shortCode,
         productKind: "self_use",
@@ -152,16 +170,62 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    let instantPrize: {
+      name: string;
+      icon: string;
+      valueSgd: string;
+    } | null = null;
+
+    if (isDraw && doInstantDraw && tierResolved) {
+      const instantResult = drawInstantV2(
+        tierResolved,
+        campaign.instantPoolCents || 0
+      );
+      await prisma.voucherDraw.create({
+        data: {
+          voucherId: voucher.id,
+          drawType: "instant",
+          won: true,
+          prizeName: instantResult.prize.name,
+          prizeIcon: instantResult.prize.icon,
+          valueCents: instantResult.prize.valueCents,
+          weightAtTime: weight,
+        },
+      });
+      instantPrize = {
+        name: instantResult.prize.name,
+        icon: instantResult.prize.icon,
+        valueSgd: (instantResult.prize.valueCents / 100).toFixed(2),
+      };
+      await prisma.campaign.update({
+        where: { id: campaign.id },
+        data: {
+          entryCount: { increment: 1 },
+          totalTicketCount: { increment: 1 },
+        },
+      });
+    } else {
+      await prisma.campaign.update({
+        where: { id: campaign.id },
+        data: { totalClaims: { increment: 1 } },
+      });
+    }
+
     return NextResponse.json({
       data: {
         id: voucher.id,
         shortCode: voucher.shortCode,
         balanceSgd: (amountCents / 100).toFixed(2),
         productKind: "self_use",
+        isDraw,
+        displayKind: isDraw ? "exclusive" : "self_use",
         campaignName: campaign.name,
         storeName: store.name,
         paymentMethod: voucher.paymentMethod,
-        note: "自用券已发出：钱已在店，核销时仅记履约",
+        instantPrize,
+        note: isDraw
+          ? "独享券已发出：钱已在店；即时奖由本店兑付；核销不入平台钱包"
+          : "自用券已发出：钱已在店，核销时仅记履约",
       },
     });
   } catch (error) {

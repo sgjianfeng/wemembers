@@ -135,12 +135,18 @@ export default async function BalancePage() {
                                 : "bg-amber-50 text-amber-800"
                           }`}
                         >
-                          {isSelf
-                            ? lang === "en"
-                              ? "Self-use"
-                              : "自用券"
-                            : isDraw
-                              ? t("balance.badge.draw", lang)
+                          {isDraw
+                            ? isSelf
+                              ? lang === "en"
+                                ? "Exclusive"
+                                : "独享券"
+                              : lang === "en"
+                                ? "Co-win"
+                                : "共赢券"
+                            : isSelf
+                              ? lang === "en"
+                                ? "Self-use"
+                                : "自用券"
                               : lang === "en"
                                 ? "Distribution"
                                 : "分发券"}
