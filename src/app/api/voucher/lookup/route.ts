@@ -8,6 +8,7 @@ import {
   looksLikeShortCode,
   normalizeShortCode,
 } from "@/lib/voucher-short-code";
+import { resolveProductKind } from "@/lib/product-kind";
 
 type VoucherRow = {
   id: string;
@@ -18,11 +19,13 @@ type VoucherRow = {
   usedCents: number;
   paidCents: number;
   tier: string;
+  productKind?: string | null;
   campaign: {
     name: string;
     slug: string | null;
     budgetPercent: number | null;
     type: string;
+    productKind?: string | null;
   } | null;
   customer: {
     displayName: string | null;
@@ -33,12 +36,19 @@ type VoucherRow = {
 function formatVoucher(voucher: VoucherRow) {
   const productMode: "draw" | "voucher" =
     voucher.campaign?.type === "lucky_draw_v2" ? "draw" : "voucher";
+  const productKind = resolveProductKind({
+    productKind: voucher.productKind,
+    campaignProductKind: voucher.campaign?.productKind,
+    campaignType: voucher.campaign?.type,
+  });
   const budgetPercent =
-    productMode === "draw"
-      ? voucher.campaign?.budgetPercent && voucher.campaign.budgetPercent > 0
-        ? voucher.campaign.budgetPercent
-        : 20
-      : 0;
+    productKind === "self_use"
+      ? 0
+      : productMode === "draw"
+        ? voucher.campaign?.budgetPercent && voucher.campaign.budgetPercent > 0
+          ? voucher.campaign.budgetPercent
+          : 20
+        : 0;
 
   return {
     id: voucher.id,
@@ -52,6 +62,7 @@ function formatVoucher(voucher: VoucherRow) {
     tier: voucher.tier,
     budgetPercent,
     productMode,
+    productKind,
     campaignType: voucher.campaign?.type || null,
     campaignName: voucher.campaign?.name || "",
     campaignSlug: voucher.campaign?.slug || "",
@@ -69,6 +80,7 @@ const include = {
       slug: true,
       budgetPercent: true,
       type: true,
+      productKind: true,
     },
   },
   customer: { select: { displayName: true, phone: true } },
@@ -126,8 +138,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (voucher) {
-      voucher = await withShortCode(voucher);
-      return NextResponse.json({ data: formatVoucher(voucher) });
+      const row = await withShortCode(voucher as VoucherRow);
+      return NextResponse.json({ data: formatVoucher(row) });
     }
 
     // 3) Prefix search → candidates (min 3 chars)
@@ -166,7 +178,9 @@ export async function GET(request: NextRequest) {
     }
 
     const candidates = await Promise.all(
-      rows.map(async (v) => formatVoucher(await withShortCode(v)))
+      rows.map(async (v) =>
+        formatVoucher(await withShortCode(v as VoucherRow))
+      )
     );
 
     if (candidates.length === 1) {

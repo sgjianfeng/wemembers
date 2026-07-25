@@ -79,7 +79,16 @@ export async function POST(request: NextRequest) {
         slug,
         joinable,
         grandPrizes,
+        productKind: bodyProductKind,
       } = body;
+
+      // D-P1-4: self_use | distribution（默认分发）
+      let productKind =
+        bodyProductKind === "self_use" ? "self_use" : "distribution";
+      // 抽奖模板强制分发
+      if (templateId === "draw_standard" || templateId === "share_boost") {
+        productKind = "distribution";
+      }
 
       if (!name || !startDate || !endDate) {
         return NextResponse.json({ error: "请填写活动名称和时间" }, { status: 400 });
@@ -145,34 +154,50 @@ export async function POST(request: NextRequest) {
           ? `${templateId}-${Date.now().toString(36)}`
           : null);
 
+      // 自用券：无跨企业伙伴、不 joinable、集团门店列表
+      const finalPartnerIds =
+        productKind === "self_use" ? [] : partnerIdList;
+      const finalStoreIds = storeIds; // 本企业门店（自用集团内）
+      const finalJoinable =
+        productKind === "self_use"
+          ? false
+          : isPlatform
+            ? true
+            : Boolean(joinable) && isPlatform;
+
       const campaign = await prisma.campaign.create({
         data: {
           businessId: session.userId,
           name,
           description: description || null,
           type: snapshot.campaignType,
-          color: color || "#1A6EFF",
+          color: color || (productKind === "self_use" ? "#64748B" : "#1A6EFF"),
           startDate: new Date(startDate),
           endDate: new Date(endDate),
           drawDate: snapshot.kind === "draw" ? new Date(endDate) : null,
           // Redeem pot %: leftover → prize pool (draw) or store (voucher promo)
-          budgetPercent: 20,
+          budgetPercent: productKind === "self_use" ? 0 : 20,
           instantPoolRatio: snapshot.instantPoolRatio,
           midPoolRatio: snapshot.midPoolRatio,
           grandPoolRatio: snapshot.grandPoolRatio,
           voucherTiers: voucherTiers.length ? JSON.stringify(voucherTiers) : null,
           slug: autoSlug,
-          // Stores may invite partners; open marketplace only for platform or explicit flag
-          joinable: isPlatform ? true : Boolean(joinable) && isPlatform,
-          joinCount: partnerIdList.length,
-          allowCollaboration: true,
-          partnerIds: partnerIdList.length ? JSON.stringify(partnerIdList) : null,
-          storeIds: storeIds.length ? JSON.stringify(storeIds) : null,
+          joinable: finalJoinable,
+          joinCount: finalPartnerIds.length,
+          allowCollaboration: productKind !== "self_use",
+          partnerIds: finalPartnerIds.length
+            ? JSON.stringify(finalPartnerIds)
+            : null,
+          storeIds: finalStoreIds.length ? JSON.stringify(finalStoreIds) : null,
           templateId: snapshot.templateId,
           rulesSnapshot: JSON.stringify(snapshot),
-          tags: JSON.stringify([snapshot.templateId]),
+          tags: JSON.stringify([
+            snapshot.templateId,
+            productKind === "self_use" ? "self_use" : "distribution",
+          ]),
           status: new Date(startDate) <= new Date() ? "active" : "draft",
           entryMethod: "auto",
+          productKind,
         },
       });
 

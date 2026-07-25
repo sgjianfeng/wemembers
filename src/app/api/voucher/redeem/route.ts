@@ -1,13 +1,13 @@
-// src/app/api/voucher/redeem/route.ts
-// Model A: fee only on redeemed amount.
-// pot (default 20%) → seller commission + platform fee + prize pool
-// store → 80% (T+1). No spend ⇒ no seller bonus.
+// POST /api/voucher/redeem
+// distribution: applyRedeemSplit + T+1 freeze
+// self_use: same-business stores only; usage record only; no wallet credit
 
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { applyRedeemSplit } from "@/lib/apply-redeem-split";
 import { parseRulesSnapshot, legacyDrawSnapshot } from "@/lib/templates";
+import { isSelfUse, resolveProductKind } from "@/lib/product-kind";
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,23 +40,31 @@ export async function POST(request: NextRequest) {
             budgetPercent: true,
             businessId: true,
             rulesSnapshot: true,
+            productKind: true,
+            storeIds: true,
           },
         },
       },
     });
 
     if (!voucher) {
-      return NextResponse.json({ error: "Voucher not found or exhausted" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Voucher not found or exhausted" },
+        { status: 404 }
+      );
     }
 
     if (amount > voucher.balanceCents) {
       return NextResponse.json({ error: "Insufficient balance" }, { status: 400 });
     }
 
-    let redeemerStore: { id: string; businessId: string; name?: string | null } | null = null;
+    let redeemerStore: {
+      id: string;
+      businessId: string;
+      name?: string | null;
+    } | null = null;
     let redeemerBusinessId: string;
 
-    // 门店：店员固定 JWT storeId；企业必须传 body.storeId（从具体门店进入核销）
     if (session.role === "staff") {
       if (!session.storeId) {
         return NextResponse.json(
@@ -94,12 +102,98 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    /**
-     * Open spend network (product decision: better for customers).
-     * Any store whose business runs lucky_draw_v2 or voucher_sale may redeem
-     * any active prepaid voucher — partnership is NOT required.
-     * Money still goes to the *redeeming* store; seller commission to attribution.
-     */
+    if (!redeemerStore) {
+      return NextResponse.json({ error: "请先创建门店后再核销" }, { status: 400 });
+    }
+
+    const productKind = resolveProductKind({
+      productKind: voucher.productKind,
+      campaignProductKind: voucher.campaign?.productKind,
+      campaignType: voucher.campaign?.type,
+    });
+
+    const issuerBusinessId =
+      voucher.campaign?.businessId || redeemerBusinessId;
+
+    // ── 自用券：仅同企业门店；不入平台钱包 ──
+    if (isSelfUse(productKind)) {
+      if (redeemerBusinessId !== issuerBusinessId) {
+        return NextResponse.json(
+          { error: "自用券仅限发券企业集团门店核销" },
+          { status: 403 }
+        );
+      }
+
+      // Optional store allow-list on campaign
+      if (voucher.campaign?.storeIds) {
+        try {
+          const allowed = JSON.parse(voucher.campaign.storeIds) as string[];
+          if (
+            Array.isArray(allowed) &&
+            allowed.length > 0 &&
+            !allowed.includes(redeemerStore.id)
+          ) {
+            return NextResponse.json(
+              { error: "本券不适用于此门店" },
+              { status: 403 }
+            );
+          }
+        } catch {
+          /* ignore bad JSON */
+        }
+      }
+
+      const newBalance = voucher.balanceCents - amount;
+      const newUsed = voucher.usedCents + amount;
+      const newStatus = newBalance <= 0 ? "exhausted" : "active";
+
+      const usage = await prisma.voucherUsage.create({
+        data: {
+          voucherId: voucher.id,
+          storeId: redeemerStore.id,
+          amountCents: amount,
+          feeCents: 0,
+          storeIncome: 0, // 售出时已收款；核销不计二次入账
+        },
+      });
+
+      await prisma.voucher.update({
+        where: { id: voucher.id },
+        data: {
+          balanceCents: newBalance,
+          usedCents: newUsed,
+          status: newStatus,
+        },
+      });
+
+      return NextResponse.json({
+        data: {
+          productKind: "self_use",
+          usage: {
+            id: usage.id,
+            amountSgd: (amount / 100).toFixed(2),
+            feeSgd: "0.00",
+            storeIncomeSgd: "0.00",
+            sellerCommissionSgd: "0.00",
+            platformFeeSgd: "0.00",
+            prizePoolSgd: "0.00",
+            storeName: redeemerStore.name || null,
+          },
+          voucher: {
+            id: voucher.id,
+            remainingBalanceSgd: (newBalance / 100).toFixed(2),
+            status: newStatus,
+          },
+          wallet: {
+            availableSgd: null,
+            frozenSgd: null,
+            note: "自用券：售出时已收款，核销仅记门店履约，无平台入账",
+          },
+        },
+      });
+    }
+
+    // ── 分发券：入网 + 分账 ──
     const inNetwork = await prisma.campaign.findFirst({
       where: {
         businessId: redeemerBusinessId,
@@ -116,10 +210,6 @@ export async function POST(request: NextRequest) {
         },
         { status: 403 }
       );
-    }
-
-    if (!redeemerStore) {
-      return NextResponse.json({ error: "请先创建门店后再核销" }, { status: 400 });
     }
 
     const snapshot =
@@ -146,12 +236,12 @@ export async function POST(request: NextRequest) {
       amountCents: amount,
       storeId: redeemerStore.id,
       redeemerBusinessId,
-      issuerBusinessId: voucher.campaign?.businessId || redeemerBusinessId,
+      issuerBusinessId,
       budgetPercent,
       sellerCommissionPercent: snapshot.sellerCommissionPercent,
       platformFeePercent: snapshot.platformFeePercent,
       sellerId: voucher.sellerId,
-      label: productMode === "draw" ? "核销抽奖券" : "核销代金券",
+      label: productMode === "draw" ? "核销抽奖券" : "核销分发券",
       mode: productMode,
       faceCents: voucher.amountCents,
       paidCents: voucher.paidCents || voucher.amountCents,
@@ -178,6 +268,7 @@ export async function POST(request: NextRequest) {
     const s = applied.split;
     return NextResponse.json({
       data: {
+        productKind: "distribution",
         usage: {
           id: applied.usageId,
           amountSgd: (s.amountCents / 100).toFixed(2),
@@ -196,7 +287,7 @@ export async function POST(request: NextRequest) {
         wallet: {
           availableSgd: (applied.storeWallet.balanceAfter / 100).toFixed(2),
           frozenSgd: (applied.storeWallet.frozenAfter / 100).toFixed(2),
-          note: "核销收入 T+1 解冻后可提现；卖券佣金随核销从 20% 中发放",
+          note: "分发券：核销收入 T+1 解冻后可提现",
         },
       },
     });

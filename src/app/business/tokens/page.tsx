@@ -72,6 +72,31 @@ export default async function TokenRechargePage({
     !!stripeAcct?.chargesEnabled &&
     !stripeAcct?.payoutsEnabled;
 
+  // 自用券：今日现金售出 + 待核销（不进可用/冻结）
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const selfSoldToday = await prisma.voucher.aggregate({
+    where: {
+      productKind: "self_use",
+      paymentMethod: { in: ["cash", "paynow_store"] },
+      campaign: { businessId: session.userId },
+      createdAt: { gte: dayStart },
+    },
+    _sum: { paidCents: true },
+    _count: true,
+  });
+  const selfPending = await prisma.voucher.aggregate({
+    where: {
+      productKind: "self_use",
+      status: "active",
+      balanceCents: { gt: 0 },
+      campaign: { businessId: session.userId },
+    },
+    _sum: { balanceCents: true },
+  });
+  const selfSoldCents = selfSoldToday._sum.paidCents ?? 0;
+  const selfPendingCents = selfPending._sum.balanceCents ?? 0;
+
   const consumeTypeLabels: Record<string, { zh: string; en: string; color: string }> = {
     purchase: { zh: "购买", en: "Purchase", color: "text-green-600" },
     free_grant: { zh: "赠送", en: "Free Grant", color: "text-blue-600" },
@@ -125,12 +150,15 @@ export default async function TokenRechargePage({
           </Card>
         </div>
 
-        {/* Stripe Account Status + 检查状态 */}
+        {/* 分发券结算（平台钱包） */}
         <Card>
           <CardContent className="p-4">
-            <h3 className="text-sm font-semibold text-slate-900 mb-3">
-              {t("business.tokens.stripeTitle", lang)}
+            <h3 className="text-sm font-semibold text-slate-900 mb-1">
+              {t("tokens.distTitle", lang)}
             </h3>
+            <p className="text-[11px] text-slate-400 mb-3">
+              {t("business.tokens.stripeTitle", lang)}
+            </p>
             <StripeStatusPanel
               initial={{
                 hasAccount: Boolean(stripeAcct?.stripeAccountId),
@@ -139,6 +167,45 @@ export default async function TokenRechargePage({
                 detailsSubmitted: Boolean(stripeAcct?.detailsSubmitted),
               }}
             />
+          </CardContent>
+        </Card>
+
+        {/* 自用券：已收款 / 待核销（不进平台可用） */}
+        <Card className="border-slate-100">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-1 h-4 rounded-full bg-slate-500" />
+              <h3 className="text-sm font-semibold text-slate-900">
+                {t("tokens.selfTitle", lang)}
+              </h3>
+            </div>
+            <p className="text-[11px] text-slate-400 mb-3">
+              {t("tokens.selfHint", lang)}
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl bg-slate-50 p-3">
+                <p className="text-[10px] text-slate-400">
+                  {t("tokens.selfSold", lang)}
+                </p>
+                <p className="text-xl font-bold text-slate-800 tabular-nums mt-0.5">
+                  S${(selfSoldCents / 100).toFixed(2)}
+                </p>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3">
+                <p className="text-[10px] text-slate-400">
+                  {t("tokens.selfPending", lang)}
+                </p>
+                <p className="text-xl font-bold text-slate-600 tabular-nums mt-0.5">
+                  S${(selfPendingCents / 100).toFixed(2)}
+                </p>
+              </div>
+            </div>
+            <a
+              href="/business/issue-self"
+              className="mt-3 inline-flex text-xs font-medium text-[#1A6EFF]"
+            >
+              现金发自用券 →
+            </a>
           </CardContent>
         </Card>
 

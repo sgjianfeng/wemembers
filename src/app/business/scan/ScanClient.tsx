@@ -9,8 +9,10 @@ import { Badge } from "@/components/ui/Badge";
 import { useLang } from "@/components/i18n/LanguageProvider";
 import { BrandAvatar } from "@/components/ui/BrandAvatar";
 import { QrScannerSheet } from "@/components/business/QrScannerSheet";
+import { VoucherTypeBadge } from "@/components/voucher/VoucherTypeBadge";
 import { resolveStoreLogo } from "@/lib/utils";
 import Link from "next/link";
+import type { ProductKind } from "@/lib/product-kind";
 
 /** 店员核销台：线上券（手机）+ 实体券（纸） */
 type Tab = "online" | "physical";
@@ -55,6 +57,7 @@ export default function ScanClient({
     paidSgd?: string;
     budgetPercent: number;
     productMode: ProductMode;
+    productKind: ProductKind;
     campaignName: string;
     customerName: string;
     customerPhone?: string;
@@ -66,6 +69,7 @@ export default function ScanClient({
     balanceSgd: string;
     amountSgd: string;
     productMode: ProductMode;
+    productKind: ProductKind;
     campaignName: string;
     customerName: string;
     customerPhone?: string;
@@ -135,6 +139,8 @@ export default function ScanClient({
       d.productMode === "draw" || d.campaignType === "lucky_draw_v2"
         ? "draw"
         : "voucher";
+    const productKind: ProductKind =
+      d.productKind === "self_use" ? "self_use" : "distribution";
     return {
       id: String(d.id),
       shortCode: (d.shortCode as string | null) || null,
@@ -145,6 +151,7 @@ export default function ScanClient({
       budgetPercent:
         Number(d.budgetPercent) || (productMode === "draw" ? 20 : 0),
       productMode,
+      productKind,
       campaignName: String(d.campaignName || ""),
       customerName: String(d.customerName || ""),
       customerPhone: d.customerPhone ? String(d.customerPhone) : undefined,
@@ -180,6 +187,7 @@ export default function ScanClient({
               balanceSgd: m.balanceSgd,
               amountSgd: m.amountSgd,
               productMode: m.productMode,
+              productKind: m.productKind,
               campaignName: m.campaignName,
               customerName: m.customerName,
               customerPhone: m.customerPhone,
@@ -257,9 +265,12 @@ export default function ScanClient({
       if (!res.ok) {
         setVoucherResult({ ok: false, message: json.error || t("scan.fail") });
       } else {
+        const kind =
+          json.data?.productKind === "self_use" ? "self_use" : "distribution";
         setVoucherResult({
           ok: true,
-          message: t("scan.success"),
+          message:
+            kind === "self_use" ? t("scan.successSelf") : t("scan.successDist"),
           remaining: json.data?.voucher?.remainingBalanceSgd,
           income: json.data?.usage?.storeIncomeSgd,
           fee: json.data?.usage?.feeSgd,
@@ -531,15 +542,13 @@ export default function ScanClient({
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <Badge
-                                variant={c.productMode === "draw" ? "orange" : "blue"}
-                                size="sm"
-                              >
-                                {c.productMode === "draw"
-                                  ? t("scan.typeDraw")
-                                  : t("scan.typeVoucher")}
-                              </Badge>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <VoucherTypeBadge kind={c.productKind} size="sm" />
+                              {c.productMode === "draw" && (
+                                <Badge variant="orange" size="sm">
+                                  {t("scan.typeDraw")}
+                                </Badge>
+                              )}
                               <span className="text-sm font-semibold font-mono tracking-widest text-[#1A6EFF]">
                                 {c.shortCode || c.id.slice(0, 8)}
                               </span>
@@ -583,14 +592,12 @@ export default function ScanClient({
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
-                    <Badge
-                      variant={voucherInfo.productMode === "draw" ? "orange" : "blue"}
-                      size="sm"
-                    >
-                      {voucherInfo.productMode === "draw"
-                        ? t("scan.typeDraw")
-                        : t("scan.typeVoucher")}
-                    </Badge>
+                    <VoucherTypeBadge kind={voucherInfo.productKind} size="sm" />
+                    {voucherInfo.productMode === "draw" && (
+                      <Badge variant="orange" size="sm">
+                        {t("scan.typeDraw")}
+                      </Badge>
+                    )}
                     <Badge
                       variant={voucherInfo.status === "active" ? "green" : "slate"}
                       size="sm"
@@ -602,24 +609,26 @@ export default function ScanClient({
                 <div className="grid grid-cols-2 gap-2 text-center">
                   <div className="bg-blue-50 rounded-lg p-2">
                     <p className="text-[10px] text-slate-400">{t("scan.balance")}</p>
-                    <p className="text-lg font-bold text-blue-700">
+                    <p className="text-lg font-bold text-blue-700 tabular-nums">
                       S${voucherInfo.balanceSgd}
                     </p>
                   </div>
                   <div className="bg-slate-50 rounded-lg p-2">
                     <p className="text-[10px] text-slate-400">{t("scan.face")}</p>
-                    <p className="text-lg font-bold text-slate-800">
+                    <p className="text-lg font-bold text-slate-800 tabular-nums">
                       S${voucherInfo.amountSgd}
                     </p>
                   </div>
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  {voucherInfo.productMode === "draw"
-                    ? t("scan.feeHintDraw", {
-                        pct: voucherInfo.budgetPercent || 20,
-                        rest: 100 - (voucherInfo.budgetPercent || 20),
-                      })
-                    : t("scan.feeHintVoucher")}
+                  {voucherInfo.productKind === "self_use"
+                    ? t("scan.feeHintSelf")
+                    : voucherInfo.productMode === "draw"
+                      ? t("scan.feeHintDraw", {
+                          pct: voucherInfo.budgetPercent || 20,
+                          rest: 100 - (voucherInfo.budgetPercent || 20),
+                        })
+                      : t("scan.feeHintVoucher")}
                 </p>
                 <Input
                   label={t("scan.amountLabel")}
@@ -669,10 +678,12 @@ export default function ScanClient({
                 </p>
                 {voucherResult.ok && (
                   <>
-                    <p className="text-xs text-green-700">
-                      {t("scan.income")} S${voucherResult.income} · {t("scan.fee")} S$
-                      {voucherResult.fee}
-                    </p>
+                    {voucherInfo?.productKind !== "self_use" && (
+                      <p className="text-xs text-green-700">
+                        {t("scan.income")} S${voucherResult.income} · {t("scan.fee")}{" "}
+                        S${voucherResult.fee}
+                      </p>
+                    )}
                     <p className="text-xs text-slate-500">
                       {t("scan.remaining")} S${voucherResult.remaining}
                     </p>

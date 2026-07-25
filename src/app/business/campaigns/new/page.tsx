@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent } from "@/components/ui/Card";
 import { useLang } from "@/components/i18n/LanguageProvider";
+import { VoucherTypePicker } from "@/components/voucher/VoucherTypePicker";
+import type { ProductKind } from "@/lib/product-kind";
 
 interface GrandPrizeEdit {
   id: string;
@@ -60,7 +62,8 @@ export default function NewCampaignPage() {
   const { t: tr, lang } = useLang();
   const [templates, setTemplates] = useState<TemplateDto[]>([]);
   const [partners, setPartners] = useState<PartnerOption[]>([]);
-  const [step, setStep] = useState<"pick" | "configure">("pick");
+  const [step, setStep] = useState<"kind" | "pick" | "configure">("kind");
+  const [productKind, setProductKind] = useState<ProductKind | null>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
 
   const [name, setName] = useState("");
@@ -124,21 +127,40 @@ export default function NewCampaignPage() {
     })();
   }, []);
 
+  const visibleTemplates = useMemo(() => {
+    if (productKind === "self_use") {
+      // 自用：仅代金模板（无抽奖/分享 boost）
+      return templates.filter((t) => t.id === "voucher_discount");
+    }
+    return templates;
+  }, [templates, productKind]);
+
   function pickTemplate(t: TemplateDto) {
     setTemplateId(t.id);
     setDiscountPercent(t.rules.discountPercentDefault);
-    setEnabledTiers(
-      t.rules.tiers.filter((x) => x.enabledByDefault).map((x) => x.amountSgd)
-    );
-    setShareSelling(t.rules.shareSellingDefault || t.id === "share_boost");
-    setGrandPrizes(
-      (t.prizePack?.grandPrizes || []).map((g) => ({
-        id: g.id,
-        name: g.name || g.nameZh || g.id,
-        icon: g.icon,
-        targetCents: g.targetCents,
-      }))
-    );
+    if (productKind === "self_use") {
+      // 自用默认常见面额含 10；可改
+      const tiers = t.rules.tiers
+        .filter((x) => x.enabledByDefault)
+        .map((x) => x.amountSgd);
+      setEnabledTiers(tiers.length ? tiers : [10, 50, 100]);
+      setShareSelling(false);
+      setGrandPrizes([]);
+      setSelectedPartners([]);
+    } else {
+      setEnabledTiers(
+        t.rules.tiers.filter((x) => x.enabledByDefault).map((x) => x.amountSgd)
+      );
+      setShareSelling(t.rules.shareSellingDefault || t.id === "share_boost");
+      setGrandPrizes(
+        (t.prizePack?.grandPrizes || []).map((g) => ({
+          id: g.id,
+          name: g.name || g.nameZh || g.id,
+          icon: g.icon,
+          targetCents: g.targetCents,
+        }))
+      );
+    }
     setName("");
     setDescription("");
     setStep("configure");
@@ -181,6 +203,7 @@ export default function NewCampaignPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         templateId,
+        productKind: productKind || "distribution",
         name: name.trim(),
         description: description.trim() || undefined,
         color,
@@ -188,10 +211,15 @@ export default function NewCampaignPage() {
         endDate,
         discountPercent: selected?.rules.allowDiscount ? discountPercent : 0,
         enabledTiers,
-        shareSellingEnabled: templateId === "share_boost" ? true : shareSelling,
-        partnerIds: selectedPartners,
+        shareSellingEnabled:
+          productKind === "self_use"
+            ? false
+            : templateId === "share_boost"
+              ? true
+              : shareSelling,
+        partnerIds: productKind === "self_use" ? [] : selectedPartners,
         grandPrizes:
-          grandPrizes.length > 0
+          productKind !== "self_use" && grandPrizes.length > 0
             ? grandPrizes.map((g) => ({
                 id: g.id,
                 name: g.name.trim(),
@@ -221,21 +249,56 @@ export default function NewCampaignPage() {
       ? selected?.taglineEn || selected?.taglineZh
       : selected?.taglineZh;
 
+  if (step === "kind") {
+    return (
+      <div className="pb-8 min-h-screen">
+        <div className="px-4 py-3 border-b border-slate-100">
+          <h1 className="text-lg font-semibold">{tr("campaignNew.kindTitle")}</h1>
+          <p className="text-xs text-slate-400 mt-0.5">{tr("campaignNew.kindSubtitle")}</p>
+        </div>
+        <div className="px-4 mt-4">
+          <VoucherTypePicker value={productKind} onChange={setProductKind} />
+          <Button
+            className="w-full mt-6"
+            disabled={!productKind}
+            onClick={() => {
+              setStep("pick");
+              setError("");
+            }}
+          >
+            {tr("campaignNew.next")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (step === "pick") {
     return (
       <div className="pb-8 min-h-screen">
         <div className="px-4 py-3 border-b border-slate-100">
+          <button
+            type="button"
+            className="text-xs text-[#1A6EFF] font-medium mb-1"
+            onClick={() => setStep("kind")}
+          >
+            {tr("campaignNew.backKind")}
+          </button>
           <h1 className="text-lg font-semibold">{tr("campaignNew.pickTitle")}</h1>
-          <p className="text-xs text-slate-400 mt-0.5">{tr("campaignNew.pickSubtitle")}</p>
+          <p className="text-xs text-slate-400 mt-0.5">
+            {productKind === "self_use"
+              ? tr("campaignNew.pickSelfHint")
+              : tr("campaignNew.pickSubtitle")}
+          </p>
         </div>
 
         <div className="px-4 mt-4 space-y-3">
-          {templates.length === 0 && (
+          {visibleTemplates.length === 0 && (
             <p className="text-sm text-slate-400 text-center py-8">
               {tr("campaignNew.loadingTemplates")}
             </p>
           )}
-          {templates.map((tpl) => (
+          {visibleTemplates.map((tpl) => (
             <button
               key={tpl.id}
               type="button"

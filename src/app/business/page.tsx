@@ -286,6 +286,15 @@ export default async function BusinessDashboard() {
               href: "/business/scan",
             },
             {
+              icon: "💵",
+              label: lang === "en" ? "Cash self-use" : "现金发自用券",
+              desc:
+                lang === "en"
+                  ? "Paid at counter · group stores"
+                  : "柜台收款发券 · 集团可核",
+              href: "/business/issue-self",
+            },
+            {
               icon: "🖨️",
               label: lang === "en" ? "Physical tickets" : "实体券印刷",
               desc:

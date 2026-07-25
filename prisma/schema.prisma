@@ -686,6 +686,10 @@ model Campaign {
   templateId        String?                    // voucher_discount | draw_standard | share_boost
   rulesSnapshot     String?                    // JSON RulesSnapshot locked at create
 
+  // D-P1-4: self_use = 自用券（集团内、售出即收款、核销不入平台钱包）
+  //         distribution = 分发券（平台托管、核销结算 T+1）
+  productKind     String   @default("distribution") // self_use | distribution
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -740,6 +744,10 @@ model Voucher {
   drawWeight            Int                    // 大奖池权重
   tier                  String                 // small / medium / large
   status                String   @default("active") // active / exhausted / expired / withdrawn
+  // 冗余活动类型，核销时免 join；与 Campaign.productKind 一致
+  productKind           String   @default("distribution") // self_use | distribution
+  // cash | stripe | other — 自用券现金发券记 cash
+  paymentMethod         String?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -752,6 +760,7 @@ model Voucher {
   @@index([customerId, status])
   @@index([campaignId, createdAt])
   @@index([sellerId])
+  @@index([productKind, status])
 }
 
 model VoucherUsage {

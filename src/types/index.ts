@@ -5,6 +5,8 @@ export type CouponType = "fixed_amount" | "percentage" | "free_item";
 export type CouponStatus = "draft" | "published" | "paused" | "ended";
 export type ClaimStatus = "available" | "used" | "expired" | "gifted";
 export type Tier = "regular" | "silver" | "gold" | "platinum";
+/** D-P1-4 自用券 / 分发券 */
+export type ProductKind = "self_use" | "distribution";
 
 export interface ApiResponse<T = unknown> {
   data?: T;

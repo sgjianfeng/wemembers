@@ -151,6 +151,11 @@ export async function fulfillVoucherPurchase(
 
   let voucher;
   try {
+    const productKind =
+      (campaign as { productKind?: string }).productKind === "self_use"
+        ? "self_use"
+        : "distribution";
+
     voucher = await prisma.voucher.create({
       data: {
         customerId: input.customerId,
@@ -167,6 +172,8 @@ export async function fulfillVoucherPurchase(
         drawWeight: weight,
         tier: tier.tier,
         shortCode,
+        productKind,
+        paymentMethod: "stripe",
       },
     });
   } catch (e: unknown) {
