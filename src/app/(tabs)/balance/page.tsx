@@ -17,16 +17,31 @@ export default async function BalancePage() {
   const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
 
   // ── 所有有效券的余额汇总 ──
-  const activeVouchers = await prisma.voucher.findMany({
+  const activeVouchersRaw = await prisma.voucher.findMany({
     where: { customerId: session.userId, status: "active" },
     select: {
       balanceCents: true,
       id: true,
+      shortCode: true,
       amountCents: true,
       campaign: { select: { name: true, slug: true, type: true } },
     },
     orderBy: { createdAt: "desc" },
   });
+
+  // 旧券补短码（懒生成，店员可口播）
+  const { ensureVoucherShortCode } = await import("@/lib/voucher-short-code");
+  const activeVouchers = await Promise.all(
+    activeVouchersRaw.map(async (v) => {
+      if (v.shortCode) return v;
+      try {
+        const shortCode = await ensureVoucherShortCode(v.id);
+        return { ...v, shortCode };
+      } catch {
+        return v;
+      }
+    })
+  );
   const totalBalance = activeVouchers.reduce(
     (sum, v) => sum + v.balanceCents,
     0,
@@ -120,9 +135,15 @@ export default async function BalancePage() {
                           {v.campaign?.name || t("seller.type.draw", lang)}
                         </p>
                       </div>
-                      <p className="text-[10px] text-slate-400 font-mono break-all mt-0.5">
-                        {t("balance.voucherId", lang)}: {v.id}
-                      </p>
+                      {v.shortCode ? (
+                        <p className="text-sm font-bold font-mono tracking-[0.2em] text-[#1A6EFF] mt-0.5">
+                          {v.shortCode}
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-slate-400 font-mono break-all mt-0.5">
+                          {t("balance.voucherId", lang)}: {v.id}
+                        </p>
+                      )}
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold text-amber-600">
@@ -138,7 +159,11 @@ export default async function BalancePage() {
                       {t("balance.drawWeightHint", lang)}
                     </p>
                   )}
-                  <VoucherShowQr voucherId={v.id} lang={lang} />
+                  <VoucherShowQr
+                    voucherId={v.id}
+                    shortCode={v.shortCode}
+                    lang={lang}
+                  />
                   <SplitButton
                     voucherId={v.id}
                     balanceCents={v.balanceCents}

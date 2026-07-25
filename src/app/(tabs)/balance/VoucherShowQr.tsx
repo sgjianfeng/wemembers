@@ -6,8 +6,11 @@ import { useLang } from "@/components/i18n/LanguageProvider";
 
 export function VoucherShowQr({
   voucherId,
+  shortCode,
 }: {
   voucherId: string;
+  /** 6 位短核销码，店员可口播 */
+  shortCode?: string | null;
   /** kept for call-site compatibility; prefer useLang */
   lang?: string;
 }) {
@@ -32,7 +35,20 @@ export function VoucherShowQr({
             alt="Redeem QR"
             className="w-48 h-48 mx-auto"
           />
-          <p className="text-[10px] text-slate-400 mt-2 font-mono break-all">{voucherId}</p>
+          {shortCode ? (
+            <>
+              <p className="text-2xl font-bold font-mono tracking-[0.25em] text-[#1A6EFF] mt-3">
+                {shortCode}
+              </p>
+              <p className="text-[10px] text-slate-500 mt-1">
+                {t("balance.shortCodeHint")}
+              </p>
+            </>
+          ) : (
+            <p className="text-[10px] text-slate-400 mt-2 font-mono break-all">
+              {voucherId}
+            </p>
+          )}
           <p className="text-[10px] text-slate-500 mt-1">{t("balance.qrNetwork")}</p>
         </div>
       )}

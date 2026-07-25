@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { calculateTierWeight, resolveTier } from "@/lib/draw-v2";
+import { generateShortCodeCandidate } from "@/lib/voucher-short-code";
 
 const MAX_PARTS = 3;
 const MIN_PART_CENTS = 100; // S$1
@@ -131,27 +132,40 @@ export async function POST(request: NextRequest) {
           ? calculateTierWeight(amountCents, tier as "small" | "medium" | "large", amountCents, 0, 0)
           : 0;
 
-        const child = await tx.voucher.create({
-          data: {
-            customerId: parent.customerId,
-            campaignId: parent.campaignId,
-            storeId: parent.storeId,
-            sellerId: parent.sellerId,
-            stripeSessionId: null,
-            amountCents,
-            paidCents,
-            sellerCommissionCents: 0,
-            platformFeeCents: 0,
-            usedCents: 0,
-            balanceCents: amountCents,
-            withdrawnCents: 0,
-            instantPrizeClawedCents: 0,
-            prizePoolContribution: 0,
-            drawWeight,
-            tier,
-            status: "active",
-          },
-        });
+        // shortCode allocated outside tx would race; generate + retry in loop
+        let child = null;
+        for (let attempt = 0; attempt < 8 && !child; attempt++) {
+          const shortCode = generateShortCodeCandidate();
+          try {
+            child = await tx.voucher.create({
+              data: {
+                customerId: parent.customerId,
+                campaignId: parent.campaignId,
+                storeId: parent.storeId,
+                sellerId: parent.sellerId,
+                stripeSessionId: null,
+                amountCents,
+                paidCents,
+                sellerCommissionCents: 0,
+                platformFeeCents: 0,
+                usedCents: 0,
+                balanceCents: amountCents,
+                withdrawnCents: 0,
+                instantPrizeClawedCents: 0,
+                prizePoolContribution: 0,
+                drawWeight,
+                tier,
+                status: "active",
+                shortCode,
+              },
+            });
+          } catch {
+            child = null;
+          }
+        }
+        if (!child) {
+          throw new Error("short_code_alloc_failed");
+        }
         kids.push(child);
       }
       return kids;

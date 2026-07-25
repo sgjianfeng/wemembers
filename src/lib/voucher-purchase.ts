@@ -146,6 +146,9 @@ export async function fulfillVoucherPurchase(
       : 20;
   const productMode = isDraw ? "draw" : "voucher";
 
+  const { allocateShortCode } = await import("@/lib/voucher-short-code");
+  const shortCode = await allocateShortCode();
+
   let voucher;
   try {
     voucher = await prisma.voucher.create({
@@ -163,6 +166,7 @@ export async function fulfillVoucherPurchase(
         prizePoolContribution: 0,
         drawWeight: weight,
         tier: tier.tier,
+        shortCode,
       },
     });
   } catch (e: unknown) {

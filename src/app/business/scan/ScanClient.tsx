@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -8,16 +8,20 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { useLang } from "@/components/i18n/LanguageProvider";
 import { BrandAvatar } from "@/components/ui/BrandAvatar";
+import { QrScannerSheet } from "@/components/business/QrScannerSheet";
 import { resolveStoreLogo } from "@/lib/utils";
 import Link from "next/link";
 
-type Tab = "voucher" | "coupon" | "physical";
+/** 店员核销台：线上券（手机）+ 实体券（纸） */
+type Tab = "online" | "physical";
 
 type StoreOption = {
   id: string;
   name: string;
   address?: string | null;
 };
+
+type ProductMode = "draw" | "voucher";
 
 export default function ScanClient({
   storeId,
@@ -36,32 +40,38 @@ export default function ScanClient({
   const { t, lang } = useLang();
   const router = useRouter();
 
-  const [tab, setTab] = useState<Tab>("voucher");
+  const [tab, setTab] = useState<Tab>("online");
 
-  // ── Legacy coupon QR redeem ──
-  const [code, setCode] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{
-    success: boolean;
-    couponTitle?: string;
-    value?: number;
-    error?: string;
-  } | null>(null);
-
-  // ── V2 prepaid voucher redeem ──
+  // ── Online prepaid voucher (代金 / 抽奖余额) ──
   const [voucherId, setVoucherId] = useState("");
   const [lookupLoading, setLookupLoading] = useState(false);
   const [redeemLoading, setRedeemLoading] = useState(false);
   const [voucherInfo, setVoucherInfo] = useState<{
     id: string;
+    shortCode?: string | null;
     balanceSgd: string;
     balanceCents: number;
     amountSgd: string;
+    paidSgd?: string;
     budgetPercent: number;
+    productMode: ProductMode;
     campaignName: string;
     customerName: string;
+    customerPhone?: string;
     status: string;
   } | null>(null);
+  type Candidate = {
+    id: string;
+    shortCode?: string | null;
+    balanceSgd: string;
+    amountSgd: string;
+    productMode: ProductMode;
+    campaignName: string;
+    customerName: string;
+    customerPhone?: string;
+    status: string;
+  };
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [redeemAmountSgd, setRedeemAmountSgd] = useState("");
   const [voucherResult, setVoucherResult] = useState<{
     ok: boolean;
@@ -70,6 +80,7 @@ export default function ScanClient({
     income?: string;
     fee?: string;
   } | null>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Physical ticket ──
   const [physicalCode, setPhysicalCode] = useState("");
@@ -100,36 +111,6 @@ export default function ScanClient({
       : "请先选择本次核销的门店";
   }
 
-  async function handleCouponRedeem() {
-    if (!code) return;
-    if (!storeId) {
-      setResult({ success: false, error: needStoreMessage() });
-      return;
-    }
-    setLoading(true);
-    setResult(null);
-    try {
-      const res = await fetch("/api/business/redeem", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          qrCode: code.trim().toUpperCase(),
-          storeId,
-        }),
-      });
-      const data = await res.json();
-      setResult(
-        data.data || {
-          success: false,
-          error: data.error || t("business.scan.failed"),
-        }
-      );
-    } catch {
-      setResult({ success: false, error: t("business.scan.networkError") });
-    }
-    setLoading(false);
-  }
-
   function parseVoucherInput(raw: string): string {
     let s = raw.trim();
     if (s.toLowerCase().startsWith("wmv:")) s = s.slice(4).trim();
@@ -149,6 +130,28 @@ export default function ScanClient({
     return s.trim();
   }
 
+  function mapVoucherData(d: Record<string, unknown>) {
+    const productMode: ProductMode =
+      d.productMode === "draw" || d.campaignType === "lucky_draw_v2"
+        ? "draw"
+        : "voucher";
+    return {
+      id: String(d.id),
+      shortCode: (d.shortCode as string | null) || null,
+      balanceSgd: String(d.balanceSgd),
+      balanceCents: Number(d.balanceCents),
+      amountSgd: String(d.amountSgd),
+      paidSgd: d.paidSgd != null ? String(d.paidSgd) : undefined,
+      budgetPercent:
+        Number(d.budgetPercent) || (productMode === "draw" ? 20 : 0),
+      productMode,
+      campaignName: String(d.campaignName || ""),
+      customerName: String(d.customerName || ""),
+      customerPhone: d.customerPhone ? String(d.customerPhone) : undefined,
+      status: String(d.status || ""),
+    };
+  }
+
   async function lookupVoucher(rawId?: string) {
     const id = parseVoucherInput(rawId ?? voucherId);
     if (!id) return;
@@ -156,19 +159,69 @@ export default function ScanClient({
     setLookupLoading(true);
     setVoucherInfo(null);
     setVoucherResult(null);
+    setCandidates([]);
     try {
-      const res = await fetch(`/api/voucher/lookup?id=${encodeURIComponent(id)}`);
+      const res = await fetch(
+        `/api/voucher/lookup?q=${encodeURIComponent(id)}`
+      );
       const json = await res.json();
       if (!res.ok) {
-        setVoucherResult({ ok: false, message: json.error || t("scan.lookupFail") });
-      } else {
-        setVoucherInfo(json.data);
-        setRedeemAmountSgd(json.data.balanceSgd);
+        setVoucherResult({
+          ok: false,
+          message: json.error || t("scan.lookupFail"),
+        });
+      } else if (json.candidates && Array.isArray(json.candidates)) {
+        setCandidates(
+          json.candidates.map((c: Record<string, unknown>) => {
+            const m = mapVoucherData(c);
+            return {
+              id: m.id,
+              shortCode: m.shortCode,
+              balanceSgd: m.balanceSgd,
+              amountSgd: m.amountSgd,
+              productMode: m.productMode,
+              campaignName: m.campaignName,
+              customerName: m.customerName,
+              customerPhone: m.customerPhone,
+              status: m.status,
+            };
+          })
+        );
+      } else if (json.data) {
+        const m = mapVoucherData(json.data);
+        setVoucherInfo(m);
+        setRedeemAmountSgd(m.balanceSgd);
+        if (m.shortCode) setVoucherId(m.shortCode);
       }
     } catch {
       setVoucherResult({ ok: false, message: t("business.scan.networkError") });
     }
     setLookupLoading(false);
+  }
+
+  function onVoucherQueryChange(value: string) {
+    setVoucherId(value);
+    setCandidates([]);
+    setVoucherInfo(null);
+    setVoucherResult(null);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    const q = parseVoucherInput(value);
+    // 满 3 位自动搜候选；满 6 位短码也搜
+    if (q.length < 3) return;
+    searchTimer.current = setTimeout(() => {
+      void lookupVoucher(q);
+    }, 350);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    };
+  }, []);
+
+  function pickCandidate(c: Candidate) {
+    setCandidates([]);
+    void lookupVoucher(c.shortCode || c.id);
   }
 
   async function redeemVoucher(full: boolean) {
@@ -275,7 +328,12 @@ export default function ScanClient({
           ok: true,
           text: j.data?.message || "核销成功",
         });
-        setPhysicalInfo({ ...physicalInfo, status: "redeemed", canRedeemUnbound: false, canRedeemClaimed: false });
+        setPhysicalInfo({
+          ...physicalInfo,
+          status: "redeemed",
+          canRedeemUnbound: false,
+          canRedeemClaimed: false,
+        });
       }
     } catch {
       setPhysicalMsg({ ok: false, text: t("business.scan.networkError") });
@@ -387,24 +445,16 @@ export default function ScanClient({
         </div>
       )}
 
+      {/* 仅两种：线上券（手机） / 实体券（纸） */}
       <div className="px-4 mt-3 flex gap-1.5">
         <button
           type="button"
-          onClick={() => setTab("voucher")}
+          onClick={() => setTab("online")}
           className={`flex-1 h-9 rounded-full text-[11px] font-medium ${
-            tab === "voucher" ? "bg-[#1A6EFF] text-white" : "bg-slate-100 text-slate-600"
+            tab === "online" ? "bg-[#1A6EFF] text-white" : "bg-slate-100 text-slate-600"
           }`}
         >
           {t("scan.voucherTab")}
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("coupon")}
-          className={`flex-1 h-9 rounded-full text-[11px] font-medium ${
-            tab === "coupon" ? "bg-[#1A6EFF] text-white" : "bg-slate-100 text-slate-600"
-          }`}
-        >
-          {t("scan.couponTab")}
         </button>
         <button
           type="button"
@@ -413,18 +463,38 @@ export default function ScanClient({
             tab === "physical" ? "bg-[#1A6EFF] text-white" : "bg-slate-100 text-slate-600"
           }`}
         >
-          {lang === "en" ? "Paper" : "实体券"}
+          {t("scan.physicalTab")}
         </button>
       </div>
 
-      {tab === "voucher" && (
+      <p className="px-4 mt-2 text-[10px] text-slate-400 text-center">
+        {t("scan.twoPathsHint")}
+      </p>
+
+      {tab === "online" && (
         <div className="px-4 mt-4 space-y-4">
           <div className="bg-slate-50 rounded-xl p-4 space-y-3">
             <p className="text-sm text-slate-600">{t("scan.voucherHint")}</p>
+            <QrScannerSheet
+              className="w-full h-11 rounded-full border-[#1A6EFF]/30 text-[#1A6EFF] font-semibold"
+              disabled={!storeId}
+              onScan={(raw) => {
+                const id = parseVoucherInput(raw);
+                setVoucherId(id);
+                void lookupVoucher(id);
+              }}
+            />
+            <div className="relative flex items-center gap-2">
+              <div className="flex-1 h-px bg-slate-200" />
+              <span className="text-[10px] text-slate-400">
+                {lang === "en" ? "or type short code" : "或输 6 位短码"}
+              </span>
+              <div className="flex-1 h-px bg-slate-200" />
+            </div>
             <Input
               placeholder={t("scan.voucherPlaceholder")}
               value={voucherId}
-              onChange={(e) => setVoucherId(e.target.value)}
+              onChange={(e) => onVoucherQueryChange(e.target.value)}
               onPaste={(e) => {
                 const text = e.clipboardData.getData("text");
                 if (text) {
@@ -435,7 +505,9 @@ export default function ScanClient({
                 }
               }}
               onKeyDown={(e) => e.key === "Enter" && lookupVoucher()}
-              className="font-mono text-sm"
+              className="font-mono text-sm tracking-wider uppercase"
+              autoCapitalize="characters"
+              autoCorrect="off"
             />
             <Button className="w-full" onClick={() => lookupVoucher()} loading={lookupLoading}>
               {t("scan.lookup")}
@@ -443,33 +515,111 @@ export default function ScanClient({
             <p className="text-[10px] text-slate-400 text-center">{t("scan.lookupHelp")}</p>
           </div>
 
+          {candidates.length > 0 && (
+            <Card className="border-[#1A6EFF]/20">
+              <CardContent className="p-3 space-y-2">
+                <p className="text-xs font-medium text-slate-600">
+                  {t("scan.pickCandidate", { n: candidates.length })}
+                </p>
+                <ul className="space-y-1.5">
+                  {candidates.map((c) => (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        onClick={() => pickCandidate(c)}
+                        className="w-full text-left rounded-xl border border-slate-100 bg-white p-3 hover:border-[#1A6EFF]/50 active:bg-slate-50"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <Badge
+                                variant={c.productMode === "draw" ? "orange" : "blue"}
+                                size="sm"
+                              >
+                                {c.productMode === "draw"
+                                  ? t("scan.typeDraw")
+                                  : t("scan.typeVoucher")}
+                              </Badge>
+                              <span className="text-sm font-semibold font-mono tracking-widest text-[#1A6EFF]">
+                                {c.shortCode || c.id.slice(0, 8)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-0.5 truncate">
+                              {c.campaignName}
+                              {c.customerName ? ` · ${c.customerName}` : ""}
+                              {c.customerPhone ? ` · ${c.customerPhone}` : ""}
+                            </p>
+                          </div>
+                          <p className="text-sm font-bold text-blue-700 shrink-0">
+                            S${c.balanceSgd}
+                          </p>
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
           {voucherInfo && (
             <Card className="border-slate-100">
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{voucherInfo.campaignName}</p>
-                    <p className="text-xs text-slate-400">{voucherInfo.customerName || "—"}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {voucherInfo.campaignName}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {voucherInfo.customerName || "—"}
+                      {voucherInfo.customerPhone
+                        ? ` · ${voucherInfo.customerPhone}`
+                        : ""}
+                    </p>
+                    {voucherInfo.shortCode && (
+                      <p className="text-base font-bold font-mono tracking-[0.2em] text-[#1A6EFF] mt-1">
+                        {voucherInfo.shortCode}
+                      </p>
+                    )}
                   </div>
-                  <Badge variant={voucherInfo.status === "active" ? "green" : "slate"} size="sm">
-                    {voucherInfo.status}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <Badge
+                      variant={voucherInfo.productMode === "draw" ? "orange" : "blue"}
+                      size="sm"
+                    >
+                      {voucherInfo.productMode === "draw"
+                        ? t("scan.typeDraw")
+                        : t("scan.typeVoucher")}
+                    </Badge>
+                    <Badge
+                      variant={voucherInfo.status === "active" ? "green" : "slate"}
+                      size="sm"
+                    >
+                      {voucherInfo.status}
+                    </Badge>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-center">
                   <div className="bg-blue-50 rounded-lg p-2">
                     <p className="text-[10px] text-slate-400">{t("scan.balance")}</p>
-                    <p className="text-lg font-bold text-blue-700">S${voucherInfo.balanceSgd}</p>
+                    <p className="text-lg font-bold text-blue-700">
+                      S${voucherInfo.balanceSgd}
+                    </p>
                   </div>
                   <div className="bg-slate-50 rounded-lg p-2">
                     <p className="text-[10px] text-slate-400">{t("scan.face")}</p>
-                    <p className="text-lg font-bold text-slate-800">S${voucherInfo.amountSgd}</p>
+                    <p className="text-lg font-bold text-slate-800">
+                      S${voucherInfo.amountSgd}
+                    </p>
                   </div>
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  {t("scan.feeHint", {
-                    pct: voucherInfo.budgetPercent,
-                    rest: 100 - voucherInfo.budgetPercent,
-                  })}
+                  {voucherInfo.productMode === "draw"
+                    ? t("scan.feeHintDraw", {
+                        pct: voucherInfo.budgetPercent || 20,
+                        rest: 100 - (voucherInfo.budgetPercent || 20),
+                      })
+                    : t("scan.feeHintVoucher")}
                 </p>
                 <Input
                   label={t("scan.amountLabel")}
@@ -501,10 +651,20 @@ export default function ScanClient({
           )}
 
           {voucherResult && (
-            <Card className={voucherResult.ok ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
+            <Card
+              className={
+                voucherResult.ok
+                  ? "border-green-200 bg-green-50"
+                  : "border-red-200 bg-red-50"
+              }
+            >
               <CardContent className="p-4 text-center space-y-1">
                 <p className="text-2xl">{voucherResult.ok ? "✅" : "❌"}</p>
-                <p className={`text-sm font-medium ${voucherResult.ok ? "text-green-800" : "text-red-600"}`}>
+                <p
+                  className={`text-sm font-medium ${
+                    voucherResult.ok ? "text-green-800" : "text-red-600"
+                  }`}
+                >
                   {voucherResult.message}
                 </p>
                 {voucherResult.ok && (
@@ -521,17 +681,81 @@ export default function ScanClient({
               </CardContent>
             </Card>
           )}
+
+          <div className="p-3 bg-slate-50 rounded-xl">
+            <ul className="text-[11px] text-slate-400 space-y-1">
+              <li>• {t("scan.tipOnline1")}</li>
+              <li>• {t("scan.tipOnline2")}</li>
+              <li>• {t("business.scan.tip4")}</li>
+            </ul>
+          </div>
         </div>
       )}
 
       {tab === "physical" && (
         <div className="px-4 mt-4 space-y-4">
           <div className="bg-slate-50 rounded-xl p-4 space-y-3">
-            <p className="text-sm text-slate-600">
-              {lang === "en"
-                ? "Scan or type paper ticket code (PT-…)"
-                : "扫描或输入实体券码（PT-…），仅本店可核"}
-            </p>
+            <p className="text-sm text-slate-600">{t("scan.physicalHint")}</p>
+            <QrScannerSheet
+              className="w-full h-11 rounded-full border-[#1A6EFF]/30 text-[#1A6EFF] font-semibold"
+              disabled={!storeId}
+              onScan={(raw) => {
+                // 纸码可能是 PT-… 或 claim URL 含 code
+                let code = raw.trim();
+                try {
+                  if (code.includes("://") || code.includes("/c/")) {
+                    const u = new URL(code, "https://wemembers.store");
+                    const part = u.pathname.split("/").filter(Boolean).pop();
+                    if (part) code = part;
+                    const q = u.searchParams.get("code");
+                    if (q) code = q;
+                  }
+                } catch {
+                  /* keep raw */
+                }
+                setPhysicalCode(code.toUpperCase());
+                // 直接查：需要先 set 再调，用解析后的 code
+                void (async () => {
+                  if (!storeId) {
+                    setPhysicalMsg({ ok: false, text: needStoreMessage() });
+                    return;
+                  }
+                  setPhysicalLoading(true);
+                  setPhysicalInfo(null);
+                  setPhysicalMsg(null);
+                  try {
+                    const res = await fetch("/api/business/physical/lookup", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        code: code.trim(),
+                        storeId,
+                      }),
+                    });
+                    const j = await res.json();
+                    if (!res.ok) {
+                      setPhysicalMsg({ ok: false, text: j.error || "查询失败" });
+                    } else {
+                      setPhysicalInfo(j.data);
+                      setPhysicalCode(j.data.code);
+                    }
+                  } catch {
+                    setPhysicalMsg({
+                      ok: false,
+                      text: t("business.scan.networkError"),
+                    });
+                  }
+                  setPhysicalLoading(false);
+                })();
+              }}
+            />
+            <div className="relative flex items-center gap-2">
+              <div className="flex-1 h-px bg-slate-200" />
+              <span className="text-[10px] text-slate-400">
+                {lang === "en" ? "or type" : "或输入"}
+              </span>
+              <div className="flex-1 h-px bg-slate-200" />
+            </div>
             <Input
               placeholder="PT-XXXXXXXXXXXX"
               value={physicalCode}
@@ -540,30 +764,39 @@ export default function ScanClient({
               className="font-mono text-sm"
             />
             <Button className="w-full" onClick={lookupPhysical} loading={physicalLoading}>
-              {lang === "en" ? "Look up" : "查询"}
+              {t("scan.lookup")}
             </Button>
           </div>
 
           {physicalInfo && (
             <Card>
               <CardContent className="p-4 space-y-2">
-                <p className="text-sm font-semibold text-slate-900">
-                  {physicalInfo.type === "draw" ? "🎰 " : "🎫 "}
-                  {physicalInfo.title}
-                </p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-slate-900">
+                    {physicalInfo.title}
+                  </p>
+                  <Badge
+                    variant={physicalInfo.type === "draw" ? "orange" : "blue"}
+                    size="sm"
+                  >
+                    {physicalInfo.type === "draw"
+                      ? t("scan.typeDraw")
+                      : t("scan.typeVoucher")}
+                  </Badge>
+                </div>
                 {physicalInfo.type === "voucher" && (
                   <p className="text-xl font-bold text-[#1A6EFF]">
                     S${physicalInfo.valueSgd}
                   </p>
                 )}
                 <p className="text-xs text-slate-500">
-                  {lang === "en" ? "For store" : "适用门店"}: {physicalInfo.ticketStoreName}
+                  {t("scan.physicalStore")}: {physicalInfo.ticketStoreName}
                 </p>
                 <p className="text-xs text-slate-500">
-                  {lang === "en" ? "Status" : "状态"}: {physicalInfo.status}
+                  {t("scan.physicalStatus")}: {physicalInfo.status}
                   {physicalInfo.customer?.name
-                    ? ` · ${lang === "en" ? "Bound" : "已绑"} ${physicalInfo.customer.name}`
-                    : ""}
+                    ? ` · ${t("scan.physicalBound")} ${physicalInfo.customer.name}`
+                    : ` · ${t("scan.physicalUnbound")}`}
                 </p>
                 {!physicalInfo.sameStore && physicalInfo.storeOnlyError && (
                   <p className="text-xs text-red-600 font-medium">
@@ -571,10 +804,8 @@ export default function ScanClient({
                   </p>
                 )}
                 {physicalInfo.suggestClaim && (
-                  <p className="text-xs text-amber-700 bg-amber-50 rounded-lg p-2">
-                    {lang === "en"
-                      ? "Draw ticket: ask customer to scan paper QR to bind account for grand prize."
-                      : "抽奖券：请引导顾客扫纸上 QR 绑定账号，以便查看大奖。"}
+                  <p className="text-xs text-amber-800 bg-amber-50 rounded-lg p-2">
+                    {t("scan.physicalDrawBind")}
                   </p>
                 )}
                 {(physicalInfo.canRedeemUnbound || physicalInfo.canRedeemClaimed) && (
@@ -583,9 +814,17 @@ export default function ScanClient({
                     onClick={redeemPhysical}
                     loading={physicalRedeeming}
                   >
-                    {lang === "en" ? "Redeem (one-time)" : "确认核销（一次用完）"}
+                    {t("scan.physicalRedeem")}
                   </Button>
                 )}
+                {physicalInfo.type === "draw" &&
+                  physicalInfo.status !== "redeemed" &&
+                  !physicalInfo.canRedeemUnbound &&
+                  !physicalInfo.canRedeemClaimed && (
+                    <p className="text-[11px] text-slate-400">
+                      {t("scan.physicalDrawNoAnon")}
+                    </p>
+                  )}
               </CardContent>
             </Card>
           )}
@@ -604,54 +843,6 @@ export default function ScanClient({
               </CardContent>
             </Card>
           )}
-        </div>
-      )}
-
-      {tab === "coupon" && (
-        <div className="px-4 mt-6">
-          <div className="bg-slate-50 rounded-xl p-4 mb-6 text-center">
-            <p className="text-4xl mb-3">📷</p>
-            <p className="text-sm text-slate-500 mb-4">{t("business.scan.enterCode")}</p>
-            <Input
-              placeholder={t("business.scan.placeholder")}
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              className="text-center text-lg font-mono tracking-widest"
-              onKeyDown={(e) => e.key === "Enter" && handleCouponRedeem()}
-            />
-            <Button className="w-full mt-3" size="lg" onClick={handleCouponRedeem} loading={loading}>
-              {t("business.scan.confirm")}
-            </Button>
-          </div>
-
-          {result && (
-            <Card className={result.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
-              <CardContent className="p-4 text-center">
-                {result.success ? (
-                  <>
-                    <p className="text-3xl mb-2">✅</p>
-                    <p className="text-lg font-semibold text-green-800">{t("business.scan.success")}</p>
-                    <p className="text-sm text-green-700 mt-1">{result.couponTitle}</p>
-                    <p className="text-2xl font-bold text-green-900 mt-2">S${result.value?.toFixed(0)}</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-3xl mb-2">❌</p>
-                    <p className="text-sm text-red-600">{result.error}</p>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          <div className="mt-8 p-4 bg-slate-50 rounded-xl">
-            <h3 className="text-xs font-semibold text-slate-500 mb-2">{t("business.scan.tips")}</h3>
-            <ul className="text-xs text-slate-400 space-y-1">
-              <li>• {t("business.scan.tip1")}</li>
-              <li>• {t("business.scan.tip2")}</li>
-              <li>• {t("business.scan.tip3")}</li>
-            </ul>
-          </div>
         </div>
       )}
     </div>

@@ -721,6 +721,8 @@ model DrawTicket {
 
 model Voucher {
   id                    String   @id @default(cuid())
+  // 6 位短核销码（无歧义字母数字），店员可口播/手输；与 QR 并存
+  shortCode             String?  @unique
   customerId            String
   campaignId            String
   storeId               String?                // 售券门店

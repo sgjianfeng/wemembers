@@ -163,11 +163,11 @@ test("UI full flow: create → buy → split → cross-store redeem", async ({
   await loginPassword(page, BIZ_B, "business");
   await page.goto(`/business/scan?storeId=${storeB!.id}`);
 
-  await page.getByRole("button", { name: "抽奖券余额" }).click();
+  await page.getByRole("button", { name: /线上券|Online/i }).click();
   await page
-    .getByPlaceholder(/扫顾客核销码|wmv|券 ID/i)
+    .getByPlaceholder(/扫顾客核销码|wmv|券 ID|Scan QR/i)
     .fill(toRedeem!.id);
-  await page.getByRole("button", { name: "查询余额" }).click();
+  await page.getByRole("button", { name: /查询|Look up/i }).click();
   await expect(page.getByRole("button", { name: /部分核销/ })).toBeVisible({
     timeout: 15000,
   });
