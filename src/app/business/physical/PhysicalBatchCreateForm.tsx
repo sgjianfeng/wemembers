@@ -20,7 +20,13 @@ export function PhysicalBatchCreateForm({
   businessLogo,
 }: {
   stores: { id: string; name: string }[];
-  campaigns?: { id: string; name: string; type: string; status: string }[];
+  campaigns?: {
+    id: string;
+    name: string;
+    type: string;
+    status: string;
+    productKind?: string;
+  }[];
   lang: "zh" | "en";
   businessName?: string | null;
   businessLogo?: string | null;
@@ -29,7 +35,14 @@ export function PhysicalBatchCreateForm({
   const [open, setOpen] = useState(false);
   const [storeId, setStoreId] = useState(stores[0]?.id || "");
   const [type, setType] = useState<"voucher" | "draw">("voucher");
-  const [campaignId, setCampaignId] = useState(campaigns[0]?.id || "");
+  const drawCampaigns = useMemo(
+    () =>
+      campaigns.filter(
+        (c) => c.type === "lucky_draw_v2" || c.type === "lucky_draw"
+      ),
+    [campaigns]
+  );
+  const [campaignId, setCampaignId] = useState(drawCampaigns[0]?.id || "");
   const [title, setTitle] = useState("");
   const [valueSgd, setValueSgd] = useState("10");
   const [quantity, setQuantity] = useState("20");
@@ -47,6 +60,12 @@ export function PhysicalBatchCreateForm({
 
   function onTypeChange(next: "voucher" | "draw") {
     setType(next);
+    if (next === "draw") {
+      setValueSgd("100");
+      if (drawCampaigns[0]) setCampaignId(drawCampaigns[0].id);
+    } else {
+      setValueSgd("10");
+    }
     const rec = listVisualTemplatesForType(next).find((t) => t.recommended);
     if (rec) {
       setVisualTemplateId(rec.id);
@@ -74,7 +93,7 @@ export function PhysicalBatchCreateForm({
         storeId,
         type,
         title: title.trim(),
-        valueCents: type === "voucher" ? valueCents : 0,
+        valueCents,
         quantity: parseInt(quantity, 10) || 0,
         visualTemplateId,
         themeColor: themeHex,
@@ -255,9 +274,17 @@ export function PhysicalBatchCreateForm({
                 : "如：S$10 烤肉代金券"
           }
         />
-        {type === "voucher" && (
+        {(type === "voucher" || type === "draw") && (
           <Input
-            label={lang === "en" ? "Face value (S$)" : "面值（新币）"}
+            label={
+              type === "draw"
+                ? lang === "en"
+                  ? "Face value (S$) e.g. 50/100/200"
+                  : "面值（新币）如 50/100/200"
+                : lang === "en"
+                  ? "Face value (S$)"
+                  : "面值（新币）"
+            }
             value={valueSgd}
             onChange={(e) => setValueSgd(e.target.value)}
             inputMode="decimal"
@@ -267,19 +294,19 @@ export function PhysicalBatchCreateForm({
           <div>
             <label className="block text-sm font-medium mb-1.5">
               {lang === "en"
-                ? "Linked campaign (required)"
-                : "关联线上活动（必选 · 绑定后进大奖池）"}
+                ? "Exclusive draw campaign (required)"
+                : "独享抽奖活动（必选）"}
             </label>
-            {campaigns.length === 0 ? (
+            {drawCampaigns.length === 0 ? (
               <p className="text-xs text-amber-700 bg-amber-50 rounded-lg p-2">
                 {lang === "en" ? (
                   <>
-                    No active campaign. Create one under Campaigns first, then
-                    print draw tickets.
+                    No exclusive draw campaign. Create a self-use lucky-draw
+                    campaign first.
                   </>
                 ) : (
                   <>
-                    暂无可用活动。请先到「活动」创建抽奖/促销活动，再印实体抽奖券。
+                    暂无独享抽奖活动。请先到「活动」创建先收款·抽奖（独享），再印刷。
                   </>
                 )}
               </p>
@@ -289,13 +316,18 @@ export function PhysicalBatchCreateForm({
                 onChange={(e) => setCampaignId(e.target.value)}
                 className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm"
               >
-                {campaigns.map((c) => (
+                {drawCampaigns.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} ({c.status})
+                    {c.name} · 独享 ({c.status})
                   </option>
                 ))}
               </select>
             )}
+            <p className="text-[10px] text-slate-400 mt-1">
+              {lang === "en"
+                ? "Cash sell deducts 15% from business top-up (3%+2%+10% grand on platform)."
+                : "现金售出时从企业账户扣 15%（小奖3%+服务费2%+大奖10%留平台）。"}
+            </p>
           </div>
         )}
         <Input

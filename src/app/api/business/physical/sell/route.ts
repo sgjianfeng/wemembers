@@ -6,11 +6,12 @@ import {
   normalizePhysicalCode,
 } from "@/lib/physical-tickets";
 import { materializePhysicalToVoucher } from "@/lib/physical-to-voucher";
+import { applyExclusiveCashSaleFees } from "@/lib/exclusive-fees";
 import { formatMoney } from "@/lib/utils";
 
 /**
  * POST /api/business/physical/sell
- * 实体自用券现金售出：printed → sold；可选绑顾客 → Voucher(self_use, physical)
+ * 自用实体 / 独享实体：现金售出 printed→sold；独享扣企业 15%
  */
 export async function POST(request: NextRequest) {
   const session = await getSession();
@@ -95,11 +96,8 @@ export async function POST(request: NextRequest) {
       if (ticket.batch.status === "void") {
         return { error: "该批次已作废", status: 400 as const };
       }
-      if (ticket.batch.type !== "voucher") {
-        return {
-          error: "抽奖实体券请引导顾客扫码绑定，不在此现金售出",
-          status: 400 as const,
-        };
+      if (ticket.batch.type !== "voucher" && ticket.batch.type !== "draw") {
+        return { error: "不支持的票种", status: 400 as const };
       }
       if (ticket.status === "redeemed") {
         return { error: "该券已核销", status: 400 as const };
@@ -124,17 +122,57 @@ export async function POST(request: NextRequest) {
       }
 
       const faceCents = ticket.batch.valueCents || 0;
+      if (faceCents < 100) {
+        return { error: "批次面值无效，请重新印刷", status: 400 as const };
+      }
       const finalPaid = paidCents === -1 ? faceCents : paidCents;
       if (finalPaid < 0) {
         return { error: "实收金额无效", status: 400 as const };
       }
-      if (faceCents > 0 && finalPaid > faceCents) {
+      if (finalPaid > faceCents) {
         return { error: "实收不能大于面值", status: 400 as const };
+      }
+
+      // 独享实体：现金售出扣 15%
+      let feeNote = "";
+      if (ticket.batch.type === "draw") {
+        if (!ticket.batch.campaignId) {
+          return { error: "独享实体须关联独享活动", status: 400 as const };
+        }
+        const camp = await tx.campaign.findUnique({
+          where: { id: ticket.batch.campaignId },
+          select: { productKind: true, type: true, name: true },
+        });
+        if (!camp || camp.productKind !== "self_use") {
+          return {
+            error: "仅支持独享（self_use）抽奖活动的实体售出",
+            status: 400 as const,
+          };
+        }
+        try {
+          const fee = await applyExclusiveCashSaleFees(tx, {
+            businessId,
+            campaignId: ticket.batch.campaignId,
+            faceCents,
+            referenceId: code,
+            label: `独享实体售出 · ${camp.name}`,
+          });
+          feeNote = `已扣企业账户 S$${(fee.totalCents / 100).toFixed(2)}（15%）`;
+        } catch (e) {
+          if (e instanceof Error && e.message === "INSUFFICIENT_TOKEN") {
+            return {
+              error:
+                "企业账户余额不足，无法现金售独享券。请先充值。",
+              status: 402 as const,
+              code: "NEED_TOPUP",
+            };
+          }
+          throw e;
+        }
       }
 
       const method = finalPaid === 0 ? "free" : "physical";
 
-      // 先记售出
       let updated = await tx.physicalTicket.update({
         where: { id: ticket.id },
         data: {
@@ -153,6 +191,11 @@ export async function POST(request: NextRequest) {
 
       let bound = false;
       let voucherShort: string | null = null;
+      let instantPrize: {
+        name: string;
+        icon: string;
+        valueSgd: string;
+      } | null = null;
 
       if (phone && bindIfRegistered) {
         const customer =
@@ -171,6 +214,7 @@ export async function POST(request: NextRequest) {
             });
             bound = true;
             voucherShort = mat.voucher.shortCode;
+            instantPrize = mat.instantPrize;
             updated = await tx.physicalTicket.findUniqueOrThrow({
               where: { id: ticket.id },
               include: {
@@ -192,12 +236,18 @@ export async function POST(request: NextRequest) {
         faceCents,
         bound,
         voucherShort,
+        feeNote,
+        instantPrize,
+        isDraw: ticket.batch.type === "draw",
       };
     });
 
     if (outcome.error) {
       return NextResponse.json(
-        { error: outcome.error },
+        {
+          error: outcome.error,
+          code: "code" in outcome ? outcome.code : undefined,
+        },
         { status: outcome.status }
       );
     }
@@ -216,9 +266,16 @@ export async function POST(request: NextRequest) {
         contactPhone: t.contactPhone,
         voucherShortCode: outcome.voucherShort,
         productKind: "self_use",
+        displayKind: outcome.isDraw ? "exclusive" : "self_use",
+        feeNote: outcome.feeNote || undefined,
+        instantPrize: outcome.instantPrize,
         message: outcome.bound
-          ? "已售出 · 已绑定为自用券（实体购买）"
-          : "已登记售出（自用券·实体）· 顾客扫码可绑到账号",
+          ? outcome.isDraw
+            ? "已售出并绑定为独享券（实体购买）"
+            : "已售出并绑定为自用券（实体购买）"
+          : outcome.isDraw
+            ? "已登记售出（独享·实体）· 顾客扫码可绑到账号"
+            : "已登记售出（自用·实体）· 顾客扫码可绑到账号",
       },
     });
   } catch (error) {

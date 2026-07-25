@@ -174,66 +174,116 @@ export async function POST(request: NextRequest) {
       : 0;
 
     const shortCode = await allocateShortCode();
-    const voucher = await prisma.voucher.create({
-      data: {
-        customerId,
-        campaignId: campaign.id,
-        storeId: store.id,
-        sellerId: null,
-        amountCents: faceCents,
-        paidCents,
-        balanceCents: faceCents,
-        usedCents: 0,
-        prizePoolContribution: 0,
-        drawWeight: weight,
-        tier,
-        status: "active",
-        shortCode,
-        productKind: "self_use",
-        paymentMethod:
-          paymentMethod === "paynow_store" ? "paynow_store" : "cash",
-      },
-    });
+    const payMethod =
+      paymentMethod === "paynow_store" ? "paynow_store" : "cash";
 
+    let voucher;
     let instantPrize: {
       name: string;
       icon: string;
       valueSgd: string;
     } | null = null;
+    let feeNote = "";
 
-    if (isDraw && doInstantDraw && tierResolved) {
-      const instantResult = drawInstantV2(
-        tierResolved,
-        campaign.instantPoolCents || 0
-      );
-      await prisma.voucherDraw.create({
-        data: {
-          voucherId: voucher.id,
-          drawType: "instant",
-          won: true,
-          prizeName: instantResult.prize.name,
-          prizeIcon: instantResult.prize.icon,
-          valueCents: instantResult.prize.valueCents,
-          weightAtTime: weight,
-        },
+    try {
+      const result = await prisma.$transaction(async (tx) => {
+        // 独享现金/店收：从企业充值扣 15%（优先平台赠送额度）
+        if (isDraw) {
+          const { applyExclusiveCashSaleFees } = await import(
+            "@/lib/exclusive-fees"
+          );
+          try {
+            const fee = await applyExclusiveCashSaleFees(tx, {
+              businessId,
+              campaignId: campaign.id,
+              faceCents,
+              referenceId: shortCode,
+              label: `独享柜台发券 · ${campaign.name}`,
+            });
+            feeNote = `已扣企业账户 S$${(fee.totalCents / 100).toFixed(2)}（15%：小奖3%+服务费2%+大奖10%）`;
+          } catch (e) {
+            if (e instanceof Error && e.message === "INSUFFICIENT_TOKEN") {
+              throw new Error("INSUFFICIENT_TOKEN");
+            }
+            throw e;
+          }
+        }
+
+        const v = await tx.voucher.create({
+          data: {
+            customerId,
+            campaignId: campaign.id,
+            storeId: store.id,
+            sellerId: null,
+            amountCents: faceCents,
+            paidCents,
+            balanceCents: faceCents,
+            usedCents: 0,
+            prizePoolContribution: 0,
+            drawWeight: weight,
+            tier,
+            status: "active",
+            shortCode,
+            productKind: "self_use",
+            paymentMethod: payMethod,
+          },
+        });
+
+        let prize: typeof instantPrize = null;
+        if (isDraw && doInstantDraw && tierResolved) {
+          const camp = await tx.campaign.findUnique({
+            where: { id: campaign.id },
+            select: { instantPoolCents: true },
+          });
+          const instantResult = drawInstantV2(
+            tierResolved,
+            camp?.instantPoolCents || 0
+          );
+          await tx.voucherDraw.create({
+            data: {
+              voucherId: v.id,
+              drawType: "instant",
+              won: true,
+              prizeName: instantResult.prize.name,
+              prizeIcon: instantResult.prize.icon,
+              valueCents: instantResult.prize.valueCents,
+              weightAtTime: weight,
+            },
+          });
+          prize = {
+            name: instantResult.prize.name,
+            icon: instantResult.prize.icon,
+            valueSgd: (instantResult.prize.valueCents / 100).toFixed(2),
+          };
+          await tx.campaign.update({
+            where: { id: campaign.id },
+            data: {
+              entryCount: { increment: 1 },
+              totalTicketCount: { increment: 1 },
+            },
+          });
+        } else {
+          await tx.campaign.update({
+            where: { id: campaign.id },
+            data: { totalClaims: { increment: 1 } },
+          });
+        }
+        return { voucher: v, prize };
       });
-      instantPrize = {
-        name: instantResult.prize.name,
-        icon: instantResult.prize.icon,
-        valueSgd: (instantResult.prize.valueCents / 100).toFixed(2),
-      };
-      await prisma.campaign.update({
-        where: { id: campaign.id },
-        data: {
-          entryCount: { increment: 1 },
-          totalTicketCount: { increment: 1 },
-        },
-      });
-    } else {
-      await prisma.campaign.update({
-        where: { id: campaign.id },
-        data: { totalClaims: { increment: 1 } },
-      });
+      voucher = result.voucher;
+      instantPrize = result.prize;
+    } catch (e) {
+      if (e instanceof Error && e.message === "INSUFFICIENT_TOKEN") {
+        return NextResponse.json(
+          {
+            error:
+              "企业账户余额不足，无法现金发独享券。请先充值（平台赠送额度可扣费用但不可提现）。",
+            code: "NEED_TOPUP",
+          },
+          { status: 402 }
+        );
+      }
+      throw e;
     }
 
     const discountPct =
@@ -256,8 +306,9 @@ export async function POST(request: NextRequest) {
         storeName: store.name,
         paymentMethod: voucher.paymentMethod,
         instantPrize,
+        feeNote: feeNote || undefined,
         note: isDraw
-          ? "独享券已发出：钱已在店；即时奖由本店兑付；核销不入平台钱包"
+          ? "独享券已发出：顾客款在店；15% 已从企业账户计提（小奖+服务费+大奖池在平台）；核销不二次入账"
           : "自用券已发出：实收已在店，可花面值进余额；核销仅记履约",
       },
     });

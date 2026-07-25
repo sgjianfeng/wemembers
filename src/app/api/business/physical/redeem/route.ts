@@ -83,12 +83,10 @@ export async function POST(request: NextRequest) {
       if (!ticket || ticket.batch.businessId !== businessId) {
         return { error: "无效的实体券码", status: 404 as const };
       }
-      if (ticket.batch.type !== "voucher") {
-        return {
-          error: "抽奖券请引导顾客扫码绑定账号，不在此直接核销",
-          status: 400 as const,
-        };
+      if (ticket.batch.type !== "voucher" && ticket.batch.type !== "draw") {
+        return { error: "不支持的票种", status: 400 as const };
       }
+      // 独享未绑：可一次核销；已绑走 Voucher 自用核销
       if (ticket.status === "redeemed") {
         return { error: "该券已核销", status: 400 as const };
       }

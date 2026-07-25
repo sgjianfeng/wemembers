@@ -60,6 +60,9 @@ export default async function TokenRechargePage({
   });
 
   const balance = user?.tokenAccount?.balance ?? 0;
+  const giftBalance =
+    (user?.tokenAccount as { giftBalance?: number } | undefined)?.giftBalance ??
+    0;
   const frozen = user?.tokenAccount?.frozenBalance ?? 0;
   const transactions = user?.tokenAccount?.transactions ?? [];
   const stripeAcct = user?.stripeAccount;
@@ -127,11 +130,28 @@ export default async function TokenRechargePage({
 
       <div className="px-4 mt-4 space-y-4">
         {/* Balance Cards */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <Card className="bg-gradient-to-b from-[#1A6EFF] to-[#3B82F6] border-0">
             <CardContent className="p-3 text-white">
-              <p className="text-xs text-white/60">{t("business.tokens.available", lang)}</p>
+              <p className="text-xs text-white/60">
+                {lang === "en" ? "Withdrawable" : "可提现"}
+              </p>
               <p className="text-xl font-bold mt-1">S${(balance / 100).toFixed(2)}</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-emerald-50 border-emerald-100">
+            <CardContent className="p-3">
+              <p className="text-xs text-emerald-700">
+                {lang === "en" ? "Platform credit (no withdraw)" : "平台额度（不可提）"}
+              </p>
+              <p className="text-xl font-bold text-emerald-800 mt-1">
+                S${(giftBalance / 100).toFixed(2)}
+              </p>
+              <p className="text-[10px] text-emerald-600/80 mt-0.5">
+                {lang === "en"
+                  ? "Used for exclusive cash fees first"
+                  : "优先扣独享现金费用"}
+              </p>
             </CardContent>
           </Card>
           <Card className="bg-amber-50 border-amber-100">

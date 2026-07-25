@@ -107,6 +107,13 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    // 独享实体：须有面值（50/100/200 等）
+    if (type === "draw" && valueCents < 100) {
+      return NextResponse.json(
+        { error: "独享抽奖实体须设置面值（至少 S$1）" },
+        { status: 400 }
+      );
+    }
     if (!quantity) {
       return NextResponse.json({ error: "数量至少 1 张" }, { status: 400 });
     }
@@ -121,7 +128,7 @@ export async function POST(request: NextRequest) {
 
     if (type === "draw" && !campaignId) {
       return NextResponse.json(
-        { error: "抽奖券须关联线上活动（绑定后进奖池）" },
+        { error: "独享抽奖实体须关联独享活动（self_use 抽奖）" },
         { status: 400 }
       );
     }
@@ -140,6 +147,23 @@ export async function POST(request: NextRequest) {
           { error: "实体代金须关联「自用券」活动（打印版）" },
           { status: 400 }
         );
+      }
+      if (type === "draw") {
+        if (camp.productKind !== "self_use") {
+          return NextResponse.json(
+            { error: "实体抽奖请关联「独享」活动（先收款），共赢请用线上链接" },
+            { status: 400 }
+          );
+        }
+        if (
+          camp.type !== "lucky_draw_v2" &&
+          camp.type !== "lucky_draw"
+        ) {
+          return NextResponse.json(
+            { error: "请选择抽奖类型的独享活动" },
+            { status: 400 }
+          );
+        }
       }
     }
 
@@ -200,7 +224,7 @@ export async function POST(request: NextRequest) {
           (type === "voucher"
             ? `自用券打印版 · ${store.name} 出库 · 集团门店可核 · 绑号后进余额`
             : null),
-        valueCents: type === "voucher" ? valueCents : 0,
+        valueCents,
         quantity,
         validUntil: until,
         campaignId: resolvedCampaignId,

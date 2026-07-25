@@ -50,13 +50,22 @@ export async function POST(request: NextRequest) {
         status: "active",
         type: { in: ["lucky_draw_v2", "voucher_sale"] },
       },
-      select: { id: true, name: true, type: true },
+      select: { id: true, name: true, type: true, productKind: true },
     });
     if (!campaign) {
       return NextResponse.json({ error: "活动不可用" }, { status: 404 });
     }
 
     const isDrawCampaign = campaign.type === "lucky_draw_v2";
+    const isCowin =
+      isDrawCampaign && campaign.productKind !== "self_use";
+    // 共赢：必须带卖家（人或店）
+    if (isCowin && !sellerId) {
+      return NextResponse.json(
+        { error: "共赢券须使用带卖家的链接或店码购买" },
+        { status: 400 }
+      );
+    }
     // 抽奖保留「至少留 20%」；代金可先花到 0
     if (isDrawCampaign && spendNowCents > faceCents * 0.8) {
       return NextResponse.json({ error: "余额不能低于券面的 20%" }, { status: 400 });
@@ -127,6 +136,10 @@ export async function POST(request: NextRequest) {
         sellerId: sellerId || "",
         faceCents: String(quote.faceCents),
         paidCents: String(quote.paidCents),
+        productKind: campaign.productKind || "distribution",
+        // 独享：支付款中含 15% 活动扣点（小奖+服务费+大奖），履约时入池
+        exclusiveFeePercent:
+          campaign.productKind === "self_use" && isDrawCampaign ? "15" : "0",
       },
       success_url: `${origin}/voucher/${encodeURIComponent(slug)}?paid=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/voucher/${encodeURIComponent(slug)}?paid=0`,

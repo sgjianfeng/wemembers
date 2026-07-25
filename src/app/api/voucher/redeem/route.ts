@@ -234,6 +234,14 @@ export async function POST(request: NextRequest) {
         ? "draw"
         : "voucher";
 
+    // 共赢：卖家必有（人或店）；无归因拒绝核销分账
+    if (productMode === "draw" && !voucher.sellerId) {
+      return NextResponse.json(
+        { error: "共赢券缺少卖家归因，无法核销分账" },
+        { status: 400 }
+      );
+    }
+
     const budgetPercent =
       voucher.campaign?.budgetPercent && voucher.campaign.budgetPercent > 0
         ? voucher.campaign.budgetPercent

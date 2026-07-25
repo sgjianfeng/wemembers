@@ -305,7 +305,10 @@ model TokenAccount {
   id              String   @id @default(cuid())
   userId          String   @unique
   stripeAccountId String?               // Stripe Connect account ID
-  balance         Int      @default(0)    // 当前可用余额
+  /// 可提现余额：企业自充 + 核销入账等
+  balance         Int      @default(0)
+  /// 平台赠送额度（默认 S$300 等）：可扣独享费用，不可提现
+  giftBalance     Int      @default(0)
   frozenBalance   Int      @default(0)    // 冻结金额
   totalEarned     Int      @default(0)    // 累计获得
   totalSpent      Int      @default(0)    // 累计消耗

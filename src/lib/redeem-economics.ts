@@ -115,46 +115,37 @@ export function splitVoucherRedeem(input: RedeemSplitInput): RedeemSplit {
   };
 }
 
-/** Model A pot for lucky-draw vouchers */
+/**
+ * 共赢抽奖核销扣点 20%（定稿）：
+ * 小奖 3% + 服务费 2% + 卖券 5% + 大奖 10%
+ * 卖家必有（人或店）；hasSeller=false 时 seller 份额并入大奖（兜底，正常应拦截）
+ */
 function splitDrawRedeem(input: RedeemSplitInput): RedeemSplit {
   const amountCents = Math.max(0, Math.round(input.amountCents));
-  const budgetPercent = clampPercent(input.budgetPercent ?? 20);
-  const sellerPct = clampPercent(input.sellerCommissionPercent ?? 5);
-  const platformPct = clampPercent(input.platformFeePercent ?? 1.5);
-
-  const potCents = Math.round((amountCents * budgetPercent) / 100);
-  let storeIncomeCents = amountCents - potCents;
-
-  let sellerCommissionCents = 0;
-  if (input.hasSeller && sellerPct > 0 && potCents > 0) {
-    sellerCommissionCents = Math.floor((amountCents * sellerPct) / 100);
+  const small = Math.floor((amountCents * 3) / 100);
+  const platformFeeCents = Math.floor((amountCents * 2) / 100);
+  let sellerCommissionCents = input.hasSeller
+    ? Math.floor((amountCents * 5) / 100)
+    : 0;
+  let grand = Math.floor((amountCents * 10) / 100);
+  if (!input.hasSeller) {
+    grand += Math.floor((amountCents * 5) / 100);
   }
-  let platformFeeCents = 0;
-  if (platformPct > 0 && potCents > 0) {
-    platformFeeCents = Math.floor((amountCents * platformPct) / 100);
-  }
-
-  if (sellerCommissionCents + platformFeeCents > potCents) {
-    if (platformFeeCents >= potCents) {
-      platformFeeCents = potCents;
-      sellerCommissionCents = 0;
-    } else {
-      sellerCommissionCents = potCents - platformFeeCents;
-    }
-  }
-
-  const prizePoolCents = potCents - sellerCommissionCents - platformFeeCents;
+  const potCents = small + platformFeeCents + sellerCommissionCents + grand;
+  const storeIncomeCents = amountCents - potCents;
+  // prizePoolCents = 小奖进即时池 + 大奖进大奖池（上游可再拆）
+  const prizePoolCents = small + grand;
 
   return {
     amountCents,
     redeemFaceCents: amountCents,
     cashCents: amountCents,
-    storeIncomeCents,
+    storeIncomeCents: Math.max(0, storeIncomeCents),
     potCents,
     sellerCommissionCents,
     platformFeeCents,
     prizePoolCents,
-    budgetPercent,
+    budgetPercent: 20,
     mode: "draw",
   };
 }

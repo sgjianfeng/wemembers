@@ -1,9 +1,14 @@
 /**
- * 实体纸 → 线上自用券（统一资产）
- * 实体券 = 自用券打印版；绑定后钱包显示自用券，购买方式 physical
+ * 实体纸 → 线上自用 / 独享券
+ * - type=voucher → 自用代金
+ * - type=draw + campaign self_use lucky_draw_v2 → 独享抽奖
  */
 import type { Prisma } from "@prisma/client";
-import { resolveTier } from "@/lib/draw-v2";
+import {
+  calculateTierWeight,
+  drawInstantV2,
+  resolveTier,
+} from "@/lib/draw-v2";
 import { generateShortCodeCandidate } from "@/lib/voucher-short-code";
 
 type Tx = Prisma.TransactionClient;
@@ -11,19 +16,15 @@ type Tx = Prisma.TransactionClient;
 export type MaterializeInput = {
   ticketId: string;
   customerId: string;
-  /** 实收（分）；默认用纸上 paidCents 或面值 */
   paidCents?: number;
   soldStoreId?: string | null;
-  /** 若纸尚未 sold，绑定/售出时一并写入 */
   markSold?: boolean;
   soldById?: string | null;
   contactPhone?: string | null;
+  /** 独享绑定后是否即时抽小奖，默认 true */
+  instantDraw?: boolean;
 };
 
-/**
- * 将实体码落实为 Voucher(self_use, paymentMethod=physical)。
- * 幂等：已有 voucherId 则直接返回。
- */
 export async function materializePhysicalToVoucher(
   tx: Tx,
   input: MaterializeInput
@@ -50,18 +51,63 @@ export async function materializePhysicalToVoucher(
   if (ticket.batch.status === "void") throw new Error("BATCH_VOID");
   if (ticket.status === "redeemed") throw new Error("ALREADY_REDEEMED");
   if (ticket.status === "void") throw new Error("TICKET_VOID");
-  if (ticket.batch.type !== "voucher") throw new Error("NOT_VOUCHER_TYPE");
+
+  const batchType = ticket.batch.type;
+  if (batchType !== "voucher" && batchType !== "draw") {
+    throw new Error("UNSUPPORTED_TYPE");
+  }
 
   if (ticket.voucherId) {
     const existing = await tx.voucher.findUnique({
       where: { id: ticket.voucherId },
+      include: { draws: { where: { drawType: "instant" }, take: 1 } },
     });
-    if (existing) return { voucher: existing, created: false, ticket };
+    if (existing) {
+      return {
+        voucher: existing,
+        created: false,
+        ticket,
+        instantPrize: existing.draws[0]
+          ? {
+              name: existing.draws[0].prizeName || "",
+              icon: existing.draws[0].prizeIcon || "🎁",
+              valueSgd: ((existing.draws[0].valueCents || 0) / 100).toFixed(2),
+            }
+          : null,
+      };
+    }
   }
 
   let campaignId = ticket.batch.campaignId;
-  if (!campaignId) {
-    // legacy 批次：自动挂/建一个自用活动
+  let campaign = campaignId
+    ? await tx.campaign.findUnique({
+        where: { id: campaignId },
+        select: {
+          id: true,
+          type: true,
+          productKind: true,
+          status: true,
+          instantPoolCents: true,
+          businessId: true,
+        },
+      })
+    : null;
+
+  if (batchType === "draw") {
+    if (!campaign || campaign.productKind !== "self_use") {
+      throw new Error("EXCLUSIVE_CAMPAIGN_REQUIRED");
+    }
+    if (
+      campaign.type !== "lucky_draw_v2" &&
+      campaign.type !== "lucky_draw"
+    ) {
+      throw new Error("DRAW_CAMPAIGN_REQUIRED");
+    }
+  }
+
+  if (!campaignId || !campaign) {
+    // 仅代金可自动建自用活动
+    if (batchType !== "voucher") throw new Error("CAMPAIGN_REQUIRED");
     const existingCamp = await tx.campaign.findFirst({
       where: {
         businessId: ticket.batch.businessId,
@@ -73,6 +119,14 @@ export async function materializePhysicalToVoucher(
     });
     if (existingCamp) {
       campaignId = existingCamp.id;
+      campaign = {
+        id: existingCamp.id,
+        type: "voucher_sale",
+        productKind: "self_use",
+        status: existingCamp.status,
+        instantPoolCents: 0,
+        businessId: ticket.batch.businessId,
+      };
     } else {
       const start = new Date();
       const end = new Date();
@@ -105,6 +159,14 @@ export async function materializePhysicalToVoucher(
         },
       });
       campaignId = camp.id;
+      campaign = {
+        id: camp.id,
+        type: "voucher_sale",
+        productKind: "self_use",
+        status: "active",
+        instantPoolCents: 0,
+        businessId: ticket.batch.businessId,
+      };
     }
     await tx.physicalBatch.update({
       where: { id: ticket.batch.id },
@@ -127,7 +189,12 @@ export async function materializePhysicalToVoucher(
   );
 
   const faceSgd = faceCents / 100;
-  const tier = resolveTier(faceSgd)?.tier || "small";
+  const tierResolved = resolveTier(faceSgd);
+  const tier = tierResolved?.tier || "small";
+  const isDraw = batchType === "draw";
+  const weight = isDraw
+    ? calculateTierWeight(faceCents, tier as "small" | "medium" | "large", faceCents, 0, 0)
+    : 0;
 
   let shortCode: string | null = null;
   for (let i = 0; i < 12 && !shortCode; i++) {
@@ -146,7 +213,7 @@ export async function materializePhysicalToVoucher(
   const voucher = await tx.voucher.create({
     data: {
       customerId: input.customerId,
-      campaignId,
+      campaignId: campaignId!,
       storeId: soldStoreId,
       amountCents: faceCents,
       paidCents,
@@ -157,7 +224,7 @@ export async function materializePhysicalToVoucher(
       withdrawnCents: 0,
       instantPrizeClawedCents: 0,
       prizePoolContribution: 0,
-      drawWeight: 0,
+      drawWeight: weight,
       tier,
       status: "active",
       productKind: "self_use",
@@ -165,6 +232,46 @@ export async function materializePhysicalToVoucher(
       shortCode,
     },
   });
+
+  let instantPrize: {
+    name: string;
+    icon: string;
+    valueSgd: string;
+  } | null = null;
+
+  if (isDraw && input.instantDraw !== false && tierResolved) {
+    const camp = await tx.campaign.findUnique({
+      where: { id: campaignId! },
+      select: { instantPoolCents: true },
+    });
+    const instantResult = drawInstantV2(
+      tierResolved,
+      camp?.instantPoolCents || 0
+    );
+    await tx.voucherDraw.create({
+      data: {
+        voucherId: voucher.id,
+        drawType: "instant",
+        won: true,
+        prizeName: instantResult.prize.name,
+        prizeIcon: instantResult.prize.icon,
+        valueCents: instantResult.prize.valueCents,
+        weightAtTime: weight,
+      },
+    });
+    instantPrize = {
+      name: instantResult.prize.name,
+      icon: instantResult.prize.icon,
+      valueSgd: (instantResult.prize.valueCents / 100).toFixed(2),
+    };
+    await tx.campaign.update({
+      where: { id: campaignId! },
+      data: {
+        entryCount: { increment: 1 },
+        totalTicketCount: { increment: 1 },
+      },
+    });
+  }
 
   const now = new Date();
   const updatedTicket = await tx.physicalTicket.update({
@@ -188,7 +295,12 @@ export async function materializePhysicalToVoucher(
     },
   });
 
-  return { voucher, created: true, ticket: updatedTicket };
+  return {
+    voucher,
+    created: true,
+    ticket: updatedTicket,
+    instantPrize,
+  };
 }
 
 /** 确保业务有可挂载的自用代金活动；返回 campaignId */
@@ -208,7 +320,6 @@ export async function ensureSelfUseCampaignForPrint(
     orderBy: { createdAt: "desc" },
   });
   if (existing) {
-    // 若指定面额，尽量把档位扩进 rules
     if (face && existing.rulesSnapshot) {
       try {
         const snap = JSON.parse(existing.rulesSnapshot) as {

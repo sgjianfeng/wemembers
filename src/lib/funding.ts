@@ -124,15 +124,19 @@ export async function precheckBusinessWithdraw(params: {
   const account = await prisma.tokenAccount.findUnique({
     where: { userId: params.userId },
   });
+  // 仅可提余额 balance；giftBalance（平台赠送）不可提现
   if (!account || account.balance < amountCents) {
     const frozen = account?.frozenBalance ?? 0;
+    const gift = account?.giftBalance ?? 0;
     return {
       ok: false,
       code: frozen > 0 ? "insufficient_with_frozen" : "insufficient",
       message:
         frozen > 0
-          ? `可用余额不足（另有 S$${(frozen / 100).toFixed(2)} 冻结中，T+1 后可提）`
-          : "可用余额不足",
+          ? `可提余额不足（另有 S$${(frozen / 100).toFixed(2)} 冻结中，T+1 后可提）`
+          : gift > 0
+            ? `可提余额不足（平台赠送 S$${(gift / 100).toFixed(2)} 不可提现）`
+            : "可提余额不足",
       status: 400,
     };
   }

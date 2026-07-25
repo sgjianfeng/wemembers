@@ -92,13 +92,19 @@ export async function POST(request: NextRequest) {
     // 集团内任意门店可操作（查找按 code；不要求等于印刷店）
     const sameBusiness = true;
     const isVoucher = ticket.batch.type === "voucher";
+    const isDraw = ticket.batch.type === "draw";
     const canSell =
-      sameBusiness && ticket.status === "printed" && isVoucher;
+      sameBusiness &&
+      ticket.status === "printed" &&
+      (isVoucher || isDraw) &&
+      ticket.batch.valueCents >= 100;
     const canRedeem =
       sameBusiness &&
-      isVoucher &&
+      (isVoucher || isDraw) &&
       canRedeemPhysicalVoucherStatus(ticket.status) &&
-      (ticket.status !== "claimed" || Boolean(ticket.customerCouponId));
+      (ticket.status !== "claimed" ||
+        Boolean(ticket.customerCouponId) ||
+        Boolean(ticket.voucherId));
 
     return NextResponse.json({
       data: {

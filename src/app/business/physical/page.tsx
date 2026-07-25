@@ -38,8 +38,15 @@ export default async function PhysicalBatchesPage() {
         businessId: session.userId,
         status: { in: ["active", "draft"] },
         endDate: { gte: new Date() },
+        productKind: "self_use",
       },
-      select: { id: true, name: true, type: true, status: true },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        status: true,
+        productKind: true,
+      },
       orderBy: { createdAt: "desc" },
       take: 50,
     }),
@@ -49,12 +56,14 @@ export default async function PhysicalBatchesPage() {
     <div className="pb-4">
       <div className="px-4 py-3 border-b border-slate-100 sticky top-0 bg-white z-10">
         <h1 className="text-lg font-semibold">
-          {lang === "en" ? "Print self-use vouchers" : "自用券 · 实体印刷"}
+          {lang === "en"
+            ? "Print self-use / exclusive"
+            : "自用 / 独享 · 实体印刷"}
         </h1>
         <p className="text-xs text-slate-400 mt-0.5">
           {lang === "en"
-            ? "Pre-print paper = self-use voucher · sell cash · bind = wallet · group redeem"
-            : "预印纸 = 自用券打印版 · 现金售出 · 扫码绑定进余额 · 集团可核"}
+            ? "Paper = self-use or exclusive draw · cash sell (exclusive needs top-up) · bind to wallet"
+            : "纸质=自用代金或独享抽奖 · 现金售出（独享扣企业账户15%）· 扫码绑定进余额"}
         </p>
       </div>
 

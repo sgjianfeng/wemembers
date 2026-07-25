@@ -128,8 +128,21 @@ export async function POST(
         return { error: "该券已过期", status: 400 as const };
       }
 
-      // ── 代金实体 = 自用券打印版 → 落到 Voucher ──
-      if (ticket.batch.type === "voucher") {
+      // ── 自用代金 / 独享抽奖实体 → Voucher(self_use) ──
+      if (
+        ticket.batch.type === "voucher" ||
+        ticket.batch.type === "draw"
+      ) {
+        // 独享纸须已售出（已扣 15%）；代金也可 printed 直接绑（赠送路径）
+        if (
+          ticket.batch.type === "draw" &&
+          ticket.status === "printed"
+        ) {
+          return {
+            error: "请先到店完成购券登记后再绑定",
+            status: 400 as const,
+          };
+        }
         try {
           const mat = await materializePhysicalToVoucher(tx, {
             ticketId: ticket.id,
@@ -146,99 +159,25 @@ export async function POST(
             already: false,
             ticket: { ...ticket, ...mat.ticket, batch: ticket.batch },
             voucher: mat.voucher,
+            instantPrize: mat.instantPrize,
           };
         } catch (e) {
           const msg = e instanceof Error ? e.message : "BIND_FAIL";
           if (msg === "ALREADY_REDEEMED") {
             return { error: "该券已核销，无法绑定", status: 400 as const };
           }
+          if (msg === "EXCLUSIVE_CAMPAIGN_REQUIRED") {
+            return {
+              error: "该抽奖实体未关联独享活动，请联系门店",
+              status: 400 as const,
+            };
+          }
           console.error("physical claim materialize:", e);
           return { error: "绑定失败", status: 500 as const };
         }
       }
 
-      // ── 抽奖实体：仍进活动资格（独享/共赢由 campaign.productKind 决定）──
-      const campaignId = ticket.batch.campaignId;
-      if (!campaignId) {
-        return {
-          error: "该抽奖批次未关联活动，请联系门店",
-          status: 400 as const,
-        };
-      }
-      const campaign = await tx.campaign.findUnique({
-        where: { id: campaignId },
-        select: { id: true, status: true },
-      });
-      if (!campaign || campaign.status === "ended") {
-        return { error: "关联活动不可用或已结束", status: 400 as const };
-      }
-
-      let entry = await tx.luckyDrawEntry.findFirst({
-        where: { campaignId, customerId: session.userId },
-      });
-      if (!entry) {
-        entry = await tx.luckyDrawEntry.create({
-          data: {
-            campaignId,
-            customerId: session.userId,
-            storeId: ticket.storeId,
-            source: "manual",
-            ticketCount: 1,
-          },
-        });
-        await tx.campaign.update({
-          where: { id: campaignId },
-          data: {
-            entryCount: { increment: 1 },
-            totalTicketCount: { increment: 1 },
-          },
-        });
-      } else {
-        await tx.luckyDrawEntry.update({
-          where: { id: entry.id },
-          data: { ticketCount: { increment: 1 } },
-        });
-        await tx.campaign.update({
-          where: { id: campaignId },
-          data: { totalTicketCount: { increment: 1 } },
-        });
-      }
-      const ticketNo = `PT-${code.replace(/^PT-/, "")}`;
-      let finalNo = ticketNo;
-      for (let i = 0; i < 5; i++) {
-        const exists = await tx.drawTicket.findUnique({
-          where: { ticketNo: finalNo },
-          select: { id: true },
-        });
-        if (!exists) break;
-        finalNo = `${ticketNo}-${i + 1}`;
-      }
-      await tx.drawTicket.create({
-        data: {
-          campaignId,
-          customerId: session.userId,
-          entryId: entry.id,
-          ticketNo: finalNo,
-          drawMode: "deferred",
-        },
-      });
-
-      const updated = await tx.physicalTicket.update({
-        where: { id: ticket.id },
-        data: {
-          status: "claimed",
-          customerId: session.userId,
-          claimedAt: new Date(),
-        },
-      });
-
-      return {
-        error: null,
-        status: 200 as const,
-        already: false,
-        ticket: { ...ticket, ...updated },
-        voucher: null,
-      };
+      return { error: "不支持的票种", status: 400 as const };
     });
 
     if (result.error) {
@@ -250,6 +189,8 @@ export async function POST(
 
     const isDraw = result.ticket.batch.type === "draw";
     const v = "voucher" in result ? result.voucher : null;
+    const prize =
+      "instantPrize" in result ? result.instantPrize : null;
 
     return NextResponse.json({
       data: {
@@ -258,7 +199,8 @@ export async function POST(
         already: result.already,
         type: result.ticket.batch.type,
         title: result.ticket.batch.title,
-        productKind: isDraw ? undefined : "self_use",
+        productKind: "self_use",
+        displayKind: isDraw ? "exclusive" : "self_use",
         paymentMethod: v?.paymentMethod || "physical",
         voucher: v
           ? {
@@ -269,10 +211,11 @@ export async function POST(
               paidSgd: (v.paidCents / 100).toFixed(2),
             }
           : null,
+        instantPrize: prize,
         message: isDraw
-          ? "已绑定：可在活动中查看大奖进度"
+          ? "已绑定：独享券已放入余额，可看大奖进度（实体购买）"
           : "已绑定：自用券已放入余额（实体券购买）",
-        goBalance: !isDraw,
+        goBalance: true,
       },
     });
   } catch (error) {

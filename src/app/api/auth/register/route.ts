@@ -143,17 +143,44 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 创建现金钱包账户（分）：余额从 0 起
-    if (["business", "customer"].includes(role)) {
+    // 现金钱包：客户 0；企业默认平台赠送 S$300（不可提现，可扣独享费用）
+    if (role === "customer") {
       await prisma.tokenAccount.create({
         data: {
           userId: user.id,
           balance: 0,
+          giftBalance: 0,
           frozenBalance: 0,
           totalEarned: 0,
           totalSpent: 0,
         },
       });
+    } else if (role === "business") {
+      const { DEFAULT_BUSINESS_GIFT_CENTS } = await import(
+        "@/lib/activity-fees"
+      );
+      const gift = DEFAULT_BUSINESS_GIFT_CENTS;
+      const acct = await prisma.tokenAccount.create({
+        data: {
+          userId: user.id,
+          balance: 0,
+          giftBalance: gift,
+          frozenBalance: 0,
+          totalEarned: gift,
+          totalSpent: 0,
+        },
+      });
+      if (gift > 0) {
+        await prisma.tokenTransaction.create({
+          data: {
+            accountId: acct.id,
+            amount: gift,
+            type: "platform_gift",
+            description: `平台赠送额度 S$${(gift / 100).toFixed(0)}（不可提现）`,
+            balanceAfter: 0,
+          },
+        });
+      }
     }
 
     // 企业注册不自动建门店：引导在后台「门店」添加（多店架构）

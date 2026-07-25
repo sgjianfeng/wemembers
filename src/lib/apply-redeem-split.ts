@@ -11,7 +11,7 @@ import {
   type ProductMode,
   type RedeemSplit,
 } from "@/lib/redeem-economics";
-import { calculateTierWeight, splitPoolFunding } from "@/lib/draw-v2";
+import { calculateTierWeight } from "@/lib/draw-v2";
 
 export interface ApplyRedeemSplitArgs {
   voucherId: string;
@@ -108,7 +108,9 @@ export async function applyRedeemSplit(args: ApplyRedeemSplitArgs): Promise<{
   });
 
   if (mode === "draw" && split.prizePoolCents > 0) {
-    const { smallCents, grandCents } = splitPoolFunding(split.prizePoolCents);
+    // 定稿：小奖 3% + 大奖 10%（无卖家时 5% 已并入 prizePool）
+    const smallCents = Math.floor((split.amountCents * 3) / 100);
+    const grandCents = Math.max(0, split.prizePoolCents - smallCents);
     await prisma.campaign.update({
       where: { id: args.campaignId },
       data: {

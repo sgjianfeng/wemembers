@@ -23,7 +23,7 @@ function TrustPill({ children }: { children: React.ReactNode }) {
 function VoucherDrawInner() {
   const { slug } = useParams<{ slug: string }>();
   const searchParams = useSearchParams();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [campaign, setCampaign] = useState<any>(null);
   const [poolStatus, setPoolStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -242,11 +242,15 @@ function VoucherDrawInner() {
         <p className="text-5xl mb-3">{isDraw ? "🎰" : isSelfUse ? "🎟️" : "🏷️"}</p>
         <h1 className="text-2xl font-bold">{campaign.name}</h1>
         <p className="text-white/80 text-sm mt-1">
-          {isSelfUse
-            ? t("voucher.selfUseSubtitle")
-            : isDraw
-              ? t("voucher.subtitle")
-              : t("voucher.discountSubtitle")}
+          {isSelfUse && isDraw
+            ? lang === "en"
+              ? "Exclusive draw · pay first · 15% to prizes (no seller fee) · group redeem"
+              : "独享抽奖 · 先付款 · 15%进小奖/大奖/服务费（无卖券奖）· 集团可核"
+            : isSelfUse
+              ? t("voucher.selfUseSubtitle")
+              : isDraw
+                ? t("voucher.subtitle")
+                : t("voucher.discountSubtitle")}
         </p>
         {discountPercent > 0 && (
           <p className="text-white text-sm mt-2 font-semibold">

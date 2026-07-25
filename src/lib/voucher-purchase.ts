@@ -121,11 +121,27 @@ export async function fulfillVoucherPurchase(
   const tier = resolveTier(faceSgd);
   if (!tier) throw new VoucherPurchaseError("无效券面金额");
 
+  const productKind: "self_use" | "distribution" =
+    (campaign as { productKind?: string }).productKind === "self_use"
+      ? "self_use"
+      : "distribution";
+  const isExclusive = productKind === "self_use" && isDraw;
+  const isCowin = productKind === "distribution" && isDraw;
+
   const resolvedSellerId = await resolvePurchaseSellerId({
     shareSellingEnabled: snapshot.shareSellingEnabled,
     customerId: input.customerId,
     sellerId: input.sellerId,
   });
+
+  // 共赢：卖家必有（人或店归因）
+  if (isCowin && !resolvedSellerId) {
+    throw new VoucherPurchaseError(
+      "共赢券须通过带卖家的链接/店码购买（人或店）",
+      400
+    );
+  }
+
   const split = computePurchaseSplit(faceCents, snapshot, Boolean(resolvedSellerId));
 
   // Draw + 代金: 余额均按券面 F 入账；实付 P 记 paidCents（代金可 P<F）
@@ -150,11 +166,6 @@ export async function fulfillVoucherPurchase(
 
   const { allocateShortCode } = await import("@/lib/voucher-short-code");
   const shortCode = await allocateShortCode();
-
-  const productKind: "self_use" | "distribution" =
-    (campaign as { productKind?: string }).productKind === "self_use"
-      ? "self_use"
-      : "distribution";
 
   let voucher;
   try {
@@ -190,46 +201,78 @@ export async function fulfillVoucherPurchase(
     throw e;
   }
 
-  // Immediate spend at purchase — same redeem economics as API redeem
+  // 独享：付款即从支付切 15% 进小奖池+大奖池+服务费记账（不扣企业代币）
+  if (isExclusive) {
+    const { applyExclusiveOnlineSaleFees } = await import(
+      "@/lib/exclusive-fees"
+    );
+    await prisma.$transaction(async (tx) => {
+      await applyExclusiveOnlineSaleFees(tx, {
+        campaignId: campaign.id,
+        faceCents: creditCents,
+      });
+    });
+  }
+
+  // Immediate spend at purchase
   if (spendNowCents > 0) {
     const store = await prisma.store.findFirst({
       where: { businessId: campaign.businessId },
       orderBy: { createdAt: "asc" },
     });
     if (store) {
-      await applyRedeemSplit({
-        voucherId: voucher.id,
-        campaignId: campaign.id,
-        amountCents: spendNowCents,
-        storeId: store.id,
-        redeemerBusinessId: campaign.businessId,
-        issuerBusinessId: campaign.businessId,
-        budgetPercent: redeemFeePercent,
-        sellerCommissionPercent: snapshot.sellerCommissionPercent,
-        platformFeePercent: snapshot.platformFeePercent,
-        sellerId: resolvedSellerId,
-        label: isDraw ? "购券即用" : "购券即用·代金券",
-        mode: productMode,
-        faceCents: creditCents,
-        paidCents: split.paidCents,
-        recomputeWeight: isDraw
-          ? {
-              amountCents: creditCents,
-              tier: tier.tier,
-              balanceCents,
-              usedCents: spendNowCents,
-            }
-          : undefined,
-      });
+      if (productKind === "self_use") {
+        // 自用/独享：核销不进平台钱包
+        await prisma.voucherUsage.create({
+          data: {
+            voucherId: voucher.id,
+            storeId: store.id,
+            amountCents: spendNowCents,
+            feeCents: 0,
+            storeIncome: 0,
+          },
+        });
+      } else {
+        await applyRedeemSplit({
+          voucherId: voucher.id,
+          campaignId: campaign.id,
+          amountCents: spendNowCents,
+          storeId: store.id,
+          redeemerBusinessId: campaign.businessId,
+          issuerBusinessId: campaign.businessId,
+          budgetPercent: redeemFeePercent,
+          sellerCommissionPercent: snapshot.sellerCommissionPercent,
+          platformFeePercent: snapshot.platformFeePercent,
+          sellerId: resolvedSellerId,
+          label: isDraw ? "购券即用" : "购券即用·代金券",
+          mode: productMode,
+          faceCents: creditCents,
+          paidCents: split.paidCents,
+          recomputeWeight: isDraw
+            ? {
+                amountCents: creditCents,
+                tier: tier.tier,
+                balanceCents,
+                usedCents: spendNowCents,
+              }
+            : undefined,
+        });
+      }
     }
   }
-
-  // Seller commission is NOT paid at pure purchase — only when balance is spent (above / redeem API)
 
   let instantPrize: FulfillVoucherResult["instantPrize"] = null;
 
   if (isDraw) {
-    const instantResult = drawInstantV2(tier, campaign.instantPoolCents || 0);
+    // 重读池（独享已注入 3%）
+    const campPool = await prisma.campaign.findUnique({
+      where: { id: campaign.id },
+      select: { instantPoolCents: true },
+    });
+    const instantResult = drawInstantV2(
+      tier,
+      campPool?.instantPoolCents || campaign.instantPoolCents || 0
+    );
     await prisma.voucherDraw.create({
       data: {
         voucherId: voucher.id,
@@ -291,7 +334,7 @@ export async function fulfillVoucherPurchase(
       redeemReserveCents: split.paidCents,
     },
     instantPrize,
-    // All draw face tiers (50/100/200) enter the grand pool
+    // 独享/共赢均可进大奖进度；独享已在付款注入 10%
     grandPoolEntry: isDraw,
   };
 }
