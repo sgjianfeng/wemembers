@@ -3,16 +3,16 @@
  *
  * Rules verified:
  * 1. Create voucher batch → codes printed
- * 2. Unbound voucher: same-store redeem once
+ * 2. Unsold printed cannot redeem; sell then redeem; records sold/redeem store
  * 3. Redeemed unbound cannot claim
  * 4. Claim binds customer → CustomerCoupon (online)
- * 5. Claimed voucher: physical redeem syncs online used
- * 6. Claimed voucher: online redeem syncs physical redeemed
- * 7. Cross-store redeem rejected
- * 8. Second customer cannot claim already-claimed code
+ * 5. Second customer cannot claim already-claimed
+ * 6. Group-store redeem allowed after sell (records redeem store)
+ * 7. Claimed: physical redeem syncs online used
+ * 8. Claimed: online redeem syncs physical redeemed (+ group store)
  * 9. Draw batch requires campaign; claim → DrawTicket deferred
- * 10. Draw cannot direct-redeem (staff must guide claim)
- * 11. Claim page /c/{code} UI loads
+ * 10. Claim page /c/{code} UI loads
+ * 11. Staff scan UI shows physical tab
  *
  * Run: npx playwright test tests/e2e/physical-tickets.spec.ts
  */
@@ -183,17 +183,17 @@ test("1. create voucher batch generates printed codes", async () => {
     type: "voucher",
     title: `S$10 实体代金 ${r}`,
     valueCents: 1000,
-    quantity: 5,
+    quantity: 8,
   });
   const j = await res.json();
   expect(res.status, JSON.stringify(j)).toBe(200);
   expect(j.data.id).toBeTruthy();
-  expect(j.data.quantity).toBe(5);
+  expect(j.data.quantity).toBe(8);
 
   const tickets = await prisma.physicalTicket.findMany({
     where: { batchId: j.data.id },
   });
-  expect(tickets).toHaveLength(5);
+  expect(tickets).toHaveLength(8);
   expect(tickets.every((t) => t.status === "printed")).toBe(true);
   expect(tickets.every((t) => t.storeId === storeAId)).toBe(true);
   expect(tickets[0].code.startsWith("PT-")).toBe(true);
@@ -202,13 +202,44 @@ test("1. create voucher batch generates printed codes", async () => {
   (globalThis as { __physBatchVoucher?: string }).__physBatchVoucher = j.data.id;
 });
 
-test("2. unbound voucher: same-store redeem once", async () => {
+test("2. unsold cannot redeem; sell then redeem once", async () => {
   const batchId = (globalThis as { __physBatchVoucher?: string }).__physBatchVoucher!;
   const ticket = await prisma.physicalTicket.findFirst({
     where: { batchId, status: "printed" },
   });
   expect(ticket).toBeTruthy();
 
+  // printed → redeem blocked
+  const blocked = await authApi(
+    bizToken,
+    "/api/business/physical/redeem",
+    "POST",
+    { code: ticket!.code, storeId: storeAId }
+  );
+  expect(blocked.status).toBe(400);
+  const bj = await blocked.json();
+  expect(bj.error).toMatch(/尚未售出|售出/);
+
+  // cash sell at store A
+  const sell = await authApi(bizToken, "/api/business/physical/sell", "POST", {
+    code: ticket!.code,
+    storeId: storeAId,
+    paidSgd: 10,
+    paymentMethod: "cash",
+  });
+  const sj = await sell.json();
+  expect(sell.status, JSON.stringify(sj)).toBe(200);
+  expect(sj.data.status).toBe("sold");
+
+  const sold = await prisma.physicalTicket.findUnique({
+    where: { code: ticket!.code },
+  });
+  expect(sold!.status).toBe("sold");
+  expect(sold!.soldStoreId).toBe(storeAId);
+  expect(sold!.paidCents).toBe(1000);
+  expect(sold!.paymentMethod).toBe("cash");
+
+  // redeem at same store
   const res = await authApi(
     bizToken,
     "/api/business/physical/redeem",
@@ -224,6 +255,7 @@ test("2. unbound voucher: same-store redeem once", async () => {
     where: { code: ticket!.code },
   });
   expect(after!.status).toBe("redeemed");
+  expect(after!.redeemedStoreId).toBe(storeAId);
 
   // double redeem fails
   const res2 = await authApi(
@@ -295,8 +327,22 @@ test("5. second customer cannot claim already-claimed", async () => {
   expect(res.status).toBe(409);
 });
 
-test("6. cross-store redeem rejected", async () => {
-  const code = (globalThis as { __physClaimedCode?: string }).__physClaimedCode!;
+test("6. group-store redeem allowed after sell", async () => {
+  const batchId = (globalThis as { __physBatchVoucher?: string }).__physBatchVoucher!;
+  const ticket = await prisma.physicalTicket.findFirst({
+    where: { batchId, status: "printed" },
+  });
+  expect(ticket).toBeTruthy();
+  const code = ticket!.code;
+
+  const sell = await authApi(bizToken, "/api/business/physical/sell", "POST", {
+    code,
+    storeId: storeAId,
+    paidSgd: 8,
+    paymentMethod: "cash",
+  });
+  expect(sell.status).toBe(200);
+
   const res = await authApi(
     bizToken,
     "/api/business/physical/redeem",
@@ -304,8 +350,14 @@ test("6. cross-store redeem rejected", async () => {
     { code, storeId: storeBId }
   );
   const j = await res.json();
-  expect(res.status).toBe(403);
-  expect(j.error).toMatch(/仅限/);
+  expect(res.status, JSON.stringify(j)).toBe(200);
+  expect(j.data.success).toBe(true);
+
+  const after = await prisma.physicalTicket.findUnique({ where: { code } });
+  expect(after!.status).toBe("redeemed");
+  expect(after!.soldStoreId).toBe(storeAId);
+  expect(after!.redeemedStoreId).toBe(storeBId);
+  expect(after!.paidCents).toBe(800);
 });
 
 test("7. claimed: physical redeem syncs online used", async () => {
@@ -362,7 +414,7 @@ test("8. claimed: online redeem syncs physical redeemed", async () => {
   });
   expect(cc!.status).toBe("used");
 
-  // wrong store via online path
+  // group store via online path still works
   const ticket2 = await prisma.physicalTicket.findFirst({
     where: { batchId, status: "printed" },
   });
@@ -372,11 +424,16 @@ test("8. claimed: online redeem syncs physical redeemed", async () => {
       `/api/physical/${encodeURIComponent(ticket2.code)}`,
       "POST"
     );
-    const bad = await authApi(bizToken, "/api/business/redeem", "POST", {
+    const okB = await authApi(bizToken, "/api/business/redeem", "POST", {
       qrCode: ticket2.code,
       storeId: storeBId,
     });
-    expect(bad.status).toBe(403);
+    const okj = await okB.json();
+    expect(okB.status, JSON.stringify(okj)).toBe(200);
+    const afterB = await prisma.physicalTicket.findUnique({
+      where: { code: ticket2.code },
+    });
+    expect(afterB!.redeemedStoreId).toBe(storeBId);
   }
 });
 
@@ -457,7 +514,7 @@ test("10. claim page UI for printed code", async ({ page }) => {
   }
 
   await page.goto(`/c/${encodeURIComponent(ticket.code)}`);
-  await expect(page.getByText(/仅限本店|一次用完/)).toBeVisible();
+  await expect(page.getByText(/同品牌门店可核|一次用完/)).toBeVisible();
   await expect(page.getByRole("button", { name: /绑定到我的账号/ })).toBeVisible();
 
   await loginViaPage(page, custToken);

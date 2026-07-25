@@ -101,6 +101,7 @@ export default async function PhysicalBatchesPage() {
             const claimed = b.tickets.filter((t) => t.status === "claimed").length;
             const redeemed = b.tickets.filter((t) => t.status === "redeemed").length;
             const printed = b.tickets.filter((t) => t.status === "printed").length;
+            const sold = b.tickets.filter((t) => t.status === "sold").length;
             return (
               <Link key={b.id} href={`/business/physical/${b.id}`}>
                 <Card className="hover:border-[#1A6EFF]/30 mb-2">
@@ -120,8 +121,8 @@ export default async function PhysicalBatchesPage() {
                         </p>
                         <p className="text-[10px] text-slate-400 mt-1">
                           {lang === "en"
-                            ? `Open ${printed} · Bound ${claimed} · Used ${redeemed}`
-                            : `未用 ${printed} · 已绑 ${claimed} · 已核 ${redeemed}`}
+                            ? `Stock ${printed} · Sold ${sold} · Bound ${claimed} · Used ${redeemed}`
+                            : `库存 ${printed} · 已售 ${sold} · 已绑 ${claimed} · 已核 ${redeemed}`}
                         </p>
                       </div>
                       <span className="text-xs text-[#1A6EFF] font-medium shrink-0">

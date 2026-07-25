@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { normalizePhysicalCode } from "@/lib/physical-tickets";
+import {
+  canRedeemPhysicalVoucherStatus,
+  normalizePhysicalCode,
+} from "@/lib/physical-tickets";
 import { formatMoney } from "@/lib/utils";
 
-// POST /api/business/physical/redeem — 本店核销实体代金券（未绑或已绑）
+// POST /api/business/physical/redeem — 集团门店核销实体代金券（已售/已绑）
+// 查找按 code；记 redeemedStoreId = 当前操作门店（可与售店不同）
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session || (session.role !== "business" && session.role !== "staff")) {
@@ -26,6 +30,7 @@ export async function POST(request: NextRequest) {
     let actingStoreId: string | null =
       session.role === "staff" ? session.storeId || null : bodyStoreId || null;
     let businessId = session.userId;
+    let actingStoreName: string | null = null;
 
     if (session.role === "staff") {
       if (!session.storeId) {
@@ -33,13 +38,14 @@ export async function POST(request: NextRequest) {
       }
       const st = await prisma.store.findUnique({
         where: { id: session.storeId },
-        select: { id: true, businessId: true },
+        select: { id: true, businessId: true, name: true },
       });
       if (!st) {
         return NextResponse.json({ error: "门店不存在" }, { status: 404 });
       }
       actingStoreId = st.id;
       businessId = st.businessId;
+      actingStoreName = st.name;
     } else {
       if (!actingStoreId) {
         return NextResponse.json(
@@ -49,12 +55,13 @@ export async function POST(request: NextRequest) {
       }
       const st = await prisma.store.findFirst({
         where: { id: actingStoreId, businessId: session.userId },
-        select: { id: true, businessId: true },
+        select: { id: true, businessId: true, name: true },
       });
       if (!st) {
         return NextResponse.json({ error: "门店无效" }, { status: 400 });
       }
       businessId = st.businessId;
+      actingStoreName = st.name;
     }
 
     const outcome = await prisma.$transaction(async (tx) => {
@@ -63,18 +70,14 @@ export async function POST(request: NextRequest) {
         include: {
           batch: true,
           store: { select: { name: true } },
+          soldStore: { select: { name: true } },
         },
       });
 
       if (!ticket || ticket.batch.businessId !== businessId) {
         return { error: "无效的实体券码", status: 404 as const };
       }
-      if (ticket.storeId !== actingStoreId) {
-        return {
-          error: `本券仅限「${ticket.store.name}」使用`,
-          status: 403 as const,
-        };
-      }
+      // 集团可核：仅要求同企业，不要求 = 印刷店/售店
       if (ticket.batch.type !== "voucher") {
         return {
           error: "抽奖券请引导顾客扫码绑定账号，不在此直接核销",
@@ -87,6 +90,18 @@ export async function POST(request: NextRequest) {
       if (ticket.status === "void") {
         return { error: "该券已作废", status: 400 as const };
       }
+      if (ticket.status === "printed") {
+        return {
+          error: "该券尚未售出登记，请先扫码登记收款后再核销",
+          status: 400 as const,
+        };
+      }
+      if (!canRedeemPhysicalVoucherStatus(ticket.status)) {
+        return {
+          error: `状态不可核销：${ticket.status}`,
+          status: 400 as const,
+        };
+      }
       if (
         ticket.batch.validUntil &&
         ticket.batch.validUntil.getTime() < Date.now()
@@ -94,8 +109,10 @@ export async function POST(request: NextRequest) {
         return { error: "该券已过期", status: 400 as const };
       }
 
+      const wasClaimed = ticket.status === "claimed";
+
       // 已绑定：按线上券核销（CustomerCoupon 为真相源）
-      if (ticket.status === "claimed" && ticket.customerCouponId) {
+      if (wasClaimed && ticket.customerCouponId) {
         const claim = await tx.customerCoupon.findUnique({
           where: { id: ticket.customerCouponId },
           include: { coupon: true },
@@ -104,7 +121,6 @@ export async function POST(request: NextRequest) {
           return { error: "关联线上券丢失", status: 500 as const };
         }
         if (claim.status !== "available") {
-          // 线上已核：同步纸码状态，防双花残留
           if (ticket.status !== "redeemed") {
             await tx.physicalTicket.update({
               where: { id: ticket.id },
@@ -112,6 +128,7 @@ export async function POST(request: NextRequest) {
                 status: "redeemed",
                 redeemedAt: claim.usedAt || new Date(),
                 redeemedById: session.userId,
+                redeemedStoreId: actingStoreId,
               },
             });
           }
@@ -137,19 +154,21 @@ export async function POST(request: NextRequest) {
             amountSaved: ticket.batch.valueCents / 100,
             staffUserId: session.userId,
             storeId: actingStoreId,
-            isCrossStore: false,
+            isCrossStore: Boolean(
+              ticket.soldStoreId && ticket.soldStoreId !== actingStoreId
+            ),
             issuerBusinessId: businessId,
           },
         });
       }
 
-      // 纸码 redeemed（未绑匿名核销，或已绑同步线上后）
       await tx.physicalTicket.update({
         where: { id: ticket.id },
         data: {
           status: "redeemed",
           redeemedAt: new Date(),
           redeemedById: session.userId,
+          redeemedStoreId: actingStoreId,
         },
       });
 
@@ -158,7 +177,9 @@ export async function POST(request: NextRequest) {
         status: 200 as const,
         title: ticket.batch.title,
         valueCents: ticket.batch.valueCents,
-        wasClaimed: ticket.status === "claimed",
+        wasClaimed,
+        soldStoreName: ticket.soldStore?.name || null,
+        redeemStoreName: actingStoreName,
       };
     });
 
@@ -173,11 +194,13 @@ export async function POST(request: NextRequest) {
       data: {
         success: true,
         title: outcome.title,
-        valueSgd: formatMoney(outcome.valueCents),
+        valueSgd: formatMoney(outcome.valueCents!),
         wasClaimed: outcome.wasClaimed,
+        soldStoreName: outcome.soldStoreName,
+        redeemStoreName: outcome.redeemStoreName,
         message: outcome.wasClaimed
-          ? "已核销（线上券同步已用）"
-          : "已核销（未绑定实体券）",
+          ? `已核销（线上券同步）· 核销店 ${outcome.redeemStoreName || ""}`
+          : `已核销 · 核销店 ${outcome.redeemStoreName || ""}`,
       },
     });
   } catch (error) {

@@ -425,7 +425,8 @@ async function StaffStoreHome({
     }),
     prisma.physicalTicket.count({
       where: {
-        storeId: store.id,
+        // 按实际核销门店统计（集团互核时 ≠ 印刷店）
+        redeemedStoreId: store.id,
         status: "redeemed",
         redeemedAt: { gte: today, lt: tomorrow },
       },
@@ -439,7 +440,7 @@ async function StaffStoreHome({
       },
     }),
     prisma.physicalTicket.findMany({
-      where: { storeId: store.id, status: "redeemed" },
+      where: { redeemedStoreId: store.id, status: "redeemed" },
       orderBy: { redeemedAt: "desc" },
       take: 5,
       include: { batch: { select: { title: true, type: true, valueCents: true } } },

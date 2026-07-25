@@ -2,12 +2,14 @@ import { generateQrCode } from "@/lib/utils";
 import { prisma } from "@/lib/db";
 
 /**
- * 实体券规则摘要（实现与决策对齐）：
- * - 未绑定 printed：代金可本店匿名一次核销；抽奖引导绑定
- * - 绑定 claimed：生成 CustomerCoupon / DrawTicket，之后按线上券处理
- * - 核销 redeemed：线上 used 与纸码同步，防双花
- * - 仅本店：ticket.storeId 必须 = 操作门店
+ * 实体券规则：
+ * - printed：库存，未售不可核销
+ * - sold：现金/店收已记；集团门店可核（记 redeemedStoreId）
+ * - claimed：已绑用户；可核（同步线上 CustomerCoupon）
+ * - redeemed / void
+ * - 查找永远按 code；不要求先「挂到核销店」
  * - 实体形态一次用完（非 Voucher V2 储值）
+ * - 平台费：现金实体券默认 0
  */
 
 /** 高熵实体码：PT- + 12 位可读字符（大写，与 normalize 一致） */
@@ -45,6 +47,20 @@ export function normalizePhysicalCode(raw: string): string {
     s = s.split("/").filter(Boolean).pop() || s;
   }
   return s.trim().toUpperCase().replace(/\s+/g, "");
+}
+
+export function normalizePhoneLocal(raw: string): string {
+  return raw.trim().replace(/\s+/g, "").replace(/^\+65/, "");
+}
+
+/** 可被顾客绑定 */
+export function canClaimPhysicalStatus(status: string): boolean {
+  return status === "printed" || status === "sold";
+}
+
+/** 可核销（代金）：已售或已绑，且未核销 */
+export function canRedeemPhysicalVoucherStatus(status: string): boolean {
+  return status === "sold" || status === "claimed";
 }
 
 export type PhysicalTicketPublic = {

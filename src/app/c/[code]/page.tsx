@@ -126,7 +126,7 @@ export default function PhysicalClaimPage() {
             </p>
           )}
           <p className="text-xs text-center text-slate-500">
-            仅限本店 · 一次用完
+            同品牌门店可核 · 一次用完
           </p>
           <p className="text-[11px] text-center font-mono text-slate-400 break-all">
             {data.code}
@@ -135,12 +135,14 @@ export default function PhysicalClaimPage() {
             状态：{" "}
             <span className="font-semibold">
               {data.status === "printed"
-                ? "未绑定"
-                : data.status === "claimed"
-                  ? "已绑定"
-                  : data.status === "redeemed"
-                    ? "已核销"
-                    : data.status}
+                ? "未售出/未绑定"
+                : data.status === "sold"
+                  ? "已售出 · 可绑定"
+                  : data.status === "claimed"
+                    ? "已绑定"
+                    : data.status === "redeemed"
+                      ? "已核销"
+                      : data.status}
             </span>
           </p>
 

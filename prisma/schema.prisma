@@ -137,7 +137,9 @@ model Store {
   receiptGroups   ReceiptGroup[]
   receipts        Receipt[]
   physicalBatches PhysicalBatch[]
-  physicalTickets PhysicalTicket[]
+  physicalTickets PhysicalTicket[] @relation("PhysicalTicketPrintStore")
+  physicalSold    PhysicalTicket[] @relation("PhysicalTicketSoldStore")
+  physicalRedeemed PhysicalTicket[] @relation("PhysicalTicketRedeemStore")
 
   @@unique([businessId, name])
 }
@@ -897,22 +899,37 @@ model PhysicalBatch {
 model PhysicalTicket {
   id               String   @id @default(cuid())
   batchId          String
-  storeId          String                 // 冗余，核销校验本店
+  /// 印刷/批次归属门店（库存来源）；集团内可跨店核销后不等于核销店
+  storeId          String
   code             String   @unique       // 长码 / QR 路径 /c/{code}
-  status           String   @default("printed") // printed | claimed | redeemed | void
+  /// printed=库存 | sold=已售未核 | claimed=已绑用户 | redeemed=已核 | void
+  status           String   @default("printed")
   customerId       String?
   customerCouponId String?  @unique       // 绑定后关联的线上券
   claimedAt        DateTime?
+  /// 售出（现金/店收）— 必有才能核销（claimed 前通常先 sold）
+  soldAt           DateTime?
+  soldById         String?                // 售出操作员
+  soldStoreId      String?                // 售出门店
+  paidCents        Int      @default(0)   // 实收（分）
+  paymentMethod    String?                // cash | free | other
+  contactPhone     String?                // 售出时可选手机
   redeemedAt       DateTime?
   redeemedById     String?                // 核销店员/企业 userId
+  redeemedStoreId  String?                // 实际核销门店（集团互核时与售店可不同）
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
   batch            PhysicalBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  store            Store         @relation(fields: [storeId], references: [id])
+  store            Store         @relation("PhysicalTicketPrintStore", fields: [storeId], references: [id])
+  soldStore        Store?        @relation("PhysicalTicketSoldStore", fields: [soldStoreId], references: [id])
+  redeemedStore    Store?        @relation("PhysicalTicketRedeemStore", fields: [redeemedStoreId], references: [id])
   customer         User?         @relation("PhysicalTicketCustomer", fields: [customerId], references: [id])
 
   @@index([batchId])
   @@index([storeId, status])
+  @@index([soldStoreId, soldAt])
+  @@index([redeemedStoreId, redeemedAt])
   @@index([customerId])
+  @@index([status, soldAt])
 }

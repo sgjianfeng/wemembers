@@ -92,17 +92,26 @@ export default function ScanClient({
   const [physicalCode, setPhysicalCode] = useState("");
   const [physicalLoading, setPhysicalLoading] = useState(false);
   const [physicalRedeeming, setPhysicalRedeeming] = useState(false);
+  const [physicalSelling, setPhysicalSelling] = useState(false);
+  const [sellPaidSgd, setSellPaidSgd] = useState("");
+  const [sellPhone, setSellPhone] = useState("");
   const [physicalInfo, setPhysicalInfo] = useState<{
     code: string;
     status: string;
     type: string;
     title: string;
     valueSgd: string;
+    paidSgd?: string;
     ticketStoreName: string;
+    soldStoreName?: string | null;
+    redeemedStoreName?: string | null;
     sameStore: boolean;
     storeOnlyError: string | null;
+    canSell?: boolean;
+    canRedeem?: boolean;
     canRedeemUnbound: boolean;
     canRedeemClaimed: boolean;
+    needSellFirst?: boolean;
     suggestClaim: boolean;
     customer: { name: string | null } | null;
   } | null>(null);
@@ -329,11 +338,53 @@ export default function ScanClient({
       } else {
         setPhysicalInfo(j.data);
         setPhysicalCode(j.data.code);
+        // 默认实收 = 面值
+        setSellPaidSgd(j.data.valueSgd || "");
+        setSellPhone("");
       }
     } catch {
       setPhysicalMsg({ ok: false, text: t("business.scan.networkError") });
     }
     setPhysicalLoading(false);
+  }
+
+  async function sellPhysical() {
+    if (!physicalInfo || !storeId) return;
+    setPhysicalSelling(true);
+    setPhysicalMsg(null);
+    try {
+      const res = await fetch("/api/business/physical/sell", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: physicalInfo.code,
+          storeId,
+          paidSgd: sellPaidSgd === "" ? undefined : Number(sellPaidSgd),
+          paymentMethod: "cash",
+          customerPhone: sellPhone.trim() || undefined,
+        }),
+      });
+      const j = await res.json();
+      if (!res.ok) {
+        setPhysicalMsg({ ok: false, text: j.error || "售出登记失败" });
+      } else {
+        setPhysicalMsg({
+          ok: true,
+          text: j.data?.message || (lang === "en" ? "Sold" : "已登记售出"),
+        });
+        // 刷新详情
+        const lr = await fetch("/api/business/physical/lookup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: physicalInfo.code, storeId }),
+        });
+        const lj = await lr.json();
+        if (lr.ok) setPhysicalInfo(lj.data);
+      }
+    } catch {
+      setPhysicalMsg({ ok: false, text: t("business.scan.networkError") });
+    }
+    setPhysicalSelling(false);
   }
 
   async function redeemPhysical() {
@@ -357,8 +408,11 @@ export default function ScanClient({
         setPhysicalInfo({
           ...physicalInfo,
           status: "redeemed",
+          canSell: false,
+          canRedeem: false,
           canRedeemUnbound: false,
           canRedeemClaimed: false,
+          redeemedStoreName: j.data?.redeemStoreName || storeName,
         });
       }
     } catch {
@@ -721,7 +775,11 @@ export default function ScanClient({
       {tab === "physical" && (
         <div className="px-4 mt-4 space-y-4">
           <div className="bg-slate-50 rounded-xl p-4 space-y-3">
-            <p className="text-sm text-slate-600">{t("scan.physicalHint")}</p>
+            <p className="text-sm text-slate-600">
+              {lang === "en"
+                ? "Scan paper code: register cash sale first, then redeem at any group store."
+                : "扫纸质码：先登记现金售出，再在集团任一门店核销。"}
+            </p>
             <QrScannerSheet
               className="w-full h-11 rounded-full border-[#1A6EFF]/30 text-[#1A6EFF] font-semibold"
               disabled={!storeId}
@@ -816,17 +874,37 @@ export default function ScanClient({
                   </p>
                 )}
                 <p className="text-xs text-slate-500">
-                  {t("scan.physicalStore")}: {physicalInfo.ticketStoreName}
+                  {lang === "en" ? "Print store" : "印刷店"}:{" "}
+                  {physicalInfo.ticketStoreName}
                 </p>
+                {physicalInfo.soldStoreName && (
+                  <p className="text-xs text-slate-500">
+                    {lang === "en" ? "Sold at" : "售出店"}:{" "}
+                    {physicalInfo.soldStoreName}
+                    {physicalInfo.paidSgd != null
+                      ? ` · ${lang === "en" ? "paid" : "实收"} S$${physicalInfo.paidSgd}`
+                      : ""}
+                  </p>
+                )}
+                {physicalInfo.redeemedStoreName && (
+                  <p className="text-xs text-slate-500">
+                    {lang === "en" ? "Redeemed at" : "核销店"}:{" "}
+                    {physicalInfo.redeemedStoreName}
+                  </p>
+                )}
                 <p className="text-xs text-slate-500">
                   {t("scan.physicalStatus")}: {physicalInfo.status}
                   {physicalInfo.customer?.name
                     ? ` · ${t("scan.physicalBound")} ${physicalInfo.customer.name}`
-                    : ` · ${t("scan.physicalUnbound")}`}
+                    : physicalInfo.status === "sold"
+                      ? ` · ${lang === "en" ? "sold, unbound" : "已售未绑"}`
+                      : ` · ${t("scan.physicalUnbound")}`}
                 </p>
-                {!physicalInfo.sameStore && physicalInfo.storeOnlyError && (
-                  <p className="text-xs text-red-600 font-medium">
-                    {physicalInfo.storeOnlyError}
+                {physicalInfo.needSellFirst && (
+                  <p className="text-xs text-amber-800 bg-amber-50 rounded-lg p-2">
+                    {lang === "en"
+                      ? "Not sold yet — register cash payment before redeem."
+                      : "尚未售出：请先登记收款，再核销。"}
                   </p>
                 )}
                 {physicalInfo.suggestClaim && (
@@ -834,19 +912,71 @@ export default function ScanClient({
                     {t("scan.physicalDrawBind")}
                   </p>
                 )}
-                {(physicalInfo.canRedeemUnbound || physicalInfo.canRedeemClaimed) && (
+
+                {physicalInfo.canSell && (
+                  <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                    <p className="text-xs font-semibold text-slate-800">
+                      {lang === "en" ? "Cash sale" : "现金售出登记"}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400 shrink-0">
+                        {lang === "en" ? "Paid S$" : "实收 S$"}
+                      </span>
+                      <Input
+                        value={sellPaidSgd}
+                        onChange={(e) => setSellPaidSgd(e.target.value)}
+                        inputMode="decimal"
+                        className="h-9"
+                        placeholder={physicalInfo.valueSgd}
+                      />
+                    </div>
+                    <Input
+                      label={
+                        lang === "en"
+                          ? "Customer phone (optional)"
+                          : "顾客手机（可选）"
+                      }
+                      value={sellPhone}
+                      onChange={(e) => setSellPhone(e.target.value)}
+                      inputMode="tel"
+                      placeholder="91234567"
+                    />
+                    <p className="text-[10px] text-slate-400">
+                      {lang === "en"
+                        ? "If phone is a registered customer, ticket binds to their account."
+                        : "若手机号已注册顾客，将自动绑定到其账号。"}
+                    </p>
+                    <Button
+                      className="w-full"
+                      onClick={sellPhysical}
+                      loading={physicalSelling}
+                    >
+                      {lang === "en"
+                        ? "Confirm cash received & mark sold"
+                        : "确认已收现金 · 标记售出"}
+                    </Button>
+                  </div>
+                )}
+
+                {(physicalInfo.canRedeem ||
+                  physicalInfo.canRedeemUnbound ||
+                  physicalInfo.canRedeemClaimed) && (
                   <Button
                     className="w-full mt-2"
                     onClick={redeemPhysical}
                     loading={physicalRedeeming}
                   >
                     {t("scan.physicalRedeem")}
+                    {storeName
+                      ? lang === "en"
+                        ? ` @ ${storeName}`
+                        : ` · ${storeName}`
+                      : ""}
                   </Button>
                 )}
                 {physicalInfo.type === "draw" &&
                   physicalInfo.status !== "redeemed" &&
-                  !physicalInfo.canRedeemUnbound &&
-                  !physicalInfo.canRedeemClaimed && (
+                  !physicalInfo.canRedeem && (
                     <p className="text-[11px] text-slate-400">
                       {t("scan.physicalDrawNoAnon")}
                     </p>

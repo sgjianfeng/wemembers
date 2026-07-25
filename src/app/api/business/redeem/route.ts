@@ -86,10 +86,12 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      if (physical.storeId !== storeId) {
+      // 集团门店可核：与印刷店可不同；须同企业（claim 路径已校验 business）
+      // 未售出的纸码不应走到线上核销
+      if (physical.status === "printed") {
         return NextResponse.json(
-          { error: `本券仅限「${physical.store.name}」使用` },
-          { status: 403 }
+          { error: "该实体券尚未售出登记" },
+          { status: 400 }
         );
       }
     }
@@ -138,6 +140,7 @@ export async function POST(request: NextRequest) {
           status: "redeemed",
           redeemedAt: new Date(),
           redeemedById: session.userId,
+          redeemedStoreId: storeId,
         },
       });
     }

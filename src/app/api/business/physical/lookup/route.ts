@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { normalizePhysicalCode } from "@/lib/physical-tickets";
+import {
+  canRedeemPhysicalVoucherStatus,
+  normalizePhysicalCode,
+} from "@/lib/physical-tickets";
 import { formatMoney } from "@/lib/utils";
 
 // POST /api/business/physical/lookup — 店员/企业查实体码
@@ -26,6 +29,7 @@ export async function POST(request: NextRequest) {
     let actingStoreId: string | null =
       session.role === "staff" ? session.storeId || null : bodyStoreId || null;
     let businessId = session.userId;
+    let actingStoreName: string | null = null;
 
     if (session.role === "staff") {
       if (!session.storeId) {
@@ -40,6 +44,7 @@ export async function POST(request: NextRequest) {
       }
       actingStoreId = st.id;
       businessId = st.businessId;
+      actingStoreName = st.name;
     } else {
       if (!actingStoreId) {
         return NextResponse.json(
@@ -55,6 +60,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "门店无效" }, { status: 400 });
       }
       businessId = st.businessId;
+      actingStoreName = st.name;
     }
 
     const ticket = await prisma.physicalTicket.findUnique({
@@ -71,6 +77,8 @@ export async function POST(request: NextRequest) {
           },
         },
         store: { select: { id: true, name: true } },
+        soldStore: { select: { id: true, name: true } },
+        redeemedStore: { select: { id: true, name: true } },
         customer: {
           select: { id: true, displayName: true, phone: true },
         },
@@ -81,7 +89,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "无效的实体券码" }, { status: 404 });
     }
 
-    const sameStore = ticket.storeId === actingStoreId;
+    // 集团内任意门店可操作（查找按 code；不要求等于印刷店）
+    const sameBusiness = true;
+    const isVoucher = ticket.batch.type === "voucher";
+    const canSell =
+      sameBusiness && ticket.status === "printed" && isVoucher;
+    const canRedeem =
+      sameBusiness &&
+      isVoucher &&
+      canRedeemPhysicalVoucherStatus(ticket.status) &&
+      (ticket.status !== "claimed" || Boolean(ticket.customerCouponId));
 
     return NextResponse.json({
       data: {
@@ -91,13 +108,25 @@ export async function POST(request: NextRequest) {
         title: ticket.batch.title,
         valueCents: ticket.batch.valueCents,
         valueSgd: formatMoney(ticket.batch.valueCents),
+        paidCents: ticket.paidCents,
+        paidSgd: formatMoney(ticket.paidCents),
+        paymentMethod: ticket.paymentMethod,
+        contactPhone: ticket.contactPhone,
+        printStoreId: ticket.storeId,
+        printStoreName: ticket.store.name,
+        // 兼容旧 UI 字段
         ticketStoreId: ticket.storeId,
         ticketStoreName: ticket.store.name,
+        soldStoreId: ticket.soldStoreId,
+        soldStoreName: ticket.soldStore?.name || null,
+        soldAt: ticket.soldAt,
+        redeemedStoreId: ticket.redeemedStoreId,
+        redeemedStoreName: ticket.redeemedStore?.name || null,
         actingStoreId,
-        sameStore,
-        storeOnlyError: sameStore
-          ? null
-          : `本券仅限「${ticket.store.name}」使用`,
+        actingStoreName,
+        sameStore: ticket.storeId === actingStoreId,
+        // 不再因跨店拦截
+        storeOnlyError: null,
         validUntil: ticket.batch.validUntil,
         campaignId: ticket.batch.campaignId,
         customer: ticket.customer
@@ -107,17 +136,18 @@ export async function POST(request: NextRequest) {
             }
           : null,
         customerCouponId: ticket.customerCouponId,
-        canRedeemUnbound:
-          sameStore &&
-          ticket.status === "printed" &&
-          ticket.batch.type === "voucher",
-        canRedeemClaimed:
-          sameStore &&
-          ticket.status === "claimed" &&
-          ticket.batch.type === "voucher" &&
-          Boolean(ticket.customerCouponId),
+        canSell,
+        canRedeem,
+        // 兼容旧字段名
+        canRedeemUnbound: canRedeem && ticket.status === "sold",
+        canRedeemClaimed: canRedeem && ticket.status === "claimed",
         suggestClaim:
-          ticket.status === "printed" && ticket.batch.type === "draw",
+          (ticket.status === "printed" || ticket.status === "sold") &&
+          ticket.batch.type === "draw",
+        needSellFirst:
+          isVoucher &&
+          ticket.status === "printed" &&
+          !canRedeem,
       },
     });
   } catch (error) {

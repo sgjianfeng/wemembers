@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { normalizePhysicalCode } from "@/lib/physical-tickets";
+import {
+  canClaimPhysicalStatus,
+  normalizePhysicalCode,
+} from "@/lib/physical-tickets";
 
 // GET /api/physical/[code] — 公开查实体码状态（绑定页）
 export async function GET(
@@ -52,9 +55,9 @@ export async function GET(
         businessName: ticket.batch.business.businessName,
         validUntil: ticket.batch.validUntil,
         campaignId: ticket.batch.campaignId,
-        canClaim: ticket.status === "printed",
-        canRedeemUnbound:
-          ticket.status === "printed" && ticket.batch.type === "voucher",
+        canClaim: canClaimPhysicalStatus(ticket.status),
+        // 顾客端不直接核销；未售不可核
+        canRedeemUnbound: false,
         isOwner,
         claimedByYou: isOwner,
       },
@@ -110,6 +113,12 @@ export async function POST(
           };
         }
         return { error: "该券已绑定其他账号", status: 409 as const };
+      }
+      if (ticket.status !== "printed" && ticket.status !== "sold") {
+        return {
+          error: `状态不可绑定：${ticket.status}`,
+          status: 400 as const,
+        };
       }
       if (
         ticket.batch.validUntil &&
