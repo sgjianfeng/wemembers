@@ -30,15 +30,17 @@ export async function GET() {
       where: { userId: session.userId },
     });
 
+    let live: Awaited<ReturnType<typeof getAccountStatus>> | null = null;
+
     if (stripeAccount) {
       try {
-        const status = await getAccountStatus(stripeAccount.stripeAccountId);
+        live = await getAccountStatus(stripeAccount.stripeAccountId);
         stripeAccount = await prisma.stripeAccount.update({
           where: { userId: session.userId },
           data: {
-            chargesEnabled: status.chargesEnabled,
-            payoutsEnabled: status.payoutsEnabled,
-            detailsSubmitted: status.detailsSubmitted,
+            chargesEnabled: live.chargesEnabled,
+            payoutsEnabled: live.payoutsEnabled,
+            detailsSubmitted: live.detailsSubmitted,
           },
         });
       } catch (e) {
@@ -47,15 +49,36 @@ export async function GET() {
       }
     }
 
+    if (!stripeAccount) {
+      return NextResponse.json({ data: null });
+    }
+
+    const chargesEnabled = stripeAccount.chargesEnabled;
+    const payoutsEnabled = stripeAccount.payoutsEnabled;
+    const detailsSubmitted = stripeAccount.detailsSubmitted;
+    const fullyReady = chargesEnabled && payoutsEnabled;
+    const statusKey = fullyReady
+      ? "ready"
+      : chargesEnabled && detailsSubmitted
+        ? "partial"
+        : stripeAccount.stripeAccountId
+          ? "pending"
+          : "none";
+
     return NextResponse.json({
-      data: stripeAccount
-        ? {
-            stripeAccountId: stripeAccount.stripeAccountId,
-            chargesEnabled: stripeAccount.chargesEnabled,
-            payoutsEnabled: stripeAccount.payoutsEnabled,
-            detailsSubmitted: stripeAccount.detailsSubmitted,
-          }
-        : null,
+      data: {
+        stripeAccountId: stripeAccount.stripeAccountId,
+        chargesEnabled,
+        payoutsEnabled,
+        detailsSubmitted,
+        fullyReady,
+        statusKey,
+        checkedAt: new Date().toISOString(),
+        // surface remaining Stripe requirements (short list)
+        currentlyDue: live?.currentlyDue?.slice(0, 8) || [],
+        pendingVerification: live?.pendingVerification?.slice(0, 8) || [],
+        disabledReason: live?.disabledReason || null,
+      },
     });
   } catch (error) {
     console.error("stripe account GET:", error);

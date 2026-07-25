@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { timeAgo } from "@/lib/utils";
 import { TopUpButton } from "./TopUpButton";
 import { WithdrawButton } from "./WithdrawButton";
-import { StripeSetupButton } from "./StripeSetupButton";
+import { StripeStatusPanel } from "./StripeStatusPanel";
 import { releaseMaturedHolds } from "@/lib/tokens";
 import { getAccountStatus } from "@/lib/stripe";
 
@@ -125,52 +125,20 @@ export default async function TokenRechargePage({
           </Card>
         </div>
 
-        {/* Stripe Account Status */}
+        {/* Stripe Account Status + 检查状态 */}
         <Card>
           <CardContent className="p-4">
-            <h3 className="text-sm font-semibold text-slate-900 mb-2">{t("business.tokens.stripeTitle", lang)}</h3>
-            {isStripeFullyReady ? (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-green-500 text-lg">✅</span>
-                <div>
-                  <p className="text-sm text-green-700 font-medium">{t("business.tokens.stripeReady", lang)}</p>
-                  <p className="text-xs text-slate-400">{t("business.tokens.stripeReadyDesc", lang)}</p>
-                </div>
-              </div>
-            ) : isStripePartial ? (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-blue-500 text-lg">⏳</span>
-                  <div>
-                    <p className="text-sm text-blue-700 font-medium">
-                      {t("business.tokens.stripePartial", lang)}
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      {t("business.tokens.stripePartialDesc", lang)}
-                    </p>
-                  </div>
-                </div>
-                <StripeSetupButton
-                  label={t("business.tokens.stripeContinue", lang)}
-                />
-              </div>
-            ) : stripeAcct?.stripeAccountId ? (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-amber-500 text-lg">⚠️</span>
-                  <div>
-                    <p className="text-sm text-amber-700 font-medium">{t("business.tokens.stripePending", lang)}</p>
-                    <p className="text-xs text-slate-400">{t("business.tokens.stripePendingDesc", lang)}</p>
-                  </div>
-                </div>
-                <StripeSetupButton label={t("business.tokens.stripeSetup", lang)} />
-              </div>
-            ) : (
-              <div>
-                <p className="text-xs text-slate-400 mb-2">{t("business.tokens.stripeSetupHint", lang)}</p>
-                <StripeSetupButton label={t("business.tokens.stripeSetup", lang)} />
-              </div>
-            )}
+            <h3 className="text-sm font-semibold text-slate-900 mb-3">
+              {t("business.tokens.stripeTitle", lang)}
+            </h3>
+            <StripeStatusPanel
+              initial={{
+                hasAccount: Boolean(stripeAcct?.stripeAccountId),
+                chargesEnabled: Boolean(stripeAcct?.chargesEnabled),
+                payoutsEnabled: Boolean(stripeAcct?.payoutsEnabled),
+                detailsSubmitted: Boolean(stripeAcct?.detailsSubmitted),
+              }}
+            />
           </CardContent>
         </Card>
 

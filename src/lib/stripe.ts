@@ -60,10 +60,21 @@ export async function createAccountLink(
 
 export async function getAccountStatus(stripeAccountId: string) {
   const account = await stripe.accounts.retrieve(stripeAccountId);
+  const currentlyDue = account.requirements?.currently_due || [];
+  const pastDue = account.requirements?.past_due || [];
+  const pendingVerification =
+    account.requirements?.pending_verification || [];
   return {
-    chargesEnabled: account.charges_enabled,
-    payoutsEnabled: account.payouts_enabled,
-    detailsSubmitted: account.details_submitted,
+    chargesEnabled: !!account.charges_enabled,
+    payoutsEnabled: !!account.payouts_enabled,
+    detailsSubmitted: !!account.details_submitted,
+    disabledReason: account.requirements?.disabled_reason || null,
+    currentlyDue,
+    pastDue,
+    pendingVerification,
+    /** fully ready for platform withdraw + bank payout */
+    fullyReady:
+      !!account.charges_enabled && !!account.payouts_enabled,
   };
 }
 
