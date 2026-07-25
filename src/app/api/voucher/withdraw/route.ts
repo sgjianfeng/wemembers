@@ -26,7 +26,9 @@ export async function POST(request: NextRequest) {
     const voucher = await prisma.voucher.findFirst({
       where: { id: voucherId, customerId: session.userId },
       include: {
-        campaign: { select: { id: true, name: true, type: true } },
+        campaign: {
+          select: { id: true, name: true, type: true, productKind: true },
+        },
         draws: {
           where: { drawType: "instant", won: true },
           select: { valueCents: true },
@@ -39,6 +41,16 @@ export async function POST(request: NextRequest) {
     }
     if (voucher.status !== "active" || voucher.balanceCents <= 0) {
       return NextResponse.json({ error: "无可提现余额" }, { status: 400 });
+    }
+    // 自用 / 独享：售出已归店，不走平台提现
+    if (
+      voucher.productKind === "self_use" ||
+      voucher.campaign?.productKind === "self_use"
+    ) {
+      return NextResponse.json(
+        { error: "自用券不可提现，请到本店集团门店消费核销" },
+        { status: 400 }
+      );
     }
 
     let amount =

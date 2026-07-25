@@ -202,6 +202,9 @@ function VoucherDrawInner() {
 
   const isActive = campaign.status === "active";
   const isDraw = campaign.isDraw !== false && campaign.type !== "voucher_sale";
+  const isSelfUse =
+    campaign.productKind === "self_use" ||
+    poolStatus?.campaign?.productKind === "self_use";
   const discountPercent = poolStatus?.rules?.discountPercent ?? 0;
   // 代金：付 P 得 F（F=券面）；抽奖：付=面=入账
   const facePreview = selectedAmount;
@@ -220,22 +223,30 @@ function VoucherDrawInner() {
       className={`min-h-screen bg-gradient-to-b ${
         isDraw
           ? "from-[#FF6B35] via-orange-50 to-white"
-          : "from-[#1A6EFF] via-blue-50 to-white"
+          : isSelfUse
+            ? "from-slate-700 via-slate-100 to-white"
+            : "from-[#1A6EFF] via-blue-50 to-white"
       }`}
     >
       <TopHeader variant="default" />
       <div className="px-4 pt-4 pb-4 text-center text-white">
-        <span
-          className={`inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-full mb-2 ${
-            isDraw ? "bg-white/20" : "bg-white/20"
-          }`}
-        >
-          {isDraw ? t("voucher.tag.draw") : t("voucher.tag.discount")}
+        <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-full mb-2 bg-white/20">
+          {isDraw
+            ? isSelfUse
+              ? t("productKind.self") + " · " + t("voucher.tag.draw")
+              : t("voucher.tag.draw")
+            : isSelfUse
+              ? t("productKind.self")
+              : t("voucher.tag.discount")}
         </span>
-        <p className="text-5xl mb-3">{isDraw ? "🎰" : "🏷️"}</p>
+        <p className="text-5xl mb-3">{isDraw ? "🎰" : isSelfUse ? "🎟️" : "🏷️"}</p>
         <h1 className="text-2xl font-bold">{campaign.name}</h1>
         <p className="text-white/80 text-sm mt-1">
-          {isDraw ? t("voucher.subtitle") : t("voucher.discountSubtitle")}
+          {isSelfUse
+            ? t("voucher.selfUseSubtitle")
+            : isDraw
+              ? t("voucher.subtitle")
+              : t("voucher.discountSubtitle")}
         </p>
         {discountPercent > 0 && (
           <p className="text-white text-sm mt-2 font-semibold">
@@ -243,12 +254,23 @@ function VoucherDrawInner() {
           </p>
         )}
         <div className="flex flex-wrap justify-center gap-1.5 mt-3">
-          <TrustPill>{t("voucher.trust.pillNetwork")}</TrustPill>
-          <TrustPill>{t("voucher.trust.pillWithdraw")}</TrustPill>
-          <TrustPill>{t("voucher.trust.pillPaynow")}</TrustPill>
-          <TrustPill>
-            {isDraw ? t("voucher.trust.pillWin") : t("voucher.trust.pillSave")}
-          </TrustPill>
+          {isSelfUse ? (
+            <>
+              <TrustPill>{t("voucher.trust.pillGroupStores")}</TrustPill>
+              <TrustPill>{t("voucher.trust.pillPaynow")}</TrustPill>
+              <TrustPill>{t("voucher.trust.pillNoWithdraw")}</TrustPill>
+              <TrustPill>{t("voucher.trust.pillSave")}</TrustPill>
+            </>
+          ) : (
+            <>
+              <TrustPill>{t("voucher.trust.pillNetwork")}</TrustPill>
+              <TrustPill>{t("voucher.trust.pillWithdraw")}</TrustPill>
+              <TrustPill>{t("voucher.trust.pillPaynow")}</TrustPill>
+              <TrustPill>
+                {isDraw ? t("voucher.trust.pillWin") : t("voucher.trust.pillSave")}
+              </TrustPill>
+            </>
+          )}
         </div>
       </div>
 
@@ -259,38 +281,56 @@ function VoucherDrawInner() {
           </div>
         )}
 
-        {/* Trust: money is yours */}
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-3">
-            <p className="text-xs font-semibold text-slate-900">{t("voucher.trust.yours")}</p>
-            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-              {t("voucher.trust.yoursBody")}
-            </p>
-          </CardContent>
-        </Card>
+        {isSelfUse ? (
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-3">
+              <p className="text-xs font-semibold text-slate-900">
+                {t("voucher.selfUse.trustTitle")}
+              </p>
+              <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                {t("voucher.selfUse.trustBody")}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-3">
+                <p className="text-xs font-semibold text-slate-900">
+                  {t("voucher.trust.yours")}
+                </p>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  {t("voucher.trust.yoursBody")}
+                </p>
+              </CardContent>
+            </Card>
 
-        {/* Network */}
-        <div className="p-3 bg-white/95 border border-white/60 rounded-xl text-center shadow-sm">
-          <p className="text-xs font-semibold text-slate-800">{t("network.publicTitle")}</p>
-          <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-            {t("network.publicBody")}
-          </p>
-        </div>
+            <div className="p-3 bg-white/95 border border-white/60 rounded-xl text-center shadow-sm">
+              <p className="text-xs font-semibold text-slate-800">
+                {t("network.publicTitle")}
+              </p>
+              <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                {t("network.publicBody")}
+              </p>
+            </div>
 
-        {/* Withdraw rules — trust feature */}
-        <Card className="border-emerald-100 bg-emerald-50/80">
-          <CardContent className="p-3">
-            <p className="text-xs font-semibold text-emerald-900">
-              💳 {t("voucher.trust.withdrawTitle")}
-            </p>
-            <p className="text-[11px] text-emerald-800/90 mt-1 leading-relaxed">
-              {isDraw ? t("voucher.trust.withdrawDraw") : t("voucher.trust.withdrawVoucher")}
-            </p>
-            <p className="text-[10px] text-emerald-700/80 mt-1.5 font-medium">
-              {t("voucher.trust.withdrawSlogan")}
-            </p>
-          </CardContent>
-        </Card>
+            <Card className="border-emerald-100 bg-emerald-50/80">
+              <CardContent className="p-3">
+                <p className="text-xs font-semibold text-emerald-900">
+                  💳 {t("voucher.trust.withdrawTitle")}
+                </p>
+                <p className="text-[11px] text-emerald-800/90 mt-1 leading-relaxed">
+                  {isDraw
+                    ? t("voucher.trust.withdrawDraw")
+                    : t("voucher.trust.withdrawVoucher")}
+                </p>
+                <p className="text-[10px] text-emerald-700/80 mt-1.5 font-medium">
+                  {t("voucher.trust.withdrawSlogan")}
+                </p>
+              </CardContent>
+            </Card>
+          </>
+        )}
 
         {isDraw && poolStatus?.pool && (
           <PoolDashboard
@@ -443,17 +483,29 @@ function VoucherDrawInner() {
                 {result.voucher?.paidSgd != null && (
                   <p className="text-[11px] text-slate-500 mt-1">
                     {t("voucher.paid")} S${result.voucher.paidSgd}
+                    {result.voucher?.amountSgd
+                      ? ` · ${t("balance.face")} S$${result.voucher.amountSgd}`
+                      : ""}
+                  </p>
+                )}
+                {result.voucher?.shortCode && (
+                  <p className="text-lg font-bold font-mono tracking-[0.2em] text-[#1A6EFF] mt-2">
+                    {result.voucher.shortCode}
                   </p>
                 )}
               </div>
 
               <p className="text-[11px] text-slate-600">{t("voucher.success.showHint")}</p>
-              {result.voucher?.id && (
+              {result.voucher?.id && !result.voucher?.shortCode && (
                 <p className="text-[10px] text-slate-400 font-mono break-all">
                   {t("voucher.networkId")}: {result.voucher.id}
                 </p>
               )}
-              <p className="text-[10px] text-slate-500">{t("voucher.networkAfterBuy")}</p>
+              <p className="text-[10px] text-slate-500">
+                {isSelfUse || result.voucher?.productKind === "self_use"
+                  ? t("voucher.selfUse.afterBuy")
+                  : t("voucher.networkAfterBuy")}
+              </p>
 
               <Link
                 href="/balance"

@@ -27,6 +27,7 @@ export interface FulfillVoucherInput {
 export interface FulfillVoucherResult {
   voucher: {
     id: string;
+    shortCode: string | null;
     amountSgd: string;
     paidSgd: string;
     balanceSgd: string;
@@ -34,6 +35,7 @@ export interface FulfillVoucherResult {
     drawWeight: number;
     sellerCommissionSgd: string;
     stripeSessionId: string | null;
+    productKind: "self_use" | "distribution";
   };
   split: {
     faceCents: number;
@@ -149,13 +151,13 @@ export async function fulfillVoucherPurchase(
   const { allocateShortCode } = await import("@/lib/voucher-short-code");
   const shortCode = await allocateShortCode();
 
+  const productKind: "self_use" | "distribution" =
+    (campaign as { productKind?: string }).productKind === "self_use"
+      ? "self_use"
+      : "distribution";
+
   let voucher;
   try {
-    const productKind =
-      (campaign as { productKind?: string }).productKind === "self_use"
-        ? "self_use"
-        : "distribution";
-
     voucher = await prisma.voucher.create({
       data: {
         customerId: input.customerId,
@@ -268,6 +270,7 @@ export async function fulfillVoucherPurchase(
   return {
     voucher: {
       id: voucher.id,
+      shortCode: voucher.shortCode,
       amountSgd: (creditCents / 100).toFixed(2),
       paidSgd: (split.paidCents / 100).toFixed(2),
       balanceSgd: (balanceCents / 100).toFixed(2),
@@ -276,6 +279,7 @@ export async function fulfillVoucherPurchase(
       // Accrued so far (0 if no spend yet)
       sellerCommissionSgd: ((after?.sellerCommissionCents ?? 0) / 100).toFixed(2),
       stripeSessionId: voucher.stripeSessionId,
+      productKind,
     },
     split: {
       faceCents: split.faceCents,
@@ -294,6 +298,7 @@ export async function fulfillVoucherPurchase(
 
 function formatExisting(existing: {
   id: string;
+  shortCode?: string | null;
   amountCents: number;
   paidCents: number;
   balanceCents: number;
@@ -303,13 +308,17 @@ function formatExisting(existing: {
   stripeSessionId: string | null;
   prizePoolContribution: number;
   platformFeeCents: number;
+  productKind?: string | null;
   draws?: { prizeName: string | null; prizeIcon: string | null; valueCents: number | null }[];
 }): FulfillVoucherResult {
   const draw = existing.draws?.[0];
+  const productKind =
+    existing.productKind === "self_use" ? "self_use" : "distribution";
   return {
     alreadyFulfilled: true,
     voucher: {
       id: existing.id,
+      shortCode: existing.shortCode ?? null,
       amountSgd: (existing.amountCents / 100).toFixed(2),
       paidSgd: (existing.paidCents / 100).toFixed(2),
       balanceSgd: (existing.balanceCents / 100).toFixed(2),
@@ -317,6 +326,7 @@ function formatExisting(existing: {
       drawWeight: existing.drawWeight,
       sellerCommissionSgd: (existing.sellerCommissionCents / 100).toFixed(2),
       stripeSessionId: existing.stripeSessionId,
+      productKind,
     },
     split: {
       faceCents: existing.amountCents,

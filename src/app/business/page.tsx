@@ -59,6 +59,7 @@ export default async function BusinessDashboard() {
     salesToday,
     redeemsToday,
     recentVoucherUsages,
+    recentSales,
   ] = await Promise.all([
     prisma.membership.count({ where: { businessId: user.id } }),
     prisma.campaign.count({
@@ -72,6 +73,8 @@ export default async function BusinessDashboard() {
       where: {
         campaign: { businessId: user.id },
         createdAt: { gte: today, lt: tomorrow },
+        // 母券/原购：有实付或明确支付方式（排除纯拆分子券时尽量用 paid>0）
+        paidCents: { gt: 0 },
       },
     }),
     storeIds.length
@@ -86,13 +89,37 @@ export default async function BusinessDashboard() {
       ? prisma.voucherUsage.findMany({
           where: { storeId: { in: storeIds } },
           orderBy: { createdAt: "desc" },
-          take: 5,
+          take: 8,
           include: {
             store: { select: { name: true } },
-            voucher: { select: { campaign: { select: { name: true } } } },
+            voucher: {
+              select: {
+                amountCents: true,
+                productKind: true,
+                campaign: { select: { name: true, productKind: true } },
+              },
+            },
           },
         })
       : Promise.resolve([]),
+    prisma.voucher.findMany({
+      where: {
+        campaign: { businessId: user.id },
+        paidCents: { gt: 0 },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      select: {
+        id: true,
+        amountCents: true,
+        paidCents: true,
+        productKind: true,
+        paymentMethod: true,
+        shortCode: true,
+        createdAt: true,
+        campaign: { select: { name: true, productKind: true } },
+      },
+    }),
   ]);
 
   const balanceSgd = ((user.tokenAccount?.balance ?? 0) / 100).toFixed(2);
@@ -325,29 +352,66 @@ export default async function BusinessDashboard() {
         </div>
 
         <h3 className="text-sm font-semibold text-slate-900 mt-5 mb-2">
-          {t("business.overview.recent", lang)}
-          <span className="ml-1 font-normal text-slate-400 text-xs">
-            · {lang === "en" ? "all stores" : "全部门店"}
-          </span>
+          {t("business.overview.recentSales", lang)}
         </h3>
-        {recentVoucherUsages.length > 0 ? (
-          recentVoucherUsages.map((u) => (
+        {recentSales.length > 0 ? (
+          recentSales.map((s) => (
             <div
-              key={u.id}
+              key={s.id}
               className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg text-sm mb-1"
             >
               <span className="text-slate-600 truncate pr-2">
-                {t("business.overview.usageRow", lang, {
-                  campaign: u.voucher.campaign?.name || "—",
-                  store: u.store?.name || "—",
-                  amount: (u.storeIncome / 100).toFixed(2),
+                {t("business.overview.saleRow", lang, {
+                  campaign: s.campaign?.name || "—",
+                  paid: (s.paidCents / 100).toFixed(2),
+                  face: (s.amountCents / 100).toFixed(2),
                 })}
+                {s.productKind === "self_use" ||
+                s.campaign?.productKind === "self_use" ? (
+                  <span className="ml-1 text-[10px] text-slate-500">
+                    {lang === "en" ? "self" : "自用"}
+                  </span>
+                ) : null}
               </span>
               <span className="text-xs text-slate-400 shrink-0">
-                {timeAgo(u.createdAt)}
+                {timeAgo(s.createdAt)}
               </span>
             </div>
           ))
+        ) : (
+          <div className="text-center py-4 text-slate-400 text-sm mb-2">
+            {lang === "en" ? "No sales yet" : "暂无售出"}
+          </div>
+        )}
+
+        <h3 className="text-sm font-semibold text-slate-900 mt-4 mb-2">
+          {t("business.overview.recent", lang)}
+          <span className="ml-1 font-normal text-slate-400 text-xs">
+            · {lang === "en" ? "redemptions · all stores" : "核销 · 全部门店"}
+          </span>
+        </h3>
+        {recentVoucherUsages.length > 0 ? (
+          recentVoucherUsages.map((u) => {
+            // 自用券 storeIncome=0，展示核销面值
+            const redeemFace = (u.amountCents / 100).toFixed(2);
+            return (
+              <div
+                key={u.id}
+                className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg text-sm mb-1"
+              >
+                <span className="text-slate-600 truncate pr-2">
+                  {t("business.overview.redeemRow", lang, {
+                    campaign: u.voucher.campaign?.name || "—",
+                    store: u.store?.name || "—",
+                    amount: redeemFace,
+                  })}
+                </span>
+                <span className="text-xs text-slate-400 shrink-0">
+                  {timeAgo(u.createdAt)}
+                </span>
+              </div>
+            );
+          })
         ) : (
           <div className="text-center py-8 text-slate-400">
             <p className="text-3xl mb-2">📭</p>

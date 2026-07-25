@@ -53,6 +53,11 @@ export async function GET(request: NextRequest) {
     sellerCommissionPercent: snapshot?.sellerCommissionPercent ?? 5,
   };
 
+  const productKind =
+    (campaign as { productKind?: string }).productKind === "self_use"
+      ? "self_use"
+      : "distribution";
+
   if (!isDraw) {
     return NextResponse.json({
       data: {
@@ -62,6 +67,7 @@ export async function GET(request: NextRequest) {
           name: campaign.name,
           status: campaign.status,
           type: campaign.type,
+          productKind,
           voucherCount: campaign._count.vouchers,
           isDraw: false,
         },
@@ -145,6 +151,7 @@ export async function GET(request: NextRequest) {
         name: campaign.name,
         status: campaign.status,
         type: campaign.type,
+        productKind,
         voucherCount: campaign._count.vouchers,
         isDraw: true,
       },

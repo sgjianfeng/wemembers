@@ -157,6 +157,9 @@ export async function POST(request: NextRequest) {
                 tier,
                 status: "active",
                 shortCode,
+                // 继承母券资金模式与支付方式（自用/分发）
+                productKind: parent.productKind || "distribution",
+                paymentMethod: parent.paymentMethod,
               },
             });
           } catch {

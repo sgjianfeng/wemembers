@@ -50,6 +50,33 @@ export default async function BalancePage() {
     0,
   );
 
+  // ── 购券记录（含已用尽，排除拆分产生的子券：用 paid>0 且有支付痕迹近似） ──
+  const purchases = await prisma.voucher.findMany({
+    where: {
+      customerId: session.userId,
+      OR: [
+        { paymentMethod: { in: ["stripe", "cash"] } },
+        { stripeSessionId: { not: null } },
+        { paidCents: { gt: 0 } },
+      ],
+    },
+    select: {
+      id: true,
+      shortCode: true,
+      amountCents: true,
+      paidCents: true,
+      balanceCents: true,
+      status: true,
+      productKind: true,
+      paymentMethod: true,
+      createdAt: true,
+      campaign: { select: { name: true, productKind: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+  });
+  // 拆分母券 used=0 status=exhausted 仍会显示；子券 paid 按比例分摊也会进列表 —— 可接受
+
   // ── 消费记录（按时间倒序） ──
   const usages = await prisma.voucherUsage.findMany({
     where: { voucher: { customerId: session.userId } },
@@ -59,6 +86,7 @@ export default async function BalancePage() {
           balanceCents: true,
           amountCents: true,
           id: true,
+          campaign: { select: { name: true } },
         },
       },
       store: { select: { name: true } },
@@ -188,12 +216,14 @@ export default async function BalancePage() {
                     voucherId={v.id}
                     balanceCents={v.balanceCents}
                   />
-                  <WithdrawButton
-                    voucherId={v.id}
-                    balanceSgd={formatMoney(v.balanceCents)}
-                    lang={lang}
-                    mode={isDraw ? "draw" : "voucher"}
-                  />
+                  {!isSelf && (
+                    <WithdrawButton
+                      voucherId={v.id}
+                      balanceSgd={formatMoney(v.balanceCents)}
+                      lang={lang}
+                      mode={isDraw ? "draw" : "voucher"}
+                    />
+                  )}
                 </CardContent>
               </Card>
               );
@@ -202,7 +232,65 @@ export default async function BalancePage() {
         </div>
       )}
 
-      {/* 消费记录 */}
+      {/* 购券记录 */}
+      <div className="px-4 mt-6">
+        <h2 className="text-sm font-semibold text-slate-900 mb-3">
+          {t("balance.purchases", lang)}
+        </h2>
+        <div className="space-y-2">
+          {purchases.length > 0 ? (
+            purchases.map((p) => {
+              const isSelf =
+                p.productKind === "self_use" ||
+                p.campaign?.productKind === "self_use";
+              return (
+                <Card key={p.id}>
+                  <CardContent className="p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          {isSelf && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                              {lang === "en" ? "Self-use" : "自用券"}
+                            </span>
+                          )}
+                          <p className="text-sm font-medium text-slate-900 truncate">
+                            {p.campaign?.name || "—"}
+                          </p>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {timeAgo(p.createdAt)}
+                          {p.shortCode ? ` · ${p.shortCode}` : ""}
+                          {p.status !== "active" ? ` · ${p.status}` : ""}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-semibold text-slate-900">
+                          {t("balance.purchaseRow", lang, {
+                            paid: formatMoney(p.paidCents),
+                            face: formatMoney(p.amountCents),
+                          })}
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          {lang === "en" ? "Left" : "剩余"} S$
+                          {formatMoney(p.balanceCents)}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          ) : (
+            <div className="text-center py-8 text-slate-400">
+              <p className="text-3xl mb-2">🧾</p>
+              <p className="text-sm">{t("balance.noPurchases", lang)}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 核销 / 消费记录 */}
       <div className="px-4 mt-6">
         <h2 className="text-sm font-semibold text-slate-900 mb-3">
           {t("voucher.balance.usages", lang)}
@@ -225,6 +313,9 @@ export default async function BalancePage() {
                               })}
                           </p>
                           <p className="text-xs text-slate-400 mt-0.5">
+                            {u.voucher?.campaign?.name
+                              ? `${u.voucher.campaign.name} · `
+                              : ""}
                             {timeAgo(u.createdAt)}
                           </p>
                         </div>
@@ -242,8 +333,7 @@ export default async function BalancePage() {
                   </CardContent>
                 </Card>
               ))
-            : /* 空状态 */
-              (
+            : (
                 <div className="text-center py-12 text-slate-400">
                   <p className="text-4xl mb-2">💳</p>
                   <p className="text-sm">

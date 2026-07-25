@@ -36,6 +36,38 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
     orderBy: { createdAt: "desc" },
   });
 
+  const now = new Date();
+  const voucherCampaigns = await prisma.campaign.findMany({
+    where: {
+      businessId: business.id,
+      status: "active",
+      type: { in: ["voucher_sale", "lucky_draw_v2"] },
+      slug: { not: null },
+      startDate: { lte: now },
+      endDate: { gte: now },
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      type: true,
+      productKind: true,
+      description: true,
+      rulesSnapshot: true,
+    },
+  });
+
+  function parseDiscount(rulesSnapshot: string | null | undefined): number {
+    if (!rulesSnapshot) return 0;
+    try {
+      const o = JSON.parse(rulesSnapshot) as { discountPercent?: number };
+      return Math.max(0, Number(o.discountPercent) || 0);
+    } catch {
+      return 0;
+    }
+  }
+
   const categoryLabel = lang === "zh"
     ? SERVICE_CATEGORIES.find((c) => c.value === business.businessCategory)?.label
     : business.businessCategory;
@@ -130,6 +162,80 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
                   </Link>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* 企业代金券 / 抽奖（扫码购自用券主入口） */}
+          <div className="flex items-center justify-between px-3 mb-3">
+            <h2 className="text-base font-semibold text-slate-900">
+              {t("shop.vouchersTitle", lang)}
+            </h2>
+            <span className="text-xs text-slate-400">{voucherCampaigns.length}</span>
+          </div>
+
+          {voucherCampaigns.length > 0 ? (
+            <div className="space-y-2 px-3 mb-6">
+              {voucherCampaigns.map((vc) => {
+                const isDraw = vc.type === "lucky_draw_v2";
+                const isSelf = vc.productKind === "self_use";
+                const pct = parseDiscount(vc.rulesSnapshot);
+                const badge = isDraw
+                  ? t("shop.drawBadge", lang)
+                  : isSelf
+                    ? t("shop.selfUseBadge", lang)
+                    : t("shop.distBadge", lang);
+                return (
+                  <Link key={vc.id} href={`/voucher/${vc.slug}`}>
+                    <Card
+                      className={`hover:border-[#1A6EFF]/30 transition-colors border-l-4 ${
+                        isSelf
+                          ? "border-l-slate-500"
+                          : isDraw
+                            ? "border-l-[#FF6B35]"
+                            : "border-l-amber-400"
+                      }`}
+                    >
+                      <CardContent className="p-3 flex items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Badge variant="slate" size="sm">
+                              {badge}
+                            </Badge>
+                            {pct > 0 && !isDraw && (
+                              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                                −{pct}%
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm font-semibold text-slate-900 mt-1 truncate">
+                            {vc.name}
+                          </p>
+                          {vc.description && (
+                            <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">
+                              {vc.description}
+                            </p>
+                          )}
+                          {pct > 0 && !isDraw && (
+                            <p className="text-[11px] text-[#1A6EFF] mt-1 font-medium">
+                              {lang === "en"
+                                ? `e.g. pay ${100 - pct} get 100`
+                                : `例：付 ${100 - pct} 得 100`}
+                            </p>
+                          )}
+                        </div>
+                        <span className="shrink-0 inline-block px-3 py-1.5 bg-[#1A6EFF] text-white text-xs font-medium rounded-full">
+                          {t("shop.buyVoucher", lang)}
+                        </span>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 px-4 mb-4">
+              <p className="text-3xl mb-2">🎟️</p>
+              <p className="text-sm text-slate-400">{t("shop.vouchersEmpty", lang)}</p>
             </div>
           )}
 
