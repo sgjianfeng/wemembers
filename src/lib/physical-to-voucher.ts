@@ -4,11 +4,8 @@
  * - type=draw + campaign self_use lucky_draw_v2 → 独享抽奖
  */
 import type { Prisma } from "@prisma/client";
-import {
-  calculateTierWeight,
-  drawInstantV2,
-  resolveTier,
-} from "@/lib/draw-v2";
+import { calculateTierWeight, resolveTier } from "@/lib/draw-v2";
+import { awardInstantPrizeToVoucher } from "@/lib/instant-prize";
 import { generateShortCodeCandidate } from "@/lib/voucher-short-code";
 
 type Tx = Prisma.TransactionClient;
@@ -210,7 +207,7 @@ export async function materializePhysicalToVoucher(
   const soldStoreId =
     input.soldStoreId || ticket.soldStoreId || ticket.storeId;
 
-  const voucher = await tx.voucher.create({
+  let voucher = await tx.voucher.create({
     data: {
       customerId: input.customerId,
       campaignId: campaignId!,
@@ -244,26 +241,23 @@ export async function materializePhysicalToVoucher(
       where: { id: campaignId! },
       select: { instantPoolCents: true },
     });
-    const instantResult = drawInstantV2(
-      tierResolved,
-      camp?.instantPoolCents || 0
-    );
-    await tx.voucherDraw.create({
-      data: {
-        voucherId: voucher.id,
-        drawType: "instant",
-        won: true,
-        prizeName: instantResult.prize.name,
-        prizeIcon: instantResult.prize.icon,
-        valueCents: instantResult.prize.valueCents,
-        weightAtTime: weight,
-      },
+    const awarded = await awardInstantPrizeToVoucher(tx, {
+      voucherId: voucher.id,
+      campaignId: campaignId!,
+      tier: tierResolved,
+      weightAtTime: weight,
+      instantPoolCents: camp?.instantPoolCents || 0,
+      recomputeWeight: true,
     });
     instantPrize = {
-      name: instantResult.prize.name,
-      icon: instantResult.prize.icon,
-      valueSgd: (instantResult.prize.valueCents / 100).toFixed(2),
+      name: awarded.prize.name,
+      icon: awarded.prize.icon,
+      valueSgd: (awarded.prize.valueCents / 100).toFixed(2),
     };
+    // refresh voucher balance after prize credit
+    voucher = await tx.voucher.findUniqueOrThrow({
+      where: { id: voucher.id },
+    });
     await tx.campaign.update({
       where: { id: campaignId! },
       data: {

@@ -213,7 +213,9 @@ export async function POST(
           : null,
         instantPrize: prize,
         message: isDraw
-          ? "已绑定：独享券已放入余额，可看大奖进度（实体购买）"
+          ? prize
+            ? `已绑定：独享券可花 S$${v ? (v.balanceCents / 100).toFixed(2) : "—"}（含小奖 ${prize.name}）`
+            : "已绑定：独享券已放入余额，可看大奖进度（实体购买）"
           : "已绑定：自用券已放入余额（实体券购买）",
         goBalance: true,
       },

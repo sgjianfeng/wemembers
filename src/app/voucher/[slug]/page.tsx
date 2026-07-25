@@ -484,6 +484,14 @@ function VoucherDrawInner() {
                 <p className="text-2xl font-bold text-emerald-600 mt-0.5">
                   S${result.voucher?.balanceSgd}
                 </p>
+                {result.instantPrize && (
+                  <p className="text-[11px] text-amber-700 mt-1 font-medium">
+                    {result.instantPrize.icon} {result.instantPrize.name}
+                    {lang === "en"
+                      ? " · added to spendable balance"
+                      : " · 已加入可花余额"}
+                  </p>
+                )}
                 {result.voucher?.paidSgd != null && (
                   <p className="text-[11px] text-slate-500 mt-1">
                     {t("voucher.paid")} S${result.voucher.paidSgd}

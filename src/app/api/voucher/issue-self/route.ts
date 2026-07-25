@@ -5,11 +5,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { allocateShortCode } from "@/lib/voucher-short-code";
 import { isSelfUse } from "@/lib/product-kind";
-import {
-  calculateTierWeight,
-  drawInstantV2,
-  resolveTier,
-} from "@/lib/draw-v2";
+import { calculateTierWeight, resolveTier } from "@/lib/draw-v2";
 
 export async function POST(request: NextRequest) {
   try {
@@ -184,6 +180,7 @@ export async function POST(request: NextRequest) {
       valueSgd: string;
     } | null = null;
     let feeNote = "";
+    let balanceAfterCents = faceCents;
 
     try {
       const result = await prisma.$transaction(async (tx) => {
@@ -230,31 +227,29 @@ export async function POST(request: NextRequest) {
         });
 
         let prize: typeof instantPrize = null;
+        let balanceAfter = faceCents;
         if (isDraw && doInstantDraw && tierResolved) {
           const camp = await tx.campaign.findUnique({
             where: { id: campaign.id },
             select: { instantPoolCents: true },
           });
-          const instantResult = drawInstantV2(
-            tierResolved,
-            camp?.instantPoolCents || 0
+          const { awardInstantPrizeToVoucher } = await import(
+            "@/lib/instant-prize"
           );
-          await tx.voucherDraw.create({
-            data: {
-              voucherId: v.id,
-              drawType: "instant",
-              won: true,
-              prizeName: instantResult.prize.name,
-              prizeIcon: instantResult.prize.icon,
-              valueCents: instantResult.prize.valueCents,
-              weightAtTime: weight,
-            },
+          const awarded = await awardInstantPrizeToVoucher(tx, {
+            voucherId: v.id,
+            campaignId: campaign.id,
+            tier: tierResolved,
+            weightAtTime: weight,
+            instantPoolCents: camp?.instantPoolCents || 0,
+            recomputeWeight: true,
           });
           prize = {
-            name: instantResult.prize.name,
-            icon: instantResult.prize.icon,
-            valueSgd: (instantResult.prize.valueCents / 100).toFixed(2),
+            name: awarded.prize.name,
+            icon: awarded.prize.icon,
+            valueSgd: (awarded.prize.valueCents / 100).toFixed(2),
           };
+          balanceAfter = awarded.balanceAfterCents;
           await tx.campaign.update({
             where: { id: campaign.id },
             data: {
@@ -268,10 +263,11 @@ export async function POST(request: NextRequest) {
             data: { totalClaims: { increment: 1 } },
           });
         }
-        return { voucher: v, prize };
+        return { voucher: v, prize, balanceAfter };
       });
       voucher = result.voucher;
       instantPrize = result.prize;
+      balanceAfterCents = result.balanceAfter;
     } catch (e) {
       if (e instanceof Error && e.message === "INSUFFICIENT_TOKEN") {
         return NextResponse.json(
@@ -295,7 +291,7 @@ export async function POST(request: NextRequest) {
       data: {
         id: voucher.id,
         shortCode: voucher.shortCode,
-        balanceSgd: (faceCents / 100).toFixed(2),
+        balanceSgd: (balanceAfterCents / 100).toFixed(2),
         faceSgd: (faceCents / 100).toFixed(2),
         paidSgd: (paidCents / 100).toFixed(2),
         discountPercent: discountPct,
@@ -308,7 +304,9 @@ export async function POST(request: NextRequest) {
         instantPrize,
         feeNote: feeNote || undefined,
         note: isDraw
-          ? "独享券已发出：顾客款在店；15% 已从企业账户计提（小奖+服务费+大奖池在平台）；核销不二次入账"
+          ? instantPrize
+            ? `独享已发出；小奖 ${instantPrize.name} 已加入可花余额（现 S$${(balanceAfterCents / 100).toFixed(2)}）`
+            : "独享券已发出：顾客款在店；15% 已从企业账户计提"
           : "自用券已发出：实收已在店，可花面值进余额；核销仅记履约",
       },
     });

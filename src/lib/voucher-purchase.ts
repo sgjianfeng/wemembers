@@ -2,7 +2,7 @@
  * Shared voucher purchase fulfillment (post-payment or direct test purchase).
  */
 import { prisma } from "@/lib/db";
-import { drawInstantV2, resolveTier, calculateTierWeight } from "@/lib/draw-v2";
+import { resolveTier, calculateTierWeight } from "@/lib/draw-v2";
 import {
   computePurchaseSplit,
   isDrawSnapshot,
@@ -153,7 +153,7 @@ export async function fulfillVoucherPurchase(
   if (!isDraw && spendNowCents > creditCents) {
     throw new VoucherPurchaseError("本次消费不能超过可花余额");
   }
-  const balanceCents = creditCents - spendNowCents;
+  let balanceCents = creditCents - spendNowCents;
 
   const weight = isDraw
     ? calculateTierWeight(faceCents, tier.tier, balanceCents, 0, spendNowCents)
@@ -264,31 +264,28 @@ export async function fulfillVoucherPurchase(
   let instantPrize: FulfillVoucherResult["instantPrize"] = null;
 
   if (isDraw) {
-    // 重读池（独享已注入 3%）
+    // 重读池（独享已注入 3%）→ 抽小奖并加进可花余额（直观模式）
     const campPool = await prisma.campaign.findUnique({
       where: { id: campaign.id },
       select: { instantPoolCents: true },
     });
-    const instantResult = drawInstantV2(
+    const { awardInstantPrizeToVoucher } = await import("@/lib/instant-prize");
+    const awarded = await awardInstantPrizeToVoucher(prisma, {
+      voucherId: voucher.id,
+      campaignId: campaign.id,
       tier,
-      campPool?.instantPoolCents || campaign.instantPoolCents || 0
-    );
-    await prisma.voucherDraw.create({
-      data: {
-        voucherId: voucher.id,
-        drawType: "instant",
-        won: true,
-        prizeName: instantResult.prize.name,
-        prizeIcon: instantResult.prize.icon,
-        valueCents: instantResult.prize.valueCents,
-        weightAtTime: weight,
-      },
+      weightAtTime: weight,
+      instantPoolCents:
+        campPool?.instantPoolCents || campaign.instantPoolCents || 0,
+      recomputeWeight: true,
     });
     instantPrize = {
-      name: instantResult.prize.name,
-      icon: instantResult.prize.icon,
-      valueSgd: (instantResult.prize.valueCents / 100).toFixed(2),
+      name: awarded.prize.name,
+      icon: awarded.prize.icon,
+      valueSgd: (awarded.prize.valueCents / 100).toFixed(2),
     };
+    // 返回余额含小奖
+    balanceCents = awarded.balanceAfterCents;
 
     await prisma.campaign.update({
       where: { id: campaign.id },
