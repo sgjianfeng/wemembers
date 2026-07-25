@@ -65,9 +65,40 @@ fi
 
 ln -sfn "${APP}/.env" "${RELEASE_DIR}/.env"
 
+# Schema push (e.g. new columns) — load real DATABASE_URL from APP/.env
+echo "  prisma db push..."
+cd "${RELEASE_DIR}"
+set -a
+# shellcheck disable=SC1091
+. "${APP}/.env"
+set +a
+if [ -x node_modules/.bin/prisma ]; then
+  ./node_modules/.bin/prisma db push --accept-data-loss --skip-generate || true
+elif command -v npx >/dev/null 2>&1; then
+  npx prisma db push --accept-data-loss --skip-generate || true
+fi
+
 echo "  prisma self-check..."
 cd "${RELEASE_DIR}"
 node <<'NODE'
+const fs = require("fs");
+const envPath = "/var/www/wemembers/.env";
+if (fs.existsSync(envPath)) {
+  for (const line of fs.readFileSync(envPath, "utf8").split("\n")) {
+    const t = line.trim();
+    if (!t || t.startsWith("#") || !t.includes("=")) continue;
+    const i = t.indexOf("=");
+    const k = t.slice(0, i);
+    let v = t.slice(i + 1).trim();
+    if (
+      (v.startsWith('"') && v.endsWith('"')) ||
+      (v.startsWith("'") && v.endsWith("'"))
+    ) {
+      v = v.slice(1, -1);
+    }
+    process.env[k] = v;
+  }
+}
 const { PrismaClient } = require("@prisma/client");
 const p = new PrismaClient();
 p.user
