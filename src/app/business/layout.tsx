@@ -36,8 +36,9 @@ export default async function BusinessLayout({
 
   /**
    * 底栏：主路径 4 个 + 「更多」
-   * 主：概览 / 核销 / 门店 / 活动（日常最高频）
-   * 更多：会员、券、抽奖、实体券、票据、合作、账户、设置
+   * 主：概览 / 核销 / 活动 / 功能仓（日常运营 + 扩展入口）
+   * 更多：门店、会员、营销券、账户、经营看板、设置
+   * 工具类（资料仓/实体券/现金发券/合作）收进功能仓，抽奖并入活动
    */
   const businessPrimary = [
     {
@@ -52,18 +53,23 @@ export default async function BusinessLayout({
       href: "/business/scan",
     },
     {
-      icon: "🏪",
-      label: t("business.tabs.stores", lang),
-      href: "/business/stores",
-    },
-    {
       icon: "📅",
       label: t("business.tabs.campaigns", lang),
       href: "/business/campaigns",
     },
+    {
+      icon: "🧰",
+      label: t("business.tabs.hub", lang),
+      href: "/business/hub",
+    },
   ];
 
   const businessMore = [
+    {
+      icon: "🏪",
+      label: t("business.tabs.stores", lang),
+      href: "/business/stores",
+    },
     {
       icon: "👥",
       label: t("business.tabs.members", lang),
@@ -75,33 +81,18 @@ export default async function BusinessLayout({
       href: "/business/coupons",
     },
     {
-      icon: "🎰",
-      label: t("business.tabs.luckyDraw", lang),
-      href: "/business/lucky-draw",
-    },
-    {
-      icon: "🖨️",
-      label: lang === "en" ? "Print tickets" : "实体券",
-      href: "/business/physical",
-    },
-    {
-      icon: "🧾",
-      label: t("business.tabs.receipt", lang),
-      href: "/business/receipt",
-    },
-    {
-      icon: "🤝",
-      label: t("business.tabs.partners", lang),
-      href: "/business/partners",
-    },
-    {
       icon: "💰",
-      label: lang === "en" ? "Wallet" : "账户",
+      label: t("business.tabs.wallet", lang),
       href: "/business/tokens",
     },
     {
+      icon: "📈",
+      label: t("business.overview.earnings", lang),
+      href: "/business/earnings",
+    },
+    {
       icon: "⚙️",
-      label: lang === "en" ? "Settings" : "设置",
+      label: t("business.tabs.settings", lang),
       href: "/business/settings",
     },
   ];

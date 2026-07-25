@@ -278,19 +278,13 @@ export default async function BusinessDashboard() {
               label: lang === "en" ? "Stores" : "门店管理",
               desc:
                 lang === "en"
-                  ? "Add outlets & staff"
-                  : "添加门店 · 店员",
+                  ? "Outlets · staff · QR"
+                  : "门店 · 店员 · 二维码",
               href: "/business/stores",
             },
             {
-              icon: "🎫",
-              label: t("business.overview.issueCoupon", lang),
-              desc: t("business.overview.issueCouponDesc", lang),
-              href: "/business/coupons/new",
-            },
-            {
-              icon: "🎰",
-              label: lang === "en" ? "Campaigns" : "活动 / 抽奖",
+              icon: "📅",
+              label: lang === "en" ? "Campaigns" : "活动",
               desc:
                 lang === "en"
                   ? `${activeCampaignCount} active`
@@ -298,43 +292,16 @@ export default async function BusinessDashboard() {
               href: "/business/campaigns",
             },
             {
+              icon: "🧰",
+              label: t("business.tabs.hub", lang),
+              desc: t("hub.quickDesc", lang),
+              href: "/business/hub",
+            },
+            {
               icon: "💰",
               label: t("business.overview.topup", lang),
               desc: t("business.overview.topupDesc", lang),
               href: "/business/tokens",
-            },
-            {
-              icon: "📷",
-              label: t("business.overview.scan", lang),
-              desc:
-                lang === "en"
-                  ? "Pick a store to redeem"
-                  : "核销时选择门店",
-              href: "/business/scan",
-            },
-            {
-              icon: "💵",
-              label: lang === "en" ? "Cash self-use" : "现金发自用券",
-              desc:
-                lang === "en"
-                  ? "Paid at counter · group stores"
-                  : "柜台收款发券 · 集团可核",
-              href: "/business/issue-self",
-            },
-            {
-              icon: "🖨️",
-              label: lang === "en" ? "Physical tickets" : "实体券印刷",
-              desc:
-                lang === "en"
-                  ? "Print store-only codes"
-                  : "本店代金/抽奖 · 扫码绑定",
-              href: "/business/physical",
-            },
-            {
-              icon: "⚙️",
-              label: t("business.overview.settings", lang),
-              desc: t("business.overview.settingsDesc", lang),
-              href: "/business/settings",
             },
           ].map((a) => (
             <Link key={a.href} href={a.href}>
