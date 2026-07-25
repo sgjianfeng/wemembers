@@ -748,7 +748,7 @@ model Voucher {
   status                String   @default("active") // active / exhausted / expired / withdrawn
   // 冗余活动类型，核销时免 join；与 Campaign.productKind 一致
   productKind           String   @default("distribution") // self_use | distribution
-  // cash | stripe | other — 自用券现金发券记 cash
+  // cash | stripe | physical | free — physical=实体纸售出/绑定
   paymentMethod         String?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -758,11 +758,14 @@ model Voucher {
   store         Store?   @relation(fields: [storeId], references: [id])
   usages        VoucherUsage[]
   draws         VoucherDraw[]
+  /// 实体纸唯一关联（自用券打印版）
+  physicalTicket PhysicalTicket?
 
   @@index([customerId, status])
   @@index([campaignId, createdAt])
   @@index([sellerId])
   @@index([productKind, status])
+  @@index([paymentMethod, createdAt])
 }
 
 model VoucherUsage {
@@ -871,15 +874,16 @@ model ReceiptItem {                        // 明细行（采购单/小票）
 model PhysicalBatch {
   id           String   @id @default(cuid())
   businessId   String
-  storeId      String                 // 仅本店
-  type         String                 // voucher | draw
+  storeId      String                 // 印刷归属店（库存来源）
+  type         String                 // voucher | draw  — voucher=自用券打印版
   title        String                 // 印刷标题
   description  String?
   valueCents   Int      @default(0)   // 代金面值（分）；抽奖可为 0
   quantity     Int                    // 生成张数
   validUntil   DateTime?
-  campaignId   String?                // 抽奖可选关联线上活动
-  couponId     String?                // 代金：模板券（claim 时发 CustomerCoupon）
+  /// 自用/独享活动：实体 = 该活动的打印版（代金必填）
+  campaignId   String?
+  couponId     String?                // legacy 旧路径；新批次可空
   /// 视觉模版：store_classic | store_bold（系统精修，商家不可自由设计）
   visualTemplateId String  @default("store_classic")
   /// 主题色（有限色板 hex），null = 模版默认
@@ -894,6 +898,7 @@ model PhysicalBatch {
 
   @@index([businessId, createdAt])
   @@index([storeId])
+  @@index([campaignId])
 }
 
 model PhysicalTicket {
@@ -912,8 +917,10 @@ model PhysicalTicket {
   soldById         String?                // 售出操作员
   soldStoreId      String?                // 售出门店
   paidCents        Int      @default(0)   // 实收（分）
-  paymentMethod    String?                // cash | free | other
+  paymentMethod    String?                // cash | free | physical
   contactPhone     String?                // 售出时可选手机
+  /// 绑定后对应线上自用 Voucher（与 CustomerCoupon 二选一；新路径用 voucher）
+  voucherId        String?  @unique
   redeemedAt       DateTime?
   redeemedById     String?                // 核销店员/企业 userId
   redeemedStoreId  String?                // 实际核销门店（集团互核时与售店可不同）
@@ -925,6 +932,7 @@ model PhysicalTicket {
   soldStore        Store?        @relation("PhysicalTicketSoldStore", fields: [soldStoreId], references: [id])
   redeemedStore    Store?        @relation("PhysicalTicketRedeemStore", fields: [redeemedStoreId], references: [id])
   customer         User?         @relation("PhysicalTicketCustomer", fields: [customerId], references: [id])
+  voucher          Voucher?      @relation(fields: [voucherId], references: [id])
 
   @@index([batchId])
   @@index([storeId, status])

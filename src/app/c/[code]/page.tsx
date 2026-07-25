@@ -126,7 +126,7 @@ export default function PhysicalClaimPage() {
             </p>
           )}
           <p className="text-xs text-center text-slate-500">
-            同品牌门店可核 · 一次用完
+            自用券打印版 · 同品牌可核 · 绑后进余额
           </p>
           <p className="text-[11px] text-center font-mono text-slate-400 break-all">
             {data.code}

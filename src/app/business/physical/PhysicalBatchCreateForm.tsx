@@ -129,7 +129,9 @@ export function PhysicalBatchCreateForm({
 
         <div>
           <label className="block text-sm font-medium mb-1.5">
-            {lang === "en" ? "Store (required)" : "门店（必选 · 仅本店可用）"}
+            {lang === "en"
+              ? "Print / stock store"
+              : "印刷/出库门店（集团仍可核）"}
           </label>
           <select
             value={storeId}
@@ -151,8 +153,14 @@ export function PhysicalBatchCreateForm({
           <div className="grid grid-cols-2 gap-2">
             {(
               [
-                { id: "voucher" as const, label: lang === "en" ? "Cash voucher" : "代金券" },
-                { id: "draw" as const, label: lang === "en" ? "Draw ticket" : "抽奖券" },
+                {
+                  id: "voucher" as const,
+                  label: lang === "en" ? "Self-use (print)" : "自用券（印刷）",
+                },
+                {
+                  id: "draw" as const,
+                  label: lang === "en" ? "Draw ticket" : "抽奖券",
+                },
               ] as const
             ).map((t) => (
               <button

@@ -166,6 +166,19 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // 实体打印版：余额用尽时同步纸码 redeemed
+      if (newBalance <= 0) {
+        await prisma.physicalTicket.updateMany({
+          where: { voucherId: voucher.id, status: { not: "redeemed" } },
+          data: {
+            status: "redeemed",
+            redeemedAt: new Date(),
+            redeemedById: session.userId,
+            redeemedStoreId: redeemerStore.id,
+          },
+        });
+      }
+
       return NextResponse.json({
         data: {
           productKind: "self_use",

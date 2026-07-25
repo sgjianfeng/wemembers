@@ -5,12 +5,12 @@ import {
   normalizePhoneLocal,
   normalizePhysicalCode,
 } from "@/lib/physical-tickets";
+import { materializePhysicalToVoucher } from "@/lib/physical-to-voucher";
 import { formatMoney } from "@/lib/utils";
 
 /**
  * POST /api/business/physical/sell
- * 现金/店收售出实体券：printed → sold（可选绑手机/已有顾客账号）
- * Body: { code, storeId?, paidSgd? | paidCents?, paymentMethod?, customerPhone?, bindIfRegistered? }
+ * 实体自用券现金售出：printed → sold；可选绑顾客 → Voucher(self_use, physical)
  */
 export async function POST(request: NextRequest) {
   const session = await getSession();
@@ -25,10 +25,6 @@ export async function POST(request: NextRequest) {
     );
     const bodyStoreId =
       typeof body.storeId === "string" ? body.storeId.trim() : "";
-    const paymentMethod =
-      typeof body.paymentMethod === "string" && body.paymentMethod
-        ? body.paymentMethod
-        : "cash";
     const phoneRaw =
       typeof body.customerPhone === "string" ? body.customerPhone : "";
     const phone = phoneRaw ? normalizePhoneLocal(phoneRaw) : "";
@@ -78,8 +74,7 @@ export async function POST(request: NextRequest) {
     } else if (body.paidSgd != null && body.paidSgd !== "") {
       paidCents = Math.round(Number(body.paidSgd) * 100);
     } else {
-      // 默认实收 = 面值（全价现金）；0 表示赠送出库
-      paidCents = -1; // fill from face below
+      paidCents = -1;
     }
     if (!Number.isFinite(paidCents) || (paidCents < 0 && paidCents !== -1)) {
       return NextResponse.json({ error: "实收金额无效" }, { status: 400 });
@@ -90,7 +85,7 @@ export async function POST(request: NextRequest) {
         where: { code },
         include: {
           batch: true,
-          store: { select: { name: true } },
+          soldStore: { select: { name: true } },
         },
       });
 
@@ -99,6 +94,12 @@ export async function POST(request: NextRequest) {
       }
       if (ticket.batch.status === "void") {
         return { error: "该批次已作废", status: 400 as const };
+      }
+      if (ticket.batch.type !== "voucher") {
+        return {
+          error: "抽奖实体券请引导顾客扫码绑定，不在此现金售出",
+          status: 400 as const,
+        };
       }
       if (ticket.status === "redeemed") {
         return { error: "该券已核销", status: 400 as const };
@@ -127,81 +128,61 @@ export async function POST(request: NextRequest) {
       if (finalPaid < 0) {
         return { error: "实收金额无效", status: 400 as const };
       }
-      // 代金允许折扣实收 ≤ 面值；抽奖面值可能为 0
       if (faceCents > 0 && finalPaid > faceCents) {
         return { error: "实收不能大于面值", status: 400 as const };
       }
 
-      let customerId: string | null = null;
-      let customerCouponId: string | null = null;
-      let bound = false;
-      let nextStatus: "sold" | "claimed" = "sold";
+      const method = finalPaid === 0 ? "free" : "physical";
 
-      if (phone && bindIfRegistered && ticket.batch.type === "voucher") {
-        const customer =
-          (await tx.user.findUnique({ where: { phone } })) ||
-          (await tx.user.findUnique({ where: { phone: `+65${phone}` } }));
-        if (customer && customer.role === "customer") {
-          if (!ticket.batch.couponId) {
-            return { error: "批次配置异常（无模板券）", status: 500 as const };
-          }
-          const coupon = await tx.coupon.findUnique({
-            where: { id: ticket.batch.couponId },
-          });
-          if (!coupon || coupon.status !== "published") {
-            return { error: "关联优惠券不可用", status: 400 as const };
-          }
-          const claim = await tx.customerCoupon.create({
-            data: {
-              customerId: customer.id,
-              couponId: coupon.id,
-              status: "available",
-              qrCode: code,
-              pointsSpent: 0,
-            },
-          });
-          await tx.coupon.update({
-            where: { id: coupon.id },
-            data: {
-              claimedCount: { increment: 1 },
-              remainingQuantity:
-                coupon.remainingQuantity != null
-                  ? Math.max(0, coupon.remainingQuantity - 1)
-                  : null,
-            },
-          });
-          customerId = customer.id;
-          customerCouponId = claim.id;
-          bound = true;
-          nextStatus = "claimed";
-        }
-      }
-
-      const method =
-        finalPaid === 0 && paymentMethod === "cash" ? "free" : paymentMethod;
-
-      const updated = await tx.physicalTicket.update({
+      // 先记售出
+      let updated = await tx.physicalTicket.update({
         where: { id: ticket.id },
         data: {
-          status: nextStatus,
+          status: "sold",
           soldAt: new Date(),
           soldById: session.userId,
           soldStoreId: actingStoreId,
           paidCents: finalPaid,
           paymentMethod: method,
           contactPhone: phone || null,
-          ...(bound
-            ? {
-                customerId,
-                customerCouponId,
-                claimedAt: new Date(),
-              }
-            : {}),
         },
         include: {
           soldStore: { select: { id: true, name: true } },
         },
       });
+
+      let bound = false;
+      let voucherShort: string | null = null;
+
+      if (phone && bindIfRegistered) {
+        const customer =
+          (await tx.user.findUnique({ where: { phone } })) ||
+          (await tx.user.findUnique({ where: { phone: `+65${phone}` } }));
+        if (customer && customer.role === "customer") {
+          try {
+            const mat = await materializePhysicalToVoucher(tx, {
+              ticketId: ticket.id,
+              customerId: customer.id,
+              paidCents: finalPaid,
+              soldStoreId: actingStoreId,
+              markSold: true,
+              soldById: session.userId,
+              contactPhone: phone,
+            });
+            bound = true;
+            voucherShort = mat.voucher.shortCode;
+            updated = await tx.physicalTicket.findUniqueOrThrow({
+              where: { id: ticket.id },
+              include: {
+                soldStore: { select: { id: true, name: true } },
+              },
+            });
+          } catch (e) {
+            console.error("materialize on sell:", e);
+            return { error: "绑定顾客失败", status: 500 as const };
+          }
+        }
+      }
 
       return {
         error: null,
@@ -210,6 +191,7 @@ export async function POST(request: NextRequest) {
         title: ticket.batch.title,
         faceCents,
         bound,
+        voucherShort,
       };
     });
 
@@ -232,9 +214,11 @@ export async function POST(request: NextRequest) {
         soldStoreName: t.soldStore?.name || null,
         bound: outcome.bound,
         contactPhone: t.contactPhone,
+        voucherShortCode: outcome.voucherShort,
+        productKind: "self_use",
         message: outcome.bound
-          ? "已售出并绑定顾客账号"
-          : "已登记售出（现金/店收）",
+          ? "已售出 · 已绑定为自用券（实体购买）"
+          : "已登记售出（自用券·实体）· 顾客扫码可绑到账号",
       },
     });
   } catch (error) {

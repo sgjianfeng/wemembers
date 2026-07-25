@@ -5,6 +5,7 @@ import {
   canClaimPhysicalStatus,
   normalizePhysicalCode,
 } from "@/lib/physical-tickets";
+import { materializePhysicalToVoucher } from "@/lib/physical-to-voucher";
 
 // GET /api/physical/[code] — 公开查实体码状态（绑定页）
 export async function GET(
@@ -127,115 +128,106 @@ export async function POST(
         return { error: "该券已过期", status: 400 as const };
       }
 
-      let customerCouponId: string | null = null;
-
+      // ── 代金实体 = 自用券打印版 → 落到 Voucher ──
       if (ticket.batch.type === "voucher") {
-        if (!ticket.batch.couponId) {
-          return { error: "批次配置异常（无模板券）", status: 500 as const };
-        }
-        const coupon = await tx.coupon.findUnique({
-          where: { id: ticket.batch.couponId },
-        });
-        if (!coupon || coupon.status !== "published") {
-          return { error: "关联优惠券不可用", status: 400 as const };
-        }
-
-        const claim = await tx.customerCoupon.create({
-          data: {
+        try {
+          const mat = await materializePhysicalToVoucher(tx, {
+            ticketId: ticket.id,
             customerId: session.userId,
-            couponId: coupon.id,
-            status: "available",
-            qrCode: code,
-            pointsSpent: 0,
-          },
-        });
-        customerCouponId = claim.id;
-
-        await tx.coupon.update({
-          where: { id: coupon.id },
-          data: {
-            claimedCount: { increment: 1 },
-            remainingQuantity:
-              coupon.remainingQuantity != null
-                ? Math.max(0, coupon.remainingQuantity - 1)
-                : null,
-          },
-        });
-      } else if (ticket.batch.type === "draw") {
-        // 绑定后按线上抽奖券处理：必须关联活动
-        const campaignId = ticket.batch.campaignId;
-        if (!campaignId) {
+            paidCents:
+              ticket.paidCents > 0 ? ticket.paidCents : ticket.batch.valueCents,
+            soldStoreId: ticket.soldStoreId || ticket.storeId,
+            markSold: true,
+            soldById: ticket.soldById,
+          });
           return {
-            error: "该抽奖批次未关联活动，请联系门店",
-            status: 400 as const,
+            error: null,
+            status: 200 as const,
+            already: false,
+            ticket: { ...ticket, ...mat.ticket, batch: ticket.batch },
+            voucher: mat.voucher,
           };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "BIND_FAIL";
+          if (msg === "ALREADY_REDEEMED") {
+            return { error: "该券已核销，无法绑定", status: 400 as const };
+          }
+          console.error("physical claim materialize:", e);
+          return { error: "绑定失败", status: 500 as const };
         }
-        const campaign = await tx.campaign.findUnique({
-          where: { id: campaignId },
-          select: { id: true, status: true },
-        });
-        if (!campaign || campaign.status === "ended") {
-          return { error: "关联活动不可用或已结束", status: 400 as const };
-        }
+      }
 
-        let entry = await tx.luckyDrawEntry.findFirst({
-          where: { campaignId, customerId: session.userId },
-        });
-        if (!entry) {
-          entry = await tx.luckyDrawEntry.create({
-            data: {
-              campaignId,
-              customerId: session.userId,
-              storeId: ticket.storeId,
-              source: "manual",
-              ticketCount: 1,
-            },
-          });
-          await tx.campaign.update({
-            where: { id: campaignId },
-            data: {
-              entryCount: { increment: 1 },
-              totalTicketCount: { increment: 1 },
-            },
-          });
-        } else {
-          await tx.luckyDrawEntry.update({
-            where: { id: entry.id },
-            data: { ticketCount: { increment: 1 } },
-          });
-          await tx.campaign.update({
-            where: { id: campaignId },
-            data: { totalTicketCount: { increment: 1 } },
-          });
-        }
-        const ticketNo = `PT-${code.replace(/^PT-/, "")}`;
-        // ticketNo 全局唯一；冲突时加后缀
-        let finalNo = ticketNo;
-        for (let i = 0; i < 5; i++) {
-          const exists = await tx.drawTicket.findUnique({
-            where: { ticketNo: finalNo },
-            select: { id: true },
-          });
-          if (!exists) break;
-          finalNo = `${ticketNo}-${i + 1}`;
-        }
-        await tx.drawTicket.create({
+      // ── 抽奖实体：仍进活动资格（独享/共赢由 campaign.productKind 决定）──
+      const campaignId = ticket.batch.campaignId;
+      if (!campaignId) {
+        return {
+          error: "该抽奖批次未关联活动，请联系门店",
+          status: 400 as const,
+        };
+      }
+      const campaign = await tx.campaign.findUnique({
+        where: { id: campaignId },
+        select: { id: true, status: true },
+      });
+      if (!campaign || campaign.status === "ended") {
+        return { error: "关联活动不可用或已结束", status: 400 as const };
+      }
+
+      let entry = await tx.luckyDrawEntry.findFirst({
+        where: { campaignId, customerId: session.userId },
+      });
+      if (!entry) {
+        entry = await tx.luckyDrawEntry.create({
           data: {
             campaignId,
             customerId: session.userId,
-            entryId: entry.id,
-            ticketNo: finalNo,
-            drawMode: "deferred",
+            storeId: ticket.storeId,
+            source: "manual",
+            ticketCount: 1,
           },
         });
+        await tx.campaign.update({
+          where: { id: campaignId },
+          data: {
+            entryCount: { increment: 1 },
+            totalTicketCount: { increment: 1 },
+          },
+        });
+      } else {
+        await tx.luckyDrawEntry.update({
+          where: { id: entry.id },
+          data: { ticketCount: { increment: 1 } },
+        });
+        await tx.campaign.update({
+          where: { id: campaignId },
+          data: { totalTicketCount: { increment: 1 } },
+        });
       }
+      const ticketNo = `PT-${code.replace(/^PT-/, "")}`;
+      let finalNo = ticketNo;
+      for (let i = 0; i < 5; i++) {
+        const exists = await tx.drawTicket.findUnique({
+          where: { ticketNo: finalNo },
+          select: { id: true },
+        });
+        if (!exists) break;
+        finalNo = `${ticketNo}-${i + 1}`;
+      }
+      await tx.drawTicket.create({
+        data: {
+          campaignId,
+          customerId: session.userId,
+          entryId: entry.id,
+          ticketNo: finalNo,
+          drawMode: "deferred",
+        },
+      });
 
       const updated = await tx.physicalTicket.update({
         where: { id: ticket.id },
         data: {
           status: "claimed",
           customerId: session.userId,
-          customerCouponId,
           claimedAt: new Date(),
         },
       });
@@ -245,6 +237,7 @@ export async function POST(
         status: 200 as const,
         already: false,
         ticket: { ...ticket, ...updated },
+        voucher: null,
       };
     });
 
@@ -255,6 +248,9 @@ export async function POST(
       );
     }
 
+    const isDraw = result.ticket.batch.type === "draw";
+    const v = "voucher" in result ? result.voucher : null;
+
     return NextResponse.json({
       data: {
         code,
@@ -262,15 +258,25 @@ export async function POST(
         already: result.already,
         type: result.ticket.batch.type,
         title: result.ticket.batch.title,
-        message:
-          result.ticket.batch.type === "draw"
-            ? "已绑定：可在活动中查看大奖进度"
-            : "已绑定：券已放入你的钱包",
+        productKind: isDraw ? undefined : "self_use",
+        paymentMethod: v?.paymentMethod || "physical",
+        voucher: v
+          ? {
+              id: v.id,
+              shortCode: v.shortCode,
+              balanceSgd: (v.balanceCents / 100).toFixed(2),
+              amountSgd: (v.amountCents / 100).toFixed(2),
+              paidSgd: (v.paidCents / 100).toFixed(2),
+            }
+          : null,
+        message: isDraw
+          ? "已绑定：可在活动中查看大奖进度"
+          : "已绑定：自用券已放入余额（实体券购买）",
+        goBalance: !isDraw,
       },
     });
   } catch (error) {
     console.error("physical claim error:", error);
-    // unique qrCode conflict
     return NextResponse.json(
       { error: "绑定失败，请稍后重试" },
       { status: 500 }

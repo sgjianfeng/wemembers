@@ -283,7 +283,7 @@ test("3. redeemed unbound cannot claim", async () => {
   expect(j.error).toMatch(/核销|绑定/);
 });
 
-test("4. claim binds → CustomerCoupon (online)", async () => {
+test("4. claim binds → Voucher self_use (physical purchase)", async () => {
   const batchId = (globalThis as { __physBatchVoucher?: string }).__physBatchVoucher!;
   const ticket = await prisma.physicalTicket.findFirst({
     where: { batchId, status: "printed" },
@@ -298,23 +298,27 @@ test("4. claim binds → CustomerCoupon (online)", async () => {
   const j = await res.json();
   expect(res.status, JSON.stringify(j)).toBe(200);
   expect(j.data.status).toBe("claimed");
+  expect(j.data.productKind).toBe("self_use");
+  expect(j.data.voucher?.id).toBeTruthy();
 
   const after = await prisma.physicalTicket.findUnique({
     where: { code: ticket!.code },
   });
   expect(after!.status).toBe("claimed");
   expect(after!.customerId).toBe(custUserId);
-  expect(after!.customerCouponId).toBeTruthy();
+  expect(after!.voucherId).toBeTruthy();
 
-  const cc = await prisma.customerCoupon.findUnique({
-    where: { id: after!.customerCouponId! },
+  const v = await prisma.voucher.findUnique({
+    where: { id: after!.voucherId! },
   });
-  expect(cc!.status).toBe("available");
-  expect(cc!.customerId).toBe(custUserId);
-  expect(cc!.qrCode).toBe(ticket!.code);
+  expect(v!.customerId).toBe(custUserId);
+  expect(v!.productKind).toBe("self_use");
+  expect(v!.paymentMethod).toMatch(/physical|free/);
+  expect(v!.balanceCents).toBe(1000);
 
   (globalThis as { __physClaimedCode?: string }).__physClaimedCode = ticket!.code;
-  (globalThis as { __physClaimedCcId?: string }).__physClaimedCcId = cc!.id;
+  (globalThis as { __physClaimedVoucherId?: string }).__physClaimedVoucherId =
+    v!.id;
 });
 
 test("5. second customer cannot claim already-claimed", async () => {
@@ -360,9 +364,10 @@ test("6. group-store redeem allowed after sell", async () => {
   expect(after!.paidCents).toBe(800);
 });
 
-test("7. claimed: physical redeem syncs online used", async () => {
+test("7. claimed: physical redeem exhausts Voucher self_use", async () => {
   const code = (globalThis as { __physClaimedCode?: string }).__physClaimedCode!;
-  const ccId = (globalThis as { __physClaimedCcId?: string }).__physClaimedCcId!;
+  const vid = (globalThis as { __physClaimedVoucherId?: string })
+    .__physClaimedVoucherId!;
 
   const res = await authApi(
     bizToken,
@@ -373,63 +378,64 @@ test("7. claimed: physical redeem syncs online used", async () => {
   const j = await res.json();
   expect(res.status, JSON.stringify(j)).toBe(200);
   expect(j.data.wasClaimed).toBe(true);
+  expect(j.data.productKind).toBe("self_use");
 
   const ticket = await prisma.physicalTicket.findUnique({ where: { code } });
-  const cc = await prisma.customerCoupon.findUnique({ where: { id: ccId } });
+  const v = await prisma.voucher.findUnique({ where: { id: vid } });
   expect(ticket!.status).toBe("redeemed");
-  expect(cc!.status).toBe("used");
+  expect(v!.status).toBe("exhausted");
+  expect(v!.balanceCents).toBe(0);
 });
 
-test("8. claimed: online redeem syncs physical redeemed", async () => {
+test("8. claimed: voucher API redeem syncs paper redeemed", async () => {
   const batchId = (globalThis as { __physBatchVoucher?: string }).__physBatchVoucher!;
   const ticket = await prisma.physicalTicket.findFirst({
     where: { batchId, status: "printed" },
   });
   expect(ticket).toBeTruthy();
 
-  // claim
   const claimRes = await authApi(
     custToken,
     `/api/physical/${encodeURIComponent(ticket!.code)}`,
     "POST"
   );
   expect(claimRes.status).toBe(200);
+  const afterClaim = await prisma.physicalTicket.findUnique({
+    where: { code: ticket!.code },
+  });
+  expect(afterClaim!.voucherId).toBeTruthy();
 
-  // online coupon redeem path (qrCode = physical code)
-  const redeemRes = await authApi(bizToken, "/api/business/redeem", "POST", {
-    qrCode: ticket!.code,
+  const redeemRes = await authApi(bizToken, "/api/voucher/redeem", "POST", {
+    voucherId: afterClaim!.voucherId,
+    amountCents: 1000,
     storeId: storeAId,
   });
   const rj = await redeemRes.json();
   expect(redeemRes.status, JSON.stringify(rj)).toBe(200);
-  expect(rj.data.success).toBe(true);
 
   const after = await prisma.physicalTicket.findUnique({
     where: { code: ticket!.code },
   });
   expect(after!.status).toBe("redeemed");
+  expect(after!.redeemedStoreId).toBe(storeAId);
 
-  const cc = await prisma.customerCoupon.findUnique({
-    where: { id: after!.customerCouponId! },
-  });
-  expect(cc!.status).toBe("used");
-
-  // group store via online path still works
+  // group store: sell + redeem at B
   const ticket2 = await prisma.physicalTicket.findFirst({
     where: { batchId, status: "printed" },
   });
   if (ticket2) {
-    await authApi(
-      custToken,
-      `/api/physical/${encodeURIComponent(ticket2.code)}`,
-      "POST"
-    );
-    const okB = await authApi(bizToken, "/api/business/redeem", "POST", {
-      qrCode: ticket2.code,
-      storeId: storeBId,
+    await authApi(bizToken, "/api/business/physical/sell", "POST", {
+      code: ticket2.code,
+      storeId: storeAId,
+      paidSgd: 10,
     });
-    const okj = await okB.json();
-    expect(okB.status, JSON.stringify(okj)).toBe(200);
+    const okB = await authApi(
+      bizToken,
+      "/api/business/physical/redeem",
+      "POST",
+      { code: ticket2.code, storeId: storeBId }
+    );
+    expect(okB.status).toBe(200);
     const afterB = await prisma.physicalTicket.findUnique({
       where: { code: ticket2.code },
     });

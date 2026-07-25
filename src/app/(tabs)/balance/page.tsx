@@ -71,11 +71,12 @@ export default async function BalancePage() {
       paymentMethod: true,
       createdAt: true,
       campaign: { select: { name: true, productKind: true } },
+      physicalTicket: { select: { code: true } },
     },
     orderBy: { createdAt: "desc" },
     take: 30,
   });
-  // 拆分母券 used=0 status=exhausted 仍会显示；子券 paid 按比例分摊也会进列表 —— 可接受
+  // 拆分母券 / 子券也可能出现；实体绑定券 paymentMethod=physical
 
   // ── 消费记录（按时间倒序） ──
   const usages = await prisma.voucherUsage.findMany({
@@ -243,15 +244,36 @@ export default async function BalancePage() {
               const isSelf =
                 p.productKind === "self_use" ||
                 p.campaign?.productKind === "self_use";
+              const how =
+                p.paymentMethod === "physical"
+                  ? lang === "en"
+                    ? "Paper purchase"
+                    : "实体券购买"
+                  : p.paymentMethod === "cash"
+                    ? lang === "en"
+                      ? "Counter cash"
+                      : "柜台现金"
+                    : p.paymentMethod === "stripe"
+                      ? "PayNow"
+                      : p.paymentMethod === "free"
+                        ? lang === "en"
+                          ? "Complimentary"
+                          : "赠送"
+                        : "";
               return (
                 <Card key={p.id}>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           {isSelf && (
                             <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
                               {lang === "en" ? "Self-use" : "自用券"}
+                            </span>
+                          )}
+                          {how && (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-800">
+                              {how}
                             </span>
                           )}
                           <p className="text-sm font-medium text-slate-900 truncate">
@@ -261,6 +283,9 @@ export default async function BalancePage() {
                         <p className="text-xs text-slate-400 mt-0.5">
                           {timeAgo(p.createdAt)}
                           {p.shortCode ? ` · ${p.shortCode}` : ""}
+                          {p.physicalTicket?.code
+                            ? ` · ${p.physicalTicket.code}`
+                            : ""}
                           {p.status !== "active" ? ` · ${p.status}` : ""}
                         </p>
                       </div>

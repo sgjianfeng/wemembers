@@ -49,12 +49,12 @@ export default async function PhysicalBatchesPage() {
     <div className="pb-4">
       <div className="px-4 py-3 border-b border-slate-100 sticky top-0 bg-white z-10">
         <h1 className="text-lg font-semibold">
-          {lang === "en" ? "Physical tickets" : "实体券印刷"}
+          {lang === "en" ? "Print self-use vouchers" : "自用券 · 实体印刷"}
         </h1>
         <p className="text-xs text-slate-400 mt-0.5">
           {lang === "en"
-            ? "Print store-only vouchers / draw tickets · customers scan to bind"
-            : "本店印刷代金/抽奖券 · 顾客扫码绑定 · 一次用完"}
+            ? "Pre-print paper = self-use voucher · sell cash · bind = wallet · group redeem"
+            : "预印纸 = 自用券打印版 · 现金售出 · 扫码绑定进余额 · 集团可核"}
         </p>
       </div>
 

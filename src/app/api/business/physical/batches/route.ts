@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { uniquePhysicalCode } from "@/lib/physical-tickets";
+import { ensureSelfUseCampaignForPrint } from "@/lib/physical-to-voucher";
 import {
   isVisualTemplateId,
   resolveThemeHex,
@@ -120,18 +121,25 @@ export async function POST(request: NextRequest) {
 
     if (type === "draw" && !campaignId) {
       return NextResponse.json(
-        { error: "抽奖券须关联线上活动（绑定后进大奖池）" },
+        { error: "抽奖券须关联线上活动（绑定后进奖池）" },
         { status: 400 }
       );
     }
 
+    let resolvedCampaignId = campaignId;
     if (campaignId) {
       const camp = await prisma.campaign.findFirst({
         where: { id: campaignId, businessId: session.userId },
-        select: { id: true },
+        select: { id: true, productKind: true, type: true },
       });
       if (!camp) {
         return NextResponse.json({ error: "活动无效" }, { status: 400 });
+      }
+      if (type === "voucher" && camp.productKind !== "self_use") {
+        return NextResponse.json(
+          { error: "实体代金须关联「自用券」活动（打印版）" },
+          { status: 400 }
+        );
       }
     }
 
@@ -145,32 +153,36 @@ export async function POST(request: NextRequest) {
       validUntil ||
       new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
-    // 代金：创建模板 Coupon，claim 时发 CustomerCoupon
-    let couponId: string | null = null;
+    // 代金实体 = 自用券打印版：挂 self_use campaign（无则自动建）
+    // 不再创建 legacy Coupon 模板
+    const couponId: string | null = null;
     if (type === "voucher") {
-      const coupon = await prisma.coupon.create({
-        data: {
-          businessId: session.userId,
-          title,
-          description:
-            description ||
-            `实体券 · 仅限 ${store.name} · 一次用完`,
-          type: "fixed_amount",
-          valueCents,
-          minSpendCents: 0,
-          pointsRequired: 0,
-          totalQuantity: quantity,
-          remainingQuantity: quantity,
-          validFrom: now,
-          validUntil: until,
-          status: "published",
-          isGiftable: false,
-          perCustomerLimit: 99,
-          storeIds: JSON.stringify([storeId]),
-          allowCollaboration: false,
-        },
-      });
-      couponId = coupon.id;
+      resolvedCampaignId = await prisma.$transaction((tx) =>
+        ensureSelfUseCampaignForPrint(tx, session.userId, {
+          faceSgd: valueCents / 100,
+          name: "自用券（实体/线上）",
+        })
+      );
+      // 若请求指定了活动且属于本企业自用，优先用指定的
+      if (campaignId) {
+        const preferred = await prisma.campaign.findFirst({
+          where: {
+            id: campaignId,
+            businessId: session.userId,
+            productKind: "self_use",
+            type: "voucher_sale",
+          },
+          select: { id: true },
+        });
+        if (preferred) {
+          resolvedCampaignId = preferred.id;
+          await prisma.$transaction((tx) =>
+            ensureSelfUseCampaignForPrint(tx, session.userId, {
+              faceSgd: valueCents / 100,
+            })
+          );
+        }
+      }
     }
 
     const batch = await prisma.physicalBatch.create({
@@ -178,12 +190,20 @@ export async function POST(request: NextRequest) {
         businessId: session.userId,
         storeId,
         type,
-        title,
-        description,
+        title:
+          title ||
+          (type === "voucher"
+            ? `自用券 S$${(valueCents / 100).toFixed(0)}（实体）`
+            : "抽奖实体券"),
+        description:
+          description ||
+          (type === "voucher"
+            ? `自用券打印版 · ${store.name} 出库 · 集团门店可核 · 绑号后进余额`
+            : null),
         valueCents: type === "voucher" ? valueCents : 0,
         quantity,
         validUntil: until,
-        campaignId,
+        campaignId: resolvedCampaignId,
         couponId,
         visualTemplateId,
         themeColor,
