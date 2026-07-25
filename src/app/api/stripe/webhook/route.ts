@@ -24,29 +24,42 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case "account.updated": {
         const account = event.data.object as {
+          id?: string;
           metadata?: { userId?: string };
           charges_enabled?: boolean;
           payouts_enabled?: boolean;
           details_submitted?: boolean;
         };
-        if (account.metadata?.userId) {
-          const chargesEnabled = account.charges_enabled;
-          const payoutsEnabled = account.payouts_enabled;
+        const chargesEnabled = !!account.charges_enabled;
+        const payoutsEnabled = !!account.payouts_enabled;
+        const detailsSubmitted = !!account.details_submitted;
 
+        // Prefer metadata.userId; fall back to stripeAccountId lookup
+        // (older Connect accounts may lack metadata)
+        let userId = account.metadata?.userId || null;
+        if (!userId && account.id) {
+          const row = await prisma.stripeAccount.findFirst({
+            where: { stripeAccountId: account.id },
+            select: { userId: true },
+          });
+          userId = row?.userId || null;
+        }
+
+        if (userId) {
           await prisma.stripeAccount.update({
-            where: { userId: account.metadata.userId },
+            where: { userId },
             data: {
-              chargesEnabled: !!chargesEnabled,
-              payoutsEnabled: !!payoutsEnabled,
-              detailsSubmitted: !!account.details_submitted,
+              chargesEnabled,
+              payoutsEnabled,
+              detailsSubmitted,
             },
           });
 
           if (chargesEnabled) {
             await prisma.tokenAccount.upsert({
-              where: { userId: account.metadata.userId },
+              where: { userId },
               create: {
-                userId: account.metadata.userId,
+                userId,
                 balance: 0,
                 frozenBalance: 0,
                 totalEarned: 0,

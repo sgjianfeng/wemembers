@@ -85,7 +85,11 @@ export async function POST() {
     });
 
     async function createAndSave() {
-      const accountId = await createConnectedAccount(email, businessName);
+      const accountId = await createConnectedAccount(
+        email,
+        businessName,
+        session.userId
+      );
       if (stripeAccount) {
         return prisma.stripeAccount.update({
           where: { userId: session.userId },

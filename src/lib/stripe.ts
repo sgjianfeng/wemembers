@@ -20,7 +20,8 @@ export const MIN_WITHDRAWAL_CENTS = 1000; // 最低提现 S$10
 
 export async function createConnectedAccount(
   email: string,
-  businessName: string
+  businessName: string,
+  userId?: string
 ): Promise<string> {
   const account = await stripe.accounts.create({
     type: "express",
@@ -36,6 +37,9 @@ export async function createConnectedAccount(
         schedule: { interval: "manual" },
       },
     },
+    ...(userId
+      ? { metadata: { userId, platform: "wemembers" } }
+      : {}),
   });
   return account.id;
 }

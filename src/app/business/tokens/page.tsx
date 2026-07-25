@@ -11,6 +11,7 @@ import { TopUpButton } from "./TopUpButton";
 import { WithdrawButton } from "./WithdrawButton";
 import { StripeSetupButton } from "./StripeSetupButton";
 import { releaseMaturedHolds } from "@/lib/tokens";
+import { getAccountStatus } from "@/lib/stripe";
 
 export default async function TokenRechargePage({
   searchParams,
@@ -27,6 +28,27 @@ export default async function TokenRechargePage({
   const c = await cookies();
   const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
 
+  // Always refresh Connect status from Stripe when returning from onboarding
+  // (webhook may lag or miss if metadata was not set on older accounts)
+  const existingStripe = await prisma.stripeAccount.findUnique({
+    where: { userId: session.userId },
+  });
+  if (existingStripe?.stripeAccountId) {
+    try {
+      const status = await getAccountStatus(existingStripe.stripeAccountId);
+      await prisma.stripeAccount.update({
+        where: { userId: session.userId },
+        data: {
+          chargesEnabled: status.chargesEnabled,
+          payoutsEnabled: status.payoutsEnabled,
+          detailsSubmitted: status.detailsSubmitted,
+        },
+      });
+    } catch (e) {
+      console.error("tokens page stripe refresh:", e);
+    }
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
     include: {
@@ -41,7 +63,14 @@ export default async function TokenRechargePage({
   const frozen = user?.tokenAccount?.frozenBalance ?? 0;
   const transactions = user?.tokenAccount?.transactions ?? [];
   const stripeAcct = user?.stripeAccount;
-  const isStripeReady = stripeAcct?.chargesEnabled && stripeAcct?.payoutsEnabled;
+  // Transfer to Connect needs charges_enabled; bank payout may lag (payouts_enabled)
+  const canWithdraw = !!stripeAcct?.chargesEnabled;
+  const isStripeFullyReady =
+    !!stripeAcct?.chargesEnabled && !!stripeAcct?.payoutsEnabled;
+  const isStripePartial =
+    !!stripeAcct?.detailsSubmitted &&
+    !!stripeAcct?.chargesEnabled &&
+    !stripeAcct?.payoutsEnabled;
 
   const consumeTypeLabels: Record<string, { zh: string; en: string; color: string }> = {
     purchase: { zh: "购买", en: "Purchase", color: "text-green-600" },
@@ -100,13 +129,30 @@ export default async function TokenRechargePage({
         <Card>
           <CardContent className="p-4">
             <h3 className="text-sm font-semibold text-slate-900 mb-2">{t("business.tokens.stripeTitle", lang)}</h3>
-            {isStripeReady ? (
+            {isStripeFullyReady ? (
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-green-500 text-lg">✅</span>
                 <div>
                   <p className="text-sm text-green-700 font-medium">{t("business.tokens.stripeReady", lang)}</p>
                   <p className="text-xs text-slate-400">{t("business.tokens.stripeReadyDesc", lang)}</p>
                 </div>
+              </div>
+            ) : isStripePartial ? (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-blue-500 text-lg">⏳</span>
+                  <div>
+                    <p className="text-sm text-blue-700 font-medium">
+                      {t("business.tokens.stripePartial", lang)}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {t("business.tokens.stripePartialDesc", lang)}
+                    </p>
+                  </div>
+                </div>
+                <StripeSetupButton
+                  label={t("business.tokens.stripeContinue", lang)}
+                />
               </div>
             ) : stripeAcct?.stripeAccountId ? (
               <div>
@@ -128,18 +174,30 @@ export default async function TokenRechargePage({
           </CardContent>
         </Card>
 
-        {/* Top-up always available (Checkout); withdraw needs Connect ready */}
+        {/* Top-up always available (Checkout); withdraw needs charges_enabled */}
         <div className="flex gap-2">
           <TopUpButton />
-          {isStripeReady && <WithdrawButton balance={balance} />}
+          {canWithdraw && <WithdrawButton balance={balance} />}
         </div>
 
-        {/* Status messages */}
-        {sp.onboarding === "success" && (
+        {/* Status messages — accurate after Stripe refresh above */}
+        {sp.onboarding === "success" && isStripeFullyReady && (
           <div className="text-center p-3 bg-green-50 text-green-700 text-sm rounded-xl">
-            {t("business.tokens.topupSuccess", lang)}
+            {t("business.tokens.onboardingDone", lang)}
           </div>
         )}
+        {sp.onboarding === "success" && isStripePartial && (
+          <div className="text-center p-3 bg-blue-50 text-blue-800 text-sm rounded-xl">
+            {t("business.tokens.onboardingPartial", lang)}
+          </div>
+        )}
+        {sp.onboarding === "success" &&
+          !isStripeFullyReady &&
+          !isStripePartial && (
+            <div className="text-center p-3 bg-amber-50 text-amber-800 text-sm rounded-xl">
+              {t("business.tokens.onboardingIncomplete", lang)}
+            </div>
+          )}
         {sp.topup === "success" && (
           <div className="text-center p-3 bg-green-50 text-green-700 text-sm rounded-xl">
             {t("business.tokens.paymentSuccess", lang)}
