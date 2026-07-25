@@ -21,10 +21,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const campaignId =
       typeof body.campaignId === "string" ? body.campaignId.trim() : "";
-    const amountSgd = Number(body.amountSgd ?? body.faceSgd);
-    const amountCents = Math.round(
-      body.amountCents != null ? Number(body.amountCents) : amountSgd * 100
+    // Face F = spendable balance; paid P = cash actually received (P ≤ F)
+    const faceSgd = Number(body.faceSgd ?? body.amountSgd);
+    const faceCents = Math.round(
+      body.faceCents != null
+        ? Number(body.faceCents)
+        : body.amountCents != null
+          ? Number(body.amountCents)
+          : faceSgd * 100
     );
+    let paidCents: number;
+    if (body.paidCents != null) {
+      paidCents = Math.round(Number(body.paidCents));
+    } else if (body.paidSgd != null) {
+      paidCents = Math.round(Number(body.paidSgd) * 100);
+    } else if (body.discountPercent != null) {
+      const d = Math.min(90, Math.max(0, Number(body.discountPercent)));
+      paidCents = Math.round((faceCents * (100 - d)) / 100);
+    } else {
+      paidCents = faceCents; // no discount
+    }
     const paymentMethod =
       typeof body.paymentMethod === "string" ? body.paymentMethod : "cash";
     const customerPhone =
@@ -41,9 +57,18 @@ export async function POST(request: NextRequest) {
       storeId = session.storeId || "";
     }
 
-    if (!campaignId || !amountCents || amountCents < 100) {
+    if (!campaignId || !faceCents || faceCents < 100) {
       return NextResponse.json(
         { error: "请选择活动且面额至少 S$1" },
+        { status: 400 }
+      );
+    }
+    if (!Number.isFinite(paidCents) || paidCents < 1) {
+      return NextResponse.json({ error: "实收金额无效" }, { status: 400 });
+    }
+    if (paidCents > faceCents) {
+      return NextResponse.json(
+        { error: "实收不能大于面值" },
         { status: 400 }
       );
     }
@@ -108,8 +133,8 @@ export async function POST(request: NextRequest) {
 
     const isDraw =
       campaign.type === "lucky_draw_v2" || campaign.type === "lucky_draw";
-    const faceSgd = amountCents / 100;
-    const tierResolved = resolveTier(faceSgd);
+    const faceSgdResolved = faceCents / 100;
+    const tierResolved = resolveTier(faceSgdResolved);
     const tier = (tierResolved?.tier || "medium") as "small" | "medium" | "large";
 
     // Resolve customer
@@ -145,7 +170,7 @@ export async function POST(request: NextRequest) {
     }
 
     const weight = isDraw
-      ? calculateTierWeight(amountCents, tier, amountCents, 0, 0)
+      ? calculateTierWeight(faceCents, tier, faceCents, 0, 0)
       : 0;
 
     const shortCode = await allocateShortCode();
@@ -155,9 +180,9 @@ export async function POST(request: NextRequest) {
         campaignId: campaign.id,
         storeId: store.id,
         sellerId: null,
-        amountCents,
-        paidCents: amountCents,
-        balanceCents: amountCents,
+        amountCents: faceCents,
+        paidCents,
+        balanceCents: faceCents,
         usedCents: 0,
         prizePoolContribution: 0,
         drawWeight: weight,
@@ -211,11 +236,19 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const discountPct =
+      faceCents > 0
+        ? Math.round(((faceCents - paidCents) / faceCents) * 1000) / 10
+        : 0;
+
     return NextResponse.json({
       data: {
         id: voucher.id,
         shortCode: voucher.shortCode,
-        balanceSgd: (amountCents / 100).toFixed(2),
+        balanceSgd: (faceCents / 100).toFixed(2),
+        faceSgd: (faceCents / 100).toFixed(2),
+        paidSgd: (paidCents / 100).toFixed(2),
+        discountPercent: discountPct,
         productKind: "self_use",
         isDraw,
         displayKind: isDraw ? "exclusive" : "self_use",
@@ -225,7 +258,7 @@ export async function POST(request: NextRequest) {
         instantPrize,
         note: isDraw
           ? "独享券已发出：钱已在店；即时奖由本店兑付；核销不入平台钱包"
-          : "自用券已发出：钱已在店，核销时仅记履约",
+          : "自用券已发出：实收已在店，可花面值进余额；核销仅记履约",
       },
     });
   } catch (error) {

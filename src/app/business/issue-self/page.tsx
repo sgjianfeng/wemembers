@@ -27,7 +27,9 @@ export default function IssueSelfPage() {
   const [stores, setStores] = useState<StoreOpt[]>([]);
   const [campaignId, setCampaignId] = useState("");
   const [storeId, setStoreId] = useState("");
-  const [amountSgd, setAmountSgd] = useState("10");
+  const [amountSgd, setAmountSgd] = useState("100");
+  /** 0 = 无折扣；10 = 付 90 得 100 */
+  const [discountPercent, setDiscountPercent] = useState(10);
   const [phone, setPhone] = useState("");
   const [cashConfirmed, setCashConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,6 +38,8 @@ export default function IssueSelfPage() {
   const [result, setResult] = useState<{
     shortCode: string;
     balanceSgd: string;
+    paidSgd?: string;
+    discountPercent?: number;
     campaignName?: string;
     isDraw?: boolean;
     instantPrize?: { name: string; icon: string; valueSgd: string } | null;
@@ -139,6 +143,7 @@ export default function IssueSelfPage() {
       setError(lang === "en" ? "Invalid amount" : "请输入有效金额");
       return;
     }
+    const disc = isDrawCamp ? 0 : Math.min(90, Math.max(0, discountPercent));
     setLoading(true);
     setError("");
     setResult(null);
@@ -149,7 +154,8 @@ export default function IssueSelfPage() {
         body: JSON.stringify({
           campaignId,
           storeId,
-          amountSgd: amt,
+          faceSgd: amt,
+          discountPercent: disc,
           customerPhone: phone.trim() || undefined,
           paymentMethod: "cash",
         }),
@@ -161,6 +167,8 @@ export default function IssueSelfPage() {
         setResult({
           shortCode: j.data.shortCode,
           balanceSgd: j.data.balanceSgd,
+          paidSgd: j.data.paidSgd,
+          discountPercent: j.data.discountPercent,
           campaignName: j.data.campaignName,
           isDraw: j.data.isDraw,
           instantPrize: j.data.instantPrize || null,
@@ -178,6 +186,10 @@ export default function IssueSelfPage() {
     selectedCamp?.type === "lucky_draw_v2" ||
     selectedCamp?.type === "lucky_draw";
   const quickAmounts = isDrawCamp ? QUICK_DRAW : QUICK_VOUCHER;
+  const faceNum = Number(amountSgd) || 0;
+  const discApply = isDrawCamp ? 0 : Math.min(90, Math.max(0, discountPercent));
+  const paidPreview =
+    Math.round(faceNum * (100 - discApply)) / 100;
 
   async function copyCode() {
     if (!result?.shortCode) return;
@@ -286,7 +298,7 @@ export default function IssueSelfPage() {
 
             <div>
               <label className="text-xs font-medium text-slate-500">
-                {t("issueSelf.amount")}
+                {lang === "en" ? "Face value (spendable)" : "面值（可花）"}
               </label>
               <div className="mt-1.5 flex flex-wrap gap-2">
                 {quickAmounts.map((a) => (
@@ -314,6 +326,48 @@ export default function IssueSelfPage() {
               />
             </div>
 
+            {!isDrawCamp && (
+              <div>
+                <label className="text-xs font-medium text-slate-500">
+                  {lang === "en" ? "Discount" : "折扣（自用代金）"}
+                </label>
+                <div className="mt-1.5 flex flex-wrap gap-2">
+                  {[0, 10, 20].map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setDiscountPercent(d)}
+                      className={`h-10 px-3 rounded-full text-sm font-semibold border ${
+                        discountPercent === d
+                          ? "bg-slate-800 text-white border-slate-800"
+                          : "bg-white text-slate-700 border-slate-200"
+                      }`}
+                    >
+                      {d === 0
+                        ? lang === "en"
+                          ? "No disc."
+                          : "无折扣"
+                        : `${d}%`}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3">
+                  <p className="text-xs text-slate-400">
+                    {lang === "en" ? "Customer pays" : "应收现金"}
+                  </p>
+                  <p className="text-2xl font-bold tabular-nums text-slate-900 mt-0.5">
+                    S${paidPreview.toFixed(2)}
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {lang === "en"
+                      ? `Pay S$${paidPreview.toFixed(0)} get S$${faceNum || 0} to spend`
+                      : `付 S$${paidPreview.toFixed(0)} 得 S$${faceNum || 0} 可花`}
+                    {discApply > 0 ? ` · −${discApply}%` : ""}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <Input
               label={t("issueSelf.phone")}
               placeholder={t("issueSelf.phonePh")}
@@ -335,8 +389,8 @@ export default function IssueSelfPage() {
               />
               <span className="text-sm text-slate-700 leading-snug">
                 {lang === "en"
-                  ? "I have received cash (or store payment) for this voucher"
-                  : "我已收到本张券对应的现金（或店内收款）"}
+                  ? `I have received S$${paidPreview.toFixed(2)} cash (or store payment)`
+                  : `我已收到现金 S$${paidPreview.toFixed(2)}（或店内收款）`}
               </span>
             </label>
 
@@ -362,8 +416,21 @@ export default function IssueSelfPage() {
             <div className="h-1.5 bg-slate-500" />
             <CardContent className="p-5 text-center space-y-3">
               <p className="text-sm font-medium text-green-800">
-                {t("issueSelf.ok")} · S${result.balanceSgd}
-                {result.isDraw ? (lang === "en" ? " · exclusive draw" : " · 独享抽奖") : ""}
+                {t("issueSelf.ok")}
+                {result.isDraw
+                  ? lang === "en"
+                    ? " · exclusive draw"
+                    : " · 独享抽奖"
+                  : ""}
+              </p>
+              <p className="text-xs text-slate-600">
+                {lang === "en" ? "Paid" : "实收"} S$
+                {result.paidSgd ?? result.balanceSgd}
+                {" · "}
+                {lang === "en" ? "Spendable" : "可花"} S${result.balanceSgd}
+                {result.discountPercent
+                  ? ` · −${result.discountPercent}%`
+                  : ""}
               </p>
               {result.instantPrize && (
                 <div className="rounded-xl bg-white/80 border border-violet-100 px-3 py-2">
