@@ -1,0 +1,280 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/Button";
+import { Card, CardContent } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { useLang } from "@/components/i18n/LanguageProvider";
+
+type Product = {
+  id: string;
+  name: string;
+  description: string | null;
+  type: string;
+  productKind: string;
+  status: string;
+  slug: string | null;
+  buyPath: string | null;
+  activityCount: number;
+  voucherCount: number;
+};
+
+const PACKS = [
+  {
+    id: "face_open",
+    nameZh: "原价无门槛代金",
+    nameEn: "Face voucher (no min)",
+    descZh: "付多少抵多少 · 档 10/20/50/100",
+    descEn: "Pay face · tiers 10–100",
+  },
+  {
+    id: "face_threshold",
+    nameZh: "原价门槛代金",
+    nameEn: "Face voucher (min spend ×10)",
+    descZh: "券面×10 最低消费 · 约 9 折心智",
+    descEn: "Min spend = face × 10",
+  },
+  {
+    id: "exclusive_ballot",
+    nameZh: "投箱大奖·独享 15%",
+    nameEn: "Ballot draw 15%",
+    descZh: "50/100 · 3%+2%+10% · 可打入箱票",
+    descEn: "50/100 · exclusive 15% · ballot print",
+  },
+] as const;
+
+export default function BusinessProductsPage() {
+  const { lang } = useLang();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [packKind, setPackKind] = useState<string>("face_open");
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/business/products");
+      if (res.ok) {
+        const j = await res.json();
+        setProducts(j.data || []);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    const p = PACKS.find((x) => x.id === packKind);
+    if (p && !name) {
+      setName(lang === "en" ? p.nameEn : p.nameZh);
+    }
+  }, [packKind, lang]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function create() {
+    setCreating(true);
+    setError("");
+    try {
+      const res = await fetch("/api/business/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          packKind,
+          status: "active",
+          createShelfActivity: true,
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(j.error || "fail");
+        return;
+      }
+      setName("");
+      await load();
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function setStatus(id: string, status: string) {
+    setBusyId(id);
+    try {
+      await fetch(`/api/business/products/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      await load();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <div className="pb-8 min-h-screen">
+      <div className="px-4 py-3 border-b border-border sticky top-0 bg-background/95 z-10 backdrop-blur">
+        <div className="flex items-center gap-3">
+          <Link href="/business" className="text-xs text-primary font-medium">
+            ← {lang === "en" ? "Home" : "概览"}
+          </Link>
+        </div>
+        <h1 className="text-lg font-semibold text-foreground mt-1">
+          {lang === "en" ? "Voucher products" : "券产品"}
+        </h1>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {lang === "en"
+            ? "Create products from templates. Activate/archive. Activities pick products; stores join activities."
+            : "从默认模版创建产品 → 激活/下架。活动勾选产品，门店选择参与活动。"}
+        </p>
+      </div>
+
+      <div className="px-4 mt-4 space-y-4">
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <p className="text-sm font-semibold text-foreground">
+              {lang === "en" ? "New from default pack" : "用默认包创建"}
+            </p>
+            <div className="space-y-2">
+              {PACKS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => {
+                    setPackKind(p.id);
+                    setName(lang === "en" ? p.nameEn : p.nameZh);
+                  }}
+                  className={`w-full text-left rounded-xl border px-3 py-2.5 transition-colors ${
+                    packKind === p.id
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-card"
+                  }`}
+                >
+                  <p className="text-sm font-medium text-foreground">
+                    {lang === "en" ? p.nameEn : p.nameZh}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {lang === "en" ? p.descEn : p.descZh}
+                  </p>
+                </button>
+              ))}
+            </div>
+            <Input
+              label={lang === "en" ? "Product name" : "产品名称"}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            {error && <p className="text-xs text-red-500">{error}</p>}
+            <Button
+              className="w-full"
+              loading={creating}
+              disabled={!name.trim()}
+              onClick={create}
+            >
+              {lang === "en" ? "Create & activate" : "创建并上架"}
+            </Button>
+            <p className="text-[10px] text-muted-foreground">
+              {lang === "en"
+                ? "Also creates a shelf activity with all stores enabled. Edit under Activities."
+                : "会同步创建一个「常驻活动」并启用全部门店。可在「活动」里改门店与组合。"}
+            </p>
+          </CardContent>
+        </Card>
+
+        <div>
+          <h2 className="text-sm font-semibold text-foreground mb-2">
+            {lang === "en" ? "Your products" : "我的券产品"}
+          </h2>
+          {loading ? (
+            <p className="text-xs text-muted-foreground">…</p>
+          ) : products.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              {lang === "en" ? "None yet." : "还没有产品，用上方默认包创建。"}
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {products.map((p) => (
+                <Card key={p.id}>
+                  <CardContent className="p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">
+                          {p.name}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {p.type === "lucky_draw_v2"
+                            ? lang === "en"
+                              ? "Draw"
+                              : "抽奖"
+                            : lang === "en"
+                              ? "Voucher"
+                              : "代金"}
+                          {" · "}
+                          {p.status === "active"
+                            ? lang === "en"
+                              ? "On shelf"
+                              : "已上架"
+                            : p.status === "archived"
+                              ? lang === "en"
+                                ? "Off"
+                                : "已下架"
+                              : p.status}
+                          {" · "}
+                          {lang === "en" ? "in" : "活动"} {p.activityCount}
+                          {" · "}
+                          {lang === "en" ? "sold" : "已售"} {p.voucherCount}
+                        </p>
+                        {p.buyPath && (
+                          <p className="text-[10px] text-primary mt-1 break-all">
+                            {p.buyPath}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-1 shrink-0">
+                        {p.status !== "active" ? (
+                          <Button
+                            className="h-8 text-xs px-3"
+                            loading={busyId === p.id}
+                            onClick={() => setStatus(p.id, "active")}
+                          >
+                            {lang === "en" ? "Activate" : "上架"}
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            className="h-8 text-xs px-3"
+                            loading={busyId === p.id}
+                            onClick={() => setStatus(p.id, "archived")}
+                          >
+                            {lang === "en" ? "Archive" : "下架"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <p className="text-[11px] text-muted-foreground text-center pb-4">
+          <Link href="/business/campaigns" className="text-primary font-medium">
+            {lang === "en" ? "Manage activities →" : "管理活动（勾选产品、门店）→"}
+          </Link>
+          {" · "}
+          <Link href="/business/templates" className="text-primary font-medium">
+            {lang === "en" ? "My templates" : "我的模版"}
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}

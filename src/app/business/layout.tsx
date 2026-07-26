@@ -55,8 +55,8 @@ export default async function BusinessLayout({
     },
     {
       icon: "campaigns" as const,
-      label: t("business.tabs.campaigns", lang),
-      href: "/business/campaigns",
+      label: lang === "en" ? "Products" : "券产品",
+      href: "/business/products",
     },
     {
       icon: "hub" as const,
@@ -66,6 +66,11 @@ export default async function BusinessLayout({
   ];
 
   const businessMore = [
+    {
+      icon: "campaigns" as const,
+      label: lang === "en" ? "Activities" : "活动",
+      href: "/business/campaigns",
+    },
     {
       icon: "stores" as const,
       label: t("business.tabs.stores", lang),

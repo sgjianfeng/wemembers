@@ -13,6 +13,7 @@ import { DrawButton } from "./DrawButton";
 import { PrizeEditor } from "./PrizeEditor";
 import { ManualEntryButton } from "./ManualEntryButton";
 import { StoreListingPanel } from "./StoreListingPanel";
+import { CampaignProductsPanel } from "./CampaignProductsPanel";
 import { timeAgo } from "@/lib/utils";
 import { parseRulesSnapshot, getTemplate } from "@/lib/templates";
 import {
@@ -159,17 +160,15 @@ export default async function CampaignDetailPage({
         )}
       </div>
 
-      {/* 门店选用（自用/独享创建后需启用门店） */}
-      {(campaign.type === "lucky_draw_v2" ||
-        campaign.type === "voucher_sale") && (
-        <div className="px-4 mt-4">
-          <StoreListingPanel
-            campaignId={campaign.id}
-            productKind={campaign.productKind}
-            autoOpen={autoStores || campaign.productKind === "self_use"}
-          />
-        </div>
-      )}
+      {/* 活动：勾选券产品 + 门店参与 */}
+      <div className="px-4 mt-4 space-y-3">
+        <CampaignProductsPanel campaignId={campaign.id} />
+        <StoreListingPanel
+          campaignId={campaign.id}
+          productKind={campaign.productKind}
+          autoOpen={autoStores || campaign.productKind === "self_use"}
+        />
+      </div>
 
       {/* Share + print QR for draw / voucher campaigns */}
       {campaign.slug &&

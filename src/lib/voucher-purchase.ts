@@ -16,6 +16,8 @@ import { resolvePurchaseSellerId } from "@/lib/seller";
 export interface FulfillVoucherInput {
   customerId: string;
   campaignId: string;
+  /** 券产品 id（新路径） */
+  productId?: string | null;
   /** Face amount in SGD (e.g. 50) */
   amountSgd: number;
   spendNowSgd?: number;
@@ -167,12 +169,22 @@ export async function fulfillVoucherPurchase(
   const { allocateShortCode } = await import("@/lib/voucher-short-code");
   const shortCode = await allocateShortCode();
 
+  let productId = input.productId || null;
+  if (!productId) {
+    const linked = await prisma.voucherProduct.findFirst({
+      where: { mirrorCampaignId: campaign.id },
+      select: { id: true },
+    });
+    productId = linked?.id || null;
+  }
+
   let voucher;
   try {
     voucher = await prisma.voucher.create({
       data: {
         customerId: input.customerId,
         campaignId: campaign.id,
+        productId,
         sellerId: resolvedSellerId,
         stripeSessionId: input.stripeSessionId || null,
         amountCents: creditCents, // face F

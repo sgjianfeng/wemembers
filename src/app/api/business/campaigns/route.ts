@@ -26,14 +26,35 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status") || undefined;
 
-  const where: { businessId: string; status?: string } = { businessId: session.userId };
+  // 默认只列「活动」；?role=all 含产品镜像
+  const role = searchParams.get("role") || "activity";
+  const where: {
+    businessId: string;
+    status?: string;
+    role?: string;
+  } = { businessId: session.userId };
   if (status) where.status = status;
+  if (role !== "all") where.role = role;
 
   const campaigns = await prisma.campaign.findMany({
     where,
     include: {
       coupons: {
         select: { id: true, title: true, claimedCount: true, usedCount: true, status: true },
+      },
+      catalogProducts: {
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+              status: true,
+              slug: true,
+            },
+          },
+        },
+        orderBy: { sortOrder: "asc" },
       },
     },
     orderBy: { createdAt: "desc" },
@@ -60,6 +81,68 @@ export async function POST(request: NextRequest) {
     });
     if (!user) return NextResponse.json({ error: "用户不存在" }, { status: 404 });
     const isPlatform = isPlatformAccount(user.email || "");
+
+    // ── 仅活动：勾选已有券产品（不创建镜像）──
+    if (Array.isArray(body.productIds) && body.productIds.length > 0 && !body.templateId) {
+      const name = typeof body.name === "string" ? body.name.trim() : "";
+      const startDate = body.startDate;
+      const endDate = body.endDate;
+      if (!name || !startDate || !endDate) {
+        return NextResponse.json({ error: "请填写活动名称和时间" }, { status: 400 });
+      }
+      const productIds = (body.productIds as unknown[]).filter(
+        (x): x is string => typeof x === "string"
+      );
+      const owned = await prisma.voucherProduct.count({
+        where: { businessId: session.userId, id: { in: productIds } },
+      });
+      if (owned !== productIds.length) {
+        return NextResponse.json({ error: "券产品无效" }, { status: 400 });
+      }
+      const stores = await prisma.store.findMany({
+        where: { businessId: session.userId },
+        select: { id: true },
+      });
+      const { serializeStoreIds } = await import("@/lib/utils");
+      let storeIdsJson: string | null = null;
+      if (Array.isArray(body.enabledStoreIds)) {
+        const allowed = new Set(stores.map((s) => s.id));
+        storeIdsJson = serializeStoreIds(
+          body.enabledStoreIds.filter(
+            (id: unknown): id is string =>
+              typeof id === "string" && allowed.has(id)
+          )
+        );
+      } else {
+        storeIdsJson = serializeStoreIds(stores.map((s) => s.id));
+      }
+      const campaign = await prisma.campaign.create({
+        data: {
+          businessId: session.userId,
+          name,
+          description: body.description || null,
+          type: body.type || "promotion",
+          role: "activity",
+          color: body.color || "#1A6EFF",
+          startDate: new Date(startDate),
+          endDate: new Date(endDate),
+          status: new Date(startDate) <= new Date() ? "active" : "draft",
+          storeIds: storeIdsJson,
+          joinable: false,
+          allowCollaboration: false,
+          budgetPercent: 0,
+          tags: JSON.stringify(["activity"]),
+        },
+      });
+      await prisma.campaignProduct.createMany({
+        data: productIds.map((productId, i) => ({
+          campaignId: campaign.id,
+          productId,
+          sortOrder: i,
+        })),
+      });
+      return NextResponse.json({ data: campaign });
+    }
 
     // ── 企业自定义模版 或 平台模版 ──
     if (body.businessTemplateId || body.templateId) {

@@ -44,17 +44,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "消费金额无效" }, { status: 400 });
     }
 
-    const campaign = await prisma.campaign.findFirst({
-      where: {
-        slug,
-        status: "active",
-        type: { in: ["lucky_draw_v2", "voucher_sale"] },
-      },
-      select: { id: true, name: true, type: true, productKind: true },
-    });
-    if (!campaign) {
-      return NextResponse.json({ error: "活动不可用" }, { status: 404 });
+    const { resolveSellableBySlug } = await import("@/lib/catalog");
+    const resolved = await resolveSellableBySlug(slug);
+    if (!resolved) {
+      return NextResponse.json({ error: "券产品不可用" }, { status: 404 });
     }
+    const campaign = {
+      id: resolved.campaignId,
+      name: resolved.product?.name || resolved.campaign.name,
+      type: resolved.product?.type || resolved.campaign.type,
+      productKind:
+        resolved.product?.productKind || resolved.campaign.productKind,
+    };
 
     const isDrawCampaign = campaign.type === "lucky_draw_v2";
     const isCowin =
@@ -130,6 +131,7 @@ export async function POST(request: NextRequest) {
         type: "voucher_purchase",
         userId: session.userId,
         campaignId: campaign.id,
+        productId: resolved.productId || "",
         slug,
         amountSgd: String(amountSgd),
         spendNowSgd: String(spendNowSgd || 0),

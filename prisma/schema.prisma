@@ -61,6 +61,7 @@ model User {
   promoterEarnings PromoterEarning[]   @relation("PromoterEarnings")
   campaigns        Campaign[]          @relation("BusinessCampaigns")
   businessTemplates BusinessTemplate[] @relation("BusinessTemplates")
+  voucherProducts  VoucherProduct[]    @relation("BusinessVoucherProducts")
   bulkPurchases    BulkPurchase[]      @relation("BulkPurchases")
   store            Store?              @relation("StoreStaff", fields: [storeId], references: [id])
   managedStores    Store[]             @relation("BusinessStores")
@@ -671,14 +672,64 @@ model BusinessTemplate {
   @@index([businessId, baseTemplateId])
 }
 
-// ──── 活动/批次管理 ────
+// ──── 券产品（可售 SKU：模版 → 产品 → 活动勾选 → 门店参与活动）────
+// 与「节日活动」分离：产品负责规则/档位/购券；活动负责编排与门店参与
+
+model VoucherProduct {
+  id               String   @id @default(cuid())
+  businessId       String
+  name             String
+  description      String?
+  /// voucher_sale | lucky_draw_v2
+  type             String
+  productKind      String   @default("self_use") // self_use | distribution
+  /// draft | active | archived（下架）
+  status           String   @default("draft")
+  slug             String?  @unique
+  templateId       String?
+  rulesSnapshot    String?
+  voucherTiers     String?
+  color            String?
+  /// 购券/奖池兼容：一对一镜像 Campaign（老路径仍用 campaignId）
+  mirrorCampaignId String?  @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  business         User     @relation("BusinessVoucherProducts", fields: [businessId], references: [id])
+  mirrorCampaign   Campaign? @relation("ProductMirrorCampaign", fields: [mirrorCampaignId], references: [id])
+  campaignLinks    CampaignProduct[]
+  vouchers         Voucher[]
+
+  @@index([businessId, status])
+  @@index([businessId, type])
+}
+
+/// 活动勾选的券产品
+model CampaignProduct {
+  id         String @id @default(cuid())
+  campaignId String
+  productId  String
+  sortOrder  Int    @default(0)
+
+  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  product  VoucherProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, productId])
+  @@index([productId])
+}
+
+// ──── 活动（运营容器：勾选券产品 + 门店参与）────
+// role: product_mirror = 券产品镜像（不在「活动」列表主展示）
+//       activity = 真正的活动（门店选择参与）
 
 model Campaign {
   id              String   @id @default(cuid())
   businessId      String
-  name            String                    // "夏日清凉节"
+  name            String                    // "夏日清凉节" / 或产品镜像名
   description     String?                   // 活动描述
-  type            String   @default("promotion") // promotion | seasonal | holiday | event | launch | lucky_draw
+  type            String   @default("promotion") // promotion | seasonal | holiday | event | launch | lucky_draw | voucher_sale | lucky_draw_v2
+  /// product_mirror | activity（默认 activity；镜像仅服务购券兼容）
+  role            String   @default("activity")
   color           String?                   // 标签色 #FF6B35
   startDate       DateTime
   endDate         DateTime
@@ -739,6 +790,8 @@ model Campaign {
   tickets         DrawTicket[]
   joinRequests    CampaignJoinRequest[]
   vouchers        Voucher[]
+  catalogProducts CampaignProduct[]
+  mirrorOfProduct VoucherProduct? @relation("ProductMirrorCampaign")
 }
 
 // ──── 抽奖券号码 ────
@@ -768,6 +821,8 @@ model Voucher {
   shortCode             String?  @unique
   customerId            String
   campaignId            String
+  /// 所属券产品（新购必填倾向；老数据可空）
+  productId             String?
   storeId               String?                // 售券门店
   sellerId              String?                // 卖家/分享人 userId（拿佣金）
   stripeSessionId       String?  @unique       // Stripe Checkout session（幂等）
@@ -792,6 +847,7 @@ model Voucher {
 
   customer      User     @relation(fields: [customerId], references: [id])
   campaign      Campaign @relation(fields: [campaignId], references: [id])
+  product       VoucherProduct? @relation(fields: [productId], references: [id])
   store         Store?   @relation(fields: [storeId], references: [id])
   usages        VoucherUsage[]
   draws         VoucherDraw[]
@@ -800,6 +856,7 @@ model Voucher {
 
   @@index([customerId, status])
   @@index([campaignId, createdAt])
+  @@index([productId, createdAt])
   @@index([sellerId])
   @@index([productKind, status])
   @@index([paymentMethod, createdAt])

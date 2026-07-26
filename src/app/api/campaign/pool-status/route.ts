@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing slug parameter" }, { status: 400 });
   }
 
-  const campaign = await prisma.campaign.findFirst({
+  // 优先券产品 slug → 镜像 Campaign；兼容旧活动 slug
+  let campaign = await prisma.campaign.findFirst({
     where: {
       OR: [{ slug }, { id: slug }],
       type: { in: ["lucky_draw", "lucky_draw_v2", "voucher_sale"] },
@@ -37,7 +38,27 @@ export async function GET(request: NextRequest) {
   });
 
   if (!campaign) {
-    return NextResponse.json({ error: "活动不存在" }, { status: 404 });
+    const product = await prisma.voucherProduct.findFirst({
+      where: { slug, status: { in: ["active", "draft"] } },
+    });
+    if (product?.mirrorCampaignId) {
+      campaign = await prisma.campaign.findFirst({
+        where: { id: product.mirrorCampaignId },
+        include: {
+          _count: { select: { vouchers: true } },
+        },
+      });
+      if (campaign) {
+        // 展示用产品名与公开 slug
+        (campaign as { name: string; slug: string | null }).name = product.name;
+        (campaign as { name: string; slug: string | null }).slug =
+          product.slug || campaign.slug;
+      }
+    }
+  }
+
+  if (!campaign) {
+    return NextResponse.json({ error: "券产品不存在" }, { status: 404 });
   }
 
   const isDraw =

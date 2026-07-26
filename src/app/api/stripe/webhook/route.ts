@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
           await fulfillVoucherPurchase({
             customerId: meta.userId,
             campaignId: meta.campaignId,
+            productId: meta.productId || null,
             amountSgd: Number(meta.amountSgd),
             spendNowSgd: Number(meta.spendNowSgd || 0),
             sellerId: meta.sellerId || null,
