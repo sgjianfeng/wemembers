@@ -43,6 +43,14 @@
   --color-brand-foreground: var(--brand-foreground);
   --color-accent-brand: var(--accent-brand);
   --color-accent-brand-foreground: var(--accent-brand-foreground);
+  /* Festive layer (B) — used only on draw / prize / reward surfaces */
+  --color-gold: var(--gold);
+  --color-gold-strong: var(--gold-strong);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-prize: var(--prize);
+  --color-festive-from: var(--festive-from);
+  --color-festive-via: var(--festive-via);
+  --color-festive-to: var(--festive-to);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -76,6 +84,14 @@
   --brand-foreground: oklch(0.99 0 0);
   --accent-brand: oklch(0.96 0.05 45);
   --accent-brand-foreground: oklch(0.45 0.15 40);
+  /* Festive layer (B) — draw / prize / reward only, sits atop the calm A base */
+  --gold: oklch(0.82 0.13 82);             /* prize gold */
+  --gold-strong: oklch(0.72 0.15 72);
+  --gold-foreground: oklch(0.34 0.09 60);
+  --prize: oklch(0.6 0.22 20);             /* vermilion prize accent */
+  --festive-from: oklch(0.72 0.17 58);     /* warm orange */
+  --festive-via: oklch(0.63 0.2 40);
+  --festive-to: oklch(0.53 0.2 32);        /* vermilion-red */
   --chart-1: oklch(0.55 0.22 260);
   --chart-2: oklch(0.62 0.21 45);
   --chart-3: oklch(0.45 0.18 140);
@@ -115,6 +131,14 @@
   --brand-foreground: oklch(0.1 0 0);
   --accent-brand: oklch(0.22 0.05 40);
   --accent-brand-foreground: oklch(0.9 0 0);
+  /* Festive layer (B) — dark mode: desaturate slightly, lean on the same hues */
+  --gold: oklch(0.8 0.13 82);
+  --gold-strong: oklch(0.72 0.14 74);
+  --gold-foreground: oklch(0.22 0.06 60);
+  --prize: oklch(0.68 0.19 22);
+  --festive-from: oklch(0.66 0.16 56);
+  --festive-via: oklch(0.58 0.18 40);
+  --festive-to: oklch(0.5 0.18 32);
   --chart-1: oklch(0.65 0.2 260);
   --chart-2: oklch(0.65 0.18 45);
   --chart-3: oklch(0.6 0.15 140);
@@ -140,5 +164,25 @@
   }
   html {
     @apply font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  /* Festive (B) hero surface — draw / prize pools only. Warm orange→vermilion. */
+  .bg-festive {
+    background-image: linear-gradient(
+      145deg,
+      var(--festive-from) 0%,
+      var(--festive-via) 60%,
+      var(--festive-to) 100%
+    );
+  }
+  /* Gold prize chip / tier fill */
+  .bg-gold {
+    background-image: linear-gradient(145deg, var(--gold) 0%, var(--gold-strong) 100%);
+  }
+  /* Tabular numerals for any money / countdown / metric */
+  .nums {
+    font-variant-numeric: tabular-nums;
   }
 }

@@ -38,13 +38,13 @@ export default async function CampaignPrintPage({
   if (!campaign) notFound();
   if (!campaign.slug) {
     return (
-      <div className="p-6 text-center text-sm text-slate-500">
+      <div className="p-6 text-center text-sm text-muted-foreground">
         {lang === "en"
           ? "This campaign has no public slug yet."
           : "该活动还没有公开链接 slug，无法生成活动码。"}
         <Link
           href={`/business/campaigns/${id}`}
-          className="block mt-3 text-[#1A6EFF]"
+          className="block mt-3 text-primary"
         >
           ← {lang === "en" ? "Back" : "返回"}
         </Link>
@@ -69,17 +69,17 @@ export default async function CampaignPrintPage({
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-slate-100 sticky top-0 bg-white z-10 print:hidden">
+      <div className="px-4 py-3 border-b border-border sticky top-0 bg-card z-10 print:hidden">
         <Link
           href={`/business/campaigns/${id}`}
-          className="text-xs text-[#1A6EFF] font-medium"
+          className="text-xs text-primary font-medium"
         >
           ← {lang === "en" ? "Campaign" : "返回活动"}
         </Link>
-        <h1 className="text-lg font-semibold mt-1">
+        <h1 className="text-lg font-semibold mt-1 text-foreground">
           {lang === "en" ? "Activity card · Print" : "活动卡 · 打印导出"}
         </h1>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {lang === "en"
             ? "Table tent / distributor cards · scan to buy or join draw"
             : "餐桌台卡 / 分发版 · 扫码购券或参加抽奖（与实体券 PT- 不同）"}

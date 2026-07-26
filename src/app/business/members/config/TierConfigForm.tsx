@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent } from "@/components/ui/Card";
+import { CheckCircle2, XCircle } from "lucide-react";
 
 interface TierConfig {
   id: string;
@@ -26,6 +27,7 @@ export function TierConfigForm({
   const [configs, setConfigs] = useState<TierConfig[]>(initialConfigs);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageOk, setMessageOk] = useState(true);
 
   function updateConfig<I extends keyof TierConfig>(
     index: number,
@@ -57,10 +59,12 @@ export function TierConfigForm({
     setLoading(false);
 
     if (res.ok) {
-      setMessage("✅ 保存成功");
+      setMessageOk(true);
+      setMessage("保存成功");
       router.refresh();
     } else {
-      setMessage(`❌ ${data.error || "保存失败"}`);
+      setMessageOk(false);
+      setMessage(data.error || "保存失败");
     }
   }
 
@@ -76,10 +80,10 @@ export function TierConfigForm({
             <div className="flex items-center gap-2 mb-3">
               <span className="text-xl">{tierIcons[cfg.tier] || "⭐"}</span>
               <div>
-                <p className="text-sm font-semibold text-slate-900">
+                <p className="text-sm font-semibold text-foreground">
                   {cfg.name}
                 </p>
-                <p className="text-[10px] text-slate-400 uppercase">
+                <p className="text-[10px] text-muted-foreground uppercase">
                   {cfg.tier}
                 </p>
               </div>
@@ -102,7 +106,7 @@ export function TierConfigForm({
               />
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-foreground/80 mb-1">
                   标签颜色
                 </label>
                 <div className="flex gap-1.5">
@@ -111,9 +115,9 @@ export function TierConfigForm({
                       key={c}
                       type="button"
                       onClick={() => updateConfig(i, "color", c)}
-                      className={`w-7 h-7 rounded-full border-2 transition-all ${
+                      className={`w-7 h-7 rounded-full border-2 transition-all active:scale-95 ${
                         cfg.color === c
-                          ? "border-slate-900 scale-110"
+                          ? "border-foreground scale-110"
                           : "border-transparent"
                       }`}
                       style={{ backgroundColor: c }}
@@ -123,7 +127,7 @@ export function TierConfigForm({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-foreground/80 mb-1">
                   会员权益（一行一个）
                 </label>
                 <textarea
@@ -147,7 +151,7 @@ export function TierConfigForm({
                   }}
                   placeholder="9折优惠&#10;生日专属礼品&#10;优先核销通道"
                   rows={3}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#1A6EFF] resize-none"
+                  className="w-full px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none bg-card"
                 />
               </div>
             </div>
@@ -157,12 +161,13 @@ export function TierConfigForm({
 
       {message && (
         <div
-          className={`text-center text-sm p-3 rounded-xl ${
-            message.startsWith("✅")
-              ? "bg-green-50 text-green-700"
-              : "bg-red-50 text-red-600"
+          className={`text-center text-sm p-3 rounded-xl flex items-center justify-center gap-1.5 ${
+            messageOk
+              ? "bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400"
+              : "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400"
           }`}
         >
+          {messageOk ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
           {message}
         </div>
       )}

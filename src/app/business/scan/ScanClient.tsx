@@ -425,9 +425,9 @@ export default function ScanClient({
   if (!locked && !storeId) {
     return (
       <div className="pb-4">
-        <div className="px-4 py-3 border-b border-slate-100">
+        <div className="px-4 py-3 border-b border-border">
           <h1 className="text-lg font-semibold">{t("business.scan.title")}</h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {lang === "en"
               ? "Choose which store is redeeming"
               : "请选择本次核销的门店"}
@@ -435,18 +435,18 @@ export default function ScanClient({
         </div>
 
         {stores.length === 0 ? (
-          <div className="mx-4 mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4">
-            <p className="text-sm font-semibold text-amber-900">
+          <div className="mx-4 mt-4 rounded-2xl border border-amber-100 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/40 p-4">
+            <p className="text-sm font-semibold text-amber-900 dark:text-amber-300">
               {lang === "en" ? "No stores yet" : "还没有门店"}
             </p>
-            <p className="text-xs text-amber-800/80 mt-1">
+            <p className="text-xs text-amber-800/80 dark:text-amber-400/80 mt-1">
               {lang === "en"
                 ? "Add a store first, then redeem there."
                 : "请先添加门店，再在该店核销。"}
             </p>
             <Link
               href="/business/stores"
-              className="inline-flex mt-3 h-9 items-center rounded-full bg-[#1A6EFF] px-4 text-xs font-semibold text-white"
+              className="inline-flex mt-3 h-9 items-center rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground"
             >
               {lang === "en" ? "Add store" : "添加门店"}
             </Link>
@@ -458,7 +458,7 @@ export default function ScanClient({
                 key={s.id}
                 type="button"
                 onClick={() => pickStore(s.id)}
-                className="w-full text-left rounded-xl border border-slate-100 bg-white p-3 hover:border-[#1A6EFF]/40 active:bg-slate-50 transition-colors"
+                className="w-full text-left rounded-xl border border-border bg-card p-3 hover:border-primary/40 active:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center gap-2.5">
                   <BrandAvatar
@@ -468,15 +468,15 @@ export default function ScanClient({
                     rounded="xl"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-900 truncate">
+                    <p className="text-sm font-semibold text-foreground truncate">
                       {s.name}
                     </p>
                     {s.address && (
-                      <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+                      <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
                         {s.address}
                       </p>
                     )}
-                    <p className="text-[11px] text-[#1A6EFF] font-medium mt-0.5">
+                    <p className="text-[11px] text-primary font-medium mt-0.5">
                       {lang === "en" ? "Redeem here →" : "在此店核销 →"}
                     </p>
                   </div>
@@ -491,9 +491,9 @@ export default function ScanClient({
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-slate-100">
+      <div className="px-4 py-3 border-b border-border">
         <h1 className="text-lg font-semibold">{t("business.scan.title")}</h1>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {storeName
             ? lang === "en"
               ? `Redeeming at · ${storeName}`
@@ -510,7 +510,7 @@ export default function ScanClient({
           <button
             type="button"
             onClick={() => router.push("/business/scan")}
-            className="mt-1 text-[11px] font-medium text-[#1A6EFF]"
+            className="mt-1 text-[11px] font-medium text-primary"
           >
             {lang === "en" ? "Change store" : "更换门店"}
           </button>
@@ -531,7 +531,7 @@ export default function ScanClient({
           type="button"
           onClick={() => setTab("online")}
           className={`flex-1 h-9 rounded-full text-[11px] font-medium ${
-            tab === "online" ? "bg-[#1A6EFF] text-white" : "bg-slate-100 text-slate-600"
+            tab === "online" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
           }`}
         >
           {t("scan.voucherTab")}
@@ -540,23 +540,23 @@ export default function ScanClient({
           type="button"
           onClick={() => setTab("physical")}
           className={`flex-1 h-9 rounded-full text-[11px] font-medium ${
-            tab === "physical" ? "bg-[#1A6EFF] text-white" : "bg-slate-100 text-slate-600"
+            tab === "physical" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
           }`}
         >
           {t("scan.physicalTab")}
         </button>
       </div>
 
-      <p className="px-4 mt-2 text-[10px] text-slate-400 text-center">
+      <p className="px-4 mt-2 text-[10px] text-muted-foreground text-center">
         {t("scan.twoPathsHint")}
       </p>
 
       {tab === "online" && (
         <div className="px-4 mt-4 space-y-4">
-          <div className="bg-slate-50 rounded-xl p-4 space-y-3">
-            <p className="text-sm text-slate-600">{t("scan.voucherHint")}</p>
+          <div className="bg-muted/50 rounded-xl p-4 space-y-3">
+            <p className="text-sm text-muted-foreground">{t("scan.voucherHint")}</p>
             <QrScannerSheet
-              className="w-full h-11 rounded-full border-[#1A6EFF]/30 text-[#1A6EFF] font-semibold"
+              className="w-full h-11 rounded-full border-primary/30 text-primary font-semibold"
               disabled={!storeId}
               onScan={(raw) => {
                 const id = parseVoucherInput(raw);
@@ -565,11 +565,11 @@ export default function ScanClient({
               }}
             />
             <div className="relative flex items-center gap-2">
-              <div className="flex-1 h-px bg-slate-200" />
-              <span className="text-[10px] text-slate-400">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-[10px] text-muted-foreground">
                 {lang === "en" ? "or type short code" : "或输 6 位短码"}
               </span>
-              <div className="flex-1 h-px bg-slate-200" />
+              <div className="flex-1 h-px bg-border" />
             </div>
             <Input
               placeholder={t("scan.voucherPlaceholder")}
@@ -592,13 +592,13 @@ export default function ScanClient({
             <Button className="w-full" onClick={() => lookupVoucher()} loading={lookupLoading}>
               {t("scan.lookup")}
             </Button>
-            <p className="text-[10px] text-slate-400 text-center">{t("scan.lookupHelp")}</p>
+            <p className="text-[10px] text-muted-foreground text-center">{t("scan.lookupHelp")}</p>
           </div>
 
           {candidates.length > 0 && (
-            <Card className="border-[#1A6EFF]/20">
+            <Card className="border-primary/20">
               <CardContent className="p-3 space-y-2">
-                <p className="text-xs font-medium text-slate-600">
+                <p className="text-xs font-medium text-muted-foreground">
                   {t("scan.pickCandidate", { n: candidates.length })}
                 </p>
                 <ul className="space-y-1.5">
@@ -607,7 +607,7 @@ export default function ScanClient({
                       <button
                         type="button"
                         onClick={() => pickCandidate(c)}
-                        className="w-full text-left rounded-xl border border-slate-100 bg-white p-3 hover:border-[#1A6EFF]/50 active:bg-slate-50"
+                        className="w-full text-left rounded-xl border border-border bg-card p-3 hover:border-primary/50 active:bg-muted/50"
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
@@ -617,17 +617,17 @@ export default function ScanClient({
                                 isDraw={c.isDraw}
                                 size="sm"
                               />
-                              <span className="text-sm font-semibold font-mono tracking-widest text-[#1A6EFF]">
+                              <span className="text-sm font-semibold font-mono tracking-widest text-primary">
                                 {c.shortCode || c.id.slice(0, 8)}
                               </span>
                             </div>
-                            <p className="text-xs text-slate-500 mt-0.5 truncate">
+                            <p className="text-xs text-muted-foreground mt-0.5 truncate">
                               {c.campaignName}
                               {c.customerName ? ` · ${c.customerName}` : ""}
                               {c.customerPhone ? ` · ${c.customerPhone}` : ""}
                             </p>
                           </div>
-                          <p className="text-sm font-bold text-blue-700 shrink-0">
+                          <p className="text-sm font-bold text-primary shrink-0 nums">
                             S${c.balanceSgd}
                           </p>
                         </div>
@@ -640,21 +640,21 @@ export default function ScanClient({
           )}
 
           {voucherInfo && (
-            <Card className="border-slate-100">
+            <Card className="border-border">
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900">
+                    <p className="text-sm font-semibold text-foreground">
                       {voucherInfo.campaignName}
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       {voucherInfo.customerName || "—"}
                       {voucherInfo.customerPhone
                         ? ` · ${voucherInfo.customerPhone}`
                         : ""}
                     </p>
                     {voucherInfo.shortCode && (
-                      <p className="text-base font-bold font-mono tracking-[0.2em] text-[#1A6EFF] mt-1">
+                      <p className="text-base font-bold font-mono tracking-[0.2em] text-primary mt-1">
                         {voucherInfo.shortCode}
                       </p>
                     )}
@@ -674,20 +674,20 @@ export default function ScanClient({
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-center">
-                  <div className="bg-blue-50 rounded-lg p-2">
-                    <p className="text-[10px] text-slate-400">{t("scan.balance")}</p>
-                    <p className="text-lg font-bold text-blue-700 tabular-nums">
+                  <div className="bg-primary/10 rounded-lg p-2">
+                    <p className="text-[10px] text-muted-foreground">{t("scan.balance")}</p>
+                    <p className="text-lg font-bold text-primary tabular-nums">
                       S${voucherInfo.balanceSgd}
                     </p>
                   </div>
-                  <div className="bg-slate-50 rounded-lg p-2">
-                    <p className="text-[10px] text-slate-400">{t("scan.face")}</p>
-                    <p className="text-lg font-bold text-slate-800 tabular-nums">
+                  <div className="bg-muted/50 rounded-lg p-2">
+                    <p className="text-[10px] text-muted-foreground">{t("scan.face")}</p>
+                    <p className="text-lg font-bold text-foreground tabular-nums">
                       S${voucherInfo.amountSgd}
                     </p>
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-muted-foreground">
                   {voucherInfo.productKind === "self_use"
                     ? voucherInfo.isDraw
                       ? t("scan.feeHintExclusive")
@@ -753,7 +753,7 @@ export default function ScanClient({
                         S${voucherResult.fee}
                       </p>
                     )}
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       {t("scan.remaining")} S${voucherResult.remaining}
                     </p>
                   </>
@@ -762,8 +762,8 @@ export default function ScanClient({
             </Card>
           )}
 
-          <div className="p-3 bg-slate-50 rounded-xl">
-            <ul className="text-[11px] text-slate-400 space-y-1">
+          <div className="p-3 bg-muted/50 rounded-xl">
+            <ul className="text-[11px] text-muted-foreground space-y-1">
               <li>• {t("scan.tipOnline1")}</li>
               <li>• {t("scan.tipOnline2")}</li>
               <li>• {t("business.scan.tip4")}</li>
@@ -774,14 +774,14 @@ export default function ScanClient({
 
       {tab === "physical" && (
         <div className="px-4 mt-4 space-y-4">
-          <div className="bg-slate-50 rounded-xl p-4 space-y-3">
-            <p className="text-sm text-slate-600">
+          <div className="bg-muted/50 rounded-xl p-4 space-y-3">
+            <p className="text-sm text-muted-foreground">
               {lang === "en"
                 ? "Scan paper code: register cash sale first, then redeem at any group store."
                 : "扫纸质码：先登记现金售出，再在集团任一门店核销。"}
             </p>
             <QrScannerSheet
-              className="w-full h-11 rounded-full border-[#1A6EFF]/30 text-[#1A6EFF] font-semibold"
+              className="w-full h-11 rounded-full border-primary/30 text-primary font-semibold"
               disabled={!storeId}
               onScan={(raw) => {
                 // 纸码可能是 PT-… 或 claim URL 含 code
@@ -834,11 +834,11 @@ export default function ScanClient({
               }}
             />
             <div className="relative flex items-center gap-2">
-              <div className="flex-1 h-px bg-slate-200" />
-              <span className="text-[10px] text-slate-400">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-[10px] text-muted-foreground">
                 {lang === "en" ? "or type" : "或输入"}
               </span>
-              <div className="flex-1 h-px bg-slate-200" />
+              <div className="flex-1 h-px bg-border" />
             </div>
             <Input
               placeholder="PT-XXXXXXXXXXXX"
@@ -856,7 +856,7 @@ export default function ScanClient({
             <Card>
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-semibold text-slate-900">
+                  <p className="text-sm font-semibold text-foreground">
                     {physicalInfo.title}
                   </p>
                   <Badge
@@ -869,16 +869,16 @@ export default function ScanClient({
                   </Badge>
                 </div>
                 {physicalInfo.type === "voucher" && (
-                  <p className="text-xl font-bold text-[#1A6EFF]">
+                  <p className="text-xl font-bold text-primary">
                     S${physicalInfo.valueSgd}
                   </p>
                 )}
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   {lang === "en" ? "Print store" : "印刷店"}:{" "}
                   {physicalInfo.ticketStoreName}
                 </p>
                 {physicalInfo.soldStoreName && (
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {lang === "en" ? "Sold at" : "售出店"}:{" "}
                     {physicalInfo.soldStoreName}
                     {physicalInfo.paidSgd != null
@@ -887,12 +887,12 @@ export default function ScanClient({
                   </p>
                 )}
                 {physicalInfo.redeemedStoreName && (
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {lang === "en" ? "Redeemed at" : "核销店"}:{" "}
                     {physicalInfo.redeemedStoreName}
                   </p>
                 )}
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   {t("scan.physicalStatus")}: {physicalInfo.status}
                   {physicalInfo.customer?.name
                     ? ` · ${t("scan.physicalBound")} ${physicalInfo.customer.name}`
@@ -914,12 +914,12 @@ export default function ScanClient({
                 )}
 
                 {physicalInfo.canSell && (
-                  <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
-                    <p className="text-xs font-semibold text-slate-800">
+                  <div className="mt-3 space-y-2 border-t border-border pt-3">
+                    <p className="text-xs font-semibold text-foreground">
                       {lang === "en" ? "Cash sale" : "现金售出登记"}
                     </p>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-400 shrink-0">
+                      <span className="text-xs text-muted-foreground shrink-0">
                         {lang === "en" ? "Paid S$" : "实收 S$"}
                       </span>
                       <Input
@@ -941,7 +941,7 @@ export default function ScanClient({
                       inputMode="tel"
                       placeholder="91234567"
                     />
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[10px] text-muted-foreground">
                       {lang === "en"
                         ? "If phone is a registered customer, ticket binds to their account."
                         : "若手机号已注册顾客，将自动绑定到其账号。"}
@@ -977,7 +977,7 @@ export default function ScanClient({
                 {physicalInfo.type === "draw" &&
                   physicalInfo.status !== "redeemed" &&
                   !physicalInfo.canRedeem && (
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-muted-foreground">
                       {t("scan.physicalDrawNoAnon")}
                     </p>
                   )}

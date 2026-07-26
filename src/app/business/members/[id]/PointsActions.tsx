@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Star, TrendingDown, CheckCircle2, XCircle } from "lucide-react";
 
 export function PointsActions({ customerId }: { customerId: string }) {
   const router = useRouter();
@@ -10,6 +11,7 @@ export function PointsActions({ customerId }: { customerId: string }) {
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageOk, setMessageOk] = useState(true);
 
   async function submit(actualAmount: number) {
     setLoading(true);
@@ -28,13 +30,15 @@ export function PointsActions({ customerId }: { customerId: string }) {
     setLoading(false);
 
     if (res.ok) {
-      setMessage(`✅ ${actualAmount > 0 ? "发放" : "扣减"}成功`);
+      setMessageOk(true);
+      setMessage(`${actualAmount > 0 ? "发放" : "扣减"}成功`);
       setMode("none");
       setAmount(100);
       setReason("");
       router.refresh();
     } else {
-      setMessage(`❌ ${data.error || "操作失败"}`);
+      setMessageOk(false);
+      setMessage(data.error || "操作失败");
     }
   }
 
@@ -46,7 +50,7 @@ export function PointsActions({ customerId }: { customerId: string }) {
           type="number"
           value={amount}
           onChange={(e) => setAmount(Number(e.target.value))}
-          className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm text-center"
+          className="w-full h-9 px-3 rounded-lg border border-border text-sm text-center nums"
           min={1}
           autoFocus
           placeholder="积分数量"
@@ -55,7 +59,7 @@ export function PointsActions({ customerId }: { customerId: string }) {
           type="text"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          className="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs"
+          className="w-full h-9 px-3 rounded-lg border border-border text-xs"
           placeholder={
             isGrant ? "发放原因（如：消费满100）" : "扣减原因（如：退货退款）"
           }
@@ -64,7 +68,7 @@ export function PointsActions({ customerId }: { customerId: string }) {
           <button
             onClick={() => submit(isGrant ? amount : -amount)}
             disabled={loading || amount <= 0}
-            className="flex-1 h-8 text-xs font-medium text-white bg-[#1A6EFF] rounded-full disabled:opacity-50"
+            className="flex-1 h-8 text-xs font-medium text-primary-foreground bg-primary rounded-full disabled:opacity-50 active:scale-[0.97] transition-transform"
           >
             {loading
               ? "处理中..."
@@ -77,17 +81,18 @@ export function PointsActions({ customerId }: { customerId: string }) {
               setMode("none");
               setMessage("");
             }}
-            className="flex-1 h-8 text-xs font-medium text-slate-500 bg-slate-100 rounded-full"
+            className="flex-1 h-8 text-xs font-medium text-muted-foreground bg-muted rounded-full active:scale-[0.97] transition-transform"
           >
             取消
           </button>
         </div>
         {message && (
           <p
-            className={`text-xs text-center ${
-              message.startsWith("✅") ? "text-green-600" : "text-red-500"
+            className={`text-xs text-center flex items-center justify-center gap-1 ${
+              messageOk ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"
             }`}
           >
+            {messageOk ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
             {message}
           </p>
         )}
@@ -99,15 +104,15 @@ export function PointsActions({ customerId }: { customerId: string }) {
     <div className="flex gap-2">
       <button
         onClick={() => setMode("grant")}
-        className="flex-1 h-8 text-xs font-medium text-white bg-[#1A6EFF] rounded-full"
+        className="flex-1 h-8 flex items-center justify-center gap-1 text-xs font-medium text-primary-foreground bg-primary rounded-full active:scale-[0.97] transition-transform"
       >
-        ⭐ 发放积分
+        <Star size={12} /> 发放积分
       </button>
       <button
         onClick={() => setMode("deduct")}
-        className="flex-1 h-8 text-xs font-medium text-slate-500 bg-slate-100 rounded-full"
+        className="flex-1 h-8 flex items-center justify-center gap-1 text-xs font-medium text-muted-foreground bg-muted rounded-full active:scale-[0.97] transition-transform"
       >
-        📉 扣减积分
+        <TrendingDown size={12} /> 扣减积分
       </button>
     </div>
   );

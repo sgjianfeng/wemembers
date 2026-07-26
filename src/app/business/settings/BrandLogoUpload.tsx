@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
+import { ImageOff } from "lucide-react";
 
 /**
  * 通用企业品牌 Logo 上传 — 写入 User.businessLogo
@@ -74,10 +75,10 @@ export function BrandLogoUpload({
     <Card className="min-w-0 overflow-hidden">
       <CardContent className="p-4 space-y-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">
+          <h3 className="text-sm font-semibold text-foreground">
             {lang === "en" ? "Brand logo" : "品牌 Logo"}
           </h3>
-          <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+          <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
             {lang === "en"
               ? "Used on shop page, physical tickets, and coupons. PNG/JPG/WebP, max 2MB. Square works best."
               : "用于店铺页、实体券印刷、优惠展示等。支持 PNG/JPG/WebP，最大 2MB；建议方形透明底。"}
@@ -85,7 +86,7 @@ export function BrandLogoUpload({
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="w-20 h-20 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
+          <div className="w-20 h-20 rounded-2xl border border-border bg-muted/50 flex items-center justify-center overflow-hidden shrink-0">
             {url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -94,7 +95,7 @@ export function BrandLogoUpload({
                 className="w-full h-full object-contain p-1"
               />
             ) : (
-              <span className="text-2xl text-slate-300">🏷️</span>
+              <ImageOff size={24} className="text-muted-foreground" aria-hidden />
             )}
           </div>
           <div className="flex flex-col gap-2 min-w-0">
@@ -124,7 +125,7 @@ export function BrandLogoUpload({
                 type="button"
                 disabled={loading}
                 onClick={clearLogo}
-                className="text-xs text-slate-400 hover:text-red-500 text-left"
+                className="text-xs text-muted-foreground hover:text-red-600 dark:hover:text-red-400 text-left"
               >
                 {lang === "en" ? "Remove" : "移除"}
               </button>
@@ -132,8 +133,8 @@ export function BrandLogoUpload({
           </div>
         </div>
 
-        {err && <p className="text-xs text-red-500">{err}</p>}
-        {msg && <p className="text-xs text-emerald-600">{msg}</p>}
+        {err && <p className="text-xs text-red-600 dark:text-red-400">{err}</p>}
+        {msg && <p className="text-xs text-emerald-600 dark:text-emerald-400">{msg}</p>}
       </CardContent>
     </Card>
   );

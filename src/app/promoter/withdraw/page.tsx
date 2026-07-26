@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent } from "@/components/ui/Card";
 import { TopHeader } from "@/components/ui/TopHeader";
+import { Landmark, MessageCircle } from "lucide-react";
 
 export default function WithdrawPage() {
   const router = useRouter();
@@ -47,14 +48,14 @@ export default function WithdrawPage() {
   return (
     <div className="pb-4 min-h-screen">
       <TopHeader fallbackUrl="/promoter" title="提现" />
-      <div className="px-4 py-3 border-b border-slate-100">
-        <h1 className="text-lg font-semibold">提现</h1>
+      <div className="px-4 py-3 border-b border-border">
+        <h1 className="text-lg font-semibold text-foreground">提现</h1>
       </div>
 
       <div className="px-4 mt-6">
         <div className="text-center mb-6">
-          <p className="text-sm text-slate-500">可提现余额</p>
-          <p className="text-4xl font-bold text-green-600 mt-1">S${(balance / 100).toFixed(2)}</p>
+          <p className="text-sm text-muted-foreground">可提现余额</p>
+          <p className="text-4xl font-bold text-green-600 dark:text-green-400 mt-1 nums">S${(balance / 100).toFixed(2)}</p>
         </div>
 
         <div className="space-y-4">
@@ -68,38 +69,41 @@ export default function WithdrawPage() {
           />
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">到账方式（申请后人工打款）</label>
+            <label className="block text-sm font-medium text-foreground mb-2">到账方式（申请后人工打款）</label>
             <div className="flex gap-2">
               {[
-                { key: "paynow", label: "PayNow", icon: "🇸🇬" },
-                { key: "bank", label: "银行转账", icon: "🏦" },
-                { key: "wechat", label: "微信", icon: "💬" },
+                { key: "paynow", label: "PayNow", icon: Landmark },
+                { key: "bank", label: "银行转账", icon: Landmark },
+                { key: "wechat", label: "微信", icon: MessageCircle },
               ].map((m) => (
                 <button
                   key={m.key}
                   type="button"
                   onClick={() => setMethod(m.key)}
-                  className={`flex-1 py-3 rounded-xl border-2 text-sm font-medium transition-colors ${
-                    method === m.key ? "border-green-400 bg-green-50 text-green-700" : "border-slate-100 text-slate-400"
+                  className={`flex-1 py-3 rounded-xl border-2 text-sm font-medium transition-colors active:scale-[0.97] flex flex-col items-center gap-1 ${
+                    method === m.key
+                      ? "border-green-400 bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400"
+                      : "border-border text-muted-foreground"
                   }`}
                 >
-                  {m.icon} {m.label}
+                  <m.icon size={16} />
+                  {m.label}
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-slate-400 mt-2 text-center">
+            <p className="text-[10px] text-muted-foreground mt-2 text-center">
               MVP：先扣推广余额并记录申请，财务按方式人工到账（非自动 Stripe）
             </p>
           </div>
 
           {result && (
-            <div className={`p-4 rounded-xl text-sm text-center ${result.success ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+            <div className={`p-4 rounded-xl text-sm text-center ${result.success ? "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400" : "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400"}`}>
               {result.success ? result.message : result.error}
             </div>
           )}
 
           <Button
-            className="w-full"
+            className="w-full active:scale-[0.97] transition-transform"
             size="lg"
             onClick={withdraw}
             loading={loading}
@@ -109,7 +113,7 @@ export default function WithdrawPage() {
           </Button>
 
           <div className="text-center">
-            <button onClick={() => router.push("/promoter")} className="text-xs text-slate-400">
+            <button onClick={() => router.push("/promoter")} className="text-xs text-muted-foreground">
               ← 返回推广中心
             </button>
           </div>
@@ -120,7 +124,7 @@ export default function WithdrawPage() {
               <button
                 key={preset}
                 onClick={() => setAmount(preset.toString())}
-                className="px-4 py-1.5 bg-slate-100 rounded-full text-xs text-slate-600 hover:bg-slate-200"
+                className="px-4 py-1.5 bg-muted rounded-full text-xs text-muted-foreground hover:bg-muted/70 active:scale-[0.97] transition-transform nums"
                 disabled={preset > balance / 100}
               >
                 S${preset}
@@ -129,7 +133,7 @@ export default function WithdrawPage() {
             {balance > 0 && (
               <button
                 onClick={() => setAmount((balance / 100).toFixed(2))}
-                className="px-4 py-1.5 bg-green-100 text-green-600 rounded-full text-xs font-medium hover:bg-green-200"
+                className="px-4 py-1.5 bg-green-100 dark:bg-green-950/40 text-green-600 dark:text-green-400 rounded-full text-xs font-medium hover:bg-green-200 dark:hover:bg-green-900/50 active:scale-[0.97] transition-transform"
               >
                 全部提现
               </button>

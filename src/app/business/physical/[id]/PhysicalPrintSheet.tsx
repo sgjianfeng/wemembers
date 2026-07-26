@@ -83,7 +83,7 @@ export function PhysicalPrintSheet({
         <button
           type="button"
           onClick={() => window.print()}
-          className="inline-flex h-9 items-center rounded-full bg-[#1A6EFF] px-4 text-xs font-semibold text-white"
+          className="inline-flex h-9 items-center rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground active:scale-[0.97] transition-transform"
         >
           {lang === "en" ? "Print / Save PDF" : "打印 / 存为 PDF"}
         </button>
@@ -91,7 +91,7 @@ export function PhysicalPrintSheet({
           type="button"
           disabled={!first || shareBusy}
           onClick={downloadSharePng}
-          className="inline-flex h-9 items-center rounded-full bg-slate-900 px-4 text-xs font-semibold text-white disabled:opacity-50"
+          className="inline-flex h-9 items-center rounded-full bg-foreground px-4 text-xs font-semibold text-background disabled:opacity-50 active:scale-[0.97] transition-transform"
         >
           {shareBusy
             ? "…"
@@ -99,7 +99,7 @@ export function PhysicalPrintSheet({
               ? "Download 1:1 share PNG"
               : "下载 1:1 分享图"}
         </button>
-        <p className="text-[11px] text-slate-400">
+        <p className="text-[11px] text-muted-foreground">
           {lang === "en" ? tpl.nameEn : tpl.nameZh}
           {" · "}
           {lang === "en"
@@ -111,7 +111,7 @@ export function PhysicalPrintSheet({
       {/* Share preview (visible) */}
       {first && (
         <div className="print:hidden mb-6">
-          <p className="text-xs font-medium text-slate-500 mb-2">
+          <p className="text-xs font-medium text-muted-foreground mb-2">
             {lang === "en" ? "Share preview (1:1)" : "分享预览（1:1 · 用第一张码）"}
           </p>
           <div className="max-w-[280px]">
@@ -135,7 +135,7 @@ export function PhysicalPrintSheet({
         </div>
       )}
 
-      <p className="print:hidden text-xs font-medium text-slate-500 mb-2">
+      <p className="print:hidden text-xs font-medium text-muted-foreground mb-2">
         {lang === "en" ? "Print sheet" : "印刷票面"}
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 print:grid-cols-2 print:gap-2">

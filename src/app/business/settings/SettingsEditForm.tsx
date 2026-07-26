@@ -112,7 +112,7 @@ export function SettingsEditForm({ initial, shopBaseUrl }: Props) {
   return (
     <Card className="min-w-0 overflow-hidden">
       <CardContent className="p-4 space-y-3 min-w-0">
-        <h3 className="text-sm font-semibold text-slate-900">
+        <h3 className="text-sm font-semibold text-foreground">
           {lang === "en" ? "Company profile" : "企业信息"}
         </h3>
 
@@ -134,7 +134,7 @@ export function SettingsEditForm({ initial, shopBaseUrl }: Props) {
           placeholder="201912345A"
           className="font-mono tracking-wide"
         />
-        <p className="-mt-1 text-[11px] text-slate-400">
+        <p className="-mt-1 text-[11px] text-muted-foreground">
           {lang === "en"
             ? "Unique Entity Number — company legal ID"
             : "企业唯一识别号；用于主体识别"}
@@ -149,13 +149,13 @@ export function SettingsEditForm({ initial, shopBaseUrl }: Props) {
             <button
               type="button"
               onClick={suggestSlugFromName}
-              className="text-[11px] font-medium text-[#1A6EFF] shrink-0"
+              className="text-[11px] font-medium text-primary shrink-0"
             >
               {lang === "en" ? "From company name" : "从公司名生成"}
             </button>
           </div>
           <div className="flex items-center gap-0 min-w-0 rounded-lg border border-input bg-background overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-inset">
-            <span className="pl-3 pr-1 text-xs text-slate-400 shrink-0 select-none">
+            <span className="pl-3 pr-1 text-xs text-muted-foreground shrink-0 select-none">
               @
             </span>
             <input
@@ -171,15 +171,15 @@ export function SettingsEditForm({ initial, shopBaseUrl }: Props) {
               )}
             />
           </div>
-          <p className="mt-1.5 text-[11px] text-slate-400 leading-relaxed break-all">
+          <p className="mt-1.5 text-[11px] text-muted-foreground leading-relaxed break-all">
             {lang === "en" ? "Company / store URLs: " : "企业与门店链接："}
-            <span className="font-mono text-slate-600">
+            <span className="font-mono text-foreground/80">
               {shopBaseUrl}/shop/{slugPreview}
             </span>
-            <span className="text-slate-300"> / </span>
-            <span className="font-mono text-slate-500">{"{store-slug}"}</span>
+            <span className="text-muted-foreground/50"> / </span>
+            <span className="font-mono text-muted-foreground">{"{store-slug}"}</span>
           </p>
-          <p className="mt-0.5 text-[11px] text-slate-400">
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
             {lang === "en"
               ? "a-z, 0-9, hyphens — company slug is global unique"
               : "仅小写字母、数字、连字符 · 企业标识全局唯一"}
@@ -187,7 +187,7 @@ export function SettingsEditForm({ initial, shopBaseUrl }: Props) {
         </div>
 
         <div className="w-full min-w-0">
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label className="block text-sm font-medium text-foreground mb-1">
             {lang === "en" ? "Category" : "行业"}
           </label>
           <select
@@ -205,11 +205,11 @@ export function SettingsEditForm({ initial, shopBaseUrl }: Props) {
         </div>
 
         {/* 登录邮箱完整展示 */}
-        <div className="w-full min-w-0 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
-          <p className="text-xs text-slate-400 mb-0.5">
+        <div className="w-full min-w-0 rounded-xl bg-muted/50 border border-border px-3 py-2.5">
+          <p className="text-xs text-muted-foreground mb-0.5">
             {lang === "en" ? "Login email" : "登录邮箱"}
           </p>
-          <p className="text-sm font-medium text-slate-900 break-all">
+          <p className="text-sm font-medium text-foreground break-all">
             {initial.email || "—"}
           </p>
         </div>
@@ -229,8 +229,8 @@ export function SettingsEditForm({ initial, shopBaseUrl }: Props) {
           placeholder={lang === "en" ? "Optional" : "选填"}
         />
 
-        {msg && <p className="text-xs text-green-600 text-center">{msg}</p>}
-        {err && <p className="text-xs text-red-500 text-center break-words">{err}</p>}
+        {msg && <p className="text-xs text-green-600 dark:text-green-400 text-center">{msg}</p>}
+        {err && <p className="text-xs text-red-600 dark:text-red-400 text-center break-words">{err}</p>}
         <Button className="w-full" size="sm" loading={loading} onClick={save}>
           {lang === "en" ? "Save changes" : "保存修改"}
         </Button>

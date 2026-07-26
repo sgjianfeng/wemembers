@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { Card, CardContent } from "@/components/ui/Card";
 import { useLang } from "@/components/i18n/LanguageProvider";
 import { VoucherTypeBadge } from "@/components/voucher/VoucherTypeBadge";
+import { ArrowLeft, ArrowRight, Copy, Check } from "lucide-react";
 
 type CampaignOpt = {
   id: string;
@@ -204,24 +205,24 @@ export default function IssueSelfPage() {
 
   return (
     <div className="pb-10">
-      <div className="px-4 py-3 border-b border-slate-100 bg-white sticky top-0 z-10">
+      <div className="px-4 py-3 border-b border-border bg-card sticky top-0 z-10">
         <button
           type="button"
-          className="text-xs text-[#1A6EFF] font-medium"
+          className="text-xs text-primary font-medium flex items-center gap-0.5 active:scale-[0.97] transition-transform"
           onClick={() => router.push("/business")}
         >
-          ← {lang === "en" ? "Back" : "返回"}
+          <ArrowLeft size={13} /> {lang === "en" ? "Back" : "返回"}
         </button>
         <div className="flex items-center gap-2 mt-1">
-          <h1 className="text-lg font-semibold">{t("issueSelf.title")}</h1>
+          <h1 className="text-lg font-semibold text-foreground">{t("issueSelf.title")}</h1>
           <VoucherTypeBadge kind="self_use" size="sm" />
         </div>
-        <p className="text-xs text-slate-400 mt-0.5">{t("issueSelf.subtitle")}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{t("issueSelf.subtitle")}</p>
       </div>
 
       <div className="px-4 mt-4 space-y-4">
         {/* Counter steps */}
-        <div className="rounded-2xl bg-slate-50 border border-slate-100 px-3 py-2.5 text-[11px] text-slate-500 leading-relaxed">
+        <div className="rounded-2xl bg-muted/50 border border-border px-3 py-2.5 text-[11px] text-muted-foreground leading-relaxed">
           {lang === "en" ? (
             <>
               1) Take cash · 2) Issue voucher · 3) Give customer the{" "}

@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useLang } from "@/components/i18n/LanguageProvider";
+import { cn } from "@/lib/utils";
 
 type Listing = {
   id: string;
@@ -104,17 +106,17 @@ export function StoreListingPanel({
   const isSelf = productKind === "self_use";
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white overflow-hidden">
+    <div className="rounded-2xl border border-border bg-card overflow-hidden">
       <button
         type="button"
         className="w-full flex items-center justify-between px-4 py-3 text-left"
         onClick={() => setOpen((v) => !v)}
       >
         <div>
-          <p className="text-sm font-semibold text-slate-900">
+          <p className="text-sm font-semibold text-foreground">
             {lang === "en" ? "Store listing" : "门店选用"}
           </p>
-          <p className="text-[11px] text-slate-400 mt-0.5">
+          <p className="text-[11px] text-muted-foreground mt-0.5">
             {isSelf
               ? lang === "en"
                 ? "Stores must enable this product before customers can buy"
@@ -124,17 +126,20 @@ export function StoreListingPanel({
                 : "哪些门店可售 / 核销此产品"}
           </p>
         </div>
-        <span className="text-xs text-[#1A6EFF]">{open ? "▲" : "▼"}</span>
+        <ChevronDown
+          size={16}
+          className={cn("text-primary transition-transform", open && "rotate-180")}
+        />
       </button>
 
       {open && (
-        <div className="px-4 pb-4 border-t border-slate-50">
+        <div className="px-4 pb-4 border-t border-border">
           {loading ? (
-            <p className="text-xs text-slate-400 py-3">
+            <p className="text-xs text-muted-foreground py-3">
               {lang === "en" ? "Loading…" : "加载中…"}
             </p>
           ) : listings.length === 0 ? (
-            <p className="text-xs text-slate-400 py-3">
+            <p className="text-xs text-muted-foreground py-3">
               {lang === "en"
                 ? "No stores yet. Create a store first."
                 : "还没有门店，请先创建门店。"}
@@ -165,14 +170,14 @@ export function StoreListingPanel({
                 {listings.map((l) => (
                   <li
                     key={l.id}
-                    className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2"
+                    className="flex items-center justify-between gap-2 rounded-xl bg-muted/50 px-3 py-2"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-800 truncate">
+                      <p className="text-sm font-medium text-foreground truncate">
                         {l.name}
                       </p>
                       {l.address && (
-                        <p className="text-[10px] text-slate-400 truncate">
+                        <p className="text-[10px] text-muted-foreground truncate">
                           {l.address}
                         </p>
                       )}
@@ -181,15 +186,17 @@ export function StoreListingPanel({
                       type="button"
                       disabled={saving === l.id}
                       onClick={() => toggle(l.id, !l.enabled)}
-                      className={`shrink-0 w-12 h-6 rounded-full transition-colors ${
-                        l.enabled ? "bg-[#1A6EFF]" : "bg-slate-200"
-                      }`}
+                      className={cn(
+                        "shrink-0 w-12 h-6 rounded-full transition-colors",
+                        l.enabled ? "bg-primary" : "bg-muted"
+                      )}
                       aria-label={l.enabled ? "Disable" : "Enable"}
                     >
                       <div
-                        className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                        className={cn(
+                          "w-5 h-5 bg-white rounded-full shadow transition-transform",
                           l.enabled ? "translate-x-6" : "translate-x-0.5"
-                        }`}
+                        )}
                       />
                     </button>
                   </li>

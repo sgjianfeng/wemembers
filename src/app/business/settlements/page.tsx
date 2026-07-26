@@ -5,7 +5,9 @@ import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { timeAgo } from "@/lib/utils";
+import { Gem } from "lucide-react";
 
 export default async function SettlementsPage({
   searchParams,
@@ -56,31 +58,31 @@ export default async function SettlementsPage({
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-slate-100 sticky top-0 bg-white z-10">
-        <h1 className="text-lg font-semibold">{t("business.settlements.title", lang)}</h1>
-        <p className="text-xs text-slate-400 mt-0.5">{t("business.settlements.subtitle", lang)}</p>
+      <div className="px-4 py-3 border-b border-border sticky top-0 bg-card z-10">
+        <h1 className="text-lg font-semibold text-foreground">{t("business.settlements.title", lang)}</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">{t("business.settlements.subtitle", lang)}</p>
       </div>
 
       {/* 余额概览 */}
       {account && (
         <div className="px-4 mt-4">
           <div className="grid grid-cols-3 gap-2">
-            <Card className="bg-slate-50 border-0">
+            <Card className="bg-muted/50 border-0">
               <CardContent className="p-3 text-center">
-                <p className="text-xl font-bold text-slate-900">{(account.balance / 100).toFixed(0)}</p>
-                <p className="text-[10px] text-slate-400">{t("business.settlements.balance", lang)}</p>
+                <p className="text-xl font-bold text-foreground nums">{(account.balance / 100).toFixed(0)}</p>
+                <p className="text-[10px] text-muted-foreground">{t("business.settlements.balance", lang)}</p>
               </CardContent>
             </Card>
-            <Card className="bg-amber-50 border-0">
+            <Card className="bg-amber-50 dark:bg-amber-950/40 border-0">
               <CardContent className="p-3 text-center">
-                <p className="text-xl font-bold text-amber-700">{(account.frozenBalance / 100).toFixed(0)}</p>
-                <p className="text-[10px] text-amber-600">{t("business.settlements.frozen", lang)}</p>
+                <p className="text-xl font-bold text-amber-700 dark:text-amber-400 nums">{(account.frozenBalance / 100).toFixed(0)}</p>
+                <p className="text-[10px] text-amber-600 dark:text-amber-400">{t("business.settlements.frozen", lang)}</p>
               </CardContent>
             </Card>
-            <Card className="bg-green-50 border-0">
+            <Card className="bg-green-50 dark:bg-green-950/40 border-0">
               <CardContent className="p-3 text-center">
-                <p className="text-xl font-bold text-green-700">{((account.totalEarned) / 100).toFixed(0)}</p>
-                <p className="text-[10px] text-green-600">{t("business.settlements.totalEarned", lang)}</p>
+                <p className="text-xl font-bold text-green-700 dark:text-green-400 nums">{((account.totalEarned) / 100).toFixed(0)}</p>
+                <p className="text-[10px] text-green-600 dark:text-green-400">{t("business.settlements.totalEarned", lang)}</p>
               </CardContent>
             </Card>
           </div>
@@ -104,8 +106,8 @@ export default async function SettlementsPage({
             <a
               key={key}
               href={`/business/settlements?role=${key}`}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                isActive ? "bg-[#1A6EFF] text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors active:scale-[0.97] ${
+                isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"
               }`}
             >
               {t(`business.settlements.${key === "all" ? "all" : key === "issuer" ? "iIssued" : "iRedeemed"}`, lang)}
@@ -124,28 +126,28 @@ export default async function SettlementsPage({
               <CardContent className="p-3">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs">💎</span>
-                    <span className="text-sm font-medium text-slate-900">
+                    <Gem size={12} className="text-muted-foreground" aria-hidden />
+                    <span className="text-sm font-medium text-foreground nums">
                       S${(s.totalAmount / 100).toFixed(2)}
                     </span>
                     <Badge variant={isIssuer ? "amber" : "blue"} size="sm">
                       {isIssuer ? t("business.settlements.myVoucher", lang) : t("business.settlements.iRedeemed", lang)}
                     </Badge>
                   </div>
-                  <span className="text-[10px] text-slate-400">{timeAgo(s.createdAt)}</span>
+                  <span className="text-[10px] text-muted-foreground">{timeAgo(s.createdAt)}</span>
                 </div>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   {s.redemption?.claim?.coupon?.title || t("business.settlements.unknownVoucher", lang)} ·{" "}
                   {s.issuer.businessName} → {s.redeemer.businessName}
                 </p>
-                <div className="flex items-center gap-2 mt-1.5 text-[10px]">
-                  <span className="text-slate-400">
+                <div className="flex items-center gap-2 mt-1.5 text-[10px] nums">
+                  <span className="text-muted-foreground">
                     {t("business.settlements.platform", lang)} S${(s.platformFee / 100).toFixed(2)}
                   </span>
-                  <span className="text-amber-600 font-medium">
+                  <span className="text-amber-600 dark:text-amber-400 font-medium">
                     {t("business.settlements.promo", lang)} S${(s.issuerFee / 100).toFixed(2)}
                   </span>
-                  <span className="text-green-600 font-medium">
+                  <span className="text-green-600 dark:text-green-400 font-medium">
                     {t("business.settlements.redeem", lang)} S${(s.redeemerIncome / 100).toFixed(2)}
                   </span>
                 </div>
@@ -154,10 +156,12 @@ export default async function SettlementsPage({
           );
         })}
         {settlements.length === 0 && (
-          <div className="text-center py-12 text-slate-400">
-            <p className="text-3xl mb-2">📊</p>
-            <p className="text-sm">{t("business.settlements.noRecords", lang)}</p>
-          </div>
+          <EmptyState
+            icon="earnings"
+            tone="calm"
+            title={t("business.settlements.noRecords", lang)}
+            className="py-12"
+          />
         )}
       </div>
     </div>
@@ -166,9 +170,9 @@ export default async function SettlementsPage({
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="text-center py-2 bg-slate-50 rounded-xl">
-      <p className="text-sm font-bold text-slate-900">{value}</p>
-      <p className="text-[10px] text-slate-400">{label}</p>
+    <div className="text-center py-2 bg-muted/50 rounded-xl">
+      <p className="text-sm font-bold text-foreground nums">{value}</p>
+      <p className="text-[10px] text-muted-foreground">{label}</p>
     </div>
   );
 }

@@ -328,18 +328,18 @@ export default async function CustomerHome() {
   return (
     <div className="pb-4">
       {/* Compact header — not platform points wall */}
-      <div className="px-4 pt-5 pb-3 border-b border-slate-50">
+      <div className="px-4 pt-5 pb-3 border-b border-border">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs text-slate-400">{t("home.greeting", lang)}</p>
-            <p className="text-lg font-semibold text-slate-900 truncate">{displayName}</p>
+            <p className="text-xs text-muted-foreground">{t("home.greeting", lang)}</p>
+            <p className="text-lg font-semibold text-foreground truncate">{displayName}</p>
           </div>
           <Link
             href="/balance"
-            className="shrink-0 text-right rounded-2xl bg-amber-50 border border-amber-100 px-3 py-2"
+            className="shrink-0 text-right rounded-2xl bg-gold/10 border border-gold/25 px-3 py-2 active:scale-[0.97] transition-transform"
           >
-            <p className="text-[10px] text-amber-700">{t("home.balancePeek", lang)}</p>
-            <p className="text-base font-bold text-amber-600">
+            <p className="text-[10px] text-[color:var(--gold-strong)]">{t("home.balancePeek", lang)}</p>
+            <p className="text-base font-bold text-[color:var(--gold-strong)] nums">
               S${formatMoney(totalBalanceCents)}
             </p>
           </Link>
@@ -376,12 +376,12 @@ export default async function CustomerHome() {
         {/* Light discover: free coupons preview + view all */}
         <section className="space-y-2">
           <div className="flex items-center justify-between px-0.5">
-            <h2 className="text-sm font-semibold text-slate-900">
+            <h2 className="text-sm font-semibold text-foreground">
               {t("home.section.discoverCoupons", lang)}
             </h2>
             <Link
               href="/discover/coupons"
-              className="text-xs font-medium text-[#1A6EFF]"
+              className="text-xs font-medium text-primary"
             >
               {t("home.vouchers.viewAll", lang)}
             </Link>
@@ -396,15 +396,15 @@ export default async function CustomerHome() {
                   : `S$${(coupon.valueCents / 100).toFixed(0)}`;
               return (
                 <Link key={coupon.id} href={`/coupons/${coupon.id}`}>
-                  <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-white px-3 py-2.5 hover:border-[#1A6EFF]/30">
+                  <div className="flex items-center justify-between rounded-xl border border-border bg-card px-3 py-2.5 hover:border-primary/30 active:scale-[0.99] transition-transform">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-[#FF6B35]">{display}</p>
-                      <p className="text-xs text-slate-800 truncate">{coupon.title}</p>
-                      <p className="text-[10px] text-slate-400 truncate">
+                      <p className="text-sm font-semibold text-brand nums">{display}</p>
+                      <p className="text-xs text-foreground truncate">{coupon.title}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">
                         {coupon.business.businessName}
                       </p>
                     </div>
-                    <span className="shrink-0 text-[11px] font-medium text-white bg-[#1A6EFF] px-2.5 py-1 rounded-full">
+                    <span className="shrink-0 text-[11px] font-medium text-primary-foreground bg-primary px-2.5 py-1 rounded-full">
                       {t("home.claim", lang)}
                     </span>
                   </div>
@@ -412,13 +412,13 @@ export default async function CustomerHome() {
               );
             })
           ) : (
-            <div className="text-center py-5 px-4 rounded-2xl bg-slate-50 border border-slate-100">
-              <p className="text-sm text-slate-600">
+            <div className="text-center py-5 px-4 rounded-2xl bg-muted/50 border border-border">
+              <p className="text-sm text-muted-foreground">
                 {t("home.discover.emptyTitle", lang)}
               </p>
               <Link
                 href="/discover/coupons"
-                className="inline-flex mt-3 px-4 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-700"
+                className="inline-flex mt-3 px-4 py-1.5 rounded-full text-xs font-semibold bg-card border border-border text-foreground active:scale-[0.97] transition-transform"
               >
                 {t("home.vouchers.viewAll", lang)}
               </Link>
@@ -432,27 +432,27 @@ export default async function CustomerHome() {
           storeItems.length === 0 &&
           openCoupons.length === 0 &&
           hotStores.length === 0 && (
-            <div className="text-center py-6 px-4 rounded-2xl bg-slate-50 border border-slate-100">
-              <p className="text-sm text-slate-600">{t("home.discover.empty", lang)}</p>
-              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+            <div className="text-center py-6 px-4 rounded-2xl bg-muted/50 border border-border">
+              <p className="text-sm text-muted-foreground">{t("home.discover.empty", lang)}</p>
+              <p className="text-xs text-muted-foreground/70 mt-1.5 leading-relaxed">
                 {t("home.discover.emptyHint", lang)}
               </p>
               <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                 <Link
                   href="/discover/draws"
-                  className="px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-700"
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold bg-card border border-border text-foreground active:scale-[0.97] transition-transform"
                 >
                   {t("home.draws.browse", lang)}
                 </Link>
                 <Link
                   href="/discover/coupons"
-                  className="px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-700"
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold bg-card border border-border text-foreground active:scale-[0.97] transition-transform"
                 >
                   {t("discover.coupons.browse", lang)}
                 </Link>
                 <Link
                   href="/discover/stores"
-                  className="px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-700"
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold bg-card border border-border text-foreground active:scale-[0.97] transition-transform"
                 >
                   {t("discover.stores.browse", lang)}
                 </Link>

@@ -184,8 +184,8 @@ export function CampaignPrintClient({
   return (
     <div className="px-4 mt-4 space-y-4">
       {/* 与实体券对齐说明 */}
-      <div className="print:hidden rounded-xl border border-slate-100 bg-slate-50 p-3 text-[11px] text-slate-600 leading-relaxed">
-        <p className="font-semibold text-slate-800">
+      <div className="print:hidden rounded-xl border border-border bg-muted/50 p-3 text-[11px] text-muted-foreground leading-relaxed">
+        <p className="font-semibold text-foreground/80">
           {lang === "en" ? "How this differs from paper tickets" : "与实体券对齐说明"}
         </p>
         <ul className="mt-1 space-y-0.5 list-disc pl-4">
@@ -207,7 +207,7 @@ export function CampaignPrintClient({
         </ul>
         <Link
           href="/business/physical"
-          className="inline-block mt-2 text-[#1A6EFF] font-medium"
+          className="inline-block mt-2 text-primary font-medium"
         >
           {lang === "en" ? "Print physical tickets →" : "去印实体券 →"}
         </Link>
@@ -215,7 +215,7 @@ export function CampaignPrintClient({
 
       {/* Distributor */}
       <div className="print:hidden space-y-2">
-        <p className="text-xs font-medium text-slate-500">
+        <p className="text-xs font-medium text-muted-foreground">
           {lang === "en" ? "Version" : "版本 · 分发账号绑定"}
         </p>
         <select
@@ -256,12 +256,12 @@ export function CampaignPrintClient({
           </Button>
         </div>
         {err && <p className="text-xs text-red-500">{err}</p>}
-        <p className="text-[10px] text-slate-400 font-mono break-all">{buyUrl}</p>
+        <p className="text-[10px] text-muted-foreground font-mono break-all">{buyUrl}</p>
       </div>
 
       {/* Layout */}
       <div className="print:hidden">
-        <p className="text-xs font-medium text-slate-500 mb-2">
+        <p className="text-xs font-medium text-muted-foreground mb-2">
           {lang === "en" ? "Print layout" : "印刷版式"}
         </p>
         <div className="grid grid-cols-3 gap-2">
@@ -271,10 +271,10 @@ export function CampaignPrintClient({
               type="button"
               onClick={() => setLayout(L.id)}
               className={cn(
-                "rounded-xl border p-2.5 text-xs font-semibold",
+                "rounded-xl border p-2.5 text-xs font-semibold active:scale-[0.98] transition-transform",
                 layout === L.id
-                  ? "border-[#1A6EFF] bg-blue-50 text-[#1A6EFF]"
-                  : "border-slate-100 text-slate-600"
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground"
               )}
             >
               {lang === "en" ? L.en : L.zh}
@@ -287,7 +287,7 @@ export function CampaignPrintClient({
         <button
           type="button"
           onClick={() => window.print()}
-          className="inline-flex h-9 items-center rounded-full bg-[#1A6EFF] px-4 text-xs font-semibold text-white"
+          className="inline-flex h-9 items-center rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground active:scale-[0.97] transition-transform"
         >
           {lang === "en" ? "Print / Save PDF" : "打印 / 存为 PDF"}
         </button>
@@ -295,7 +295,7 @@ export function CampaignPrintClient({
           type="button"
           disabled={busy}
           onClick={downloadBranded}
-          className="inline-flex h-9 items-center rounded-full bg-slate-900 px-4 text-xs font-semibold text-white disabled:opacity-50"
+          className="inline-flex h-9 items-center rounded-full bg-foreground px-4 text-xs font-semibold text-background disabled:opacity-50 active:scale-[0.97] transition-transform"
         >
           {busy ? "…" : lang === "en" ? "Download PNG" : "下载品牌 PNG"}
         </button>
@@ -303,14 +303,14 @@ export function CampaignPrintClient({
           href={buyUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex h-9 items-center rounded-full border border-slate-200 px-4 text-xs font-semibold text-slate-600"
+          className="inline-flex h-9 items-center rounded-full border border-border px-4 text-xs font-semibold text-muted-foreground active:scale-[0.97] transition-transform"
         >
           {lang === "en" ? "Open activity page" : "打开活动页"}
         </a>
       </div>
 
       {status !== "active" && (
-        <p className="print:hidden text-xs text-amber-700 bg-amber-50 rounded-lg p-2">
+        <p className="print:hidden text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 rounded-lg p-2">
           {lang === "en"
             ? "Campaign is not active — customers may not complete purchase until active."
             : "活动非进行中：顾客可能无法完成购买，请先发布活动。"}
@@ -336,7 +336,7 @@ export function CampaignPrintClient({
       </div>
 
       {stores.length > 0 && (
-        <p className="print:hidden text-[11px] text-slate-400 text-center">
+        <p className="print:hidden text-[11px] text-muted-foreground text-center">
           {lang === "en"
             ? `Your stores: ${stores.map((s) => s.name).join(", ")}`
             : `你的门店：${stores.map((s) => s.name).join("、")}`}

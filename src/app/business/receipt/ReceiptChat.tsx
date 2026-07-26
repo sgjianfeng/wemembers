@@ -7,7 +7,19 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/textarea";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { formatMoney } from "@/lib/utils";
+import {
+  Plus,
+  Camera,
+  ImageIcon,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  FileEdit,
+  Store,
+  CalendarDays,
+} from "lucide-react";
 
 type Group = {
   id: string;
@@ -120,15 +132,15 @@ export function ReceiptChat() {
   return (
     <div className="flex flex-col" style={{ minHeight: "calc(100vh - 106px)" }}>
       {/* 群切换 chips */}
-      <div className="flex gap-2 overflow-x-auto px-4 py-2 border-b border-slate-50 sticky top-[49px] bg-white z-10">
+      <div className="flex gap-2 overflow-x-auto px-4 py-2 border-b border-border sticky top-[49px] bg-card z-10">
         {groups.map((g) => (
           <button
             key={g.id}
             onClick={() => setActiveId(g.id)}
-            className={`shrink-0 px-3 h-8 rounded-full text-sm transition-colors ${
+            className={`shrink-0 px-3 h-8 rounded-full text-sm transition-colors active:scale-[0.97] transition-transform ${
               activeId === g.id
                 ? "bg-primary text-primary-foreground"
-                : "bg-slate-100 text-slate-500"
+                : "bg-muted text-muted-foreground"
             }`}
           >
             {g.icon} {g.name}
@@ -136,26 +148,30 @@ export function ReceiptChat() {
         ))}
         <button
           onClick={() => setNewGroupOpen(true)}
-          className="shrink-0 px-3 h-8 rounded-full text-sm bg-slate-100 text-slate-400"
+          aria-label={t("business.receipt.newGroup")}
+          className="shrink-0 w-8 h-8 grid place-items-center rounded-full bg-muted text-muted-foreground active:scale-[0.97] transition-transform"
         >
-          ＋
+          <Plus size={16} aria-hidden />
         </button>
       </div>
 
       {/* 时间线 */}
-      <div className="flex-1 px-4 py-4 space-y-4 bg-slate-50/50">
+      <div className="flex-1 px-4 py-4 space-y-4 bg-muted/50">
         {receipts.length === 0 && !uploading && (
-          <p className="text-center text-sm text-slate-400 mt-10">
-            {t("business.receipt.emptyGroup")}
-          </p>
+          <EmptyState
+            tone="calm"
+            title={t("business.receipt.emptyGroup")}
+            className="mt-6"
+          />
         )}
         {receipts.map((r) => (
           <ReceiptBubble key={r.id} receipt={r} onChange={() => loadReceipts(activeId)} />
         ))}
         {uploading && (
           <div className="flex justify-end">
-            <div className="bg-white rounded-2xl px-4 py-3 shadow-sm text-sm text-slate-400">
-              ⏳ {t("business.receipt.processing")}
+            <div className="bg-card rounded-2xl px-4 py-3 shadow-sm text-sm text-muted-foreground flex items-center gap-1.5">
+              <Clock size={14} className="shrink-0" aria-hidden />
+              {t("business.receipt.processing")}
             </div>
           </div>
         )}
@@ -163,15 +179,16 @@ export function ReceiptChat() {
       </div>
 
       {/* 底部上传条 */}
-      <div className="sticky bottom-0 bg-white border-t border-slate-100 px-4 py-3 flex items-center gap-3">
+      <div className="sticky bottom-0 bg-card border-t border-border px-4 py-3 flex items-center gap-3">
         <button
           onClick={() => setSheetOpen(true)}
           disabled={!activeId || uploading}
-          className="w-11 h-11 rounded-full bg-primary text-primary-foreground text-2xl leading-none disabled:opacity-50"
+          aria-label={t("business.receipt.upload")}
+          className="w-11 h-11 grid place-items-center rounded-full bg-primary text-primary-foreground disabled:opacity-50 active:scale-[0.97] transition-transform"
         >
-          ＋
+          <Plus size={22} aria-hidden />
         </button>
-        <span className="text-sm text-slate-400">{t("business.receipt.upload")}</span>
+        <span className="text-sm text-muted-foreground">{t("business.receipt.upload")}</span>
       </div>
 
       <input
@@ -189,7 +206,7 @@ export function ReceiptChat() {
           onClick={() => setSheetOpen(false)}
         >
           <div
-            className="w-full bg-white rounded-t-2xl p-5 max-w-lg mx-auto space-y-2"
+            className="w-full bg-card rounded-t-2xl p-5 max-w-lg mx-auto space-y-2"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -197,22 +214,22 @@ export function ReceiptChat() {
                 fileRef.current?.setAttribute("capture", "environment");
                 fileRef.current?.click();
               }}
-              className="w-full h-11 rounded-lg bg-slate-100 text-sm"
+              className="w-full h-11 rounded-lg bg-muted text-sm flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform"
             >
-              📷 {t("business.receipt.takePhoto")}
+              <Camera size={16} aria-hidden /> {t("business.receipt.takePhoto")}
             </button>
             <button
               onClick={() => {
                 fileRef.current?.removeAttribute("capture");
                 fileRef.current?.click();
               }}
-              className="w-full h-11 rounded-lg bg-slate-100 text-sm"
+              className="w-full h-11 rounded-lg bg-muted text-sm flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform"
             >
-              🖼️ {t("business.receipt.album")}
+              <ImageIcon size={16} aria-hidden /> {t("business.receipt.album")}
             </button>
             <button
               onClick={() => setSheetOpen(false)}
-              className="w-full h-11 rounded-full text-sm text-slate-400"
+              className="w-full h-11 rounded-full text-sm text-muted-foreground active:scale-[0.98] transition-transform"
             >
               {t("business.receipt.cancel")}
             </button>
@@ -324,12 +341,19 @@ function ReceiptBubble({
             <Badge variant={CAT_BADGE[receipt.category] || "slate"} size="sm">
               {t(`business.receipt.cat.${receipt.category}`)}
             </Badge>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-muted-foreground flex items-center gap-1 nums">
+              {confirmed ? (
+                <CheckCircle2 size={13} className="text-green-600 dark:text-green-400 shrink-0" aria-hidden />
+              ) : receipt.status === "failed" ? (
+                <AlertTriangle size={13} className="text-amber-600 dark:text-amber-400 shrink-0" aria-hidden />
+              ) : (
+                <FileEdit size={13} className="shrink-0" aria-hidden />
+              )}
               {confirmed
-                ? "✅ " + t("business.receipt.confirmed")
+                ? t("business.receipt.confirmed")
                 : receipt.status === "failed"
-                ? "⚠️ " + t("business.receipt.failed")
-                : "📝 " + t("business.receipt.needReview")}
+                ? t("business.receipt.failed")
+                : t("business.receipt.needReview")}
               {receipt.confidence != null && !confirmed
                 ? ` · ${Math.round(receipt.confidence * 100)}%`
                 : ""}
@@ -338,14 +362,22 @@ function ReceiptBubble({
 
           {confirmed ? (
             // 已入库：只读摘要
-            <div className="text-sm text-slate-600 space-y-1">
-              {receipt.vendorName && <p>🏪 {receipt.vendorName}</p>}
+            <div className="text-sm text-muted-foreground space-y-1">
+              {receipt.vendorName && (
+                <p className="flex items-center gap-1">
+                  <Store size={13} className="shrink-0" aria-hidden /> {receipt.vendorName}
+                </p>
+              )}
               {receipt.totalAmount != null && (
-                <p className="font-semibold text-slate-900">
+                <p className="font-semibold text-foreground nums">
                   S$ {formatMoney(receipt.totalAmount)}
                 </p>
               )}
-              {receipt.receiptDate && <p className="text-xs text-slate-400">🗓 {receipt.receiptDate.slice(0, 10)}</p>}
+              {receipt.receiptDate && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1 nums">
+                  <CalendarDays size={12} className="shrink-0" aria-hidden /> {receipt.receiptDate.slice(0, 10)}
+                </p>
+              )}
               {savedTags.length > 0 && (
                 <div className="flex flex-wrap gap-1 pt-1">
                   {savedTags.map((tag) => (
@@ -358,7 +390,7 @@ function ReceiptBubble({
             // 待确认：可编辑
             <div className="space-y-3">
               {receipt.status === "failed" && (
-                <p className="text-xs text-amber-600">{t("business.receipt.ocrOff")}</p>
+                <p className="text-xs text-amber-600 dark:text-amber-400">{t("business.receipt.ocrOff")}</p>
               )}
               <Input
                 label={t("business.receipt.vendor")}
@@ -399,10 +431,10 @@ function ReceiptBubble({
                       <button
                         key={tag}
                         onClick={() => toggleTag(tag)}
-                        className={`px-2.5 h-7 rounded-full text-xs transition-colors ${
+                        className={`px-2.5 h-7 rounded-full text-xs transition-colors active:scale-[0.95] ${
                           selectedTags.includes(tag)
                             ? "bg-primary text-primary-foreground"
-                            : "bg-slate-100 text-slate-500"
+                            : "bg-muted text-muted-foreground"
                         }`}
                       >
                         #{tag}
@@ -421,9 +453,9 @@ function ReceiptBubble({
                   <div className="space-y-1">
                     {items.map((it, i) => (
                       <div key={i} className="flex items-center gap-2 text-xs">
-                        <span className="flex-1 truncate text-slate-600">{it.name}</span>
+                        <span className="flex-1 truncate text-muted-foreground">{it.name}</span>
                         {it.quantity != null && (
-                          <span className="text-slate-400">×{it.quantity}</span>
+                          <span className="text-muted-foreground nums">×{it.quantity}</span>
                         )}
                         <input
                           inputMode="decimal"
@@ -434,7 +466,7 @@ function ReceiptBubble({
                               prev.map((x, idx) => (idx === i ? { ...x, amount: v } : x))
                             );
                           }}
-                          className="w-20 h-8 px-2 rounded border border-slate-200 text-right"
+                          className="w-20 h-8 px-2 rounded border border-border bg-background text-right nums"
                         />
                       </div>
                     ))}
@@ -494,7 +526,7 @@ function NewGroupSheet({
   return (
     <div className="fixed inset-0 z-50 bg-black/30 flex items-end" onClick={onClose}>
       <div
-        className="w-full bg-white rounded-t-2xl p-5 max-w-lg mx-auto space-y-3"
+        className="w-full bg-card rounded-t-2xl p-5 max-w-lg mx-auto space-y-3"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-sm font-semibold">{t("business.receipt.newGroup")}</h3>

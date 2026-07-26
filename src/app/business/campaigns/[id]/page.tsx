@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 import Link from "next/link";
 import { CampaignActions } from "./CampaignActions";
 import { CampaignShare } from "./CampaignShare";
@@ -14,16 +15,25 @@ import { ManualEntryButton } from "./ManualEntryButton";
 import { StoreListingPanel } from "./StoreListingPanel";
 import { timeAgo } from "@/lib/utils";
 import { parseRulesSnapshot, getTemplate } from "@/lib/templates";
+import {
+  Tag,
+  Flower2,
+  PartyPopper,
+  Calendar,
+  Rocket,
+  Dices,
+  type LucideIcon,
+} from "lucide-react";
 
-const typeIcons: Record<string, string> = {
-  promotion: "🏷️",
-  seasonal: "🌸",
-  holiday: "🎉",
-  event: "📅",
-  launch: "🚀",
-  lucky_draw: "🎰",
-  lucky_draw_v2: "🎰",
-  voucher_sale: "🏷️",
+const typeIcons: Record<string, LucideIcon> = {
+  promotion: Tag,
+  seasonal: Flower2,
+  holiday: PartyPopper,
+  event: Calendar,
+  launch: Rocket,
+  lucky_draw: Dices,
+  lucky_draw_v2: Dices,
+  voucher_sale: Tag,
 };
 
 const typeLabels: Record<string, Record<string, string>> = {
@@ -95,7 +105,7 @@ export default async function CampaignDetailPage({
     },
   });
 
-  if (!campaign) return <div className="p-8 text-center text-slate-400">{t("campaign.detail.notFound", lang)}</div>;
+  if (!campaign) return <div className="p-8 text-center text-muted-foreground">{t("campaign.detail.notFound", lang)}</div>;
 
   const coupons = campaign.coupons;
   const totalClaims = coupons.reduce((s, c) => s + c.claimedCount, 0);
@@ -108,7 +118,7 @@ export default async function CampaignDetailPage({
   let tags: string[] = [];
   try { tags = JSON.parse(campaign.tags || "[]"); } catch {}
 
-  const icon = typeIcons[campaign.type] || typeIcons.promotion;
+  const TypeIcon = typeIcons[campaign.type] || typeIcons.promotion;
   const typeLabel = typeLabels[campaign.type] || typeLabels.promotion;
   const cs = campaignStatusLabels[campaign.status] || campaignStatusLabels.draft;
   const rules = parseRulesSnapshot(campaign.rulesSnapshot);
@@ -126,25 +136,25 @@ export default async function CampaignDetailPage({
       {/* Header */}
       <div className="px-4 py-4" style={{ backgroundColor: (campaign.color || "#1A6EFF") + "15" }}>
         <div className="flex items-center justify-between mb-3">
-          <Link href="/business/campaigns" className="text-xs text-slate-500">{t("campaign.detail.backToList", lang)}</Link>
+          <Link href="/business/campaigns" className="text-xs text-muted-foreground">{t("campaign.detail.backToList", lang)}</Link>
           <Badge variant={campaign.status === "active" ? "green" : campaign.status === "ended" ? "orange" : "slate"}>
             {cs[lang]}
           </Badge>
         </div>
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xl">{icon}</span>
-          <h1 className="text-xl font-bold text-slate-900">{campaign.name}</h1>
+          <TypeIcon size={20} className="text-foreground/80" />
+          <h1 className="text-xl font-bold text-foreground">{campaign.name}</h1>
         </div>
-        {campaign.description && <p className="text-sm text-slate-500 mt-1">{campaign.description}</p>}
-        <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+        {campaign.description && <p className="text-sm text-muted-foreground mt-1">{campaign.description}</p>}
+        <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
           <span>{typeLabel[lang]}</span>
           <span>·</span>
-          <span>{campaign.startDate.toLocaleDateString("zh-CN")} ~ {campaign.endDate.toLocaleDateString("zh-CN")}</span>
-          {campaign.status === "active" && daysLeft > 0 && <span className="text-amber-500 font-medium">· {t("campaign.detail.daysLeft", lang, { days: daysLeft })}</span>}
+          <span className="nums">{campaign.startDate.toLocaleDateString("zh-CN")} ~ {campaign.endDate.toLocaleDateString("zh-CN")}</span>
+          {campaign.status === "active" && daysLeft > 0 && <span className="text-amber-600 dark:text-amber-500 font-medium nums">· {t("campaign.detail.daysLeft", lang, { days: daysLeft })}</span>}
         </div>
         {tags.length > 0 && (
           <div className="flex gap-1 flex-wrap mt-2">
-            {tags.map((tag) => <span key={tag} className="px-2 py-0.5 bg-white/60 text-slate-600 text-[10px] rounded-full">{tag}</span>)}
+            {tags.map((tag) => <span key={tag} className="px-2 py-0.5 bg-card/60 text-muted-foreground text-[10px] rounded-full">{tag}</span>)}
           </div>
         )}
       </div>
@@ -177,12 +187,12 @@ export default async function CampaignDetailPage({
       {/* Template rules snapshot */}
       {rules && (
         <div className="px-4 mt-4">
-          <Card className="border-slate-100 bg-slate-50">
+          <Card className="border-border bg-muted/50">
             <CardContent className="p-3 space-y-1">
-              <p className="text-xs font-semibold text-slate-700">
+              <p className="text-xs font-semibold text-foreground/80">
                 {tplMeta ? `${tplMeta.icon} ${lang === "en" ? tplMeta.nameEn : tplMeta.nameZh}` : "模板规则"}
               </p>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
                 {lang === "en" ? (
                   <>
                     Seller {rules.sellerCommissionPercent}% of paid
@@ -218,8 +228,8 @@ export default async function CampaignDetailPage({
                 )}
               </p>
               {campaign.slug && (
-                <p className="text-[11px] text-slate-400">
-                  slug: <span className="font-mono text-slate-600">{campaign.slug}</span>
+                <p className="text-[11px] text-muted-foreground">
+                  slug: <span className="font-mono text-foreground/70">{campaign.slug}</span>
                 </p>
               )}
             </CardContent>
@@ -236,24 +246,24 @@ export default async function CampaignDetailPage({
             { v: totalUsed, l: statsLabels.totalRedeems[lang] },
             { v: `${rate}%`, l: statsLabels.conversion[lang] },
           ].map((s) => (
-            <Card key={s.l} className="bg-slate-50 border-0">
+            <Card key={s.l} className="bg-muted/50 border-0">
               <CardContent className="p-3 text-center">
-                <p className="text-lg font-bold text-slate-900">{s.v}</p>
-                <p className="text-[10px] text-slate-400">{s.l}</p>
+                <p className="text-lg font-bold text-foreground nums">{s.v}</p>
+                <p className="text-[10px] text-muted-foreground">{s.l}</p>
               </CardContent>
             </Card>
           ))}
         </div>
         <div className="text-center mt-2">
-          <p className="text-xs text-slate-400">{t("campaign.detail.totalSaved", lang, { amount: totalValue })}</p>
+          <p className="text-xs text-muted-foreground nums">{t("campaign.detail.totalSaved", lang, { amount: totalValue })}</p>
         </div>
       </div>
 
       {/* 券列表 */}
       <div className="px-4 mt-5">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-slate-900">{t("campaign.detail.couponsHeader", lang)}</h3>
-          <Link href={`/business/coupons/new?campaignId=${campaign.id}`} className="text-xs text-[#1A6EFF] font-medium">
+          <h3 className="text-sm font-semibold text-foreground">{t("campaign.detail.couponsHeader", lang)}</h3>
+          <Link href={`/business/coupons/new?campaignId=${campaign.id}`} className="text-xs text-primary font-medium">
             {t("campaign.detail.addCoupon", lang)}
           </Link>
         </div>
@@ -264,11 +274,11 @@ export default async function CampaignDetailPage({
               const s = couponStatusLabels[c.status] || couponStatusLabels.draft;
               return (
                 <Link key={c.id} href={`/business/coupons/${c.id}`}>
-                  <Card className="hover:border-[#1A6EFF]/30 transition-colors">
+                  <Card className="hover:border-primary/30 active:scale-[0.98] transition-transform">
                     <CardContent className="p-3 flex items-center justify-between">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-900 truncate">{c.title}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">
+                        <p className="text-sm font-medium text-foreground truncate">{c.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 nums">
                           S${(c.valueCents / 100).toFixed(0)} · {c.pointsRequired}⭐ · {lang === "zh" ? "领取" : "Claimed"}{c.claimedCount}/{c.totalQuantity || "∞"} · {lang === "zh" ? "核销" : "Redeemed"}{c.usedCount}
                         </p>
                       </div>
@@ -282,13 +292,17 @@ export default async function CampaignDetailPage({
             })}
           </div>
         ) : (
-          <div className="text-center py-8 bg-slate-50 rounded-xl">
-            <p className="text-3xl mb-2">🎫</p>
-            <p className="text-sm text-slate-400">{t("business.coupons.noCoupons", lang)}</p>
-            <Link href={`/business/coupons/new?campaignId=${campaign.id}`} className="inline-block mt-3 px-4 py-1.5 bg-[#1A6EFF] text-white text-xs rounded-full">
-              {t("campaign.detail.addFirstCoupon", lang)}
-            </Link>
-          </div>
+          <EmptyState
+            tone="calm"
+            icon="coupons"
+            title={t("business.coupons.noCoupons", lang)}
+            action={
+              <Link href={`/business/coupons/new?campaignId=${campaign.id}`} className="inline-block px-4 py-1.5 bg-primary text-primary-foreground text-xs rounded-full active:scale-[0.97] transition-transform">
+                {t("campaign.detail.addFirstCoupon", lang)}
+              </Link>
+            }
+            className="py-8 bg-muted/50 rounded-xl"
+          />
         )}
       </div>
 
@@ -297,7 +311,7 @@ export default async function CampaignDetailPage({
         <>
           {/* 抽奖配置信息 */}
           <div className="px-4 mt-5">
-            <h3 className="text-sm font-semibold text-slate-900 mb-3">{t("campaign.detail.drawConfig", lang)}</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">{t("campaign.detail.drawConfig", lang)}</h3>
             <Card>
               <CardContent className="p-3 space-y-1.5 text-xs">
                 <Info label={t("campaign.detail.minSpendLabel", lang)} value={campaign.minSpendCents ? t("campaign.detail.minSpendQualify", lang, { amount: (campaign.minSpendCents / 100).toFixed(0) }) : t("campaign.detail.noThreshold", lang)} />
@@ -313,51 +327,51 @@ export default async function CampaignDetailPage({
           {/* 奖池 */}
           <div className="px-4 mt-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-slate-900">{t("campaign.detail.prizeConfig", lang)}</h3>
+              <h3 className="text-sm font-semibold text-foreground">{t("campaign.detail.prizeConfig", lang)}</h3>
               <PrizeEditor campaignId={campaign.id} currentPrizes={JSON.parse(JSON.stringify(campaign.prizes))} />
             </div>
             {campaign.prizes.length > 0 ? (
               <div className="space-y-1">
                 {campaign.prizes.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-slate-50 text-xs">
+                  <div key={p.id} className="flex items-center justify-between px-3 py-2 bg-card rounded-lg border border-border text-xs">
                     <div className="flex items-center gap-2">
                       <span className="text-base">{p.icon}</span>
                       <div>
-                        <p className="text-slate-700 font-medium">{p.name}</p>
-                        <p className="text-[10px] text-slate-400">
+                        <p className="text-foreground/80 font-medium">{p.name}</p>
+                        <p className="text-[10px] text-muted-foreground nums">
                           {lang === "zh" ? "权重" : "Weight"} {p.weight} · {lang === "zh" ? "库存" : "Stock"} {p.totalStock ?? "∞"} · {lang === "zh" ? "已发" : "Claimed"} {p.claimed}
                         </p>
                       </div>
                     </div>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-muted-foreground nums">
                       {p.type === "cash" ? `S$${(p.valueCents / 100).toFixed(0)}` : prizeTypeLabels[p.type] ? prizeTypeLabels[p.type][lang] : prizeTypeLabels.physical[lang]}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-xl">{t("campaign.detail.noPrizes", lang)}</p>
+              <p className="text-xs text-muted-foreground text-center py-4 bg-muted/50 rounded-xl">{t("campaign.detail.noPrizes", lang)}</p>
             )}
           </div>
 
           {/* 参与记录 */}
           <div className="px-4 mt-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-slate-900">{t("campaign.detail.entriesHeader", lang)}</h3>
+              <h3 className="text-sm font-semibold text-foreground">{t("campaign.detail.entriesHeader", lang)}</h3>
               <ManualEntryButton campaignId={campaign.id} />
             </div>
             {campaign.entries.length > 0 ? (
               <div className="space-y-1">
                 {campaign.entries.map((e) => (
-                  <div key={e.id} className="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-slate-50 text-xs">
+                  <div key={e.id} className="flex items-center justify-between px-3 py-2 bg-card rounded-lg border border-border text-xs">
                     <div>
-                      <p className="text-slate-700">
+                      <p className="text-foreground/80">
                         {e.customer?.displayName || e.name || t("campaign.detail.unknown", lang)}
                         {e.won && e.prizeName && (
-                          <span className="ml-1 text-amber-500 font-medium">🎉 {e.prizeIcon} {e.prizeName}</span>
+                          <span className="ml-1 text-amber-600 dark:text-amber-500 font-medium">{e.prizeIcon} {e.prizeName}</span>
                         )}
                       </p>
-                      <p className="text-[10px] text-slate-400">
+                      <p className="text-[10px] text-muted-foreground">
                         {e.source === "auto" ? t("campaign.detail.autoEntry", lang) : t("campaign.detail.manualEntry", lang)}
                         {e.store?.name && ` · ${e.store.name}`}
                         {" · "}{timeAgo(e.createdAt)}
@@ -370,7 +384,7 @@ export default async function CampaignDetailPage({
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-xl">{t("campaign.detail.noEntries", lang)}</p>
+              <p className="text-xs text-muted-foreground text-center py-4 bg-muted/50 rounded-xl">{t("campaign.detail.noEntries", lang)}</p>
             )}
           </div>
 
@@ -387,7 +401,7 @@ export default async function CampaignDetailPage({
       {campaign.status !== "ended" && (
         <div className="px-4 mt-5 flex gap-2">
           <CampaignActions campaignId={campaign.id} currentStatus={campaign.status} />
-          <Link href={`/business/coupons/new?campaignId=${campaign.id}`} className="px-4 py-2 bg-[#1A6EFF] text-white text-sm rounded-full">
+          <Link href={`/business/coupons/new?campaignId=${campaign.id}`} className="px-4 py-2 bg-primary text-primary-foreground text-sm rounded-full active:scale-[0.97] transition-transform">
             {t("campaign.detail.addVoucher", lang)}
           </Link>
         </div>
@@ -399,8 +413,8 @@ export default async function CampaignDetailPage({
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between">
-      <span className="text-slate-400">{label}</span>
-      <span className="text-slate-900 font-medium">{value}</span>
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-foreground font-medium nums">{value}</span>
     </div>
   );
 }

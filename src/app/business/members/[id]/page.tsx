@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/Badge";
 import { timeAgo } from "@/lib/utils";
 import { PointsActions } from "./PointsActions";
 import { TierProgress } from "./TierProgress";
+import { Calendar, Gem, TrendingDown, ClipboardList, Ticket, CheckCircle2, Star } from "lucide-react";
 
 const tierDisplay: Record<string, { label: string; variant: "slate" | "amber" | "purple" | "blue" }> = {
   regular: { label: "普通", variant: "slate" },
@@ -43,7 +44,7 @@ export default async function MemberDetailPage({
   });
 
   if (!membership)
-    return <div className="p-8 text-center text-slate-400">会员不存在</div>;
+    return <div className="p-8 text-center text-muted-foreground">会员不存在</div>;
 
   const td = tierDisplay[membership.tier] || tierDisplay.regular;
 
@@ -72,17 +73,23 @@ export default async function MemberDetailPage({
   const claimedTotal = claims.reduce((sum, c) => sum + c.coupon.valueCents, 0);
   const usedTotal = redemptions.reduce((sum, r) => sum + r.amountSaved, 0);
 
+  const typeIcons: Record<string, React.ReactNode> = {
+    checkin: <Calendar size={12} />,
+    redeem_bonus: <Gem size={12} />,
+    manual_grant: <Star size={12} />,
+    manual_deduct: <TrendingDown size={12} />,
+  };
   const typeLabels: Record<string, string> = {
-    checkin: "📅 签到",
-    redeem_bonus: "💎 消费奖励",
-    manual_grant: "⭐ 手动发放",
-    manual_deduct: "📉 手动扣减",
+    checkin: "签到",
+    redeem_bonus: "消费奖励",
+    manual_grant: "手动发放",
+    manual_deduct: "手动扣减",
   };
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-slate-100 sticky top-0 bg-white z-10">
-        <h1 className="text-lg font-semibold">会员详情</h1>
+      <div className="px-4 py-3 border-b border-border sticky top-0 bg-card z-10">
+        <h1 className="text-lg font-semibold text-foreground">会员详情</h1>
       </div>
 
       <div className="px-4 mt-4 space-y-4">
@@ -90,20 +97,20 @@ export default async function MemberDetailPage({
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#1A6EFF] to-[#3B82F6] flex items-center justify-center text-white text-xl font-bold">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground text-xl font-bold">
                 {(membership.customer.displayName || "会").charAt(0)}
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-base font-semibold text-slate-900">
+                  <p className="text-base font-semibold text-foreground">
                     {membership.customer.displayName || "未命名"}
                   </p>
                   <Badge variant={td.variant}>{td.label}会员</Badge>
                 </div>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-muted-foreground">
                   {membership.customer.phone}
                 </p>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   加入于{" "}
                   {membership.createdAt.toLocaleDateString("zh-CN")} ·{" "}
                   {membership.visitsCount}次到店
@@ -111,7 +118,7 @@ export default async function MemberDetailPage({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-50">
+            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border">
               <MiniStat label="积分" value={membership.points.toString()} />
               <MiniStat
                 label="总消费"
@@ -136,27 +143,30 @@ export default async function MemberDetailPage({
 
         {/* 积分流水 */}
         <div>
-          <h3 className="text-sm font-semibold text-slate-900 mb-2">
-            📋 积分流水
+          <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
+            <ClipboardList size={14} className="text-muted-foreground" /> 积分流水
           </h3>
           {pointsLogs.length > 0 ? (
             <div className="space-y-1">
               {pointsLogs.map((log) => (
                 <div
                   key={log.id}
-                  className="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-slate-50 text-xs"
+                  className="flex items-center justify-between px-3 py-2 bg-card rounded-lg border border-border text-xs"
                 >
                   <div>
-                    <p className="text-slate-700">
+                    <p className="text-foreground/80 flex items-center gap-1">
+                      <span className="text-muted-foreground">{typeIcons[log.type]}</span>
                       {typeLabels[log.type] || log.type} {log.reason}
                     </p>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[10px] text-muted-foreground">
                       {timeAgo(log.createdAt)}
                     </p>
                   </div>
                   <span
-                    className={`font-mono font-medium ${
-                      log.amount > 0 ? "text-green-600" : "text-red-500"
+                    className={`font-mono font-medium nums ${
+                      log.amount > 0
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-red-500 dark:text-red-400"
                     }`}
                   >
                     {log.amount > 0 ? "+" : ""}
@@ -166,7 +176,7 @@ export default async function MemberDetailPage({
               ))}
             </div>
           ) : (
-            <p className="text-center text-xs text-slate-400 py-4">
+            <p className="text-center text-xs text-muted-foreground py-4">
               暂无积分记录
             </p>
           )}
@@ -174,25 +184,25 @@ export default async function MemberDetailPage({
 
         {/* 领券历史 */}
         <div>
-          <h3 className="text-sm font-semibold text-slate-900 mb-2">
-            🎫 领券记录
+          <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
+            <Ticket size={14} className="text-muted-foreground" /> 领券记录
           </h3>
           <div className="space-y-1">
             {claims.map((claim) => (
               <div
                 key={claim.id}
-                className="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-slate-50 text-xs"
+                className="flex items-center justify-between px-3 py-2 bg-card rounded-lg border border-border text-xs"
               >
                 <div className="min-w-0">
-                  <p className="text-slate-700 truncate">
+                  <p className="text-foreground/80 truncate">
                     {claim.coupon.title}
                   </p>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[10px] text-muted-foreground">
                     {timeAgo(claim.claimedAt)}
                   </p>
                 </div>
                 <div className="text-right shrink-0 ml-2">
-                  <p className="text-slate-900 font-medium">
+                  <p className="text-foreground font-medium nums">
                     S${(claim.coupon.valueCents / 100).toFixed(0)}
                   </p>
                   <Badge
@@ -215,7 +225,7 @@ export default async function MemberDetailPage({
               </div>
             ))}
             {claims.length === 0 && (
-              <p className="text-center text-xs text-slate-400 py-4">
+              <p className="text-center text-xs text-muted-foreground py-4">
                 暂无记录
               </p>
             )}
@@ -225,19 +235,19 @@ export default async function MemberDetailPage({
         {/* 核销历史 */}
         {redemptions.length > 0 && (
           <div>
-            <h3 className="text-sm font-semibold text-slate-900 mb-2">
-              ✅ 核销记录
+            <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
+              <CheckCircle2 size={14} className="text-muted-foreground" /> 核销记录
             </h3>
             <div className="space-y-1">
               {redemptions.map((r) => (
                 <div
                   key={r.id}
-                  className="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-slate-50 text-xs"
+                  className="flex items-center justify-between px-3 py-2 bg-card rounded-lg border border-border text-xs"
                 >
-                  <span className="text-slate-500">
+                  <span className="text-muted-foreground nums">
                     核销 S${r.amountSaved}
                   </span>
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-[10px] text-muted-foreground">
                     {timeAgo(r.redeemedAt)}
                   </span>
                 </div>
@@ -253,8 +263,8 @@ export default async function MemberDetailPage({
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="text-center">
-      <p className="text-lg font-bold text-slate-900">{value}</p>
-      <p className="text-[10px] text-slate-400">{label}</p>
+      <p className="text-lg font-bold text-foreground nums">{value}</p>
+      <p className="text-[10px] text-muted-foreground">{label}</p>
     </div>
   );
 }

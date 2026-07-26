@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { Ticket, Store, Trophy, Sparkles } from "lucide-react";
 import { useLang } from "@/components/i18n/LanguageProvider";
 import { TopHeader } from "@/components/ui/TopHeader";
 import { PremiumCouponCard } from "@/components/landing/PremiumCouponCard";
@@ -448,11 +449,12 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
       <section className="px-5 pb-6">
         <div className="max-w-sm mx-auto">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-extrabold text-slate-900">
-              🏆 {isZh ? "大奖池倒计时" : "Grand Prize Countdown"}
+            <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+              <Trophy size={20} className="text-amber-600" />
+              {isZh ? "大奖池倒计时" : "Grand Prize Countdown"}
             </h2>
             {mainDraw && (
-              <span className="text-[10px] text-slate-400">
+              <span className="text-[10px] text-slate-400 nums">
                 {isZh ? "奖池 " : "Pool "}S${mainDraw.totalPoolSgd}
               </span>
             )}
@@ -505,7 +507,7 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
                   <div className="p-4">
                     {/* Big progress bar */}
                     <div className="mb-2">
-                      <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+                      <div className="flex justify-between text-[10px] text-slate-400 mb-1 nums">
                         <span>
                           {isZh ? "已筹" : "Raised"} <b className="text-slate-700">S${Number(currentSgd).toLocaleString()}</b>
                         </span>
@@ -567,8 +569,9 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
         <section className="px-5 pt-2 pb-6 max-w-sm mx-auto">
           <div className="flex items-end justify-between mb-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-amber-600 font-bold mb-1">
-                {isZh ? "🔥 热门代金券" : "🔥 HOT VOUCHERS"}
+              <p className="text-xs uppercase tracking-[0.2em] text-amber-600 font-bold mb-1 flex items-center gap-1.5">
+                <span className="text-lg">🔥</span>
+                {isZh ? "热门代金券" : "HOT VOUCHERS"}
               </p>
               <h2 className="text-base font-extrabold text-slate-900">
                 {isZh ? "黑金甄选" : "Black Gold Selection"}
@@ -593,9 +596,10 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
             const el = document.querySelector('[data-role-switch="business"]');
             if (el instanceof HTMLElement) el.click();
           }}
-          className="w-full py-3 bg-slate-50 rounded-xl text-xs text-slate-400 hover:bg-slate-100 transition-colors"
+          className="w-full py-3 bg-slate-50 rounded-xl text-xs text-slate-400 hover:bg-slate-100 transition-colors flex items-center justify-center gap-2"
         >
-          🏪 {isZh ? "我是商家，查看营销工具" : "I'm a business, view marketing tools"}
+          <Store size={16} />
+          {isZh ? "我是商家，查看营销工具" : "I'm a business, view marketing tools"}
         </button>
       </section>
     </>

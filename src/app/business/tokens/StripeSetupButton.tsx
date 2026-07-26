@@ -41,12 +41,12 @@ export function StripeSetupButton({ label }: { label: string }) {
         type="button"
         onClick={handleSetup}
         disabled={loading}
-        className="inline-block px-4 py-2 bg-[#1A6EFF] text-white text-sm rounded-full disabled:opacity-50"
+        className="inline-block px-4 py-2 bg-primary text-primary-foreground text-sm rounded-full disabled:opacity-50 active:scale-[0.97] transition-transform"
       >
         {loading ? "跳转 Stripe 中…" : label}
       </button>
       {error && (
-        <p className="text-xs text-red-600 leading-snug max-w-sm">{error}</p>
+        <p className="text-xs text-red-600 dark:text-red-400 leading-snug max-w-sm">{error}</p>
       )}
     </div>
   );

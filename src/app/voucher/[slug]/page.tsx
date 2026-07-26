@@ -3,6 +3,16 @@
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import {
+  Info,
+  ChevronDown,
+  Wallet,
+  Trophy,
+  Ticket,
+  Tag,
+  Lock,
+  PartyPopper,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { TopHeader } from "@/components/ui/TopHeader";
@@ -14,9 +24,77 @@ import { resolveTier } from "@/lib/draw-v2";
 
 function TrustPill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-white/90 text-[10px] font-medium text-slate-700 border border-slate-100">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-white/90 text-[10px] font-medium text-slate-700 border border-white/40">
       {children}
     </span>
+  );
+}
+
+/**
+ * Folds the long trust/network/withdraw explainer copy into an on-demand drawer,
+ * so the focal point (the purchase card) leads instead of a wall of legal text.
+ */
+function RulesDrawer({
+  isSelfUse,
+  isDraw,
+  t,
+}: {
+  isSelfUse: boolean;
+  isDraw: boolean;
+  t: (k: string, v?: Record<string, string | number>) => string;
+}) {
+  return (
+    <details className="group rounded-2xl border border-border bg-card">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-[13px] font-medium text-foreground">
+        <span className="flex items-center gap-2">
+          <Info size={15} className="text-muted-foreground" />
+          {t("voucher.rules.title")}
+        </span>
+        <ChevronDown
+          size={16}
+          className="text-muted-foreground transition-transform group-open:rotate-180"
+        />
+      </summary>
+      <div className="space-y-3 px-4 pb-4 pt-1 text-[11px] leading-relaxed text-muted-foreground">
+        {isSelfUse ? (
+          <div>
+            <p className="text-[12px] font-semibold text-foreground">
+              {t("voucher.selfUse.trustTitle")}
+            </p>
+            <p className="mt-1">{t("voucher.selfUse.trustBody")}</p>
+          </div>
+        ) : (
+          <>
+            <div>
+              <p className="text-[12px] font-semibold text-foreground">
+                {t("voucher.trust.yours")}
+              </p>
+              <p className="mt-1">{t("voucher.trust.yoursBody")}</p>
+            </div>
+            <div>
+              <p className="text-[12px] font-semibold text-foreground">
+                {t("network.publicTitle")}
+              </p>
+              <p className="mt-1">{t("network.publicBody")}</p>
+            </div>
+            <div className="rounded-xl bg-emerald-50 p-3 dark:bg-emerald-950/30">
+              <p className="flex items-center gap-1.5 text-[12px] font-semibold text-emerald-800 dark:text-emerald-300">
+                <Wallet size={13} />
+                {t("voucher.trust.withdrawTitle")}
+              </p>
+              <p className="mt-1 text-emerald-800/90 dark:text-emerald-300/80">
+                {isDraw
+                  ? t("voucher.trust.withdrawDraw")
+                  : t("voucher.trust.withdrawVoucher")}
+              </p>
+              <p className="mt-1.5 font-medium text-emerald-700/80 dark:text-emerald-400/70">
+                {t("voucher.trust.withdrawSlogan")}
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+    </details>
   );
 }
 
@@ -191,8 +269,8 @@ function VoucherDrawInner() {
       <div className="min-h-screen bg-white">
         <TopHeader variant="default" />
         <div className="flex items-center justify-center py-32">
-          <div className="text-center text-slate-400">
-            <p className="text-5xl mb-4">🎫</p>
+          <div className="flex flex-col items-center text-center text-muted-foreground">
+            <Ticket size={30} className="mb-3" />
             <p className="text-sm">{t("voucher.notFound")}</p>
           </div>
         </div>
@@ -222,10 +300,10 @@ function VoucherDrawInner() {
     <div
       className={`min-h-screen bg-gradient-to-b ${
         isDraw
-          ? "from-[#FF6B35] via-orange-50 to-white"
+          ? "from-brand via-accent-brand to-background"
           : isSelfUse
-            ? "from-slate-700 via-slate-100 to-white"
-            : "from-[#1A6EFF] via-blue-50 to-white"
+            ? "from-slate-600 via-muted to-background"
+            : "from-primary via-accent to-background"
       }`}
     >
       <TopHeader variant="default" />
@@ -239,8 +317,16 @@ function VoucherDrawInner() {
               ? t("productKind.self")
               : t("voucher.tag.discount")}
         </span>
-        <p className="text-5xl mb-3">{isDraw ? "🎰" : isSelfUse ? "🎟️" : "🏷️"}</p>
-        <h1 className="text-2xl font-bold">{campaign.name}</h1>
+        <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-white/15">
+          {isDraw ? (
+            <Trophy size={28} />
+          ) : isSelfUse ? (
+            <Ticket size={28} />
+          ) : (
+            <Tag size={28} />
+          )}
+        </div>
+        <h1 className="text-2xl font-bold text-balance">{campaign.name}</h1>
         <p className="text-white/80 text-sm mt-1">
           {isSelfUse && isDraw
             ? lang === "en"
@@ -283,57 +369,6 @@ function VoucherDrawInner() {
           <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-center text-xs text-amber-700">
             {t("voucher.payCancelled")}
           </div>
-        )}
-
-        {isSelfUse ? (
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-3">
-              <p className="text-xs font-semibold text-slate-900">
-                {t("voucher.selfUse.trustTitle")}
-              </p>
-              <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                {t("voucher.selfUse.trustBody")}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-3">
-                <p className="text-xs font-semibold text-slate-900">
-                  {t("voucher.trust.yours")}
-                </p>
-                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  {t("voucher.trust.yoursBody")}
-                </p>
-              </CardContent>
-            </Card>
-
-            <div className="p-3 bg-white/95 border border-white/60 rounded-xl text-center shadow-sm">
-              <p className="text-xs font-semibold text-slate-800">
-                {t("network.publicTitle")}
-              </p>
-              <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                {t("network.publicBody")}
-              </p>
-            </div>
-
-            <Card className="border-emerald-100 bg-emerald-50/80">
-              <CardContent className="p-3">
-                <p className="text-xs font-semibold text-emerald-900">
-                  💳 {t("voucher.trust.withdrawTitle")}
-                </p>
-                <p className="text-[11px] text-emerald-800/90 mt-1 leading-relaxed">
-                  {isDraw
-                    ? t("voucher.trust.withdrawDraw")
-                    : t("voucher.trust.withdrawVoucher")}
-                </p>
-                <p className="text-[10px] text-emerald-700/80 mt-1.5 font-medium">
-                  {t("voucher.trust.withdrawSlogan")}
-                </p>
-              </CardContent>
-            </Card>
-          </>
         )}
 
         {isDraw && poolStatus?.pool && (
@@ -423,7 +458,7 @@ function VoucherDrawInner() {
                       value={spendNow}
                       onChange={(e) => setSpendNow(e.target.value)}
                       placeholder={`max S$${(creditPreview * 0.8).toFixed(0)}`}
-                      className="flex-1 h-10 px-3 rounded-lg border border-slate-200 text-sm"
+                      className="flex-1 h-10 px-3 rounded-lg border border-input bg-background text-base nums"
                     />
                     <span
                       className={`text-xs px-2 py-1 rounded shrink-0 ${
@@ -460,17 +495,20 @@ function VoucherDrawInner() {
             </CardContent>
           </Card>
         ) : !result ? (
-          <div className="text-center p-6 bg-white rounded-xl">
-            <p className="text-2xl mb-2">🔒</p>
-            <p className="text-sm text-slate-400">{t("draw.ended")}</p>
+          <div className="flex flex-col items-center rounded-2xl border border-border bg-card p-6 text-center">
+            <Lock size={22} className="mb-2 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">{t("draw.ended")}</p>
           </div>
         ) : null}
 
+        {/* Long trust/network/withdraw copy folded here — focal point is the purchase above */}
+        {!result && <RulesDrawer isSelfUse={isSelfUse} isDraw={isDraw} t={t} />}
+
         {result && (
-          <Card className="border-green-200 bg-green-50">
+          <Card className="border-green-200 bg-green-50 dark:border-emerald-900 dark:bg-emerald-950/40">
             <CardContent className="p-4 text-center space-y-2">
-              <p className="text-3xl">🎉</p>
-              <p className="text-lg font-semibold text-green-700">
+              <PartyPopper size={30} className="mx-auto text-emerald-600 dark:text-emerald-400" />
+              <p className="text-lg font-semibold text-green-700 dark:text-emerald-300">
                 {result.instantPrize ? t("voucher.winCongrats") : t("voucher.buySuccess")}
               </p>
               {result.instantPrize && (

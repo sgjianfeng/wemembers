@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 /** 商户现金钱包一览（单位：分 → S$）。运营 Token 已下线。 */
 export default async function AdminWalletPage() {
@@ -55,37 +56,37 @@ export default async function AdminWalletPage() {
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-slate-100">
-        <h1 className="text-lg font-semibold">商户账户余额</h1>
-        <p className="text-xs text-slate-400 mt-0.5">现金钱包（S$）· 运营 Token 已取消</p>
+      <div className="px-4 py-3 border-b border-border">
+        <h1 className="text-lg font-semibold text-foreground">商户账户余额</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">现金钱包（S$）· 运营 Token 已取消</p>
       </div>
 
       <div className="px-4 mt-4">
         <div className="grid grid-cols-3 gap-2 mb-5">
-          <Card className="bg-slate-50 border-0">
+          <Card className="bg-muted/50 border-0">
             <CardContent className="p-3 text-center">
-              <p className="text-xl font-bold text-green-600">
+              <p className="text-xl font-bold text-green-600 dark:text-green-400 nums">
                 S${((inflow._sum.amount || 0) / 100).toFixed(0)}
               </p>
-              <p className="text-[10px] text-slate-400">入账合计</p>
+              <p className="text-[10px] text-muted-foreground">入账合计</p>
             </CardContent>
           </Card>
-          <Card className="bg-slate-50 border-0">
+          <Card className="bg-muted/50 border-0">
             <CardContent className="p-3 text-center">
-              <p className="text-xl font-bold text-orange-600">
+              <p className="text-xl font-bold text-orange-600 dark:text-orange-400 nums">
                 S${(Math.abs(outflow._sum.amount || 0) / 100).toFixed(0)}
               </p>
-              <p className="text-[10px] text-slate-400">出账合计</p>
+              <p className="text-[10px] text-muted-foreground">出账合计</p>
             </CardContent>
           </Card>
-          <Card className="bg-slate-50 border-0">
+          <Card className="bg-muted/50 border-0">
             <CardContent className="p-3 text-center">
-              <p className="text-xl font-bold text-blue-600">
+              <p className="text-xl font-bold text-primary nums">
                 S${(totalBalance / 100).toFixed(2)}
               </p>
-              <p className="text-[10px] text-slate-400">可用余额</p>
+              <p className="text-[10px] text-muted-foreground">可用余额</p>
               {totalFrozen > 0 && (
-                <p className="text-[10px] text-amber-600 mt-0.5">
+                <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 nums">
                   冻结 S${(totalFrozen / 100).toFixed(2)}
                 </p>
               )}
@@ -93,43 +94,50 @@ export default async function AdminWalletPage() {
           </Card>
         </div>
 
-        <h3 className="text-sm font-semibold text-slate-900 mb-3">
+        <h3 className="text-sm font-semibold text-foreground mb-3">
           商家账户 ({tokenAccounts.length})
         </h3>
-        <div className="space-y-1">
-          {tokenAccounts.length === 0 && (
-            <p className="text-xs text-slate-400 py-6 text-center">暂无商家钱包数据</p>
-          )}
-          {tokenAccounts.map((account) => {
-            const user = account.user;
-            return (
-              <div
-                key={account.id}
-                className="flex items-center justify-between px-3 py-2.5 bg-white rounded-lg border border-slate-50"
-              >
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-slate-900 truncate">
-                    {user.businessName || user.displayName || user.email || user.phone || "未知"}
-                  </p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <Badge variant="blue" size="sm">
-                      商家
-                    </Badge>
-                    <span className="text-[10px] text-slate-400">
-                      累计入账 S${(account.totalEarned / 100).toFixed(2)}
-                      {(account.frozenBalance || 0) > 0
-                        ? ` · 冻结 S${(account.frozenBalance / 100).toFixed(2)}`
-                        : ""}
-                    </span>
+        {tokenAccounts.length === 0 ? (
+          <EmptyState
+            tone="calm"
+            icon="tokens"
+            title="暂无商家钱包数据"
+            description="尚未有商家产生现金流水"
+            className="py-10"
+          />
+        ) : (
+          <div className="space-y-1">
+            {tokenAccounts.map((account) => {
+              const user = account.user;
+              return (
+                <div
+                  key={account.id}
+                  className="flex items-center justify-between px-3 py-2.5 bg-card rounded-lg border border-border"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-foreground truncate">
+                      {user.businessName || user.displayName || user.email || user.phone || "未知"}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <Badge variant="blue" size="sm">
+                        商家
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground nums">
+                        累计入账 S${(account.totalEarned / 100).toFixed(2)}
+                        {(account.frozenBalance || 0) > 0
+                          ? ` · 冻结 S${(account.frozenBalance / 100).toFixed(2)}`
+                          : ""}
+                      </span>
+                    </div>
                   </div>
+                  <span className="text-sm font-bold text-foreground shrink-0 ml-2 nums">
+                    S${(account.balance / 100).toFixed(2)}
+                  </span>
                 </div>
-                <span className="text-sm font-bold text-slate-900 shrink-0 ml-2">
-                  S${(account.balance / 100).toFixed(2)}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -2,6 +2,8 @@ import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/Card";
+import { Building2, Users, TicketPercent, Coins } from "lucide-react";
+import { formatMoney } from "@/lib/utils";
 
 export default async function AdminDashboard() {
   const session = await getSession();
@@ -17,25 +19,27 @@ export default async function AdminDashboard() {
     }),
   ]);
 
-  const feeSgd = ((platformFees._sum.amount || 0) / 100).toFixed(2);
+  const feeSgd = formatMoney(platformFees._sum.amount || 0);
+
+  const stats = [
+    { icon: Building2, label: "商家数", value: bc.toString() },
+    { icon: Users, label: "会员数", value: cc.toString() },
+    { icon: TicketPercent, label: "代金券", value: pc.toString() },
+    { icon: Coins, label: "平台服务费", value: `S$${feeSgd}` },
+  ];
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-slate-100">
-        <h1 className="text-lg font-semibold">平台概览</h1>
+      <div className="px-4 py-3 border-b border-border">
+        <h1 className="text-lg font-semibold text-foreground">平台概览</h1>
       </div>
       <div className="px-4 mt-4 grid grid-cols-2 gap-3">
-        {[
-          { icon: "🏢", label: "商家数", value: bc.toString() },
-          { icon: "👤", label: "会员数", value: cc.toString() },
-          { icon: "🎫", label: "代金券", value: pc.toString() },
-          { icon: "💰", label: "平台服务费", value: `S$${feeSgd}` },
-        ].map((s) => (
+        {stats.map((s) => (
           <Card key={s.label}>
             <CardContent className="p-4">
-              <span className="text-2xl">{s.icon}</span>
-              <p className="text-2xl font-bold text-slate-900 mt-2">{s.value}</p>
-              <p className="text-xs text-slate-400">{s.label}</p>
+              <s.icon size={22} strokeWidth={1.9} className="text-muted-foreground" />
+              <p className="text-2xl font-bold text-foreground mt-2 nums">{s.value}</p>
+              <p className="text-xs text-muted-foreground">{s.label}</p>
             </CardContent>
           </Card>
         ))}

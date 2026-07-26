@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { BrandAvatar } from "@/components/ui/BrandAvatar";
 import { listHotStores, storeHref } from "@/lib/discover-stores";
 import { SERVICE_CATEGORIES } from "@/types";
+import { Store } from "lucide-react";
 
 export default async function DiscoverStoresPage() {
   const session = await getSession();
@@ -45,7 +46,9 @@ export default async function DiscoverStoresPage() {
       <div className="px-4 mt-3 space-y-2">
         {stores.length === 0 ? (
           <div className="text-center py-16 px-4">
-            <p className="text-4xl mb-2">🏪</p>
+            <div className="flex justify-center mb-2">
+              <Store size={48} className="text-slate-300" />
+            </div>
             <p className="text-sm text-slate-600">
               {t("discover.stores.empty", lang)}
             </p>

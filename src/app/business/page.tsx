@@ -8,6 +8,7 @@ import { resolveStoreLogo, timeAgo } from "@/lib/utils";
 import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
 import { resolveStaffStore } from "@/lib/current-store";
+import { Store, Users, ShoppingCart, Sparkles, Wrench, Coins, MailOpen, Calendar } from "lucide-react";
 
 /**
  * /business
@@ -164,8 +165,8 @@ export default async function BusinessDashboard() {
           </Link>
           <Link href="/business/tokens" className="shrink-0">
             <div className="flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-100">
-              <span className="text-xs">💰</span>
-              <span className="text-sm font-semibold text-amber-700">S${balanceSgd}</span>
+              <Coins size={16} className="text-amber-600" />
+              <span className="text-sm font-semibold text-amber-700 nums">S${balanceSgd}</span>
             </div>
           </Link>
         </div>
@@ -199,34 +200,37 @@ export default async function BusinessDashboard() {
         <div className="grid grid-cols-2 gap-3">
           {[
             {
-              icon: "🏪",
+              icon: Store,
               label: lang === "en" ? "Stores" : "门店数",
               value: stores.length.toString(),
             },
             {
-              icon: "👤",
+              icon: Users,
               label: t("business.overview.members", lang),
               value: memberCount.toString(),
             },
             {
-              icon: "🛒",
+              icon: ShoppingCart,
               label: t("business.overview.salesToday", lang),
               value: salesToday.toString(),
             },
             {
-              icon: "💎",
+              icon: Sparkles,
               label: t("business.overview.todayRedeems", lang),
               value: redeemsToday.toString(),
             },
-          ].map((k) => (
-            <Card key={k.label} className="bg-slate-50 border-0">
-              <CardContent className="p-3">
-                <span className="text-lg">{k.icon}</span>
-                <p className="text-2xl font-bold text-slate-900 mt-2">{k.value}</p>
-                <p className="text-xs text-slate-400">{k.label}</p>
-              </CardContent>
-            </Card>
-          ))}
+          ].map((k) => {
+            const IconComponent = k.icon;
+            return (
+              <Card key={k.label} className="bg-slate-50 border-0">
+                <CardContent className="p-3">
+                  <IconComponent size={20} className="text-slate-600" />
+                  <p className="text-2xl font-bold text-slate-900 mt-2">{k.value}</p>
+                  <p className="text-xs text-slate-400">{k.label}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {stores.length > 0 && (
@@ -274,7 +278,7 @@ export default async function BusinessDashboard() {
         <div className="grid grid-cols-2 gap-2">
           {[
             {
-              icon: "🏪",
+              icon: Store,
               label: lang === "en" ? "Stores" : "门店管理",
               desc:
                 lang === "en"
@@ -283,7 +287,7 @@ export default async function BusinessDashboard() {
               href: "/business/stores",
             },
             {
-              icon: "📅",
+              icon: Calendar,
               label: lang === "en" ? "Campaigns" : "活动",
               desc:
                 lang === "en"
@@ -292,30 +296,33 @@ export default async function BusinessDashboard() {
               href: "/business/campaigns",
             },
             {
-              icon: "🧰",
+              icon: Wrench,
               label: t("business.tabs.hub", lang),
               desc: t("hub.quickDesc", lang),
               href: "/business/hub",
             },
             {
-              icon: "💰",
+              icon: Coins,
               label: t("business.overview.topup", lang),
               desc: t("business.overview.topupDesc", lang),
               href: "/business/tokens",
             },
-          ].map((a) => (
-            <Link key={a.href} href={a.href}>
-              <Card className="hover:border-[#1A6EFF]/30 transition-colors">
-                <CardContent className="p-3 flex items-center gap-3">
-                  <span className="text-2xl">{a.icon}</span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-900">{a.label}</p>
-                    <p className="text-[10px] text-slate-400 truncate">{a.desc}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+          ].map((a) => {
+            const IconComponent = a.icon;
+            return (
+              <Link key={a.href} href={a.href}>
+                <Card className="hover:border-[#1A6EFF]/30 transition-colors">
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <IconComponent size={24} className="text-slate-600" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-900">{a.label}</p>
+                      <p className="text-[10px] text-slate-400 truncate">{a.desc}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
 
         <h3 className="text-sm font-semibold text-slate-900 mt-5 mb-2">
@@ -381,7 +388,9 @@ export default async function BusinessDashboard() {
           })
         ) : (
           <div className="text-center py-8 text-slate-400">
-            <p className="text-3xl mb-2">📭</p>
+            <div className="flex justify-center mb-2">
+              <MailOpen size={32} className="text-slate-300" />
+            </div>
             <p className="text-sm">{t("business.overview.noActivity", lang)}</p>
           </div>
         )}

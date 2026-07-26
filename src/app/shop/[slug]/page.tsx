@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { BrandAvatar } from "@/components/ui/BrandAvatar";
 import { TopHeader } from "@/components/ui/TopHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { daysUntil, resolveStoreLogo } from "@/lib/utils";
 import { SERVICE_CATEGORIES } from "@/types";
 import { cookies } from "next/headers";
@@ -79,10 +80,10 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-muted/50">
       <TopHeader variant="default" title={business.businessName || ""} />
 
-      <div className="bg-gradient-to-b from-[#1A6EFF] to-[#3B82F6] px-4 pt-8 pb-8 text-white">
+      <div className="bg-gradient-to-b from-primary to-primary/80 px-4 pt-8 pb-8 text-primary-foreground">
         <div className="text-center">
           <div className="mx-auto w-20 h-20 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center overflow-hidden p-1">
             {business.businessLogo ? (
@@ -122,10 +123,10 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
       </div>
 
       <div className="px-4 -mt-4 pb-8">
-        <div className="bg-white rounded-t-2xl pt-5 px-1">
+        <div className="bg-card rounded-t-2xl pt-5 px-1">
           {stores.length > 0 && (
             <div className="px-3 mb-5">
-              <h2 className="text-base font-semibold text-slate-900 mb-3">
+              <h2 className="text-base font-semibold text-foreground mb-3">
                 {lang === "en" ? "Stores" : "门店"}
               </h2>
               <div className="space-y-2">
@@ -134,7 +135,7 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
                     key={s.id}
                     href={`/shop/${business.businessSlug}/${s.slug}`}
                   >
-                    <Card className="hover:border-[#1A6EFF]/30">
+                    <Card className="hover:border-primary/30 active:scale-[0.98] transition-transform">
                       <CardContent className="p-3 flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <BrandAvatar
@@ -144,17 +145,17 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
                             rounded="xl"
                           />
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-900 truncate">
+                            <p className="text-sm font-semibold text-foreground truncate">
                               {s.name}
                             </p>
                             {s.address && (
-                              <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                              <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                                 {s.address}
                               </p>
                             )}
                           </div>
                         </div>
-                        <span className="text-[10px] text-[#1A6EFF] shrink-0">
+                        <span className="text-[10px] text-primary shrink-0">
                           {lang === "en" ? "Open →" : "进入 →"}
                         </span>
                       </CardContent>
@@ -167,10 +168,10 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
 
           {/* 企业代金券 / 抽奖（扫码购自用券主入口） */}
           <div className="flex items-center justify-between px-3 mb-3">
-            <h2 className="text-base font-semibold text-slate-900">
+            <h2 className="text-base font-semibold text-foreground">
               {t("shop.vouchersTitle", lang)}
             </h2>
-            <span className="text-xs text-slate-400">{voucherCampaigns.length}</span>
+            <span className="text-xs text-muted-foreground nums">{voucherCampaigns.length}</span>
           </div>
 
           {voucherCampaigns.length > 0 ? (
@@ -187,43 +188,43 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
                 return (
                   <Link key={vc.id} href={`/voucher/${vc.slug}`}>
                     <Card
-                      className={`hover:border-[#1A6EFF]/30 transition-colors border-l-4 ${
+                      className={`hover:border-primary/30 active:scale-[0.98] transition-transform border-l-4 ${
                         isSelf
                           ? "border-l-slate-500"
                           : isDraw
-                            ? "border-l-[#FF6B35]"
+                            ? "border-l-brand"
                             : "border-l-amber-400"
                       }`}
                     >
                       <CardContent className="p-3 flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <Badge variant="slate" size="sm">
+                            <Badge variant={isDraw ? "purple" : "slate"} size="sm">
                               {badge}
                             </Badge>
                             {pct > 0 && !isDraw && (
-                              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                              <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full">
                                 −{pct}%
                               </span>
                             )}
                           </div>
-                          <p className="text-sm font-semibold text-slate-900 mt-1 truncate">
+                          <p className="text-sm font-semibold text-foreground mt-1 truncate">
                             {vc.name}
                           </p>
                           {vc.description && (
-                            <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">
+                            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
                               {vc.description}
                             </p>
                           )}
                           {pct > 0 && !isDraw && (
-                            <p className="text-[11px] text-[#1A6EFF] mt-1 font-medium">
+                            <p className="text-[11px] text-primary mt-1 font-medium">
                               {lang === "en"
                                 ? `e.g. pay ${100 - pct} get 100`
                                 : `例：付 ${100 - pct} 得 100`}
                             </p>
                           )}
                         </div>
-                        <span className="shrink-0 inline-block px-3 py-1.5 bg-[#1A6EFF] text-white text-xs font-medium rounded-full">
+                        <span className="shrink-0 inline-block px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-full">
                           {t("shop.buyVoucher", lang)}
                         </span>
                       </CardContent>
@@ -233,15 +234,16 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
               })}
             </div>
           ) : (
-            <div className="text-center py-8 px-4 mb-4">
-              <p className="text-3xl mb-2">🎟️</p>
-              <p className="text-sm text-slate-400">{t("shop.vouchersEmpty", lang)}</p>
-            </div>
+            <EmptyState
+              icon="coupons"
+              title={t("shop.vouchersEmpty", lang)}
+              className="py-8"
+            />
           )}
 
           <div className="flex items-center justify-between px-3 mb-3">
-            <h2 className="text-base font-semibold text-slate-900">{t("shop.title", lang)}</h2>
-            <span className="text-xs text-slate-400">
+            <h2 className="text-base font-semibold text-foreground">{t("shop.title", lang)}</h2>
+            <span className="text-xs text-muted-foreground nums">
               {coupons.length}
               {t("shop.countUnit", lang)}
             </span>
@@ -262,40 +264,40 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
 
                 return (
                   <Link key={c.id} href={`/coupons/${c.id}`}>
-                    <Card className={`hover:border-[#1A6EFF]/30 transition-colors border-l-4 border-l-[#FF6B35] ${soldOut ? "opacity-50" : ""}`}>
+                    <Card className={`hover:border-primary/30 active:scale-[0.98] transition-transform border-l-4 border-l-brand ${soldOut ? "opacity-50" : ""}`}>
                       <CardContent className="p-3">
                         <div className="flex items-center justify-between">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <p className="text-base font-bold text-[#FF6B35]">{displayValue}</p>
+                              <p className="text-base font-bold text-brand nums">{displayValue}</p>
                               <Badge variant="slate" size="sm">{typeLabel}</Badge>
                             </div>
-                            <p className="text-sm font-medium text-slate-900 mt-1">{c.title}</p>
-                            {c.description && <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{c.description}</p>}
+                            <p className="text-sm font-medium text-foreground mt-1">{c.title}</p>
+                            {c.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{c.description}</p>}
                           </div>
                           <div className="text-right shrink-0 ml-3">
-                            <span className="text-xs text-slate-400">
+                            <span className="text-xs text-muted-foreground nums">
                               {soldOut ? t("shop.soldOut", lang) : `${c.pointsRequired}⭐`}
                             </span>
-                            <p className="text-[10px] text-slate-400 mt-1">
+                            <p className="text-[10px] text-muted-foreground mt-1">
                               {daysLeft > 0
                                 ? t("shop.daysLeft", lang, { days: daysLeft })
                                 : t("shop.soon", lang)}
                             </p>
                           </div>
                         </div>
-                        <div className="mt-2 pt-2 border-t border-dashed border-slate-50 flex items-center gap-2">
-                          <span className="text-[10px] text-slate-400">
+                        <div className="mt-2 pt-2 border-t border-dashed border-border flex items-center gap-2">
+                          <span className="text-[10px] text-muted-foreground nums">
                             {t("shop.left", lang)} {c.remainingQuantity ?? "∞"}{" "}
                             {t("shop.countUnit", lang)}
                           </span>
-                          <span className="text-[10px] text-slate-400">·</span>
-                          <span className="text-[10px] text-slate-400">
+                          <span className="text-[10px] text-muted-foreground">·</span>
+                          <span className="text-[10px] text-muted-foreground nums">
                             {t("shop.claimed", lang)} {c.claimedCount}{" "}
                             {t("shop.claimTimes", lang)}
                           </span>
                           {!soldOut && (
-                            <span className="ml-auto inline-block px-2 py-0.5 bg-[#1A6EFF] text-white text-[10px] rounded-full">
+                            <span className="ml-auto inline-block px-2 py-0.5 bg-primary text-primary-foreground text-[10px] rounded-full">
                               {t("shop.claim", lang)}
                             </span>
                           )}
@@ -307,22 +309,23 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
               })}
             </div>
           ) : (
-            <div className="text-center py-16 px-4">
-              <p className="text-4xl mb-3">🎫</p>
-              <p className="text-sm text-slate-400">{t("shop.noCoupons", lang)}</p>
-              <p className="text-xs text-slate-300 mt-1">{t("shop.checkLater", lang)}</p>
-            </div>
+            <EmptyState
+              icon="coupons"
+              title={t("shop.noCoupons", lang)}
+              description={t("shop.checkLater", lang)}
+              className="py-12"
+            />
           )}
         </div>
 
         {!isLoggedIn && coupons.length > 0 && (
-          <div className="mx-3 mt-4 p-4 bg-[#1A6EFF]/5 rounded-xl border border-[#1A6EFF]/10 text-center">
-            <p className="text-sm text-slate-600">{t("shop.loginPrompt", lang)}</p>
-            <Link href={`/auth/login?redirect=/shop/${business.businessSlug}`} className="inline-block mt-2 px-6 py-2 bg-[#1A6EFF] text-white text-sm rounded-full">{t("shop.login", lang)}</Link>
+          <div className="mx-3 mt-4 p-4 bg-primary/5 rounded-xl border border-primary/10 text-center">
+            <p className="text-sm text-foreground/80">{t("shop.loginPrompt", lang)}</p>
+            <Link href={`/auth/login?redirect=/shop/${business.businessSlug}`} className="inline-block mt-2 px-6 py-2 bg-primary text-primary-foreground text-sm rounded-full active:scale-[0.97] transition-transform">{t("shop.login", lang)}</Link>
           </div>
         )}
 
-        <div className="text-center mt-6 pb-4"><p className="text-[10px] text-slate-300">{t("shop.poweredBy", lang)}</p></div>
+        <div className="text-center mt-6 pb-4"><p className="text-[10px] text-muted-foreground/70">{t("shop.poweredBy", lang)}</p></div>
       </div>
     </div>
   );

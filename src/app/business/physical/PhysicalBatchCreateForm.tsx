@@ -117,7 +117,7 @@ export function PhysicalBatchCreateForm({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-full p-3 border-2 border-dashed border-slate-200 rounded-xl text-sm text-slate-500 hover:border-[#1A6EFF] hover:text-[#1A6EFF]"
+        className="w-full p-3 border-2 border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-primary hover:text-primary active:scale-[0.98] transition-transform"
       >
         {lang === "en" ? "+ New print batch" : "+ 新建印刷批次"}
       </button>
@@ -137,10 +137,10 @@ export function PhysicalBatchCreateForm({
   return (
     <Card>
       <CardContent className="p-4 space-y-3">
-        <p className="text-sm font-semibold text-slate-900">
+        <p className="text-sm font-semibold text-foreground">
           {lang === "en" ? "New batch" : "新建批次"}
         </p>
-        <p className="text-[11px] text-slate-400 leading-relaxed">
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
           {lang === "en"
             ? "Pick a system template (not a design tool). Logo comes from Settings."
             : "选择系统精修模版（非设计工具）。Logo 来自企业设置。"}
@@ -187,10 +187,10 @@ export function PhysicalBatchCreateForm({
                 type="button"
                 onClick={() => onTypeChange(t.id)}
                 className={cn(
-                  "h-10 rounded-full text-xs font-semibold border",
+                  "h-10 rounded-full text-xs font-semibold border active:scale-[0.97] transition-transform",
                   type === t.id
-                    ? "border-[#1A6EFF] bg-blue-50 text-[#1A6EFF]"
-                    : "border-slate-200 text-slate-600"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground"
                 )}
               >
                 {t.label}
@@ -213,23 +213,23 @@ export function PhysicalBatchCreateForm({
                   setThemeHex(t.defaultThemeHex);
                 }}
                 className={cn(
-                  "text-left rounded-xl border p-3 transition-colors",
+                  "text-left rounded-xl border p-3 transition-colors active:scale-[0.98] transition-transform",
                   visualTemplateId === t.id
-                    ? "border-[#1A6EFF] bg-blue-50/60"
-                    : "border-slate-100 hover:border-slate-200"
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-muted-foreground/30"
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-slate-900">
+                  <p className="text-sm font-semibold text-foreground">
                     {lang === "en" ? t.nameEn : t.nameZh}
                     {t.recommended && (
-                      <span className="ml-1.5 text-[10px] font-medium text-[#1A6EFF]">
+                      <span className="ml-1.5 text-[10px] font-medium text-primary">
                         {lang === "en" ? "Recommended" : "推荐"}
                       </span>
                     )}
                   </p>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+                <p className="text-[11px] text-muted-foreground mt-0.5">
                   {lang === "en" ? t.taglineEn : t.taglineZh}
                 </p>
               </button>
@@ -249,9 +249,9 @@ export function PhysicalBatchCreateForm({
                 title={lang === "en" ? s.labelEn : s.labelZh}
                 onClick={() => setThemeHex(s.hex)}
                 className={cn(
-                  "w-8 h-8 rounded-full border-2 transition-transform",
+                  "w-8 h-8 rounded-full border-2 transition-transform active:scale-95",
                   themeHex.toLowerCase() === s.hex.toLowerCase()
-                    ? "border-slate-900 scale-110"
+                    ? "border-foreground scale-110"
                     : "border-transparent"
                 )}
                 style={{ backgroundColor: s.hex }}
@@ -298,7 +298,7 @@ export function PhysicalBatchCreateForm({
                 : "独享抽奖活动（必选）"}
             </label>
             {drawCampaigns.length === 0 ? (
-              <p className="text-xs text-amber-700 bg-amber-50 rounded-lg p-2">
+              <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 rounded-lg p-2">
                 {lang === "en" ? (
                   <>
                     No exclusive draw campaign. Create a self-use lucky-draw
@@ -323,7 +323,7 @@ export function PhysicalBatchCreateForm({
                 ))}
               </select>
             )}
-            <p className="text-[10px] text-slate-400 mt-1">
+            <p className="text-[10px] text-muted-foreground mt-1">
               {lang === "en"
                 ? "Cash sell deducts 15% from business top-up (3%+2%+10% grand on platform)."
                 : "现金售出时从企业账户扣 15%（小奖3%+服务费2%+大奖10%留平台）。"}
@@ -338,7 +338,7 @@ export function PhysicalBatchCreateForm({
         />
 
         <div>
-          <p className="text-xs font-medium text-slate-500 mb-2">
+          <p className="text-xs font-medium text-muted-foreground mb-2">
             {lang === "en" ? "Live preview" : "实时预览"}
           </p>
           <TicketVisualCard
@@ -357,7 +357,7 @@ export function PhysicalBatchCreateForm({
           />
         </div>
 
-        {error && <p className="text-xs text-red-500">{error}</p>}
+        {error && <p className="text-xs text-destructive">{error}</p>}
         <div className="flex gap-2">
           <Button className="flex-1" onClick={create} loading={loading}>
             {lang === "en" ? "Generate codes" : "生成券码"}
@@ -365,7 +365,7 @@ export function PhysicalBatchCreateForm({
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="flex-1 h-10 text-sm text-slate-500 bg-slate-100 rounded-full"
+            className="flex-1 h-10 text-sm text-muted-foreground bg-muted rounded-full active:scale-[0.97] transition-transform"
           >
             {lang === "en" ? "Cancel" : "取消"}
           </button>

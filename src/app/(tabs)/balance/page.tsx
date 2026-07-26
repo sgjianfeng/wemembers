@@ -8,6 +8,7 @@ import { cookies } from "next/headers";
 import { WithdrawButton } from "./WithdrawButton";
 import { VoucherShowQr } from "./VoucherShowQr";
 import { SplitButton } from "./SplitButton";
+import { Receipt, Store, CreditCard } from "lucide-react";
 
 export default async function BalancePage() {
   const session = await getSession();
@@ -296,7 +297,7 @@ export default async function BalancePage() {
                             face: formatMoney(p.amountCents),
                           })}
                         </p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">
+                        <p className="text-[10px] text-slate-400 mt-0.5 nums">
                           {lang === "en" ? "Left" : "剩余"} S$
                           {formatMoney(p.balanceCents)}
                         </p>
@@ -308,7 +309,9 @@ export default async function BalancePage() {
             })
           ) : (
             <div className="text-center py-8 text-slate-400">
-              <p className="text-3xl mb-2">🧾</p>
+              <div className="flex justify-center mb-2">
+                <Receipt size={40} className="text-slate-300" />
+              </div>
               <p className="text-sm">{t("balance.noPurchases", lang)}</p>
             </div>
           )}
@@ -327,8 +330,8 @@ export default async function BalancePage() {
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-sm shrink-0">
-                          🏪
+                        <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                          <Store size={16} className="text-slate-600" />
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-slate-900 truncate">
@@ -346,10 +349,10 @@ export default async function BalancePage() {
                         </div>
                       </div>
                       <div className="text-right shrink-0 ml-3">
-                        <p className="text-sm font-semibold text-slate-900">
+                        <p className="text-sm font-semibold text-slate-900 nums">
                           -S${formatMoney(u.amountCents)}
                         </p>
-                        <p className="text-xs text-slate-400 mt-0.5">
+                        <p className="text-xs text-slate-400 mt-0.5 nums">
                           {t("voucher.balanceAfter", lang)} S$
                           {formatMoney(u.balanceAfter)}
                         </p>
@@ -360,7 +363,9 @@ export default async function BalancePage() {
               ))
             : (
                 <div className="text-center py-12 text-slate-400">
-                  <p className="text-4xl mb-2">💳</p>
+                  <div className="flex justify-center mb-2">
+                    <CreditCard size={48} className="text-slate-300" />
+                  </div>
                   <p className="text-sm">
                     {t("voucher.balance.noUsages", lang)}
                   </p>

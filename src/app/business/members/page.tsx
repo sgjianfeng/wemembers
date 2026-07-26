@@ -3,9 +3,11 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { t, Lang } from "@/lib/i18n";
+import { Search, User, Star } from "lucide-react";
 
 export default async function MembersPage({
   searchParams,
@@ -84,12 +86,12 @@ export default async function MembersPage({
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
-        <h1 className="text-lg font-semibold">{t("business.members.title", lang)}</h1>
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
+        <h1 className="text-lg font-semibold text-foreground">{t("business.members.title", lang)}</h1>
         {isBusiness && (
           <Link
             href="/business/members/config"
-            className="px-2 py-1 text-xs text-[#1A6EFF] border border-[#1A6EFF] rounded-full"
+            className="px-2 py-1 text-xs text-primary border border-primary rounded-full active:scale-[0.97] transition-transform"
           >
             {t("business.members.tierConfig", lang)}
           </Link>
@@ -104,11 +106,12 @@ export default async function MembersPage({
             name="search"
             defaultValue={search}
             placeholder={t("business.members.search", lang)}
-            className="w-full h-9 pl-9 pr-4 rounded-full bg-slate-100 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1A6EFF]"
+            className="w-full h-9 pl-9 pr-4 rounded-full bg-muted text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
-            🔍
-          </span>
+          <Search
+            size={15}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
         </form>
       </div>
 
@@ -125,10 +128,10 @@ export default async function MembersPage({
                 type="submit"
                 name="tier"
                 value={tierFilter === t ? "" : t}
-                className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors active:scale-[0.97] ${
                   tierFilter === t
-                    ? "bg-[#1A6EFF] text-white"
-                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/70"
                 }`}
               >
                 {td.label}
@@ -143,7 +146,7 @@ export default async function MembersPage({
           <select
             name="sort"
             defaultValue={sort}
-            className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-500 border-0 focus:outline-none focus:ring-2 focus:ring-[#1A6EFF]"
+            className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground border-0 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {sorts.map((s) => (
               <option key={s.value} value={s.value}>
@@ -153,7 +156,7 @@ export default async function MembersPage({
           </select>
           <button
             type="submit"
-            className="text-[11px] px-2 py-1 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"
+            className="text-[11px] px-2 py-1 rounded-full bg-muted text-muted-foreground hover:bg-muted/70 active:scale-[0.97] transition-transform"
           >
             {lang === "en" ? "Sort" : "排序"}
           </button>
@@ -169,18 +172,20 @@ export default async function MembersPage({
               key={m.id}
               href={`/business/members/${m.customerId}`}
             >
-              <Card className="hover:border-[#1A6EFF]/30">
+              <Card className="hover:border-primary/30 active:scale-[0.98] transition-transform">
                 <CardContent className="p-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-sm">
-                      👤
+                    <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                      <User size={16} />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-slate-900">
+                      <p className="text-sm font-medium text-foreground">
                         {m.customer.displayName || t("business.members.unnamed", lang)}
                       </p>
-                      <p className="text-xs text-slate-400">
-                        {m.customer.phone} · {m.visitsCount}{t("business.members.visits", lang)} · ⭐{m.points}
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 nums">
+                        {m.customer.phone} · {m.visitsCount}{t("business.members.visits", lang)}
+                        {" · "}
+                        <Star size={11} className="inline -mt-0.5" /> {m.points}
                       </p>
                     </div>
                   </div>
@@ -191,11 +196,12 @@ export default async function MembersPage({
           );
         })}
         {members.length === 0 && (
-          <div className="text-center py-12 text-slate-400">
-            <p className="text-3xl mb-2">👥</p>
-            <p className="text-sm">{t("business.members.noMembers", lang)}</p>
-            {search && <p className="text-xs mt-1">{t("business.members.notFound", lang)}</p>}
-          </div>
+          <EmptyState
+            icon="members"
+            title={t("business.members.noMembers", lang)}
+            description={search ? t("business.members.notFound", lang) : undefined}
+            className="py-12"
+          />
         )}
       </div>
     </div>

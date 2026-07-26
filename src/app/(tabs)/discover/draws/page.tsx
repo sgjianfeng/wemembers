@@ -5,6 +5,7 @@ import { t } from "@/lib/i18n";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/Card";
+import { Sparkles, Ticket } from "lucide-react";
 
 const DRAW_TYPES = ["lucky_draw", "lucky_draw_v2", "voucher_sale"] as const;
 
@@ -47,7 +48,9 @@ export default async function DiscoverDrawsPage() {
       <div className="px-4 mt-3 space-y-2">
         {campaigns.length === 0 ? (
           <div className="text-center py-16 px-4">
-            <p className="text-4xl mb-2">🎰</p>
+            <div className="flex justify-center mb-2">
+              <Sparkles size={48} className="text-slate-300" />
+            </div>
             <p className="text-sm text-slate-600">
               {t("discover.draws.empty", lang)}
             </p>
@@ -64,8 +67,12 @@ export default async function DiscoverDrawsPage() {
               <Link key={d.id} href={href}>
                 <Card className="hover:border-[#1A6EFF]/30 transition-colors">
                   <CardContent className="p-3 flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-xl shrink-0">
-                      {isDraw ? "🎰" : "🎟️"}
+                    <div className="w-11 h-11 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0">
+                      {isDraw ? (
+                        <Sparkles size={20} className="text-amber-600" />
+                      ) : (
+                        <Ticket size={20} className="text-amber-600" />
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-900 truncate">

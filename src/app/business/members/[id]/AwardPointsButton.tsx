@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Star, Check } from "lucide-react";
 
 export function AwardPointsButton({ customerId }: { customerId: string }) {
   const router = useRouter();
@@ -23,8 +24,11 @@ export function AwardPointsButton({ customerId }: { customerId: string }) {
 
   if (!showInput) {
     return (
-      <button onClick={() => setShowInput(true)} className="flex-1 h-8 text-xs font-medium text-white bg-[#1A6EFF] rounded-full">
-        ⭐ 发放积分
+      <button
+        onClick={() => setShowInput(true)}
+        className="flex-1 h-8 flex items-center justify-center gap-1 text-xs font-medium text-primary-foreground bg-primary rounded-full active:scale-[0.97] transition-transform"
+      >
+        <Star size={12} /> 发放积分
       </button>
     );
   }
@@ -35,11 +39,15 @@ export function AwardPointsButton({ customerId }: { customerId: string }) {
         type="number"
         value={amount}
         onChange={(e) => setAmount(Number(e.target.value))}
-        className="w-full h-8 px-2 text-xs rounded-full border border-slate-200 text-center"
+        className="w-full h-8 px-2 text-xs rounded-full border border-border text-center nums"
         autoFocus
       />
-      <button onClick={award} disabled={loading} className="h-8 px-3 bg-[#16A34A] text-white text-xs rounded-full shrink-0">
-        ✓
+      <button
+        onClick={award}
+        disabled={loading}
+        className="h-8 px-3 bg-green-600 text-white text-xs rounded-full shrink-0 active:scale-[0.97] transition-transform disabled:opacity-50"
+      >
+        <Check size={14} />
       </button>
     </div>
   );

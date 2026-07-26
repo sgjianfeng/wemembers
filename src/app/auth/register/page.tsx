@@ -356,7 +356,7 @@ export default function RegisterPage() {
                     <select
                       value={businessCategory}
                       onChange={(e) => setBusinessCategory(e.target.value)}
-                      className="w-full h-12 px-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      className="w-full h-12 px-3 rounded-xl border border-input bg-background text-base focus:outline-none focus:ring-2 focus:ring-ring"
                     >
                       <option value="">{t("auth.register.selectCategory")}</option>
                       {SERVICE_CATEGORIES.map((cat) => (

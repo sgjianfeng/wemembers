@@ -42,23 +42,23 @@ export default async function BusinessLayout({
    */
   const businessPrimary = [
     {
-      icon: "📊",
+      icon: "overview" as const,
       label: t("business.tabs.overview", lang),
       href: "/business",
       exact: true,
     },
     {
-      icon: "📷",
+      icon: "redeem" as const,
       label: t("business.tabs.redeem", lang),
       href: "/business/scan",
     },
     {
-      icon: "📅",
+      icon: "campaigns" as const,
       label: t("business.tabs.campaigns", lang),
       href: "/business/campaigns",
     },
     {
-      icon: "🧰",
+      icon: "hub" as const,
       label: t("business.tabs.hub", lang),
       href: "/business/hub",
     },
@@ -66,32 +66,32 @@ export default async function BusinessLayout({
 
   const businessMore = [
     {
-      icon: "🏪",
+      icon: "stores" as const,
       label: t("business.tabs.stores", lang),
       href: "/business/stores",
     },
     {
-      icon: "👥",
+      icon: "members" as const,
       label: t("business.tabs.members", lang),
       href: "/business/members",
     },
     {
-      icon: "🎫",
+      icon: "coupons" as const,
       label: t("business.tabs.coupons", lang),
       href: "/business/coupons",
     },
     {
-      icon: "💰",
+      icon: "tokens" as const,
       label: t("business.tabs.wallet", lang),
       href: "/business/tokens",
     },
     {
-      icon: "📈",
+      icon: "earnings" as const,
       label: t("business.overview.earnings", lang),
       href: "/business/earnings",
     },
     {
-      icon: "⚙️",
+      icon: "settings" as const,
       label: t("business.tabs.settings", lang),
       href: "/business/settings",
     },
@@ -99,23 +99,23 @@ export default async function BusinessLayout({
 
   const staffTabs = [
     {
-      icon: "📊",
+      icon: "overview" as const,
       label: lang === "en" ? "Store" : "本店",
       href: "/business",
       exact: true,
     },
     {
-      icon: "📷",
+      icon: "redeem" as const,
       label: t("business.tabs.redeem", lang),
       href: "/business/scan",
     },
     {
-      icon: "👥",
+      icon: "members" as const,
       label: t("business.tabs.members", lang),
       href: "/business/members",
     },
     {
-      icon: "🏪",
+      icon: "store" as const,
       label: t("business.tabs.store", lang),
       href: "/business/store",
     },

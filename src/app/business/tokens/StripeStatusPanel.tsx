@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, CheckCircle2, Clock, AlertTriangle, Circle } from "lucide-react";
 import { StripeSetupButton } from "./StripeSetupButton";
 import { useLang } from "@/components/i18n/LanguageProvider";
 

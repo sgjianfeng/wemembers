@@ -72,19 +72,20 @@ export function CampaignShare({ slug, campaignName, sellerId, campaignId }: Prop
   if (!slug) return null;
 
   return (
-    <Card className="border-slate-100">
+    <Card className="border-border">
       <CardContent className="p-4 space-y-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">{t("share.title")}</h3>
-          <p className="text-[11px] text-slate-400 mt-0.5">{t("share.hint")}</p>
+          <h3 className="text-sm font-semibold text-foreground">{t("share.title")}</h3>
+          <p className="text-[11px] text-muted-foreground mt-0.5">{t("share.hint")}</p>
         </div>
 
-        <div className="flex justify-center bg-white p-3 rounded-xl border border-slate-100">
+        {/* white bg kept intentionally — QR codes need light-on-dark contrast to scan */}
+        <div className="flex justify-center bg-white p-3 rounded-xl border border-border">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={qrUrl} alt="Campaign QR" className="w-44 h-44" />
         </div>
 
-        <p className="text-[10px] text-center text-slate-400 font-mono break-all px-1">
+        <p className="text-[10px] text-center text-muted-foreground font-mono break-all px-1">
           {buyUrl || "…"}
         </p>
 
@@ -110,7 +111,7 @@ export function CampaignShare({ slug, campaignName, sellerId, campaignId }: Prop
         {campaignId ? (
           <a
             href={`/business/campaigns/${campaignId}/print`}
-            className="block w-full text-center rounded-full bg-[#1A6EFF] text-white text-xs font-semibold py-2.5"
+            className="block w-full text-center rounded-full bg-primary text-primary-foreground text-xs font-semibold py-2.5 active:scale-[0.98] transition-transform"
           >
             {lang === "en"
               ? "Print table tent / distributor cards"
@@ -121,12 +122,12 @@ export function CampaignShare({ slug, campaignName, sellerId, campaignId }: Prop
             href={qrUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="block text-center text-xs text-[#1A6EFF]"
+            className="block text-center text-xs text-primary"
           >
             {t("share.openPrint")}
           </a>
         )}
-        <p className="text-[10px] text-slate-400 text-center leading-relaxed">
+        <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
           {lang === "en"
             ? "Activity card ≠ paper ticket (PT-). Distributor cards bind seller for commission."
             : "活动卡 ≠ 实体券 PT-。分发版绑定推广人/店员，核销后计佣。"}

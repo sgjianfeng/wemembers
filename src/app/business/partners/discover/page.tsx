@@ -6,7 +6,9 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useLang } from "@/components/i18n/LanguageProvider";
+import { Building2 } from "lucide-react";
 
 export default function DiscoverPartnersPage() {
   const router = useRouter();
@@ -46,9 +48,9 @@ export default function DiscoverPartnersPage() {
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-slate-100 sticky top-0 bg-white z-10">
-        <h1 className="text-lg font-semibold">{t("business.discover.title")}</h1>
-        <p className="text-xs text-slate-400 mt-0.5">{t("business.discover.subtitle")}</p>
+      <div className="px-4 py-3 border-b border-border sticky top-0 bg-card z-10">
+        <h1 className="text-lg font-semibold text-foreground">{t("business.discover.title")}</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">{t("business.discover.subtitle")}</p>
       </div>
 
       <div className="px-4 pt-3">
@@ -71,13 +73,15 @@ export default function DiscoverPartnersPage() {
           const rel = b.partnership;
           const sb = rel ? (statusLabels[rel.status] || { variant: "slate" as const, label: rel.status }) : null;
           return (
-            <Card key={b.id}>
+            <Card key={b.id} className="active:scale-[0.99] transition-transform">
               <CardContent className="p-3 flex items-center justify-between">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-xl shrink-0">🏢</span>
+                  <span className="grid place-items-center h-9 w-9 rounded-xl bg-muted text-muted-foreground shrink-0">
+                    <Building2 size={16} strokeWidth={2} aria-hidden />
+                  </span>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-900 truncate">{b.businessName}</p>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-sm font-medium text-foreground truncate">{b.businessName}</p>
+                    <p className="text-[10px] text-muted-foreground">
                       {b.categoryLabel || b.businessCategory || ""}
                       {b.createdAt && ` · ${new Date(b.createdAt).toLocaleDateString(lang === "zh" ? "zh-CN" : "en-US")} ${lang === "zh" ? "加入" : "Joined"}`}
                     </p>
@@ -89,7 +93,7 @@ export default function DiscoverPartnersPage() {
                   <button
                     onClick={() => invite(b.id)}
                     disabled={acting === b.id}
-                    className="px-3 py-1 bg-[#1A6EFF] text-white text-xs rounded-full disabled:opacity-50 shrink-0"
+                    className="px-3 py-1 bg-primary text-primary-foreground text-xs rounded-full disabled:opacity-50 shrink-0 active:scale-[0.97] transition-transform"
                   >
                     {acting === b.id ? "..." : t("business.discover.invite")}
                   </button>
@@ -99,10 +103,12 @@ export default function DiscoverPartnersPage() {
           );
         })}
         {businesses.length === 0 && !loading && (
-          <div className="text-center py-12 text-slate-400">
-            <p className="text-3xl mb-2">🔍</p>
-            <p className="text-sm">{t("business.discover.noResults")}</p>
-          </div>
+          <EmptyState
+            icon="discover"
+            tone="calm"
+            title={t("business.discover.noResults")}
+            className="py-12"
+          />
         )}
       </div>
     </div>

@@ -55,53 +55,53 @@ export function PrizeEditor({ campaignId, currentPrizes }: { campaignId: string;
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="text-xs text-[#1A6EFF] font-medium">
+      <button onClick={() => setOpen(true)} className="text-xs text-primary font-medium active:scale-[0.97] transition-transform">
         {currentPrizes.length > 0 ? "编辑" : "+ 设置奖池"}
       </button>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-white overflow-auto">
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
-        <h2 className="text-sm font-semibold">设置奖池</h2>
-        <button onClick={() => setOpen(false)} className="text-xs text-slate-500">取消</button>
+    <div className="fixed inset-0 z-50 bg-card overflow-auto">
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
+        <h2 className="text-sm font-semibold text-foreground">设置奖池</h2>
+        <button onClick={() => setOpen(false)} className="text-xs text-muted-foreground">取消</button>
       </div>
 
       <div className="p-4 space-y-3">
         {prizes.map((p, i) => (
-          <div key={i} className="p-3 bg-slate-50 rounded-xl space-y-2">
+          <div key={i} className="p-3 bg-muted/50 rounded-xl space-y-2">
             <div className="flex items-center gap-2">
-              <input value={p.icon} onChange={(e) => update(i, "icon", e.target.value)} className="w-10 h-8 text-center rounded border border-slate-200 text-sm" placeholder="🎁" />
-              <input value={p.name} onChange={(e) => update(i, "name", e.target.value)} className="flex-1 h-8 px-2 rounded border border-slate-200 text-sm" placeholder="奖品名称" />
-              <select value={p.type} onChange={(e) => update(i, "type", e.target.value)} className="h-8 px-1 rounded border border-slate-200 text-xs">
+              <input value={p.icon} onChange={(e) => update(i, "icon", e.target.value)} className="w-10 h-8 text-center rounded border border-border bg-background text-sm" placeholder="🎁" />
+              <input value={p.name} onChange={(e) => update(i, "name", e.target.value)} className="flex-1 h-8 px-2 rounded border border-border bg-background text-sm" placeholder="奖品名称" />
+              <select value={p.type} onChange={(e) => update(i, "type", e.target.value)} className="h-8 px-1 rounded border border-border bg-background text-xs">
                 <option value="item">实物</option>
                 <option value="cash">现金</option>
                 <option value="coupon">代金券</option>
               </select>
-              <button onClick={() => remove(i)} className="text-red-400 text-xs shrink-0">✕</button>
+              <button onClick={() => remove(i)} className="text-red-500 text-xs shrink-0">✕</button>
             </div>
             <div className="flex gap-2 text-xs">
               <div className="flex-1">
-                <label className="text-[10px] text-slate-400">权重</label>
-                <input type="number" value={p.weight} onChange={(e) => update(i, "weight", Number(e.target.value))} className="w-full h-7 px-2 rounded border border-slate-200 mt-0.5" />
+                <label className="text-[10px] text-muted-foreground">权重</label>
+                <input type="number" value={p.weight} onChange={(e) => update(i, "weight", Number(e.target.value))} className="w-full h-7 px-2 rounded border border-border bg-background mt-0.5" />
               </div>
               <div className="flex-1">
-                <label className="text-[10px] text-slate-400">库存 (空=不限)</label>
-                <input type="number" value={p.totalStock ?? ""} onChange={(e) => update(i, "totalStock", e.target.value ? Number(e.target.value) : null)} className="w-full h-7 px-2 rounded border border-slate-200 mt-0.5" />
+                <label className="text-[10px] text-muted-foreground">库存 (空=不限)</label>
+                <input type="number" value={p.totalStock ?? ""} onChange={(e) => update(i, "totalStock", e.target.value ? Number(e.target.value) : null)} className="w-full h-7 px-2 rounded border border-border bg-background mt-0.5" />
               </div>
               {p.type === "cash" && (
                 <div className="flex-1">
-                  <label className="text-[10px] text-slate-400">金额(分)</label>
-                  <input type="number" value={p.valueCents} onChange={(e) => update(i, "valueCents", Number(e.target.value))} className="w-full h-7 px-2 rounded border border-slate-200 mt-0.5" />
+                  <label className="text-[10px] text-muted-foreground">金额(分)</label>
+                  <input type="number" value={p.valueCents} onChange={(e) => update(i, "valueCents", Number(e.target.value))} className="w-full h-7 px-2 rounded border border-border bg-background mt-0.5" />
                 </div>
               )}
             </div>
           </div>
         ))}
 
-        <button onClick={add} className="w-full p-2 border-2 border-dashed border-slate-200 rounded-xl text-xs text-slate-400">+ 添加奖品</button>
-        <button onClick={save} disabled={loading} className="w-full py-3 bg-[#1A6EFF] text-white rounded-full font-medium text-sm disabled:opacity-50">
+        <button onClick={add} className="w-full p-2 border-2 border-dashed border-border rounded-xl text-xs text-muted-foreground active:scale-[0.98] transition-transform">+ 添加奖品</button>
+        <button onClick={save} disabled={loading} className="w-full py-3 bg-primary text-primary-foreground rounded-full font-medium text-sm disabled:opacity-50 active:scale-[0.97] transition-transform">
           {loading ? "保存中..." : "保存奖池"}
         </button>
       </div>

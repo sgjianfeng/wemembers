@@ -7,10 +7,10 @@ import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
   const { t } = useLang();
   const tabs = [
-    { icon: "🏠", label: t("tabs.home"), href: "/home" },
-    { icon: "🎫", label: t("tabs.wallet"), href: "/wallet" },
-    { icon: "💳", label: t("tabs.balance"), href: "/balance" },
-    { icon: "👤", label: t("tabs.profile"), href: "/profile" },
+    { icon: "home" as const, label: t("tabs.home"), href: "/home" },
+    { icon: "wallet" as const, label: t("tabs.wallet"), href: "/wallet" },
+    { icon: "balance" as const, label: t("tabs.balance"), href: "/balance" },
+    { icon: "profile" as const, label: t("tabs.profile"), href: "/profile" },
   ];
 
   return (

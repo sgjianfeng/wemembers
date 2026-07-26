@@ -1,5 +1,6 @@
 "use client";
 
+import { Ticket, Gem, Crown, type LucideIcon } from "lucide-react";
 import { useLang } from "@/components/i18n/LanguageProvider";
 import {
   type VoucherTierConfig,
@@ -7,7 +8,8 @@ import {
   REDEEM_WEIGHT_MULT,
 } from "@/lib/draw-v2";
 
-// Mirror INSTANT_PRIZES from draw-v2 (kept in sync for UI preview)
+// Mirror INSTANT_PRIZES from draw-v2 (kept in sync for UI preview).
+// Prize glyphs are content (they depict the actual prize), so emoji stays.
 const PRIZES = [
   { valueCents: 3000, icon: "💰", weight: 3 },
   { valueCents: 2000, icon: "💵", weight: 6 },
@@ -18,11 +20,12 @@ const PRIZES = [
   { valueCents: 50, icon: "🍬", weight: 50 },
 ];
 
-const TIER_EMOJI: Record<string, string> = {
-  small: "🎫",
-  medium: "💎",
-  large: "👑",
-};
+/** Tier category glyph (chrome) — matches VoucherTierSelector prestige ladder. */
+function tierIcon(tier: string): LucideIcon {
+  if (tier === "large") return Crown;
+  if (tier === "medium") return Gem;
+  return Ticket;
+}
 
 interface InstantPrizePreviewProps {
   tier: VoucherTierConfig;
@@ -45,20 +48,19 @@ export function InstantPrizePreview({ tier, selectedAmount }: InstantPrizePrevie
       weightLabel: `${mult}×`,
       isActive: tc.tier === tier.tier,
       isEligible: selectedAmount >= tc.min,
-      emoji: TIER_EMOJI[tc.tier] || "🎫",
     };
   });
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-xl border border-slate-100 p-4">
+      <div className="bg-card rounded-xl border border-border p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-slate-900">{t("prize.youCouldWin")}</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t("prize.youCouldWin")}</h3>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-slate-400 bg-slate-50 px-2 py-0.5 rounded">
+            <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded nums">
               {t("prize.cap")} S${tier.instantPrizeCap}
             </span>
-            <span className="text-[10px] text-green-600 bg-green-50 px-2 py-0.5 rounded font-medium">
+            <span className="text-[10px] text-green-600 bg-green-50 dark:bg-green-950/40 px-2 py-0.5 rounded font-medium">
               {t("prize.guaranteed")}
             </span>
           </div>
@@ -73,25 +75,23 @@ export function InstantPrizePreview({ tier, selectedAmount }: InstantPrizePrevie
               <div key={prize.valueCents} className="flex items-center gap-2">
                 <span className="text-sm w-5 text-center shrink-0">{prize.icon}</span>
                 <span
-                  className={`text-xs w-16 shrink-0 ${
-                    isTop ? "font-semibold text-slate-900" : "text-slate-600"
+                  className={`text-xs w-16 shrink-0 nums ${
+                    isTop ? "font-semibold text-foreground" : "text-muted-foreground"
                   }`}
                 >
                   S${(prize.valueCents / 100).toFixed(2)}
                 </span>
-                <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all ${
-                      isRare
-                        ? "bg-gradient-to-r from-amber-400 to-orange-400"
-                        : "bg-gradient-to-r from-blue-300 to-blue-400"
+                      isRare ? "bg-gold" : "bg-primary/40"
                     }`}
                     style={{ width: `${Math.max(2, Number(pct))}%` }}
                   />
                 </div>
                 <span
-                  className={`text-[10px] w-10 text-right shrink-0 ${
-                    isRare ? "text-amber-600 font-medium" : "text-slate-400"
+                  className={`text-[10px] w-10 text-right shrink-0 nums ${
+                    isRare ? "text-[color:var(--gold-strong)] font-medium" : "text-muted-foreground"
                   }`}
                 >
                   {pct}%
@@ -102,38 +102,46 @@ export function InstantPrizePreview({ tier, selectedAmount }: InstantPrizePrevie
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-100 p-4">
-        <h3 className="text-sm font-semibold text-slate-900 mb-2">{t("prize.tierCompare")}</h3>
+      <div className="bg-card rounded-xl border border-border p-4">
+        <h3 className="text-sm font-semibold text-foreground mb-2">{t("prize.tierCompare")}</h3>
         <div className="grid grid-cols-3 gap-2">
-          {tierComparison.map((tc) => (
-            <div
-              key={tc.tier}
-              className={`rounded-lg p-2.5 text-center border-2 transition-all ${
-                tc.isActive
-                  ? "border-amber-400 bg-amber-50"
-                  : tc.isEligible
-                    ? "border-slate-100 bg-white"
-                    : "border-slate-50 bg-slate-50/50 opacity-50"
-              }`}
-            >
-              <p className="text-lg mb-0.5">{tc.emoji}</p>
-              <p
-                className={`text-[11px] font-semibold ${
-                  tc.isActive ? "text-amber-700" : "text-slate-500"
+          {tierComparison.map((tc) => {
+            const Icon = tierIcon(tc.tier);
+            return (
+              <div
+                key={tc.tier}
+                className={`rounded-lg p-2.5 text-center border-2 transition-all ${
+                  tc.isActive
+                    ? "border-gold bg-gold/10"
+                    : tc.isEligible
+                      ? "border-border bg-card"
+                      : "border-border bg-muted/40 opacity-50"
                 }`}
               >
-                {t("prize.face")} S${tc.min}
-              </p>
-              <p className="text-[10px] text-slate-400">
-                {t("prize.instantCap")} S${tc.cap}
-              </p>
-              <p className="text-[10px] mt-1 font-medium text-slate-600">
-                {t("prize.grandWeight")}: {tc.weightLabel}
-              </p>
-            </div>
-          ))}
+                <Icon
+                  size={18}
+                  className={`mx-auto mb-1 ${
+                    tc.isActive ? "text-[color:var(--gold-strong)]" : "text-muted-foreground"
+                  }`}
+                />
+                <p
+                  className={`text-[11px] font-semibold nums ${
+                    tc.isActive ? "text-[color:var(--gold-strong)]" : "text-muted-foreground"
+                  }`}
+                >
+                  {t("prize.face")} S${tc.min}
+                </p>
+                <p className="text-[10px] text-muted-foreground nums">
+                  {t("prize.instantCap")} S${tc.cap}
+                </p>
+                <p className="text-[10px] mt-1 font-medium text-foreground nums">
+                  {t("prize.grandWeight")}: {tc.weightLabel}
+                </p>
+              </div>
+            );
+          })}
         </div>
-        <p className="text-[10px] text-slate-400 mt-2 text-center">{t("prize.shareWeight")}</p>
+        <p className="text-[10px] text-muted-foreground mt-2 text-center">{t("prize.shareWeight")}</p>
       </div>
     </div>
   );

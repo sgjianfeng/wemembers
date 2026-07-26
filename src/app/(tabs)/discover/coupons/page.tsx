@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { Ticket } from "lucide-react";
 
 export default async function DiscoverCouponsPage() {
   const session = await getSession();
@@ -59,7 +60,9 @@ export default async function DiscoverCouponsPage() {
       <div className="px-4 mt-3 space-y-2">
         {coupons.length === 0 ? (
           <div className="text-center py-16 px-4">
-            <p className="text-4xl mb-2">🎫</p>
+            <div className="flex justify-center mb-2">
+              <Ticket size={48} className="text-slate-300" />
+            </div>
             <p className="text-sm text-slate-600">
               {t("discover.coupons.empty", lang)}
             </p>

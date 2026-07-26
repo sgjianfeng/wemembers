@@ -11,6 +11,7 @@ import { LogoutButton } from "@/components/auth/LogoutButton";
 import { DailyCheckIn } from "@/components/customer/DailyCheckIn";
 import { t } from "@/lib/i18n";
 import { cookies } from "next/headers";
+import { Ticket, CreditCard, TrendingUp, Megaphone, Medal } from "lucide-react";
 
 export default async function ProfilePage() {
   const session = await getSession();
@@ -116,60 +117,63 @@ export default async function ProfilePage() {
             [
               {
                 href: "/wallet",
-                icon: "🎫",
+                icon: Ticket,
                 title: t("profile.menu.wallet", lang),
                 desc: t("profile.menu.walletDesc", lang),
               },
               {
                 href: "/balance",
-                icon: "💳",
+                icon: CreditCard,
                 title: t("profile.menu.balance", lang),
                 desc: t("profile.menu.balanceDesc", lang),
               },
               {
                 href: "/card",
-                icon: "🪪",
+                icon: CreditCard,
                 title: t("profile.menu.card", lang),
                 desc: t("profile.menu.cardDesc", lang),
               },
               {
                 href: "/promoter",
-                icon: "💸",
+                icon: TrendingUp,
                 title: t("profile.promoter", lang),
                 desc: t("profile.promoterDesc", lang),
                 accent: true,
               },
               {
                 href: "/seller",
-                icon: "📣",
+                icon: Megaphone,
                 title: t("profile.seller", lang),
                 desc: t("profile.sellerDesc", lang),
               },
             ] as const
-          ).map((item) => (
-            <Link key={item.href} href={item.href}>
-              <Card
-                className={
-                  "accent" in item && item.accent
-                    ? "border-dashed border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 hover:border-green-300 transition-colors"
-                    : "hover:border-[#1A6EFF]/30 transition-colors"
-                }
-              >
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-2xl shrink-0">{item.icon}</span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900">
-                        {item.title}
-                      </p>
-                      <p className="text-xs text-slate-500 truncate">{item.desc}</p>
+          ).map((item) => {
+            const IconComponent = item.icon;
+            return (
+              <Link key={item.href} href={item.href}>
+                <Card
+                  className={
+                    "accent" in item && item.accent
+                      ? "border-dashed border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 hover:border-green-300 transition-colors"
+                      : "hover:border-[#1A6EFF]/30 transition-colors"
+                  }
+                >
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <IconComponent size={24} className="text-slate-600 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900">
+                          {item.title}
+                        </p>
+                        <p className="text-xs text-slate-500 truncate">{item.desc}</p>
+                      </div>
                     </div>
-                  </div>
-                  <span className="text-slate-300 shrink-0">→</span>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+                    <span className="text-slate-300 shrink-0">→</span>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       </div>
 

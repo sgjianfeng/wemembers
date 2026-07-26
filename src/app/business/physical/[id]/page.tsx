@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { formatMoney } from "@/lib/utils";
+import { Store } from "lucide-react";
 import { PhysicalPrintSheet } from "./PhysicalPrintSheet";
 
 export default async function PhysicalBatchDetailPage({
@@ -40,16 +41,17 @@ export default async function PhysicalBatchDetailPage({
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-slate-100 sticky top-0 bg-white z-10 print:hidden">
+      <div className="px-4 py-3 border-b border-border sticky top-0 bg-card z-10 print:hidden">
         <Link
           href="/business/physical"
-          className="text-xs text-[#1A6EFF] font-medium"
+          className="text-xs text-primary font-medium"
         >
           ← {lang === "en" ? "Batches" : "批次列表"}
         </Link>
-        <h1 className="text-lg font-semibold mt-1">{batch.title}</h1>
-        <p className="text-xs text-slate-400 mt-0.5">
-          🏪 {batch.store.name}
+        <h1 className="text-lg font-semibold mt-1 text-foreground">{batch.title}</h1>
+        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 nums">
+          <Store size={12} className="shrink-0" aria-hidden />
+          {batch.store.name}
           {batch.type === "voucher"
             ? ` · S$${formatMoney(batch.valueCents)}`
             : lang === "en"
@@ -59,7 +61,7 @@ export default async function PhysicalBatchDetailPage({
           {lang === "en" ? "codes" : "张"}
         </p>
         {!batch.business.businessLogo && (
-          <p className="text-[11px] text-amber-700 mt-1">
+          <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
             {lang === "en" ? (
               <>
                 No brand logo yet —{" "}

@@ -1,14 +1,15 @@
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
 import { TopHeader } from "@/components/ui/TopHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { daysUntil, resolveStoreLogo, storeIdsAllows } from "@/lib/utils";
 import { BrandAvatar } from "@/components/ui/BrandAvatar";
 import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { MapPin } from "lucide-react";
 
 /**
  * 门店顾客页（主入口）
@@ -81,10 +82,10 @@ export default async function CompanyStorePage({
   const path = `/shop/${companySlug}/${storeSlug}`;
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-muted/50">
       <TopHeader variant="default" title={store.name} />
 
-      <div className="bg-gradient-to-b from-[#1A6EFF] to-[#3B82F6] px-4 pt-8 pb-8 text-white">
+      <div className="bg-gradient-to-b from-primary to-primary/80 px-4 pt-8 pb-8 text-primary-foreground">
         <div className="text-center">
           <div className="mx-auto w-20 h-20 rounded-2xl bg-white shadow-lg flex items-center justify-center p-1.5">
             <BrandAvatar
@@ -100,7 +101,9 @@ export default async function CompanyStorePage({
             {business.businessName}
           </p>
           {store.address && (
-            <p className="text-white/60 text-xs mt-1">📍 {store.address}</p>
+            <p className="text-white/60 text-xs mt-1 flex items-center justify-center gap-1">
+              <MapPin size={12} /> {store.address}
+            </p>
           )}
           <p className="text-white/50 text-[11px] mt-3 max-w-[280px] mx-auto leading-relaxed">
             {lang === "en"
@@ -111,10 +114,10 @@ export default async function CompanyStorePage({
       </div>
 
       <div className="px-4 -mt-4 pb-8">
-        <div className="bg-white rounded-t-2xl pt-5 px-1">
+        <div className="bg-card rounded-t-2xl pt-5 px-1">
           {/* 扫码落地快捷说明 */}
-          <div className="mx-3 mb-4 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
-            <p className="text-[11px] text-slate-600 leading-relaxed">
+          <div className="mx-3 mb-4 rounded-xl bg-muted/50 border border-border px-3 py-2.5">
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
               {lang === "en"
                 ? "You scanned this store’s code. Browse offers below — log in to claim."
                 : "你已扫入本店。下方为本店可用优惠；登录后即可领取。"}
@@ -122,7 +125,7 @@ export default async function CompanyStorePage({
             {!isLoggedIn && (
               <Link
                 href={`/auth/login?redirect=${encodeURIComponent(path)}`}
-                className="inline-flex mt-2 h-8 items-center rounded-full bg-[#1A6EFF] px-3 text-[11px] font-semibold text-white"
+                className="inline-flex mt-2 h-8 items-center rounded-full bg-primary px-3 text-[11px] font-semibold text-primary-foreground active:scale-[0.97] transition-transform"
               >
                 {lang === "en" ? "Log in / Register" : "登录 / 注册"}
               </Link>
@@ -132,30 +135,30 @@ export default async function CompanyStorePage({
           {drawCampaigns.length > 0 && (
             <div className="px-3 mb-5">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-semibold text-slate-900">
+                <h2 className="text-base font-semibold text-foreground">
                   {t("store.public.drawTitle", lang)}
                 </h2>
-                <span className="text-xs text-slate-400">{drawCampaigns.length}</span>
+                <span className="text-xs text-muted-foreground nums">{drawCampaigns.length}</span>
               </div>
               <div className="space-y-2">
                 {drawCampaigns.map((camp) => (
                   <Link key={camp.id} href={`/voucher/${camp.slug}`}>
                     <Card
-                      className="hover:border-[#1A6EFF]/30 border-l-4"
-                      style={{ borderLeftColor: camp.color || "#1A6EFF" }}
+                      className="hover:border-primary/30 active:scale-[0.98] transition-transform border-l-4"
+                      style={{ borderLeftColor: camp.color || "var(--primary)" }}
                     >
                       <CardContent className="p-3 flex items-center justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-slate-900 truncate">
+                          <p className="text-sm font-semibold text-foreground truncate">
                             {camp.name}
                           </p>
                           {camp.description && (
-                            <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
+                            <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
                               {camp.description}
                             </p>
                           )}
                         </div>
-                        <span className="px-3 py-1 bg-[#1A6EFF] text-white text-[10px] rounded-full shrink-0">
+                        <span className="px-3 py-1 bg-primary text-primary-foreground text-[10px] rounded-full shrink-0">
                           {t("store.public.buy", lang)}
                         </span>
                       </CardContent>
@@ -167,10 +170,10 @@ export default async function CompanyStorePage({
           )}
 
           <div className="flex items-center justify-between px-3 mb-3">
-            <h2 className="text-base font-semibold text-slate-900">
+            <h2 className="text-base font-semibold text-foreground">
               {t("store.public.title", lang)}
             </h2>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-muted-foreground nums">
               {coupons.length}
               {t("store.public.countUnit", lang)}
             </span>
@@ -190,23 +193,23 @@ export default async function CompanyStorePage({
                 return (
                   <Link key={c.id} href={`/coupons/${c.id}`}>
                     <Card
-                      className={`hover:border-[#1A6EFF]/30 border-l-4 border-l-[#FF6B35] ${soldOut ? "opacity-50" : ""}`}
+                      className={`hover:border-primary/30 active:scale-[0.98] transition-transform border-l-4 border-l-brand ${soldOut ? "opacity-50" : ""}`}
                     >
                       <CardContent className="p-3 flex items-center justify-between">
                         <div>
-                          <p className="text-base font-bold text-[#FF6B35]">
+                          <p className="text-base font-bold text-brand nums">
                             {displayValue}
                           </p>
-                          <p className="text-sm font-medium text-slate-900 mt-1">
+                          <p className="text-sm font-medium text-foreground mt-1">
                             {c.title}
                           </p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
+                          <p className="text-[10px] text-muted-foreground mt-0.5 nums">
                             {daysUntil(c.validUntil)}
                             {t("store.public.daysUnit", lang)}
                           </p>
                         </div>
                         {!soldOut && (
-                          <span className="px-3 py-1 bg-[#1A6EFF] text-white text-[10px] rounded-full shrink-0">
+                          <span className="px-3 py-1 bg-primary text-primary-foreground text-[10px] rounded-full shrink-0">
                             {t("store.public.claim", lang)}
                           </span>
                         )}
@@ -217,23 +220,22 @@ export default async function CompanyStorePage({
               })}
             </div>
           ) : (
-            <div className="text-center py-16">
-              <p className="text-4xl mb-3">🎫</p>
-              <p className="text-sm text-slate-400">
-                {t("store.public.noCoupons", lang)}
-              </p>
-            </div>
+            <EmptyState
+              icon="coupons"
+              title={t("store.public.noCoupons", lang)}
+              className="py-12"
+            />
           )}
         </div>
 
         {!isLoggedIn && coupons.length > 0 && (
-          <div className="mx-3 mt-4 p-4 bg-[#1A6EFF]/5 rounded-xl text-center">
-            <p className="text-sm text-slate-600">
+          <div className="mx-3 mt-4 p-4 bg-primary/5 rounded-xl text-center">
+            <p className="text-sm text-foreground/80">
               {t("store.public.loginPrompt", lang)}
             </p>
             <Link
               href={`/auth/login?redirect=${encodeURIComponent(path)}`}
-              className="inline-block mt-2 px-6 py-2 bg-[#1A6EFF] text-white text-sm rounded-full"
+              className="inline-block mt-2 px-6 py-2 bg-primary text-primary-foreground text-sm rounded-full active:scale-[0.97] transition-transform"
             >
               {t("store.public.login", lang)}
             </Link>
@@ -241,7 +243,7 @@ export default async function CompanyStorePage({
         )}
 
         <div className="text-center mt-6">
-          <p className="text-[10px] text-slate-300">
+          <p className="text-[10px] text-muted-foreground/70">
             {t("store.public.poweredBy", lang)}
           </p>
         </div>

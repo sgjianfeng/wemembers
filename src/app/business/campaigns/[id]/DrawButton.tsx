@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Dices, PartyPopper } from "lucide-react";
 
 export function DrawButton({ campaignId, entryCount }: { campaignId: string; entryCount: number }) {
   const router = useRouter();
@@ -26,10 +27,10 @@ export function DrawButton({ campaignId, entryCount }: { campaignId: string; ent
 
   if (result) {
     return (
-      <div className="text-center p-4 bg-green-50 rounded-xl">
-        <p className="text-2xl mb-2">🎉</p>
-        <p className="text-sm font-semibold text-green-800">开奖完成！</p>
-        <p className="text-xs text-green-600 mt-1">
+      <div className="text-center p-4 bg-green-50 dark:bg-green-950/40 rounded-xl">
+        <PartyPopper size={26} className="mx-auto mb-2 text-green-700 dark:text-green-400" />
+        <p className="text-sm font-semibold text-green-800 dark:text-green-300">开奖完成！</p>
+        <p className="text-xs text-green-600 dark:text-green-400 mt-1 nums">
           {result.totalEntries} 人参与，{result.wonCount} 人中奖
         </p>
       </div>
@@ -40,9 +41,12 @@ export function DrawButton({ campaignId, entryCount }: { campaignId: string; ent
     <button
       onClick={handleDraw}
       disabled={loading || entryCount === 0}
-      className="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full font-semibold text-sm disabled:opacity-50 active:scale-95 transition-transform"
+      className="w-full inline-flex items-center justify-center gap-2 py-3 bg-primary text-primary-foreground rounded-full font-semibold text-sm disabled:opacity-50 active:scale-[0.97] transition-transform"
     >
-      {loading ? "🎰 开奖中..." : entryCount === 0 ? "暂无参与者" : `🎰 立即开奖 (${entryCount}人参与)`}
+      <Dices size={16} />
+      <span className="nums">
+        {loading ? "开奖中..." : entryCount === 0 ? "暂无参与者" : `立即开奖 (${entryCount}人参与)`}
+      </span>
     </button>
   );
 }
