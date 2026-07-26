@@ -10,6 +10,7 @@ import { BrandAvatar } from "@/components/ui/BrandAvatar";
 import { StoreEditForm } from "./StoreEditForm";
 import { StoreQrActions } from "./StoreQrActions";
 import { StoreStaffForm } from "./StoreStaffForm";
+import { StoreCatalogPanel } from "./StoreCatalogPanel";
 
 /**
  * 企业后台 → 进入具体门店
@@ -145,6 +146,10 @@ export default async function BusinessStoreDetailPage({
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="px-4 mt-4">
+        <StoreCatalogPanel storeId={store.id} />
       </div>
 
       <div className="px-4 mt-4 grid grid-cols-2 gap-2">

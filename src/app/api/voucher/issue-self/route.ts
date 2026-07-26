@@ -191,19 +191,23 @@ export async function POST(request: NextRequest) {
           const { applyExclusiveCashSaleFees } = await import(
             "@/lib/exclusive-fees"
           );
+          const { exclusiveConfigFromCampaign } = await import("@/lib/templates");
+          const feeConfig = exclusiveConfigFromCampaign(campaign);
           try {
             const feeResult = await applyExclusiveCashSaleFees(tx, {
               businessId,
               campaignId: campaign.id,
               faceCents,
+              feeConfig,
               referenceId: shortCode,
               label: `独享柜台发券 · ${campaign.name}`,
             });
             realPrize = feeResult.realPrizeFunding;
             wFactor = feeResult.weightFactor;
             const charged = feeResult.chargedCents ?? feeResult.totalCents;
+            const pct = feeResult.totalPercent || 15;
             feeNote = realPrize
-              ? `已扣自充 S$${(charged / 100).toFixed(2)}（15%：小奖+服务费+大奖，已进池，小奖入余额）`
+              ? `已扣自充 S$${(charged / 100).toFixed(2)}（${pct}%：小奖+服务费+大奖，已进池，小奖入余额）`
               : `已扣服务费 S$${(charged / 100).toFixed(2)}（2%）；未自充奖池：小奖请门店送、不注大奖池、权重×${wFactor}`;
           } catch (e) {
             if (e instanceof Error && e.message === "INSUFFICIENT_TOKEN") {

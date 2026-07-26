@@ -33,6 +33,16 @@ export default async function BusinessHubPage() {
       primary: true,
     },
     {
+      id: "templates",
+      icon: "📋",
+      title: lang === "en" ? "My templates" : "我的模版",
+      desc:
+        lang === "en"
+          ? "Copy self-use / exclusive templates (edit discount or fee split; platform 2% fixed)"
+          : "拷贝自用/独享模版（改折扣或总率/小奖/大奖；平台 2% 固定）",
+      href: "/business/templates",
+    },
+    {
       id: "issue-self",
       icon: "💵",
       title: t("hub.issueSelf.title", lang),

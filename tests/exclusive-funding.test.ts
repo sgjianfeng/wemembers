@@ -13,6 +13,13 @@ describe("exclusive funding modes", () => {
     );
   });
 
+  it("10% prize funding is 3%+5% only (not platform 2%)", () => {
+    const s = splitExclusiveSaleFees(10000, "exclusive_10");
+    expect(exclusivePrizeFundingCents(s)).toBe(800);
+    expect(s.platformFeeCents).toBe(200);
+    expect(s.totalCents).toBe(1000);
+  });
+
   it("gift weight factor is 0.2", () => {
     expect(EXCLUSIVE_GIFT_WEIGHT_FACTOR).toBe(0.2);
   });

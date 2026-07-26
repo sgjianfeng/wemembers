@@ -54,6 +54,40 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const { prisma } = await import("@/lib/db");
   const body = await request.json();
 
+  const existing = await prisma.campaign.findFirst({
+    where: { id, businessId: session.userId },
+  });
+  if (!existing) return NextResponse.json({ error: "活动不存在" }, { status: 404 });
+
+  // 启动独享时：全公司仅允许一个 active 独享
+  if (
+    body.status === "active" &&
+    existing.status !== "active" &&
+    existing.productKind === "self_use" &&
+    existing.type === "lucky_draw_v2"
+  ) {
+    const other = await prisma.campaign.findFirst({
+      where: {
+        businessId: session.userId,
+        productKind: "self_use",
+        type: "lucky_draw_v2",
+        status: "active",
+        id: { not: id },
+      },
+      select: { id: true, name: true },
+    });
+    if (other) {
+      return NextResponse.json(
+        {
+          error: `已有进行中的独享「${other.name}」，请先结束后再启动本活动。`,
+          code: "EXCLUSIVE_ALREADY_ACTIVE",
+          existingId: other.id,
+        },
+        { status: 409 }
+      );
+    }
+  }
+
   const updated = await prisma.campaign.update({
     where: { id },
     data: {

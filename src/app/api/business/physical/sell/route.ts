@@ -152,18 +152,31 @@ export async function POST(request: NextRequest) {
           };
         }
         try {
+          const campFull = await tx.campaign.findUnique({
+            where: { id: ticket.batch.campaignId },
+            select: {
+              name: true,
+              templateId: true,
+              rulesSnapshot: true,
+              productKind: true,
+            },
+          });
+          const { exclusiveConfigFromCampaign } = await import("@/lib/templates");
+          const feeConfig = exclusiveConfigFromCampaign(campFull || {});
           const fee = await applyExclusiveCashSaleFees(tx, {
             businessId,
             campaignId: ticket.batch.campaignId,
             faceCents,
+            feeConfig,
             referenceId: code,
             label: `独享实体售出 · ${camp.name}`,
           });
           realPrizeFunding = fee.realPrizeFunding;
           weightFactor = fee.weightFactor;
           const charged = fee.chargedCents ?? fee.totalCents;
+          const pct = fee.totalPercent || 15;
           feeNote = realPrizeFunding
-            ? `已扣自充 S$${(charged / 100).toFixed(2)}（15%：小奖+服务费+大奖，已进池）`
+            ? `已扣自充 S$${(charged / 100).toFixed(2)}（${pct}%：小奖+服务费+大奖，已进池）`
             : `已扣服务费 S$${(charged / 100).toFixed(2)}（2%）；未自充奖池：小奖门店送、不注池、权重×${weightFactor}`;
         } catch (e) {
           if (e instanceof Error && e.message === "INSUFFICIENT_TOKEN") {

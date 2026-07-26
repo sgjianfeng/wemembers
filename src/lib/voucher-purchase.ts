@@ -201,15 +201,18 @@ export async function fulfillVoucherPurchase(
     throw e;
   }
 
-  // 独享：付款即从支付切 15% 进小奖池+大奖池+服务费记账（不扣企业代币）
+  // 独享：付款即从支付切 15%/10% 进小奖池+大奖池+服务费记账（不扣企业代币）
   if (isExclusive) {
     const { applyExclusiveOnlineSaleFees } = await import(
       "@/lib/exclusive-fees"
     );
+    const { exclusiveConfigFromCampaign } = await import("@/lib/templates");
+    const feeConfig = exclusiveConfigFromCampaign(campaign);
     await prisma.$transaction(async (tx) => {
       await applyExclusiveOnlineSaleFees(tx, {
         campaignId: campaign.id,
         faceCents: creditCents,
+        feeConfig,
       });
     });
   }

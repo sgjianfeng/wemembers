@@ -140,17 +140,39 @@ export function isValidSingaporeUen(raw: string): boolean {
   return false;
 }
 
-/** 解析 JSON storeIds；null/空 = 全部门店适用 */
-export function parseStoreIdsJson(raw: string | null | undefined): string[] | null {
-  if (!raw || !raw.trim()) return null;
+/**
+ * 解析 Campaign.storeIds JSON：
+ * - null / 缺省 / 非数组 → 全部门店（旧数据兼容）
+ * - [] → 尚未有门店选用（opt-in 目录）
+ * - [id,…] → 仅列表内门店
+ */
+export type StoreIdsScope =
+  | { mode: "all" }
+  | { mode: "selected"; ids: string[] };
+
+export function parseStoreIdsScope(
+  raw: string | null | undefined
+): StoreIdsScope {
+  if (raw == null || !String(raw).trim()) return { mode: "all" };
   try {
     const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return null;
-    const ids = arr.filter((x): x is string => typeof x === "string" && x.length > 0);
-    return ids.length ? ids : null;
+    if (!Array.isArray(arr)) return { mode: "all" };
+    const ids = arr.filter(
+      (x): x is string => typeof x === "string" && x.length > 0
+    );
+    return { mode: "selected", ids };
   } catch {
-    return null;
+    return { mode: "all" };
   }
+}
+
+/** @deprecated 优先用 parseStoreIdsScope；空数组现表示「未选用」不再折叠为 null */
+export function parseStoreIdsJson(
+  raw: string | null | undefined
+): string[] | null {
+  const scope = parseStoreIdsScope(raw);
+  if (scope.mode === "all") return null;
+  return scope.ids;
 }
 
 export function storeIdsAllows(
@@ -158,9 +180,64 @@ export function storeIdsAllows(
   storeId: string | null | undefined
 ): boolean {
   if (!storeId) return true;
-  const ids = parseStoreIdsJson(storeIdsJson);
-  if (ids === null) return true; // 全部门店
-  return ids.includes(storeId);
+  const scope = parseStoreIdsScope(storeIdsJson);
+  if (scope.mode === "all") return true;
+  return scope.ids.includes(storeId);
+}
+
+/** 写入 opt-in 列表（含空数组 = 暂无门店） */
+export function serializeStoreIds(ids: string[]): string {
+  return JSON.stringify(
+    ids.filter((x): x is string => typeof x === "string" && x.length > 0)
+  );
+}
+
+export function toggleStoreInList(
+  storeIdsJson: string | null | undefined,
+  storeId: string,
+  enabled: boolean
+): string {
+  const scope = parseStoreIdsScope(storeIdsJson);
+  let ids =
+    scope.mode === "all"
+      ? [] // 从「全部门店」切到显式列表时，先清空再按操作加
+      : [...scope.ids];
+  if (scope.mode === "all" && enabled) {
+    // 若原本是「全开」，关掉某一店需要先展开——调用方应传入 fullStoreIds
+    ids = [storeId];
+  } else if (enabled) {
+    if (!ids.includes(storeId)) ids.push(storeId);
+  } else {
+    ids = ids.filter((id) => id !== storeId);
+  }
+  return serializeStoreIds(ids);
+}
+
+/**
+ * 门店选用：在已知全部门店列表上开关
+ * - mode=all 且 disable → 变为「除该店外全部」
+ * - mode=all 且 enable → 保持 all（仍写 null 语义时由调用方决定）
+ */
+export function setStoreListingEnabled(
+  storeIdsJson: string | null | undefined,
+  storeId: string,
+  enabled: boolean,
+  allStoreIds: string[]
+): string {
+  const scope = parseStoreIdsScope(storeIdsJson);
+  let ids: string[];
+  if (scope.mode === "all") {
+    ids = enabled ? [...allStoreIds] : allStoreIds.filter((id) => id !== storeId);
+  } else {
+    ids = [...scope.ids];
+    if (enabled) {
+      if (!ids.includes(storeId)) ids.push(storeId);
+    } else {
+      ids = ids.filter((id) => id !== storeId);
+    }
+  }
+  // 若等于全部，仍写完整列表（自用产品保持 opt-in 显式列表，避免误「全开」旧语义）
+  return serializeStoreIds(ids);
 }
 
 export function daysUntil(date: Date): number {

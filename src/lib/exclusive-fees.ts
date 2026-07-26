@@ -1,21 +1,22 @@
 /**
  * 独享：付款时费用
  *
- * 拆分（面值 15%）：
- * - 小奖 3% + 大奖 10% → 仅企业自充 balance 可扣，扣了才进池/抽小奖入余额
- * - 服务费 2% → 平台赠送 gift 或自充均可扣
+ * 标准 15%：小奖 3% + 服务费 2% + 大奖 10%
+ * 轻量 10%：小奖 3% + 服务费 2% + 大奖 5%
  *
- * 规则：
- * - 有自充且够付 3%+10% → 真金路径：注池 + 小奖可进顾客余额，权重 1
- * - 没有自充（或不够付奖池部分）→ 弱路径：只扣 2% 服务费，门店自己送小奖，权重 ×0.2
- * - 不强制充值：gift 够付 2% 服务费即可售
- * - 线上 PayNow 顾客实付 → 始终真金路径
+ * 资金：
+ * - 小奖+大奖 → 仅企业自充 balance；扣了才进池/小奖入余额
+ * - 服务费 2% → gift 或自充均可
+ * - 无自充 → 只扣服务费，门店送小奖，权重 ×0.2
+ * - 线上 PayNow → 始终真金路径
  */
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
   DEFAULT_BUSINESS_GIFT_CENTS,
   splitExclusiveSaleFees,
+  type ExclusiveFeeConfig,
+  type ExclusiveFeePlan,
   type FeeSplit,
 } from "@/lib/activity-fees";
 
@@ -87,7 +88,7 @@ export function exclusivePrizeFundingCents(split: FeeSplit): number {
 /**
  * 独享现金/实体售出扣费：
  * 1) 服务费 2%：gift 优先，不足再扣自充
- * 2) 奖池 13%：仅自充；不够则不扣、不注池 → 弱路径
+ * 2) 奖池（小奖+大奖）：仅自充；不够则不扣、不注池 → 弱路径
  */
 export async function applyExclusiveCashSaleFees(
   tx: Tx,
@@ -95,11 +96,15 @@ export async function applyExclusiveCashSaleFees(
     businessId: string;
     campaignId: string;
     faceCents: number;
+    plan?: ExclusiveFeePlan;
+    /** 优先于 plan：企业自定义 total/small/grand */
+    feeConfig?: ExclusiveFeeConfig;
     referenceId?: string;
     label?: string;
   }
 ): Promise<ExclusiveCashFeeResult> {
-  const split = splitExclusiveSaleFees(params.faceCents);
+  const planOrConfig = params.feeConfig ?? params.plan ?? "exclusive_15";
+  const split = splitExclusiveSaleFees(params.faceCents, planOrConfig);
   const platformFee = Math.max(0, split.platformFeeCents);
   const prizeNeed = exclusivePrizeFundingCents(split);
 
@@ -146,9 +151,15 @@ export async function applyExclusiveCashSaleFees(
     },
   });
 
+  const smallPct = split.smallPrizePercent ?? 3;
+  const grandPct = split.grandPoolPercent ?? (split.totalPercent === 10 ? 5 : 10);
   const baseLabel =
     params.label ||
-    `独享活动扣点（服务费2%${realPrizeFunding ? "+小奖3%+大奖10%" : "；未自充奖池"}）`;
+    `独享${split.totalPercent}%扣点（服务费2%${
+      realPrizeFunding
+        ? `+小奖${smallPct}%+大奖${grandPct}%`
+        : "；未自充奖池"
+    }）`;
 
   await tx.tokenTransaction.create({
     data: {
@@ -198,9 +209,15 @@ export async function creditExclusivePools(
 /** 线上：支付真钱，始终进池（不扣企业 gift） */
 export async function applyExclusiveOnlineSaleFees(
   tx: Tx,
-  params: { campaignId: string; faceCents: number }
+  params: {
+    campaignId: string;
+    faceCents: number;
+    plan?: ExclusiveFeePlan;
+    feeConfig?: ExclusiveFeeConfig;
+  }
 ): Promise<ExclusiveCashFeeResult> {
-  const split = splitExclusiveSaleFees(params.faceCents);
+  const planOrConfig = params.feeConfig ?? params.plan ?? "exclusive_15";
+  const split = splitExclusiveSaleFees(params.faceCents, planOrConfig);
   await creditExclusivePools(tx, params.campaignId, split);
   return {
     ...split,
@@ -216,11 +233,12 @@ export async function applyExclusiveOnlineSaleFees(
 /**
  * 现金售独享门槛：
  * - ok：gift+自充 ≥ 服务费 2%（不强制充值）
- * - canFullPrizeMode：自充在付完服务费后仍够 3%+10%
+ * - canFullPrizeMode：自充在付完服务费后仍够奖池部分
  */
 export async function canAffordExclusiveCash(
   businessId: string,
-  faceCents: number
+  faceCents: number,
+  planOrConfig: ExclusiveFeePlan | ExclusiveFeeConfig = "exclusive_15"
 ): Promise<{
   ok: boolean;
   needCents: number;
@@ -231,7 +249,7 @@ export async function canAffordExclusiveCash(
   prizeNeedCents: number;
   canFullPrizeMode: boolean;
 }> {
-  const split = splitExclusiveSaleFees(faceCents);
+  const split = splitExclusiveSaleFees(faceCents, planOrConfig);
   const platformFeeCents = split.platformFeeCents;
   const prizeNeedCents = exclusivePrizeFundingCents(split);
   const account = await prisma.tokenAccount.findUnique({

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -57,14 +58,33 @@ interface PartnerOption {
 
 const colors = ["#FF6B35", "#1A6EFF", "#16A34A", "#DC2626", "#8B5CF6", "#F59E0B", "#EC4899", "#06B6D4"];
 
+type BusinessTpl = {
+  id: string;
+  name: string;
+  baseTemplateId: string;
+  kind: string;
+  discountPercent: number | null;
+  exclusiveTotalPercent: number | null;
+  exclusiveSmallPrizePercent: number | null;
+  exclusivePlatformFeePercent: number;
+  exclusiveGrandPoolPercent: number | null;
+  enabledTiers: number[];
+};
+
 export default function NewCampaignPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preBizTpl = searchParams.get("businessTemplateId");
   const { t: tr, lang } = useLang();
   const [templates, setTemplates] = useState<TemplateDto[]>([]);
+  const [bizTemplates, setBizTemplates] = useState<BusinessTpl[]>([]);
   const [partners, setPartners] = useState<PartnerOption[]>([]);
   const [step, setStep] = useState<"kind" | "pick" | "configure">("kind");
   const [productKind, setProductKind] = useState<ProductKind | null>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
+  const [businessTemplateId, setBusinessTemplateId] = useState<string | null>(
+    preBizTpl
+  );
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -91,9 +111,10 @@ export default function NewCampaignPage() {
 
   useEffect(() => {
     (async () => {
-      const [tr, pr] = await Promise.all([
+      const [tr, pr, bt] = await Promise.all([
         fetch("/api/business/campaigns/templates"),
         fetch("/api/business/partners"),
+        fetch("/api/business/templates"),
       ]);
       if (tr.ok) {
         const j = await tr.json();
@@ -102,7 +123,6 @@ export default function NewCampaignPage() {
       if (pr.ok) {
         const j = await pr.json();
         const list = j.data || [];
-        // Each row links two businesses; collect both ends (create API ignores self)
         const opts: PartnerOption[] = [];
         for (const row of list) {
           if (row.status && row.status !== "active") continue;
@@ -124,39 +144,83 @@ export default function NewCampaignPage() {
         const seen = new Set<string>();
         setPartners(opts.filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true))));
       }
+      let mine: BusinessTpl[] = [];
+      if (bt.ok) {
+        const j = await bt.json();
+        mine = j.data?.mine || [];
+        setBizTemplates(mine);
+      }
+
+      // URL 预选企业模版 → 直接进配置
+      if (preBizTpl && mine.length) {
+        const m = mine.find((x) => x.id === preBizTpl);
+        if (m) {
+          setBusinessTemplateId(m.id);
+          setTemplateId(m.baseTemplateId);
+          setProductKind("self_use");
+          setDiscountPercent(m.discountPercent ?? 10);
+          setEnabledTiers(
+            m.enabledTiers?.length ? m.enabledTiers : [50, 100, 200]
+          );
+          setShareSelling(false);
+          setName(m.name);
+          setStep("configure");
+        }
+      }
     })();
-  }, []);
+  }, [preBizTpl]);
 
   const visibleTemplates = useMemo(() => {
     if (productKind === "self_use") {
-      // 先收款：代金(自用) + 抽奖(独享)；不要分享 boost
+      // 自用代金 + 独享 15%/10%；旧 voucher_discount/draw_standard 不再作为自用入口
       return templates.filter(
-        (t) => t.id === "voucher_discount" || t.id === "draw_standard"
+        (t) =>
+          t.id === "self_use_voucher" ||
+          t.id === "exclusive_draw_15" ||
+          t.id === "exclusive_draw_10"
       );
     }
-    return templates;
+    // 分发：共赢模版；隐藏纯自用/独享模版
+    return templates.filter(
+      (t) =>
+        t.id !== "self_use_voucher" &&
+        t.id !== "exclusive_draw_15" &&
+        t.id !== "exclusive_draw_10"
+    );
   }, [templates, productKind]);
 
+  function pickBusinessTemplate(m: BusinessTpl) {
+    setBusinessTemplateId(m.id);
+    setTemplateId(m.baseTemplateId);
+    setProductKind("self_use");
+    setDiscountPercent(m.discountPercent ?? 10);
+    setEnabledTiers(m.enabledTiers?.length ? m.enabledTiers : [50, 100, 200]);
+    setShareSelling(false);
+    setSelectedPartners([]);
+    setName(m.name);
+    setGrandPrizes([]);
+    setStep("configure");
+  }
+
   function pickTemplate(t: TemplateDto) {
+    setBusinessTemplateId(null);
     setTemplateId(t.id);
     setDiscountPercent(t.rules.discountPercentDefault);
     if (productKind === "self_use") {
       const tiers = t.rules.tiers
         .filter((x) => x.enabledByDefault)
         .map((x) => x.amountSgd);
-      // 独享抽奖默认 50/100/200；自用代金默认模板档
       setEnabledTiers(
         tiers.length
           ? tiers
-          : t.id === "draw_standard"
+          : t.id.startsWith("exclusive_draw")
             ? [50, 100, 200]
-            : [10, 50, 100]
+            : [10, 20, 50, 100, 200]
       );
       setShareSelling(false);
       setSelectedPartners([]);
-      // 独享：可配置即时奖视觉，延迟奖作「本店奖」展示用，不进平台 pot
       setGrandPrizes(
-        t.id === "draw_standard"
+        t.id.startsWith("exclusive_draw")
           ? (t.prizePack?.grandPrizes || []).map((g) => ({
               id: g.id,
               name: g.name || g.nameZh || g.id,
@@ -220,15 +284,22 @@ export default function NewCampaignPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        templateId,
+        ...(businessTemplateId
+          ? { businessTemplateId }
+          : { templateId }),
         productKind: productKind || "distribution",
         name: name.trim(),
         description: description.trim() || undefined,
         color,
         startDate,
         endDate,
-        discountPercent: selected?.rules.allowDiscount ? discountPercent : 0,
-        enabledTiers,
+        discountPercent:
+          businessTemplateId
+            ? undefined
+            : selected?.rules.allowDiscount
+              ? discountPercent
+              : 0,
+        enabledTiers: businessTemplateId ? undefined : enabledTiers,
         shareSellingEnabled:
           productKind === "self_use"
             ? false
@@ -237,7 +308,7 @@ export default function NewCampaignPage() {
               : shareSelling,
         partnerIds: productKind === "self_use" ? [] : selectedPartners,
         grandPrizes:
-          productKind !== "self_use" && grandPrizes.length > 0
+          !businessTemplateId && grandPrizes.length > 0
             ? grandPrizes.map((g) => ({
                 id: g.id,
                 name: g.name.trim(),
@@ -250,7 +321,12 @@ export default function NewCampaignPage() {
 
     if (res.ok) {
       const d = await res.json();
-      router.push(`/business/campaigns/${d.data.id}`);
+      // 自用/独享：去活动页勾选门店上架
+      router.push(
+        productKind === "self_use"
+          ? `/business/campaigns/${d.data.id}?stores=1`
+          : `/business/campaigns/${d.data.id}`
+      );
     } else {
       const d = await res.json().catch(() => ({}));
       setError(d.error || tr("campaignNew.errCreate"));
@@ -311,7 +387,52 @@ export default function NewCampaignPage() {
         </div>
 
         <div className="px-4 mt-4 space-y-3">
-          {visibleTemplates.length === 0 && (
+          {productKind === "self_use" && (
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-medium text-emerald-800">
+                  {lang === "en" ? "My copies" : "我的拷贝模版"}
+                </p>
+                <Link
+                  href="/business/templates"
+                  className="text-[11px] text-[#1A6EFF] font-medium"
+                >
+                  {lang === "en" ? "Manage / copy" : "管理/拷贝"}
+                </Link>
+              </div>
+              {bizTemplates.length === 0 ? (
+                <p className="text-[11px] text-emerald-700/70 mt-1">
+                  {lang === "en"
+                    ? "Copy a platform template to customize discount or exclusive fees."
+                    : "可拷贝平台模版，改折扣或独享总率/小奖/大奖（平台 2% 不可改）。"}
+                </p>
+              ) : (
+                <ul className="mt-2 space-y-1.5">
+                  {bizTemplates.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => pickBusinessTemplate(m)}
+                      className="w-full text-left rounded-xl bg-white border border-emerald-100 px-3 py-2"
+                    >
+                      <p className="text-sm font-medium text-slate-900">
+                        {m.name}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        {m.discountPercent != null
+                          ? `${lang === "en" ? "discount" : "折扣"} ${m.discountPercent}%`
+                          : ""}
+                        {m.exclusiveTotalPercent != null
+                          ? ` · ${m.exclusiveTotalPercent}% (${m.exclusiveSmallPrizePercent}+${m.exclusivePlatformFeePercent}+${m.exclusiveGrandPoolPercent})`
+                          : ""}
+                      </p>
+                    </button>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          {visibleTemplates.length === 0 && bizTemplates.length === 0 && (
             <p className="text-sm text-slate-400 text-center py-8">
               {tr("campaignNew.loadingTemplates")}
             </p>

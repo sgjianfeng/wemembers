@@ -11,6 +11,7 @@ import { CampaignShare } from "./CampaignShare";
 import { DrawButton } from "./DrawButton";
 import { PrizeEditor } from "./PrizeEditor";
 import { ManualEntryButton } from "./ManualEntryButton";
+import { StoreListingPanel } from "./StoreListingPanel";
 import { timeAgo } from "@/lib/utils";
 import { parseRulesSnapshot, getTemplate } from "@/lib/templates";
 
@@ -62,11 +63,19 @@ const prizeTypeLabels: Record<string, Record<string, string>> = {
   physical: { zh: "实物", en: "Physical" },
 };
 
-export default async function CampaignDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CampaignDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ stores?: string }>;
+}) {
   const session = await getSession();
   if (!session || session.role !== "business") redirect("/auth/login");
 
   const { id } = await params;
+  const sp = searchParams ? await searchParams : {};
+  const autoStores = sp.stores === "1";
   const c = await cookies();
   const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
 
@@ -140,6 +149,18 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
         )}
       </div>
 
+      {/* 门店选用（自用/独享创建后需启用门店） */}
+      {(campaign.type === "lucky_draw_v2" ||
+        campaign.type === "voucher_sale") && (
+        <div className="px-4 mt-4">
+          <StoreListingPanel
+            campaignId={campaign.id}
+            productKind={campaign.productKind}
+            autoOpen={autoStores || campaign.productKind === "self_use"}
+          />
+        </div>
+      )}
+
       {/* Share + print QR for draw / voucher campaigns */}
       {campaign.slug &&
         (campaign.type === "lucky_draw_v2" || campaign.type === "voucher_sale") && (
@@ -171,6 +192,9 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                         ? ` · Prize pool ${rules.prizePoolPercent}%`
                         : " · No prize pool"}
                     {rules.allowDiscount ? ` · Discount ${rules.discountPercent}%` : " · No discount"}
+                    {rules.exclusiveFeeTotalPercent
+                      ? ` · Exclusive fee ${rules.exclusiveFeeTotalPercent}% at sale`
+                      : ""}
                     {rules.shareSellingEnabled ? " · Share selling on" : ""}
                     {` · Tiers: ${rules.enabledTiers.map((a) => `S$${a}`).join(", ")}`}
                     {partnerIds.length > 0 ? ` · ${partnerIds.length} partner(s)` : ""}
@@ -184,6 +208,9 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                         ? ` · 奖池 ${rules.prizePoolPercent}%`
                         : " · 无奖池"}
                     {rules.allowDiscount ? ` · 折扣 ${rules.discountPercent}%` : " · 不打折"}
+                    {rules.exclusiveFeeTotalPercent
+                      ? ` · 独享付款扣 ${rules.exclusiveFeeTotalPercent}%`
+                      : ""}
                     {rules.shareSellingEnabled ? " · 分享卖货开" : ""}
                     {` · 面额 ${rules.enabledTiers.map((a) => `S$${a}`).join(" / ")}`}
                     {partnerIds.length > 0 ? ` · 伙伴 ${partnerIds.length} 家` : ""}

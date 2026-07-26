@@ -60,6 +60,7 @@ model User {
   promoterLinks    PromoterLink[]      @relation("PromoterLinks")
   promoterEarnings PromoterEarning[]   @relation("PromoterEarnings")
   campaigns        Campaign[]          @relation("BusinessCampaigns")
+  businessTemplates BusinessTemplate[] @relation("BusinessTemplates")
   bulkPurchases    BulkPurchase[]      @relation("BulkPurchases")
   store            Store?              @relation("StoreStaff", fields: [storeId], references: [id])
   managedStores    Store[]             @relation("BusinessStores")
@@ -635,6 +636,39 @@ model LuckyDrawEntry {
   customer     User?        @relation(fields: [customerId], references: [id])
   store        Store?       @relation(fields: [storeId], references: [id])
   tickets      DrawTicket[]
+}
+
+// ──── 企业自定义模版（从平台自用/独享模版拷贝） ────
+// 自用可改：折扣率
+// 独享可改：总率、小奖%、大奖%（平台服务费固定 2% 不可改）
+
+model BusinessTemplate {
+  id                          String   @id @default(cuid())
+  businessId                  String
+  name                        String
+  /// 来源平台模版：self_use_voucher | exclusive_draw_15 | exclusive_draw_10
+  baseTemplateId              String
+  /// voucher_discount | draw
+  kind                        String
+  productKind                 String   @default("self_use") // self_use only for now
+  /// 自用折扣 %（如 10 = 付 90 得 100）
+  discountPercent             Int?
+  /// 独享总扣点 %
+  exclusiveTotalPercent       Int?
+  exclusiveSmallPrizePercent  Int?
+  /// 固定 2，冗余便于展示
+  exclusivePlatformFeePercent Int      @default(2)
+  exclusiveGrandPoolPercent   Int?
+  /// JSON number[] 面额 SGD
+  enabledTiers                String?
+  status                      String   @default("active") // active | archived
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  business User @relation("BusinessTemplates", fields: [businessId], references: [id])
+
+  @@index([businessId, status])
+  @@index([businessId, baseTemplateId])
 }
 
 // ──── 活动/批次管理 ────

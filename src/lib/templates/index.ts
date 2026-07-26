@@ -14,6 +14,12 @@ import {
   snapshotPrizePack,
   normalizeCampaignGrandPrizes,
 } from "@/lib/templates/prize-packs";
+import {
+  getExclusiveFeePercents,
+  normalizeExclusiveFeeConfig,
+  type ExclusiveFeeConfig,
+  type ExclusiveFeePlan,
+} from "@/lib/activity-fees";
 
 export type {
   PrizePackId,
@@ -33,7 +39,29 @@ export type TemplateKind = "voucher_discount" | "draw" | "share_packaging";
 export type TemplateId =
   | "voucher_discount"
   | "draw_standard"
-  | "share_boost";
+  | "share_boost"
+  /** 自用代金：默认 10/20/50/100/200 · 9 折 */
+  | "self_use_voucher"
+  /** 独享抽奖标准 15% = 3+2+10 */
+  | "exclusive_draw_15"
+  /** 独享抽奖轻量 10% = 3+2+5 */
+  | "exclusive_draw_10";
+
+/** 独享模版 ID */
+export const EXCLUSIVE_TEMPLATE_IDS: TemplateId[] = [
+  "exclusive_draw_15",
+  "exclusive_draw_10",
+];
+
+export function isExclusiveTemplateId(id: string | null | undefined): boolean {
+  return id === "exclusive_draw_15" || id === "exclusive_draw_10";
+}
+
+export function isSelfUseVoucherTemplateId(
+  id: string | null | undefined
+): boolean {
+  return id === "self_use_voucher";
+}
 
 export interface VoucherTierTemplate {
   amountSgd: number;
@@ -65,6 +93,13 @@ export interface TemplateRules {
   tiers: VoucherTierTemplate[];
   /** Draw templates attach a prize pack; pure vouchers use "none" */
   prizePackId: PrizePackId;
+  /**
+   * 独享付款扣点总 %（15 或 10）；非独享为 null
+   * 15 → 小奖3+服务费2+大奖10；10 → 小奖3+服务费2+大奖5
+   */
+  exclusiveFeeTotalPercent: number | null;
+  /** 创建时默认 productKind */
+  defaultProductKind: "self_use" | "distribution";
 }
 
 export interface CampaignTemplate {
@@ -98,16 +133,26 @@ const DRAW_TIERS: VoucherTierTemplate[] = [
 ];
 
 /**
- * 纯代金券档位：≥S$2（无抽奖）。与抽奖三档分离。
+ * 分发/分享代金档位：≥S$2（无抽奖）。
  * 也允许创建时传入列表外的整数面额（≥2），见 buildRulesSnapshot。
  */
 const VOUCHER_TIERS: VoucherTierTemplate[] = [
   { amountSgd: 2, tier: "small", instantPrizeCapSgd: 0, enabledByDefault: false },
   { amountSgd: 5, tier: "small", instantPrizeCapSgd: 0, enabledByDefault: false },
   { amountSgd: 10, tier: "small", instantPrizeCapSgd: 0, enabledByDefault: true },
+  { amountSgd: 20, tier: "small", instantPrizeCapSgd: 0, enabledByDefault: false },
   { amountSgd: 50, tier: "small", instantPrizeCapSgd: 0, enabledByDefault: false },
   { amountSgd: 100, tier: "medium", instantPrizeCapSgd: 0, enabledByDefault: false },
   { amountSgd: 200, tier: "large", instantPrizeCapSgd: 0, enabledByDefault: false },
+];
+
+/** 自用代金默认档：10 / 20 / 50 / 100 / 200 · 默认全开 */
+const SELF_USE_VOUCHER_TIERS: VoucherTierTemplate[] = [
+  { amountSgd: 10, tier: "small", instantPrizeCapSgd: 0, enabledByDefault: true },
+  { amountSgd: 20, tier: "small", instantPrizeCapSgd: 0, enabledByDefault: true },
+  { amountSgd: 50, tier: "medium", instantPrizeCapSgd: 0, enabledByDefault: true },
+  { amountSgd: 100, tier: "medium", instantPrizeCapSgd: 0, enabledByDefault: true },
+  { amountSgd: 200, tier: "large", instantPrizeCapSgd: 0, enabledByDefault: true },
 ];
 
 /** 纯代金最低面额 SGD */
@@ -137,6 +182,17 @@ export interface RulesSnapshot {
    * All prizes share one deferred pool; countdown algorithm is fixed.
    */
   grandPrizes?: CampaignGrandPrize[];
+  /** 独享总扣点 %；非独享 null/undefined */
+  exclusiveFeeTotalPercent?: number | null;
+  /** 独享小奖 %（可自定义） */
+  exclusiveSmallPrizePercent?: number | null;
+  /** 独享平台服务费 %（固定 2） */
+  exclusivePlatformFeePercent?: number | null;
+  /** 独享大奖 %（可自定义） */
+  exclusiveGrandPoolPercent?: number | null;
+  /** 企业自定义模版 id（若有） */
+  businessTemplateId?: string | null;
+  productKind?: "self_use" | "distribution";
   snapshottedAt: string;
 }
 
@@ -165,6 +221,8 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
       grandPoolRatio: 0,
       tiers: VOUCHER_TIERS.map((t) => ({ ...t })),
       prizePackId: "none",
+      exclusiveFeeTotalPercent: null,
+      defaultProductKind: "distribution",
     },
     editable: [
       "name",
@@ -203,6 +261,8 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
       tiers: DRAW_TIERS.map((t) => ({ ...t })),
       /** Default prize pack; store may rename / retarget prizes */
       prizePackId: "default_grand_v1",
+      exclusiveFeeTotalPercent: null,
+      defaultProductKind: "distribution",
     },
     editable: [
       "name",
@@ -240,6 +300,8 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
       grandPoolRatio: 0,
       tiers: VOUCHER_TIERS.map((t) => ({ ...t })),
       prizePackId: "none",
+      exclusiveFeeTotalPercent: null,
+      defaultProductKind: "distribution",
     },
     editable: [
       "name",
@@ -250,6 +312,114 @@ export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
       "discountPercent",
       "enabledTiers",
       "partners",
+    ],
+  },
+  {
+    id: "self_use_voucher",
+    nameZh: "自用代金券",
+    nameEn: "Self-use voucher",
+    icon: "💳",
+    taglineZh: "默认 10/20/50/100/200 · 9 折（付 90 得 100）· 集团内 · 无抽奖",
+    taglineEn: "Faces 10–200 · 10% off · group only · no draw",
+    rules: {
+      kind: "voucher_discount",
+      allowDiscount: true,
+      discountPercentDefault: 10,
+      discountPercentMin: 8,
+      discountPercentMax: 20,
+      sellerCommissionPercent: 0,
+      platformFeePercent: 0,
+      prizePoolPercent: 0,
+      shareSellingDefault: false,
+      campaignType: "voucher_sale",
+      instantPoolRatio: 0,
+      midPoolRatio: 0,
+      grandPoolRatio: 0,
+      tiers: SELF_USE_VOUCHER_TIERS.map((t) => ({ ...t })),
+      prizePackId: "none",
+      exclusiveFeeTotalPercent: null,
+      defaultProductKind: "self_use",
+    },
+    editable: [
+      "name",
+      "description",
+      "color",
+      "startDate",
+      "endDate",
+      "discountPercent",
+      "enabledTiers",
+    ],
+  },
+  {
+    id: "exclusive_draw_15",
+    nameZh: "独享抽奖 · 标准 15%",
+    nameEn: "Exclusive draw · 15%",
+    icon: "🎯",
+    taglineZh: "付款扣 15%（小奖3+服务费2+大奖10）· 档位 50/100/200 · 公司仅可开一个独享",
+    taglineEn: "Pay-time 15% (3+2+10) · tiers 50/100/200 · one exclusive per company",
+    rules: {
+      kind: "draw",
+      allowDiscount: false,
+      discountPercentDefault: 0,
+      discountPercentMin: 0,
+      discountPercentMax: 0,
+      sellerCommissionPercent: 0,
+      platformFeePercent: 2,
+      prizePoolPercent: 0,
+      shareSellingDefault: false,
+      campaignType: "lucky_draw_v2",
+      instantPoolRatio: 20,
+      midPoolRatio: 0,
+      grandPoolRatio: 80,
+      tiers: DRAW_TIERS.map((t) => ({ ...t })),
+      prizePackId: "default_grand_v1",
+      exclusiveFeeTotalPercent: 15,
+      defaultProductKind: "self_use",
+    },
+    editable: [
+      "name",
+      "description",
+      "color",
+      "startDate",
+      "endDate",
+      "enabledTiers",
+      "grandPrizes",
+    ],
+  },
+  {
+    id: "exclusive_draw_10",
+    nameZh: "独享抽奖 · 轻量 10%",
+    nameEn: "Exclusive draw · 10%",
+    icon: "✨",
+    taglineZh: "付款扣 10%（小奖3+服务费2+大奖5）· 档位 50/100/200 · 公司仅可开一个独享",
+    taglineEn: "Pay-time 10% (3+2+5) · tiers 50/100/200 · one exclusive per company",
+    rules: {
+      kind: "draw",
+      allowDiscount: false,
+      discountPercentDefault: 0,
+      discountPercentMin: 0,
+      discountPercentMax: 0,
+      sellerCommissionPercent: 0,
+      platformFeePercent: 2,
+      prizePoolPercent: 0,
+      shareSellingDefault: false,
+      campaignType: "lucky_draw_v2",
+      instantPoolRatio: 20,
+      midPoolRatio: 0,
+      grandPoolRatio: 80,
+      tiers: DRAW_TIERS.map((t) => ({ ...t })),
+      prizePackId: "default_grand_v1",
+      exclusiveFeeTotalPercent: 10,
+      defaultProductKind: "self_use",
+    },
+    editable: [
+      "name",
+      "description",
+      "color",
+      "startDate",
+      "endDate",
+      "enabledTiers",
+      "grandPrizes",
     ],
   },
 ];
@@ -319,7 +489,19 @@ export function buildRulesSnapshot(input: BuildSnapshotInput): RulesSnapshot {
   const grandPoolRatio = 100 - instantPoolRatio;
 
   // Model A: draw templates never skim prize pool at purchase (redeem funds pool)
+  // 独享例外：付款时扣点进池，不在 purchase split 的 prizePoolPercent 里
   const prizePoolPercent = rules.kind === "draw" ? 0 : rules.prizePoolPercent;
+
+  // 自用代金：面额限制在模版档内（10/20/50/100/200）
+  if (input.templateId === "self_use_voucher") {
+    const allowedSelf = new Set(rules.tiers.map((t) => t.amountSgd));
+    enabledTiers = enabledTiers.filter((a) => allowedSelf.has(a));
+    if (enabledTiers.length === 0) {
+      enabledTiers = rules.tiers
+        .filter((t) => t.enabledByDefault)
+        .map((t) => t.amountSgd);
+    }
+  }
 
   return {
     templateId: input.templateId,
@@ -338,8 +520,71 @@ export function buildRulesSnapshot(input: BuildSnapshotInput): RulesSnapshot {
     prizePackId,
     prizePack,
     grandPrizes,
+    exclusiveFeeTotalPercent: rules.exclusiveFeeTotalPercent,
+    productKind: rules.defaultProductKind,
     snapshottedAt: new Date().toISOString(),
   };
+}
+
+/** 从活动 snapshot 解析独享费率档（兼容旧调用） */
+export function exclusivePlanFromSnapshot(
+  snapshot: RulesSnapshot | null | undefined
+): ExclusiveFeePlan {
+  return exclusiveConfigFromSnapshot(snapshot).plan;
+}
+
+/** 完整独享费率（支持企业自定义 total/small/grand，平台固定 2%） */
+export function exclusiveConfigFromSnapshot(
+  snapshot: RulesSnapshot | null | undefined
+): ExclusiveFeeConfig {
+  if (!snapshot) return getExclusiveFeePercents("exclusive_15");
+
+  if (
+    snapshot.exclusiveSmallPrizePercent != null ||
+    snapshot.exclusiveGrandPoolPercent != null ||
+    (snapshot.exclusiveFeeTotalPercent != null &&
+      snapshot.exclusiveFeeTotalPercent !== 15 &&
+      snapshot.exclusiveFeeTotalPercent !== 10)
+  ) {
+    return normalizeExclusiveFeeConfig({
+      plan:
+        snapshot.templateId === "exclusive_draw_10"
+          ? "exclusive_10"
+          : "exclusive_15",
+      totalPercent: snapshot.exclusiveFeeTotalPercent,
+      smallPrizePercent: snapshot.exclusiveSmallPrizePercent,
+      grandPoolPercent: snapshot.exclusiveGrandPoolPercent,
+    });
+  }
+
+  if (
+    snapshot.exclusiveFeeTotalPercent === 10 ||
+    snapshot.templateId === "exclusive_draw_10"
+  ) {
+    return getExclusiveFeePercents("exclusive_10");
+  }
+  return getExclusiveFeePercents("exclusive_15");
+}
+
+export function exclusivePlanFromCampaign(campaign: {
+  templateId?: string | null;
+  rulesSnapshot?: string | null;
+  productKind?: string | null;
+}): ExclusiveFeePlan {
+  return exclusiveConfigFromCampaign(campaign).plan;
+}
+
+export function exclusiveConfigFromCampaign(campaign: {
+  templateId?: string | null;
+  rulesSnapshot?: string | null;
+  productKind?: string | null;
+}): ExclusiveFeeConfig {
+  const snap = parseRulesSnapshot(campaign.rulesSnapshot);
+  if (snap) return exclusiveConfigFromSnapshot(snap);
+  if (campaign.templateId === "exclusive_draw_10") {
+    return getExclusiveFeePercents("exclusive_10");
+  }
+  return getExclusiveFeePercents("exclusive_15");
 }
 
 export interface PurchaseSplit {
@@ -398,6 +643,16 @@ export function parseRulesSnapshot(raw: string | null | undefined): RulesSnapsho
     // Model A migration: old draw snapshots had purchase-time 20% pool — force 0
     if (o.kind === "draw" || o.templateId === "draw_standard" || o.campaignType === "lucky_draw_v2") {
       o.prizePoolPercent = 0;
+    }
+    // 独享模版补全费率
+    if (o.templateId === "exclusive_draw_10") {
+      o.exclusiveFeeTotalPercent = o.exclusiveFeeTotalPercent ?? 10;
+      o.productKind = "self_use";
+    } else if (o.templateId === "exclusive_draw_15") {
+      o.exclusiveFeeTotalPercent = o.exclusiveFeeTotalPercent ?? 15;
+      o.productKind = "self_use";
+    } else if (o.templateId === "self_use_voucher") {
+      o.productKind = "self_use";
     }
     return o;
   } catch {

@@ -33,6 +33,8 @@ export async function GET() {
         campaignType: t.rules.campaignType,
         tiers: t.rules.tiers,
         prizePackId: t.rules.prizePackId,
+        exclusiveFeeTotalPercent: t.rules.exclusiveFeeTotalPercent,
+        defaultProductKind: t.rules.defaultProductKind,
       },
       prizePack: pack
         ? {
@@ -64,17 +66,31 @@ function buildLockedSummaryZh(
   pack: ReturnType<typeof getPrizePack>
 ): string {
   const parts: string[] = [];
-  parts.push(`卖家佣金 ${t.rules.sellerCommissionPercent}%（按实付）`);
+  if (t.rules.defaultProductKind === "self_use") {
+    parts.push("自用·集团内");
+  }
+  if (t.rules.exclusiveFeeTotalPercent) {
+    const fee = t.rules.exclusiveFeeTotalPercent;
+    parts.push(
+      fee === 10
+        ? "付款扣 10%（小奖3+服务费2+大奖5）"
+        : "付款扣 15%（小奖3+服务费2+大奖10）"
+    );
+    parts.push("公司仅可同时激活一个独享");
+    parts.push("需门店选用后才可售");
+  } else if (t.rules.sellerCommissionPercent > 0) {
+    parts.push(`卖家佣金 ${t.rules.sellerCommissionPercent}%（按实付）`);
+  }
   if (t.rules.prizePoolPercent > 0) {
     parts.push(`奖池 ${t.rules.prizePoolPercent}%（按实付）`);
-  } else {
-    parts.push("无奖池");
+  } else if (!t.rules.exclusiveFeeTotalPercent) {
+    parts.push("无购券时奖池扣点");
   }
   if (t.rules.allowDiscount) {
     parts.push(
       `折扣可调 ${t.rules.discountPercentMin}–${t.rules.discountPercentMax}%（默认 ${t.rules.discountPercentDefault}%）`
     );
-  } else {
+  } else if (!t.rules.exclusiveFeeTotalPercent) {
     parts.push("不打折（原价）");
   }
   if (pack?.mechanics.drawStyle === "instant_plus_deferred_grand") {
@@ -85,8 +101,16 @@ function buildLockedSummaryZh(
   if (t.rules.shareSellingDefault || t.id === "share_boost") {
     parts.push("支持分享卖货");
   }
-  if (t.rules.platformFeePercent > 0) {
+  if (
+    t.rules.platformFeePercent > 0 &&
+    !t.rules.exclusiveFeeTotalPercent
+  ) {
     parts.push(`平台 ${t.rules.platformFeePercent}%`);
   }
+  const tiers = t.rules.tiers
+    .filter((x) => x.enabledByDefault)
+    .map((x) => `S$${x.amountSgd}`)
+    .join("/");
+  if (tiers) parts.push(`默认档 ${tiers}`);
   return parts.join(" · ");
 }

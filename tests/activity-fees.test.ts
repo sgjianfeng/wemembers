@@ -3,6 +3,7 @@ import {
   splitExclusiveSaleFees,
   exclusiveRefundMaxCents,
   DEFAULT_BUSINESS_GIFT_CENTS,
+  getExclusiveFeePercents,
 } from "@/lib/activity-fees";
 
 describe("activity fees (定稿)", () => {
@@ -13,6 +14,22 @@ describe("activity fees (定稿)", () => {
     expect(s.sellerCommissionCents).toBe(0);
     expect(s.grandPoolCents).toBe(1000);
     expect(s.totalCents).toBe(1500);
+    expect(s.plan).toBe("exclusive_15");
+  });
+
+  it("exclusive 10% = 3+2+5, no seller", () => {
+    const s = splitExclusiveSaleFees(10000, "exclusive_10");
+    expect(s.smallPrizeCents).toBe(300);
+    expect(s.platformFeeCents).toBe(200);
+    expect(s.sellerCommissionCents).toBe(0);
+    expect(s.grandPoolCents).toBe(500);
+    expect(s.totalCents).toBe(1000);
+    expect(s.plan).toBe("exclusive_10");
+  });
+
+  it("exclusive fee percents helpers", () => {
+    expect(getExclusiveFeePercents("exclusive_15").totalPercent).toBe(15);
+    expect(getExclusiveFeePercents("exclusive_10").grandPoolPercent).toBe(5);
   });
 
   it("cowin 20% = 3+2+5+10", () => {
