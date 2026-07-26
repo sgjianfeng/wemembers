@@ -22,6 +22,7 @@ export default async function DiscoverOffersPage() {
   const activities = await listJoinableActivities({
     limit: 50,
     customerId: session.role === "customer" ? session.userId : null,
+    listScope: "hot",
   });
 
   const vouchers = activities.filter((a) => a.displayMode === "voucher");

@@ -5,6 +5,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { serializeStoreIds } from "@/lib/utils";
 import {
+  buildDiscount10Snapshot,
   buildExclusiveBallotSnapshot,
   buildFaceOpenSnapshot,
   buildFaceThresholdSnapshot,
@@ -86,6 +87,15 @@ export async function createVoucherProduct(
     templateId = "self_use_voucher";
     voucherTiers = tiersToVoucherTiersJson(
       (snapshot.enabledTiers as number[]) || [10, 20, 50, 100]
+    );
+  } else if (input.packKind === "discount_10") {
+    snapshot = buildDiscount10Snapshot(input.enabledTiers);
+    type = "voucher_sale";
+    productKind = "self_use";
+    templateId = "self_use_voucher";
+    voucherTiers = tiersToVoucherTiersJson(
+      (snapshot.enabledTiers as number[]) || [10, 20, 50, 100, 200],
+      { instantCap: () => 0 }
     );
   } else if (input.packKind === "exclusive_ballot") {
     snapshot = buildExclusiveBallotSnapshot(input.enabledTiers);
@@ -196,6 +206,8 @@ export async function createVoucherProduct(
         where: { businessId },
         select: { id: true },
       });
+      const packKind = String(snapshot.packKind || "");
+      const listScope = String(snapshot.listScope || "hot");
       const activity = await tx.campaign.create({
         data: {
           businessId,
@@ -203,21 +215,34 @@ export async function createVoucherProduct(
           description:
             input.description ||
             `常驻上架 · 含券产品「${name}」· 门店可选用`,
-          type:
-            type === "lucky_draw_v2" ? "lucky_draw_v2" : "promotion",
+          // 与产品同型，避免抽奖/代金在客户端判反（勿用 promotion）
+          type: type === "lucky_draw_v2" ? "lucky_draw_v2" : "voucher_sale",
           role: "activity",
-          color: input.color || "#1A6EFF",
+          color:
+            input.color ||
+            (type === "lucky_draw_v2" ? "#FF6B35" : "#1A6EFF"),
           startDate: now,
           endDate: end,
+          drawDate: type === "lucky_draw_v2" ? end : null,
           status: status === "active" ? "active" : "draft",
           productKind,
+          templateId,
+          rulesSnapshot: JSON.stringify(snapshot),
+          voucherTiers: voucherTiers ? JSON.stringify(voucherTiers) : null,
           slug: `a-${slug}`,
           storeIds: serializeStoreIds(stores.map((s) => s.id)),
           joinable: false,
           allowCollaboration: false,
           budgetPercent: 0,
-          tags: JSON.stringify(["activity", "shelf", product.id]),
-          rulesSnapshot: null,
+          instantPoolRatio: Number(snapshot.instantPoolRatio) || 0,
+          grandPoolRatio: Number(snapshot.grandPoolRatio) || 0,
+          tags: JSON.stringify([
+            "activity",
+            "shelf",
+            product.id,
+            packKind,
+            `scope:${listScope}`,
+          ]),
         },
       });
       await tx.campaignProduct.create({

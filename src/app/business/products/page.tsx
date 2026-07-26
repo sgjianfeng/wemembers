@@ -22,25 +22,32 @@ type Product = {
 
 const PACKS = [
   {
+    id: "discount_10",
+    nameZh: "9折优惠卡",
+    nameEn: "10% off store card",
+    descZh: "付90得100 · 档 10/20/50/100/200 · 热门展示",
+    descEn: "Pay 90 get 100 · tiers 10–200 · shown in hot",
+  },
+  {
     id: "face_open",
-    nameZh: "原价无门槛代金",
-    nameEn: "Face voucher (no min)",
-    descZh: "付多少抵多少 · 档 10/20/50/100",
-    descEn: "Pay face · tiers 10–100",
+    nameZh: "原价无门槛代金（门店基础）",
+    nameEn: "Face voucher base (store only)",
+    descZh: "付多少抵多少 · 不进首页热门 · 门店列表可见",
+    descEn: "Pay face · store catalog only · not on home hot",
   },
   {
     id: "face_threshold",
-    nameZh: "原价门槛代金",
-    nameEn: "Face voucher (min spend ×10)",
-    descZh: "券面×10 最低消费 · 约 9 折心智",
-    descEn: "Min spend = face × 10",
+    nameZh: "原价门槛代金（门店基础）",
+    nameEn: "Face min-spend base (store only)",
+    descZh: "券面×10 门槛 · 不进首页热门",
+    descEn: "Min spend ×10 · store catalog only",
   },
   {
     id: "exclusive_ballot",
     nameZh: "投箱大奖·独享 15%",
     nameEn: "Ballot draw 15%",
-    descZh: "50/100 · 3%+2%+10% · 可打入箱票",
-    descEn: "50/100 · exclusive 15% · ballot print",
+    descZh: "50/100 · 3%+2%+10% · 可打入箱票 · 热门",
+    descEn: "50/100 · exclusive 15% · hot feed",
   },
 ] as const;
 
@@ -49,7 +56,7 @@ export default function BusinessProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [packKind, setPackKind] = useState<string>("face_open");
+  const [packKind, setPackKind] = useState<string>("discount_10");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);

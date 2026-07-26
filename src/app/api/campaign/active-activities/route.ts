@@ -12,6 +12,7 @@ export async function GET() {
     const data = await listJoinableActivities({
       limit: 20,
       customerId,
+      listScope: "hot",
     });
     return NextResponse.json({ data });
   } catch (error) {

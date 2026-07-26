@@ -35,7 +35,11 @@ export default async function CustomerHome() {
       where: { id: session.userId },
       select: { id: true, displayName: true, phone: true },
     }),
-    listJoinableActivities({ limit: 20, customerId: session.userId }),
+    listJoinableActivities({
+      limit: 20,
+      customerId: session.userId,
+      listScope: "hot",
+    }),
     prisma.voucher.findMany({
       where: { customerId: session.userId, status: "active" },
       include: {

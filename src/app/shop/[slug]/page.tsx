@@ -11,6 +11,13 @@ import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import {
+  listJoinableActivities,
+  offerCta,
+  offerKindLabel,
+  offerBlurb,
+} from "@/lib/discover-activities";
+import { Ticket, Trophy } from "lucide-react";
 
 export default async function ShopPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -37,37 +44,13 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
     orderBy: { createdAt: "desc" },
   });
 
-  const now = new Date();
-  const voucherCampaigns = await prisma.campaign.findMany({
-    where: {
-      businessId: business.id,
-      status: "active",
-      type: { in: ["voucher_sale", "lucky_draw_v2"] },
-      slug: { not: null },
-      startDate: { lte: now },
-      endDate: { gte: now },
-    },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      type: true,
-      productKind: true,
-      description: true,
-      rulesSnapshot: true,
-    },
+  // 门店页：含原价基础项 + 优惠/抽奖（listScope=all）
+  const storeOffers = await listJoinableActivities({
+    limit: 40,
+    listScope: "all",
+    businessId: business.id,
+    customerId: session?.role === "customer" ? session.userId : null,
   });
-
-  function parseDiscount(rulesSnapshot: string | null | undefined): number {
-    if (!rulesSnapshot) return 0;
-    try {
-      const o = JSON.parse(rulesSnapshot) as { discountPercent?: number };
-      return Math.max(0, Number(o.discountPercent) || 0);
-    } catch {
-      return 0;
-    }
-  }
 
   const categoryLabel = lang === "zh"
     ? SERVICE_CATEGORIES.find((c) => c.value === business.businessCategory)?.label
@@ -166,66 +149,76 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
             </div>
           )}
 
-          {/* 企业代金券 / 抽奖（扫码购自用券主入口） */}
+          {/* 本店优惠：含原价基础 + 9折/抽奖（先判抽奖再判代金，避免 self_use 盖掉抽奖样式） */}
           <div className="flex items-center justify-between px-3 mb-3">
             <h2 className="text-base font-semibold text-foreground">
-              {t("shop.vouchersTitle", lang)}
+              {lang === "en" ? "Store offers" : "本店优惠"}
             </h2>
-            <span className="text-xs text-muted-foreground nums">{voucherCampaigns.length}</span>
+            <span className="text-xs text-muted-foreground nums">
+              {storeOffers.length}
+            </span>
           </div>
 
-          {voucherCampaigns.length > 0 ? (
+          {storeOffers.length > 0 ? (
             <div className="space-y-2 px-3 mb-6">
-              {voucherCampaigns.map((vc) => {
-                const isDraw = vc.type === "lucky_draw_v2";
-                const isSelf = vc.productKind === "self_use";
-                const pct = parseDiscount(vc.rulesSnapshot);
-                const badge = isDraw
-                  ? t("shop.drawBadge", lang)
-                  : isSelf
-                    ? t("shop.selfUseBadge", lang)
-                    : t("shop.distBadge", lang);
+              {storeOffers.map((offer) => {
+                const isDraw = offer.displayMode === "draw";
+                const L = lang === "en" ? "en" : "zh";
                 return (
-                  <Link key={vc.id} href={`/voucher/${vc.slug}`}>
+                  <Link key={offer.id} href={offer.href}>
                     <Card
                       className={`hover:border-primary/30 active:scale-[0.98] transition-transform border-l-4 ${
-                        isSelf
-                          ? "border-l-muted-foreground"
-                          : isDraw
-                            ? "border-l-brand"
-                            : "border-l-amber-400"
+                        isDraw
+                          ? "border-l-amber-500"
+                          : offer.kindTag === "discount_card"
+                            ? "border-l-emerald-500"
+                            : "border-l-primary"
                       }`}
                     >
                       <CardContent className="p-3 flex items-center justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <Badge variant={isDraw ? "purple" : "slate"} size="sm">
-                              {badge}
-                            </Badge>
-                            {pct > 0 && !isDraw && (
-                              <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full">
-                                −{pct}%
-                              </span>
+                        <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                          <span
+                            className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${
+                              isDraw
+                                ? "bg-amber-50 dark:bg-amber-950/40 text-amber-600"
+                                : "bg-primary/10 text-primary"
+                            }`}
+                          >
+                            {isDraw ? (
+                              <Trophy size={18} />
+                            ) : (
+                              <Ticket size={18} />
                             )}
-                          </div>
-                          <p className="text-sm font-semibold text-foreground mt-1 truncate">
-                            {vc.name}
-                          </p>
-                          {vc.description && (
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <Badge
+                                variant={isDraw ? "purple" : "slate"}
+                                size="sm"
+                              >
+                                {offerKindLabel(offer.kindTag, L)}
+                              </Badge>
+                              {offer.listScope === "store" && (
+                                <span className="text-[9px] text-muted-foreground">
+                                  {lang === "en" ? "Base" : "基础"}
+                                </span>
+                              )}
+                              {offer.discountPercent > 0 && !isDraw && (
+                                <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full">
+                                  −{offer.discountPercent}%
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm font-semibold text-foreground mt-1 truncate">
+                              {offer.name}
+                            </p>
                             <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
-                              {vc.description}
+                              {offerBlurb(offer, L)}
                             </p>
-                          )}
-                          {pct > 0 && !isDraw && (
-                            <p className="text-[11px] text-primary mt-1 font-medium">
-                              {lang === "en"
-                                ? `e.g. pay ${100 - pct} get 100`
-                                : `例：付 ${100 - pct} 得 100`}
-                            </p>
-                          )}
+                          </div>
                         </div>
                         <span className="shrink-0 inline-block px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-full">
-                          {t("shop.buyVoucher", lang)}
+                          {offerCta(offer, L)}
                         </span>
                       </CardContent>
                     </Card>

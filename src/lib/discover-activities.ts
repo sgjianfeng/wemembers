@@ -15,6 +15,7 @@ import {
   normalizeCampaignGrandPrizes,
   parseRulesSnapshot,
 } from "@/lib/templates";
+import { isBaseCatalogPack } from "@/lib/store-defaults";
 
 const DRAW_TYPES = ["lucky_draw", "lucky_draw_v2", "voucher_sale"] as const;
 
@@ -63,18 +64,92 @@ export type JoinableActivity = {
   prizes: { key: string; name: string; icon: string; progress: number }[];
   joined: boolean;
   myCount: number;
-  kindTag: "exclusive_draw" | "co_win_draw" | "self_use" | "distribution" | "draw";
+  kindTag:
+    | "exclusive_draw"
+    | "co_win_draw"
+    | "self_use"
+    | "discount_card"
+    | "distribution"
+    | "draw";
   /** Customer UI branch: calm voucher card vs festive draw card */
   displayMode: OfferDisplayMode;
+  /** face_open / face_threshold = store base only */
+  listScope: "hot" | "store";
+  packKind: string | null;
+  discountPercent: number;
 };
 
-function kindTag(type: string, productKind: string): JoinableActivity["kindTag"] {
+function parsePackMeta(rulesSnapshot: string | null | undefined): {
+  packKind: string | null;
+  listScope: "hot" | "store";
+  discountPercent: number;
+} {
+  const snap = parseRulesSnapshot(rulesSnapshot || null);
+  const packKind =
+    (snap?.packKind as string | undefined) ||
+    null;
+  const listScopeRaw = (snap as { listScope?: string } | null)?.listScope;
+  const listScope: "hot" | "store" =
+    listScopeRaw === "store" || isBaseCatalogPack(packKind)
+      ? "store"
+      : "hot";
+  const discountPercent = Math.max(
+    0,
+    Math.round(Number(snap?.discountPercent) || 0)
+  );
+  return { packKind, listScope, discountPercent };
+}
+
+function kindTag(
+  type: string,
+  productKind: string,
+  packKind: string | null,
+  discountPercent: number
+): JoinableActivity["kindTag"] {
   if (type === "lucky_draw_v2" || type === "lucky_draw") {
     return productKind === "self_use" ? "exclusive_draw" : "co_win_draw";
+  }
+  if (
+    packKind === "discount_10" ||
+    (discountPercent > 0 && type === "voucher_sale")
+  ) {
+    return "discount_card";
   }
   return productKind === "self_use" ? "self_use" : "distribution";
 }
 
+/**
+ * Prefer linked product type over campaign.type —
+ * shelf activities used to be mis-typed as promotion / wrong color.
+ */
+export function resolveOfferDisplayMode(params: {
+  campaignType: string;
+  productTypes: string[];
+  packKind?: string | null;
+}): OfferDisplayMode {
+  if (
+    params.productTypes.some(
+      (t) => t === "lucky_draw_v2" || t === "lucky_draw"
+    )
+  ) {
+    return "draw";
+  }
+  if (
+    params.campaignType === "lucky_draw" ||
+    params.campaignType === "lucky_draw_v2"
+  ) {
+    return "draw";
+  }
+  if (
+    params.packKind === "exclusive_ballot" ||
+    String(params.packKind || "").includes("exclusive")
+  ) {
+    return "draw";
+  }
+  return "voucher";
+}
+
+/** @deprecated use resolveOfferDisplayMode */
 export function offerDisplayMode(
   type: string,
   kind?: JoinableActivity["kindTag"]
@@ -99,7 +174,8 @@ export function offerKindLabel(
   const map: Record<JoinableActivity["kindTag"], { zh: string; en: string }> = {
     exclusive_draw: { zh: "抽大奖", en: "Prize draw" },
     co_win_draw: { zh: "联合抽奖", en: "Shared draw" },
-    self_use: { zh: "到店代金", en: "Store credit" },
+    self_use: { zh: "原价代金", en: "Face-value credit" },
+    discount_card: { zh: "9折优惠", en: "10% off card" },
     distribution: { zh: "通用代金", en: "Network credit" },
     draw: { zh: "幸运抽奖", en: "Lucky draw" },
   };
@@ -108,7 +184,10 @@ export function offerKindLabel(
 
 /** One-line benefit for cards */
 export function offerBlurb(
-  a: Pick<JoinableActivity, "kindTag" | "displayMode" | "description">,
+  a: Pick<
+    JoinableActivity,
+    "kindTag" | "displayMode" | "description" | "discountPercent"
+  >,
   lang: "zh" | "en"
 ): string {
   if (a.displayMode === "draw") {
@@ -120,6 +199,13 @@ export function offerBlurb(
     return lang === "en"
       ? "Buy to enter · win from shared pool"
       : "购买即参与 · 共享奖池开奖";
+  }
+  if (a.kindTag === "discount_card" || (a.discountPercent || 0) > 0) {
+    const pct = a.discountPercent || 10;
+    const pay = 100 - pct;
+    return lang === "en"
+      ? `Pay S$${pay} · get S$100 credit`
+      : `付 S$${pay} 得 S$100 余额 · 到店花`;
   }
   if (a.kindTag === "self_use") {
     return lang === "en"
@@ -218,6 +304,12 @@ export type ListJoinableActivitiesOpts = {
   customerId?: string | null;
   /** Only return activities the user has joined */
   onlyJoined?: boolean;
+  /**
+   * hot = homepage / discover feed (exclude face base catalog)
+   * all = store/shop lists include base 原价代金
+   */
+  listScope?: "hot" | "all";
+  businessId?: string;
 };
 
 /**
@@ -236,6 +328,7 @@ export async function listJoinableActivities(
       status: "active",
       endDate: { gt: now },
       type: { in: [...DRAW_TYPES] },
+      ...(opts.businessId ? { businessId: opts.businessId } : {}),
     },
     include: {
       business: {
@@ -255,6 +348,7 @@ export async function listJoinableActivities(
               type: true,
               productKind: true,
               status: true,
+              rulesSnapshot: true,
             },
           },
         },
@@ -307,9 +401,23 @@ export async function listJoinableActivities(
     productIds.length > 0
       ? prisma.voucherProduct.findMany({
           where: { id: { in: productIds } },
-          select: { id: true, slug: true, mirrorCampaignId: true },
+          select: {
+            id: true,
+            slug: true,
+            mirrorCampaignId: true,
+            rulesSnapshot: true,
+            type: true,
+          },
         })
-      : Promise.resolve([] as { id: string; slug: string | null; mirrorCampaignId: string | null }[]),
+      : Promise.resolve(
+          [] as {
+            id: string;
+            slug: string | null;
+            mirrorCampaignId: string | null;
+            rulesSnapshot: string | null;
+            type: string;
+          }[]
+        ),
   ]);
 
   const salesMap = new Map(weekSales.map((r) => [r.campaignId, r._count.id]));
@@ -469,13 +577,55 @@ export async function listJoinableActivities(
       }
     }
 
-    const tag = kindTag(c.type, c.productKind);
-    const mode = offerDisplayMode(c.type, tag);
+    // Prefer product rules (packKind); fall back to campaign snapshot / tags
+    let packKind: string | null = null;
+    let listScope: "hot" | "store" = "hot";
+    let discountPercent = 0;
+    for (const link of c.catalogProducts) {
+      const meta = parsePackMeta(link.product.rulesSnapshot);
+      if (meta.packKind) {
+        packKind = meta.packKind;
+        listScope = meta.listScope;
+        discountPercent = Math.max(discountPercent, meta.discountPercent);
+      }
+    }
+    if (!packKind) {
+      const campMeta = parsePackMeta(c.rulesSnapshot);
+      packKind = campMeta.packKind;
+      listScope = campMeta.listScope;
+      discountPercent = campMeta.discountPercent;
+    }
+    // name heuristic for migrated Meow face packs without packKind
+    if (
+      !packKind &&
+      (c.name.includes("原价") || c.name.includes("face"))
+    ) {
+      listScope = "store";
+      packKind = c.name.includes("门槛") ? "face_threshold" : "face_open";
+    }
+
+    const productTypes = products.map((p) => p.type);
+    const effectiveType =
+      productTypes.find(
+        (t) => t === "lucky_draw_v2" || t === "lucky_draw"
+      ) || c.type;
+    const tag = kindTag(
+      effectiveType,
+      c.productKind,
+      packKind,
+      discountPercent
+    );
+    const mode = resolveOfferDisplayMode({
+      campaignType: c.type,
+      productTypes,
+      packKind,
+    });
+
     return {
       id: c.id,
       name: c.name,
       description: c.description,
-      type: c.type,
+      type: effectiveType,
       productKind: c.productKind,
       slug: c.slug,
       endDate: c.endDate.toISOString(),
@@ -502,27 +652,35 @@ export async function listJoinableActivities(
       myCount,
       kindTag: tag,
       displayMode: mode,
+      listScope,
+      packKind,
+      discountPercent,
     };
   });
 
+  // Homepage feed: hide 原价基础代金
+  let scoped =
+    opts.listScope === "all"
+      ? items
+      : items.filter((x) => x.listScope !== "store");
+
   // Sort by heat desc, then endDate asc
-  items.sort((a, b) => {
+  scoped.sort((a, b) => {
     if (b.heat !== a.heat) return b.heat - a.heat;
     return new Date(a.endDate).getTime() - new Date(b.endDate).getTime();
   });
 
   // Mark top 3 as hot (or heat >= threshold if sparse)
   const heatThreshold = 10;
-  items.forEach((it, i) => {
+  scoped.forEach((it, i) => {
     it.hot = i < 3 || it.heat >= heatThreshold;
   });
 
-  let result = items;
   if (opts.onlyJoined) {
-    result = items.filter((x) => x.joined);
+    scoped = scoped.filter((x) => x.joined);
   }
 
-  return result.slice(0, limit);
+  return scoped.slice(0, limit);
 }
 
 export async function getJoinableActivityById(

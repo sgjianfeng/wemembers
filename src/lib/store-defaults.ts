@@ -57,13 +57,39 @@ export function ballotFeeSplitLabel(paidFaceCents: number): string {
   return `小奖 S$${(small / 100).toFixed(2)} + 平台 S$${(plat / 100).toFixed(2)} + 大奖 S$${(grand / 100).toFixed(2)}`;
 }
 
-export type DefaultPackKind = "face_open" | "face_threshold" | "exclusive_ballot";
+export type DefaultPackKind =
+  | "face_open"
+  | "face_threshold"
+  | "discount_10"
+  | "exclusive_ballot";
+
+/** 门店基础项：不进首页热门，只在门店/店铺页买 */
+export const BASE_CATALOG_PACKS: DefaultPackKind[] = [
+  "face_open",
+  "face_threshold",
+];
+
+export function isBaseCatalogPack(
+  packKind: string | null | undefined
+): boolean {
+  return (
+    packKind === "face_open" ||
+    packKind === "face_threshold"
+  );
+}
 
 export const DEFAULT_PACK_SLUGS = {
   faceOpen: "default-face-voucher-open",
   faceThreshold: "default-face-voucher-threshold",
+  /** 9 折优惠卡：付 90 得 100 */
+  discount10: "default-discount-card-10",
   exclusiveBallot: "default-exclusive-ballot-15",
 } as const;
+
+/** 9 折优惠卡默认档（SGD）付 90% 得面值 */
+export const DISCOUNT_CARD_TIERS_SGD = [10, 20, 50, 100, 200] as const;
+/** 付 90 得 100 → 折扣 10% */
+export const DISCOUNT_CARD_PERCENT = 10;
 
 export function buildFaceOpenSnapshot(enabledTiers: number[] = [...FACE_VOUCHER_OPEN_TIERS_SGD]) {
   return {
@@ -85,6 +111,38 @@ export function buildFaceOpenSnapshot(enabledTiers: number[] = [...FACE_VOUCHER_
     productKind: "self_use" as const,
     exclusiveFeeTotalPercent: null,
     packKind: "face_open" as DefaultPackKind,
+    /** 门店基础项：首页热门不展示 */
+    listScope: "store" as const,
+    snapshottedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * 9 折优惠卡：顾客付面值的 90%，到账 100% 余额（付 S$90 得 S$100）
+ */
+export function buildDiscount10Snapshot(
+  enabledTiers: number[] = [...DISCOUNT_CARD_TIERS_SGD]
+) {
+  return {
+    templateId: "self_use_voucher" as const,
+    kind: "voucher_discount" as const,
+    allowDiscount: true,
+    discountPercent: DISCOUNT_CARD_PERCENT,
+    sellerCommissionPercent: 0,
+    platformFeePercent: 0,
+    prizePoolPercent: 0,
+    shareSellingEnabled: false,
+    campaignType: "voucher_sale",
+    instantPoolRatio: 0,
+    midPoolRatio: 0,
+    grandPoolRatio: 0,
+    enabledTiers: [...enabledTiers].sort((a, b) => a - b),
+    prizePackId: "none" as const,
+    minSpendMultiplier: 0,
+    productKind: "self_use" as const,
+    exclusiveFeeTotalPercent: null,
+    packKind: "discount_10" as DefaultPackKind,
+    listScope: "hot" as const,
     snapshottedAt: new Date().toISOString(),
   };
 }
@@ -97,6 +155,7 @@ export function buildFaceThresholdSnapshot(
     ...buildFaceOpenSnapshot(enabledTiers),
     minSpendMultiplier: multiplier,
     packKind: "face_threshold" as DefaultPackKind,
+    listScope: "store" as const,
     snapshottedAt: new Date().toISOString(),
   };
 }
@@ -125,6 +184,7 @@ export function buildExclusiveBallotSnapshot(
     exclusiveGrandPoolPercent: 10,
     productKind: "self_use" as const,
     packKind: "exclusive_ballot" as DefaultPackKind,
+    listScope: "hot" as const,
     /** 入箱票：打印投箱，与消费券分离 */
     ballotEnabled: true,
     snapshottedAt: new Date().toISOString(),
