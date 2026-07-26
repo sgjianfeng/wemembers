@@ -193,6 +193,14 @@ export interface RulesSnapshot {
   /** 企业自定义模版 id（若有） */
   businessTemplateId?: string | null;
   productKind?: "self_use" | "distribution";
+  /**
+   * 原价代金最低消费倍数：0/缺省=无门槛；10=券面×10（A2）
+   * 核销时账单金额须 ≥ 券面×倍数
+   */
+  minSpendMultiplier?: number | null;
+  /** 是否启用入箱票（独享抽奖仪式） */
+  ballotEnabled?: boolean | null;
+  packKind?: string | null;
   snapshottedAt: string;
 }
 

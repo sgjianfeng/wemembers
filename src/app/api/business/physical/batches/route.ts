@@ -7,6 +7,7 @@ import {
   isVisualTemplateId,
   resolveThemeHex,
 } from "@/lib/visual-templates";
+import { ballotGrandContributionCents } from "@/lib/store-defaults";
 
 // GET /api/business/physical/batches
 export async function GET() {
@@ -66,7 +67,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const storeId = typeof body.storeId === "string" ? body.storeId.trim() : "";
-    const type = body.type === "draw" ? "draw" : "voucher";
+    const typeRaw = typeof body.type === "string" ? body.type.trim() : "voucher";
+    const type =
+      typeRaw === "draw" || typeRaw === "ballot" ? typeRaw : "voucher";
     const title =
       typeof body.title === "string" ? body.title.trim().slice(0, 80) : "";
     const description =
@@ -87,13 +90,22 @@ export async function POST(request: NextRequest) {
         : "store_classic";
     const visualTemplateId = isVisualTemplateId(rawTpl)
       ? rawTpl
-      : type === "draw"
+      : type === "draw" || type === "ballot"
         ? "store_bold"
         : "store_classic";
     const themeColor = resolveThemeHex(
       typeof body.themeColor === "string" ? body.themeColor.trim() : null,
       visualTemplateId
     );
+
+    // ballot：大奖贡献默认 = 档面 × 10%；可 body.contributionCents 覆盖
+    let contributionCents = Math.max(
+      0,
+      Math.round(Number(body.contributionCents) || 0)
+    );
+    if (type === "ballot" && contributionCents <= 0 && valueCents > 0) {
+      contributionCents = ballotGrandContributionCents(valueCents);
+    }
 
     if (!storeId) {
       return NextResponse.json({ error: "请选择门店" }, { status: 400 });
@@ -107,10 +119,15 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    // 独享实体：须有面值（50/100/200 等）
-    if (type === "draw" && valueCents < 100) {
+    // 独享实体 / 入箱票：须有面值（50/100 等）
+    if ((type === "draw" || type === "ballot") && valueCents < 100) {
       return NextResponse.json(
-        { error: "独享抽奖实体须设置面值（至少 S$1）" },
+        {
+          error:
+            type === "ballot"
+              ? "入箱票须设置档位面值（S$50 或 S$100）"
+              : "独享抽奖实体须设置面值（至少 S$1）",
+        },
         { status: 400 }
       );
     }
@@ -126,9 +143,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "门店无效" }, { status: 400 });
     }
 
-    if (type === "draw" && !campaignId) {
+    if ((type === "draw" || type === "ballot") && !campaignId) {
       return NextResponse.json(
-        { error: "独享抽奖实体须关联独享活动（self_use 抽奖）" },
+        {
+          error:
+            type === "ballot"
+              ? "入箱票须关联独享抽奖活动"
+              : "独享抽奖实体须关联独享活动（self_use 抽奖）",
+        },
         { status: 400 }
       );
     }
@@ -148,10 +170,10 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      if (type === "draw") {
+      if (type === "draw" || type === "ballot") {
         if (camp.productKind !== "self_use") {
           return NextResponse.json(
-            { error: "实体抽奖请关联「独享」活动（先收款），共赢请用线上链接" },
+            { error: "实体抽奖/入箱票请关联「独享」活动（先收款）" },
             { status: 400 }
           );
         }
@@ -209,22 +231,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const defaultTitle =
+      type === "voucher"
+        ? `自用券 S$${(valueCents / 100).toFixed(0)}（实体）`
+        : type === "ballot"
+          ? `入箱票 S$${(valueCents / 100).toFixed(0)}（大奖贡献 S$${(contributionCents / 100).toFixed(2)}）`
+          : "抽奖实体券";
+    const defaultDesc =
+      type === "voucher"
+        ? `自用券打印版 · ${store.name} 出库 · 集团门店可核 · 绑号后进余额`
+        : type === "ballot"
+          ? `仅投抽奖箱 / 表演开箱 · 不抵消费 · 对应独享 10% 大奖积累 · ${store.name}`
+          : null;
+
     const batch = await prisma.physicalBatch.create({
       data: {
         businessId: session.userId,
         storeId,
         type,
-        title:
-          title ||
-          (type === "voucher"
-            ? `自用券 S$${(valueCents / 100).toFixed(0)}（实体）`
-            : "抽奖实体券"),
-        description:
-          description ||
-          (type === "voucher"
-            ? `自用券打印版 · ${store.name} 出库 · 集团门店可核 · 绑号后进余额`
-            : null),
+        title: title || defaultTitle,
+        description: description || defaultDesc,
         valueCents,
+        contributionCents: type === "ballot" ? contributionCents : 0,
         quantity,
         validUntil: until,
         campaignId: resolvedCampaignId,

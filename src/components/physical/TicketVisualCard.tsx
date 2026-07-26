@@ -55,7 +55,7 @@ export function TicketVisualCard({
   const tpl = getVisualTemplate(templateId);
   const accent = resolveThemeHex(themeColor, tpl.id);
   const isBold = tpl.surface === "dark";
-  const isDraw = type === "draw";
+  const isDraw = type === "draw" || type === "ballot";
   const isShare = mode === "share";
 
   return (
@@ -161,6 +161,29 @@ export function TicketVisualCard({
           >
             S${formatMoney(valueCents)}
           </p>
+        ) : type === "ballot" ? (
+          <div className="mt-1 space-y-0.5">
+            <p
+              className={cn(
+                "font-bold",
+                isShare ? "text-2xl" : "text-lg",
+                isBold ? "text-amber-200" : "text-orange-600"
+              )}
+            >
+              S${formatMoney(valueCents)}
+            </p>
+            <p
+              className={cn(
+                "font-semibold",
+                isShare ? "text-sm" : "text-[11px]",
+                isBold ? "text-white/85" : "text-muted-foreground"
+              )}
+            >
+              {lang === "en"
+                ? "Ballot · drop in box only · not spendable"
+                : "入箱票 · 仅投抽奖箱 · 不抵消费"}
+            </p>
+          </div>
         ) : (
           <p
             className={cn(
@@ -269,5 +292,5 @@ export function TicketVisualCard({
 }
 
 export function defaultTemplateForType(type: string): VisualTemplateId {
-  return type === "draw" ? "store_bold" : "store_classic";
+  return type === "draw" || type === "ballot" ? "store_bold" : "store_classic";
 }

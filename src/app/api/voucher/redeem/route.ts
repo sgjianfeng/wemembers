@@ -58,6 +58,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Insufficient balance" }, { status: 400 });
     }
 
+    // A2 原价门槛券：账单金额 ≥ 券面 × minSpendMultiplier（默认 10）
+    {
+      const snap = parseRulesSnapshot(voucher.campaign?.rulesSnapshot);
+      const mult = Math.max(0, Math.round(Number(snap?.minSpendMultiplier) || 0));
+      if (mult > 0) {
+        const minSpend = Math.max(0, Math.round(voucher.amountCents) * mult);
+        const billRaw = body.billCents ?? body.orderCents;
+        const bill =
+          billRaw != null && Number.isFinite(Number(billRaw))
+            ? Math.round(Number(billRaw))
+            : null;
+        if (bill == null) {
+          return NextResponse.json(
+            {
+              error: `本券最低消费 S$${(minSpend / 100).toFixed(0)}，请填写账单金额 billCents`,
+              code: "BILL_REQUIRED",
+              minSpendCents: minSpend,
+            },
+            { status: 400 }
+          );
+        }
+        if (bill < minSpend) {
+          return NextResponse.json(
+            {
+              error: `本券最低消费 S$${(minSpend / 100).toFixed(0)}，当前账单 S$${(bill / 100).toFixed(2)}`,
+              code: "MIN_SPEND",
+              minSpendCents: minSpend,
+              billCents: bill,
+            },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     let redeemerStore: {
       id: string;
       businessId: string;

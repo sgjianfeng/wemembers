@@ -912,13 +912,17 @@ model PhysicalBatch {
   id           String   @id @default(cuid())
   businessId   String
   storeId      String                 // 印刷归属店（库存来源）
-  type         String                 // voucher | draw  — voucher=自用券打印版
+  /// voucher=消费纸 | draw=独享消费纸 | ballot=入箱抽奖票（仅投箱/表演，不抵消费）
+  type         String
   title        String                 // 印刷标题
   description  String?
-  valueCents   Int      @default(0)   // 代金面值（分）；抽奖可为 0
+  /// 代金面值 / 抽奖付额档（分）；ballot 时为 50/100 档面值
+  valueCents   Int      @default(0)
+  /// ballot：本票对应大奖池贡献（分），通常=面值×10%
+  contributionCents Int @default(0)
   quantity     Int                    // 生成张数
   validUntil   DateTime?
-  /// 自用/独享活动：实体 = 该活动的打印版（代金必填）
+  /// 自用/独享活动：实体 = 该活动的打印版（代金/ballot 建议关联）
   campaignId   String?
   couponId     String?                // legacy 旧路径；新批次可空
   /// 视觉模版：store_classic | store_bold（系统精修，商家不可自由设计）
@@ -960,6 +964,9 @@ model PhysicalTicket {
   contactPhone     String?                // 售出时可选手机
   /// 绑定后对应线上自用 Voucher（与 CustomerCoupon 二选一；新路径用 voucher）
   voucherId        String?  @unique
+  /// ballot：printed → boxed（已投箱）→ drawn（开箱抽出）| void
+  boxedAt          DateTime?
+  drawnAt          DateTime?
   redeemedAt       DateTime?
   redeemedById     String?                // 核销店员/企业 userId
   redeemedStoreId  String?                // 实际核销门店（集团互核时与售店可不同）

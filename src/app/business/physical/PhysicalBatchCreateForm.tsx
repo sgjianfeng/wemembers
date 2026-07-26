@@ -34,11 +34,13 @@ export function PhysicalBatchCreateForm({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [storeId, setStoreId] = useState(stores[0]?.id || "");
-  const [type, setType] = useState<"voucher" | "draw">("voucher");
+  const [type, setType] = useState<"voucher" | "draw" | "ballot">("voucher");
   const drawCampaigns = useMemo(
     () =>
       campaigns.filter(
-        (c) => c.type === "lucky_draw_v2" || c.type === "lucky_draw"
+        (c) =>
+          (c.type === "lucky_draw_v2" || c.type === "lucky_draw") &&
+          (c.productKind === "self_use" || !c.productKind)
       ),
     [campaigns]
   );
@@ -58,29 +60,34 @@ export function PhysicalBatchCreateForm({
 
   const storeName = stores.find((s) => s.id === storeId)?.name || "Store";
 
-  function onTypeChange(next: "voucher" | "draw") {
+  function onTypeChange(next: "voucher" | "draw" | "ballot") {
     setType(next);
-    if (next === "draw") {
-      setValueSgd("100");
+    if (next === "draw" || next === "ballot") {
+      setValueSgd(next === "ballot" ? "100" : "100");
       if (drawCampaigns[0]) setCampaignId(drawCampaigns[0].id);
+      setThemeHex("#FF6B35");
     } else {
       setValueSgd("10");
     }
-    const rec = listVisualTemplatesForType(next).find((t) => t.recommended);
+    const rec = listVisualTemplatesForType(
+      next === "ballot" ? "draw" : next
+    ).find((t) => t.recommended);
     if (rec) {
       setVisualTemplateId(rec.id);
-      setThemeHex(rec.defaultThemeHex);
+      if (next !== "ballot") setThemeHex(rec.defaultThemeHex);
     }
   }
 
   async function create() {
     setLoading(true);
     setError("");
-    if (type === "draw" && !campaignId) {
+    if ((type === "draw" || type === "ballot") && !campaignId) {
       setError(
         lang === "en"
-          ? "Link a campaign so bind = online draw ticket"
-          : "请选择关联活动：绑定后按线上抽奖券进奖池"
+          ? "Link an exclusive draw campaign"
+          : type === "ballot"
+            ? "入箱票须关联独享抽奖活动"
+            : "请选择关联活动：绑定后按线上抽奖券进奖池"
       );
       setLoading(false);
       return;
@@ -97,7 +104,8 @@ export function PhysicalBatchCreateForm({
         quantity: parseInt(quantity, 10) || 0,
         visualTemplateId,
         themeColor: themeHex,
-        campaignId: type === "draw" ? campaignId : null,
+        campaignId:
+          type === "draw" || type === "ballot" ? campaignId : null,
       }),
     });
     const data = await res.json();
@@ -126,13 +134,17 @@ export function PhysicalBatchCreateForm({
 
   const previewTitle =
     title.trim() ||
-    (type === "draw"
+    (type === "ballot"
       ? lang === "en"
-        ? "Lucky draw ticket"
-        : "抽奖券"
-      : lang === "en"
-        ? "Store voucher"
-        : "本店代金券");
+        ? "Ballot (box only)"
+        : "入箱抽奖票"
+      : type === "draw"
+        ? lang === "en"
+          ? "Lucky draw ticket"
+          : "抽奖券"
+        : lang === "en"
+          ? "Store voucher"
+          : "本店代金券");
 
   return (
     <Card>
@@ -169,16 +181,20 @@ export function PhysicalBatchCreateForm({
           <label className="block text-sm font-medium mb-1.5">
             {lang === "en" ? "Type" : "类型"}
           </label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {(
               [
                 {
                   id: "voucher" as const,
-                  label: lang === "en" ? "Self-use (print)" : "自用券（印刷）",
+                  label: lang === "en" ? "Voucher" : "自用券",
                 },
                 {
                   id: "draw" as const,
-                  label: lang === "en" ? "Draw ticket" : "抽奖券",
+                  label: lang === "en" ? "Draw" : "抽奖消费券",
+                },
+                {
+                  id: "ballot" as const,
+                  label: lang === "en" ? "Ballot" : "入箱票",
                 },
               ] as const
             ).map((t) => (
@@ -187,7 +203,7 @@ export function PhysicalBatchCreateForm({
                 type="button"
                 onClick={() => onTypeChange(t.id)}
                 className={cn(
-                  "h-10 rounded-full text-xs font-semibold border active:scale-[0.97] transition-transform",
+                  "h-10 rounded-full text-[10px] font-semibold border active:scale-[0.97] transition-transform px-1",
                   type === t.id
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border text-muted-foreground"
@@ -265,32 +281,47 @@ export function PhysicalBatchCreateForm({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={
-            type === "draw"
+            type === "ballot"
               ? lang === "en"
-                ? "e.g. Meow BBQ lucky draw"
-                : "如：猫抓烤肉抽奖券"
-              : lang === "en"
-                ? "e.g. S$10 off"
-                : "如：S$10 烤肉代金券"
+                ? "e.g. Box ballot S$100"
+                : "如：入箱票 S$100"
+              : type === "draw"
+                ? lang === "en"
+                  ? "e.g. Meow BBQ lucky draw"
+                  : "如：猫抓烤肉抽奖券"
+                : lang === "en"
+                  ? "e.g. S$10 off"
+                  : "如：S$10 烤肉代金券"
           }
         />
-        {(type === "voucher" || type === "draw") && (
+        {(type === "voucher" || type === "draw" || type === "ballot") && (
           <Input
             label={
-              type === "draw"
+              type === "ballot"
                 ? lang === "en"
-                  ? "Face value (S$) e.g. 50/100/200"
-                  : "面值（新币）如 50/100/200"
-                : lang === "en"
-                  ? "Face value (S$)"
-                  : "面值（新币）"
+                  ? "Tier face (S$) 50 or 100"
+                  : "档位面值（新币）50 或 100"
+                : type === "draw"
+                  ? lang === "en"
+                    ? "Face value (S$) e.g. 50/100/200"
+                    : "面值（新币）如 50/100/200"
+                  : lang === "en"
+                    ? "Face value (S$)"
+                    : "面值（新币）"
             }
             value={valueSgd}
             onChange={(e) => setValueSgd(e.target.value)}
             inputMode="decimal"
           />
         )}
-        {type === "draw" && (
+        {type === "ballot" && (
+          <p className="text-[11px] text-muted-foreground leading-relaxed rounded-lg bg-muted/50 p-2">
+            {lang === "en"
+              ? "Ballot is for the physical box only (not spendable). Grand pool contribution = 10% of face. Link exclusive 15% campaign."
+              : "入箱票只投抽奖箱、不抵消费。大奖贡献=面值×10%。须关联独享 15% 活动。顾客扫码付 50/100 后发给纸票投箱。"}
+          </p>
+        )}
+        {(type === "draw" || type === "ballot") && (
           <div>
             <label className="block text-sm font-medium mb-1.5">
               {lang === "en"
@@ -306,7 +337,7 @@ export function PhysicalBatchCreateForm({
                   </>
                 ) : (
                   <>
-                    暂无独享抽奖活动。请先到「活动」创建先收款·抽奖（独享），再印刷。
+                    暂无独享抽奖活动。请先到「活动」创建先收款·抽奖（独享），或运行默认开店包脚本。
                   </>
                 )}
               </p>
@@ -324,9 +355,13 @@ export function PhysicalBatchCreateForm({
               </select>
             )}
             <p className="text-[10px] text-muted-foreground mt-1">
-              {lang === "en"
-                ? "Cash sell deducts 15% from business top-up (3%+2%+10% grand on platform)."
-                : "现金售出时从企业账户扣 15%（小奖3%+服务费2%+大奖10%留平台）。"}
+              {type === "ballot"
+                ? lang === "en"
+                  ? "Print → hand to customer → drop in box. Online PayNow still funds pools."
+                  : "打印 → 交给顾客 → 投入箱中。线上 PayNow 仍负责进池与小奖。"
+                : lang === "en"
+                  ? "Cash sell deducts 15% from business top-up (3%+2%+10% grand)."
+                  : "现金售出时从企业账户扣 15%（小奖3%+服务费2%+大奖10%）。"}
             </p>
           </div>
         )}

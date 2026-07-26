@@ -67,6 +67,16 @@ export default async function BusinessHubPage() {
       href: "/business/physical",
     },
     {
+      id: "ballot",
+      icon: Printer,
+      title: lang === "en" ? "Ballot print (box)" : "入箱票印刷",
+      desc:
+        lang === "en"
+          ? "Print box ballots (not spendable). Link exclusive 15% draw · 50/100"
+          : "打印投箱票（不抵消费）· 关联独享15% · 档位50/100",
+      href: "/business/physical",
+    },
+    {
       id: "partners",
       icon: Handshake,
       title: t("hub.partners.title", lang),
