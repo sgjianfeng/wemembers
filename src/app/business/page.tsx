@@ -8,7 +8,7 @@ import { resolveStoreLogo, timeAgo } from "@/lib/utils";
 import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
 import { resolveStaffStore } from "@/lib/current-store";
-import { Store, Users, ShoppingCart, Sparkles, Wrench, Coins, MailOpen, Calendar } from "lucide-react";
+import { Store, Users, ShoppingCart, Sparkles, Wrench, Coins, MailOpen, Calendar, ScanLine, Banknote, QrCode, Trophy, Ticket } from "lucide-react";
 
 /**
  * /business
@@ -127,7 +127,7 @@ export default async function BusinessDashboard() {
 
   return (
     <div className="pb-4">
-      <div className="bg-white border-b border-slate-100 px-4 py-3 sticky top-0 z-20">
+      <div className="bg-card border-b border-border px-4 py-3 sticky top-0 z-20">
         <div className="flex items-center justify-between gap-2">
           <Link
             href="/business/settings"
@@ -140,16 +140,16 @@ export default async function BusinessDashboard() {
               rounded="2xl"
             />
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
                 {lang === "en" ? "Company" : "企业后台"}
               </p>
-              <p className="text-sm font-semibold text-slate-900 truncate group-active:opacity-70">
+              <p className="text-sm font-semibold text-foreground truncate group-active:opacity-70">
                 {user.businessName || t("business.overview.myStore", lang)}
-                <span className="ml-1.5 text-[10px] font-medium text-[#1A6EFF]">
+                <span className="ml-1.5 text-[10px] font-medium text-primary">
                   {lang === "en" ? "Settings" : "设置"}
                 </span>
               </p>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {lang === "en"
                   ? `${stores.length} store(s) · manage outlets separately`
                   : `${stores.length} 家门店 · 点「门店」进入具体店`}
@@ -184,7 +184,7 @@ export default async function BusinessDashboard() {
           </p>
           <Link
             href="/business/stores"
-            className="inline-flex mt-3 h-9 items-center rounded-full bg-[#1A6EFF] px-4 text-xs font-semibold text-white"
+            className="inline-flex mt-3 h-9 items-center rounded-full bg-primary px-4 text-xs font-semibold text-white"
           >
             {lang === "en" ? "Add store" : "添加门店"}
           </Link>
@@ -192,7 +192,7 @@ export default async function BusinessDashboard() {
       )}
 
       <div className="px-4 mt-4">
-        <p className="text-[11px] text-slate-400 mb-2">
+        <p className="text-[11px] text-muted-foreground mb-2">
           {lang === "en"
             ? "Company-wide numbers. Open a store for outlet-level work."
             : "以下为全公司汇总。进入具体门店做本店核销与店务。"}
@@ -222,11 +222,11 @@ export default async function BusinessDashboard() {
           ].map((k) => {
             const IconComponent = k.icon;
             return (
-              <Card key={k.label} className="bg-slate-50 border-0">
+              <Card key={k.label} className="bg-muted/50 border-0">
                 <CardContent className="p-3">
-                  <IconComponent size={20} className="text-slate-600" />
-                  <p className="text-2xl font-bold text-slate-900 mt-2">{k.value}</p>
-                  <p className="text-xs text-slate-400">{k.label}</p>
+                  <IconComponent size={20} className="text-muted-foreground" />
+                  <p className="text-2xl font-bold text-foreground mt-2">{k.value}</p>
+                  <p className="text-xs text-muted-foreground">{k.label}</p>
                 </CardContent>
               </Card>
             );
@@ -235,13 +235,13 @@ export default async function BusinessDashboard() {
 
         {stores.length > 0 && (
           <>
-            <h3 className="text-sm font-semibold text-slate-900 mt-5 mb-2">
+            <h3 className="text-sm font-semibold text-foreground mt-5 mb-2">
               {lang === "en" ? "Your stores" : "进入门店"}
             </h3>
             <div className="space-y-2">
               {stores.map((s) => (
                 <Link key={s.id} href={`/business/stores/${s.id}`}>
-                  <Card className="hover:border-[#1A6EFF]/30 transition-colors">
+                  <Card className="hover:border-primary/30 transition-colors">
                     <CardContent className="p-3 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <BrandAvatar
@@ -251,17 +251,17 @@ export default async function BusinessDashboard() {
                           rounded="xl"
                         />
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-slate-900 truncate">
+                          <p className="text-sm font-semibold text-foreground truncate">
                             {s.name}
                           </p>
                           {s.address && (
-                            <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                            <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                               {s.address}
                             </p>
                           )}
                         </div>
                       </div>
-                      <span className="text-[11px] text-[#1A6EFF] shrink-0 font-medium">
+                      <span className="text-[11px] text-primary shrink-0 font-medium">
                         {lang === "en" ? "Open →" : "进入 →"}
                       </span>
                     </CardContent>
@@ -272,7 +272,7 @@ export default async function BusinessDashboard() {
           </>
         )}
 
-        <h3 className="text-sm font-semibold text-slate-900 mt-5 mb-2">
+        <h3 className="text-sm font-semibold text-foreground mt-5 mb-2">
           {t("business.overview.quickActions", lang)}
         </h3>
         <div className="grid grid-cols-2 gap-2">
@@ -311,12 +311,12 @@ export default async function BusinessDashboard() {
             const IconComponent = a.icon;
             return (
               <Link key={a.href} href={a.href}>
-                <Card className="hover:border-[#1A6EFF]/30 transition-colors">
+                <Card className="hover:border-primary/30 transition-colors">
                   <CardContent className="p-3 flex items-center gap-3">
-                    <IconComponent size={24} className="text-slate-600" />
+                    <IconComponent size={24} className="text-muted-foreground" />
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900">{a.label}</p>
-                      <p className="text-[10px] text-slate-400 truncate">{a.desc}</p>
+                      <p className="text-sm font-medium text-foreground">{a.label}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{a.desc}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -325,16 +325,16 @@ export default async function BusinessDashboard() {
           })}
         </div>
 
-        <h3 className="text-sm font-semibold text-slate-900 mt-5 mb-2">
+        <h3 className="text-sm font-semibold text-foreground mt-5 mb-2">
           {t("business.overview.recentSales", lang)}
         </h3>
         {recentSales.length > 0 ? (
           recentSales.map((s) => (
             <div
               key={s.id}
-              className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg text-sm mb-1"
+              className="flex items-center justify-between px-3 py-2 bg-muted/50 rounded-lg text-sm mb-1"
             >
-              <span className="text-slate-600 truncate pr-2">
+              <span className="text-muted-foreground truncate pr-2">
                 {t("business.overview.saleRow", lang, {
                   campaign: s.campaign?.name || "—",
                   paid: (s.paidCents / 100).toFixed(2),
@@ -342,25 +342,25 @@ export default async function BusinessDashboard() {
                 })}
                 {s.productKind === "self_use" ||
                 s.campaign?.productKind === "self_use" ? (
-                  <span className="ml-1 text-[10px] text-slate-500">
+                  <span className="ml-1 text-[10px] text-muted-foreground">
                     {lang === "en" ? "self" : "自用"}
                   </span>
                 ) : null}
               </span>
-              <span className="text-xs text-slate-400 shrink-0">
+              <span className="text-xs text-muted-foreground shrink-0">
                 {timeAgo(s.createdAt)}
               </span>
             </div>
           ))
         ) : (
-          <div className="text-center py-4 text-slate-400 text-sm mb-2">
+          <div className="text-center py-4 text-muted-foreground text-sm mb-2">
             {lang === "en" ? "No sales yet" : "暂无售出"}
           </div>
         )}
 
-        <h3 className="text-sm font-semibold text-slate-900 mt-4 mb-2">
+        <h3 className="text-sm font-semibold text-foreground mt-4 mb-2">
           {t("business.overview.recent", lang)}
-          <span className="ml-1 font-normal text-slate-400 text-xs">
+          <span className="ml-1 font-normal text-muted-foreground text-xs">
             · {lang === "en" ? "redemptions · all stores" : "核销 · 全部门店"}
           </span>
         </h3>
@@ -371,25 +371,25 @@ export default async function BusinessDashboard() {
             return (
               <div
                 key={u.id}
-                className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg text-sm mb-1"
+                className="flex items-center justify-between px-3 py-2 bg-muted/50 rounded-lg text-sm mb-1"
               >
-                <span className="text-slate-600 truncate pr-2">
+                <span className="text-muted-foreground truncate pr-2">
                   {t("business.overview.redeemRow", lang, {
                     campaign: u.voucher.campaign?.name || "—",
                     store: u.store?.name || "—",
                     amount: redeemFace,
                   })}
                 </span>
-                <span className="text-xs text-slate-400 shrink-0">
+                <span className="text-xs text-muted-foreground shrink-0">
                   {timeAgo(u.createdAt)}
                 </span>
               </div>
             );
           })
         ) : (
-          <div className="text-center py-8 text-slate-400">
+          <div className="text-center py-8 text-muted-foreground">
             <div className="flex justify-center mb-2">
-              <MailOpen size={32} className="text-slate-300" />
+              <MailOpen size={32} className="text-muted-foreground" />
             </div>
             <p className="text-sm">{t("business.overview.noActivity", lang)}</p>
           </div>
@@ -409,8 +409,8 @@ async function StaffStoreHome({
   const store = await resolveStaffStore(sessionStoreId);
   if (!store) {
     return (
-      <div className="px-4 py-16 text-center text-slate-400">
-        <p className="text-3xl mb-2">🏪</p>
+      <div className="px-4 py-16 text-center text-muted-foreground">
+        <Store size={30} className="mx-auto mb-2" />
         <p className="text-sm">
           {lang === "en"
             ? "No store assigned. Contact your company admin."
@@ -463,8 +463,8 @@ async function StaffStoreHome({
 
   return (
     <div className="pb-4">
-      <div className="bg-white border-b border-slate-100 px-4 py-3">
-        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">
+      <div className="bg-card border-b border-border px-4 py-3">
+        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
           {lang === "en" ? "Your store" : "本店工作台"}
         </p>
         <div className="flex items-center gap-2.5 mt-1">
@@ -475,11 +475,11 @@ async function StaffStoreHome({
             rounded="xl"
           />
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-900 truncate">
+            <p className="text-sm font-semibold text-foreground truncate">
               {store.name}
             </p>
             {store.address && (
-              <p className="text-xs text-slate-400 mt-0.5 truncate">
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">
                 {store.address}
               </p>
             )}
@@ -488,15 +488,15 @@ async function StaffStoreHome({
       </div>
 
       <div className="px-4 mt-4 grid grid-cols-2 gap-3">
-        <Card className="bg-slate-50 border-0">
+        <Card className="bg-muted/50 border-0">
           <CardContent className="p-3">
-            <p className="text-2xl font-bold text-slate-900">
+            <p className="text-2xl font-bold text-foreground">
               {redeemsToday + paperToday}
             </p>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted-foreground">
               {lang === "en" ? "Redeems today" : "今日核销合计"}
             </p>
-            <p className="text-[10px] text-slate-400 mt-0.5">
+            <p className="text-[10px] text-muted-foreground mt-0.5">
               {lang === "en"
                 ? `Online ${redeemsToday} · Paper ${paperToday}`
                 : `线上 ${redeemsToday} · 实体 ${paperToday}`}
@@ -504,9 +504,9 @@ async function StaffStoreHome({
           </CardContent>
         </Card>
         <Link href="/business/scan">
-          <Card className="bg-[#1A6EFF] border-0 h-full">
+          <Card className="bg-primary border-0 h-full">
             <CardContent className="p-3 text-white">
-              <span className="text-lg">📷</span>
+              <ScanLine size={20} />
               <p className="text-sm font-semibold mt-2">
                 {lang === "en" ? "Scan & redeem" : "扫码核销"}
               </p>
@@ -517,14 +517,14 @@ async function StaffStoreHome({
           </Card>
         </Link>
         <Link href="/business/issue-self" className="col-span-2">
-          <Card className="border-slate-200 hover:border-slate-400 transition-colors">
+          <Card className="border-border hover:border-border transition-colors">
             <CardContent className="p-3 flex items-center gap-3">
-              <span className="text-2xl">💵</span>
+              <Banknote size={24} className="text-primary shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-slate-900">
+                <p className="text-sm font-semibold text-foreground">
                   {lang === "en" ? "Cash self-use voucher" : "现金发自用券"}
                 </p>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-muted-foreground">
                   {lang === "en"
                     ? "Collect cash → 6-digit code → redeem later"
                     : "收现金 → 发 6 位短码 → 消费时核销"}
@@ -537,20 +537,20 @@ async function StaffStoreHome({
 
       <div className="px-4 mt-4 grid grid-cols-2 gap-2">
         <Link href="/business/store">
-          <Card className="hover:border-[#1A6EFF]/30">
+          <Card className="hover:border-primary/30">
             <CardContent className="p-3">
-              <p className="text-lg">📱</p>
-              <p className="text-sm font-semibold mt-1 text-slate-900">
+              <QrCode size={20} className="text-foreground" />
+              <p className="text-sm font-semibold mt-1 text-foreground">
                 {lang === "en" ? "Store QR" : "本店二维码"}
               </p>
             </CardContent>
           </Card>
         </Link>
         <Link href="/business/members">
-          <Card className="hover:border-[#1A6EFF]/30">
+          <Card className="hover:border-primary/30">
             <CardContent className="p-3">
-              <p className="text-lg">👥</p>
-              <p className="text-sm font-semibold mt-1 text-slate-900">
+              <Users size={20} className="text-foreground" />
+              <p className="text-sm font-semibold mt-1 text-foreground">
                 {lang === "en" ? "Members" : "会员"}
               </p>
             </CardContent>
@@ -559,24 +559,24 @@ async function StaffStoreHome({
       </div>
 
       <div className="px-4 mt-5">
-        <h3 className="text-sm font-semibold text-slate-900 mb-2">
+        <h3 className="text-sm font-semibold text-foreground mb-2">
           {lang === "en" ? "Recent online redeems" : "最近线上核销"}
         </h3>
         {recent.length === 0 ? (
-          <p className="text-center text-sm text-slate-400 py-4">
+          <p className="text-center text-sm text-muted-foreground py-4">
             {lang === "en" ? "None yet" : "暂无"}
           </p>
         ) : (
           recent.map((u) => (
             <div
               key={u.id}
-              className="flex justify-between px-3 py-2 bg-slate-50 rounded-lg text-sm mb-1"
+              className="flex justify-between px-3 py-2 bg-muted/50 rounded-lg text-sm mb-1"
             >
-              <span className="text-slate-600 truncate">
+              <span className="text-muted-foreground truncate">
                 {u.voucher.campaign?.name || "—"} · +S$
                 {(u.storeIncome / 100).toFixed(2)}
               </span>
-              <span className="text-xs text-slate-400 shrink-0">
+              <span className="text-xs text-muted-foreground shrink-0">
                 {timeAgo(u.createdAt)}
               </span>
             </div>
@@ -585,27 +585,33 @@ async function StaffStoreHome({
       </div>
 
       <div className="px-4 mt-4">
-        <h3 className="text-sm font-semibold text-slate-900 mb-2">
+        <h3 className="text-sm font-semibold text-foreground mb-2">
           {lang === "en" ? "Recent paper tickets" : "最近实体券核销"}
         </h3>
         {recentPaper.length === 0 ? (
-          <p className="text-center text-sm text-slate-400 py-4">
+          <p className="text-center text-sm text-muted-foreground py-4">
             {lang === "en" ? "None yet" : "暂无"}
           </p>
         ) : (
           recentPaper.map((t) => (
             <div
               key={t.id}
-              className="flex justify-between px-3 py-2 bg-slate-50 rounded-lg text-sm mb-1"
+              className="flex justify-between px-3 py-2 bg-muted/50 rounded-lg text-sm mb-1"
             >
-              <span className="text-slate-600 truncate">
-                {t.batch.type === "draw" ? "🎰 " : "🎫 "}
-                {t.batch.title}
-                {t.batch.valueCents
-                  ? ` · S$${(t.batch.valueCents / 100).toFixed(0)}`
-                  : ""}
+              <span className="flex items-center gap-1.5 text-muted-foreground truncate">
+                {t.batch.type === "draw" ? (
+                  <Trophy size={13} className="shrink-0" />
+                ) : (
+                  <Ticket size={13} className="shrink-0" />
+                )}
+                <span className="truncate">
+                  {t.batch.title}
+                  {t.batch.valueCents
+                    ? ` · S$${(t.batch.valueCents / 100).toFixed(0)}`
+                    : ""}
+                </span>
               </span>
-              <span className="text-xs text-slate-400 shrink-0">
+              <span className="text-xs text-muted-foreground shrink-0">
                 {t.redeemedAt ? timeAgo(t.redeemedAt) : "—"}
               </span>
             </div>

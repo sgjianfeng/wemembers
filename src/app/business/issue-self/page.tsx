@@ -239,7 +239,7 @@ export default function IssueSelfPage() {
         {campaigns.length === 0 ? (
           <Card>
             <CardContent className="p-4 space-y-3">
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 {lang === "en"
                   ? "No self-use campaign yet. Create one in one tap."
                   : "还没有自用券活动。一键创建即可开卖。"}
@@ -253,7 +253,7 @@ export default function IssueSelfPage() {
               </Button>
               <button
                 type="button"
-                className="w-full text-xs text-[#1A6EFF]"
+                className="w-full text-xs text-primary"
                 onClick={() => router.push("/business/campaigns/new")}
               >
                 {lang === "en" ? "Or full create flow →" : "或完整创建流程 →"}
@@ -263,11 +263,11 @@ export default function IssueSelfPage() {
         ) : (
           <>
             <div>
-              <label className="text-xs font-medium text-slate-500">
+              <label className="text-xs font-medium text-muted-foreground">
                 {lang === "en" ? "Campaign" : "活动"}
               </label>
               <select
-                className="mt-1 w-full h-12 rounded-xl border border-slate-200 px-3 text-sm bg-white"
+                className="mt-1 w-full h-12 rounded-xl border border-border px-3 text-sm bg-card"
                 value={campaignId}
                 onChange={(e) => setCampaignId(e.target.value)}
               >
@@ -281,11 +281,11 @@ export default function IssueSelfPage() {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-slate-500">
+              <label className="text-xs font-medium text-muted-foreground">
                 {lang === "en" ? "Store" : "门店"}
               </label>
               <select
-                className="mt-1 w-full h-12 rounded-xl border border-slate-200 px-3 text-sm bg-white"
+                className="mt-1 w-full h-12 rounded-xl border border-border px-3 text-sm bg-card"
                 value={storeId}
                 onChange={(e) => setStoreId(e.target.value)}
               >
@@ -298,7 +298,7 @@ export default function IssueSelfPage() {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-slate-500">
+              <label className="text-xs font-medium text-muted-foreground">
                 {lang === "en" ? "Face value (spendable)" : "面值（可花）"}
               </label>
               <div className="mt-1.5 flex flex-wrap gap-2">
@@ -309,8 +309,8 @@ export default function IssueSelfPage() {
                     onClick={() => setAmountSgd(String(a))}
                     className={`h-11 min-w-[4.5rem] px-3 rounded-full text-sm font-semibold tabular-nums border transition-colors ${
                       Number(amountSgd) === a
-                        ? "bg-[#1A6EFF] text-white border-[#1A6EFF]"
-                        : "bg-white text-slate-700 border-slate-200"
+                        ? "bg-primary text-white border-primary"
+                        : "bg-card text-foreground border-border"
                     }`}
                   >
                     S${a}
@@ -329,7 +329,7 @@ export default function IssueSelfPage() {
 
             {!isDrawCamp && (
               <div>
-                <label className="text-xs font-medium text-slate-500">
+                <label className="text-xs font-medium text-muted-foreground">
                   {lang === "en" ? "Discount" : "折扣（自用代金）"}
                 </label>
                 <div className="mt-1.5 flex flex-wrap gap-2">
@@ -340,8 +340,8 @@ export default function IssueSelfPage() {
                       onClick={() => setDiscountPercent(d)}
                       className={`h-10 px-3 rounded-full text-sm font-semibold border ${
                         discountPercent === d
-                          ? "bg-slate-800 text-white border-slate-800"
-                          : "bg-white text-slate-700 border-slate-200"
+                          ? "bg-foreground text-background border-foreground"
+                          : "bg-card text-foreground border-border"
                       }`}
                     >
                       {d === 0
@@ -352,14 +352,14 @@ export default function IssueSelfPage() {
                     </button>
                   ))}
                 </div>
-                <div className="mt-3 rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3">
-                  <p className="text-xs text-slate-400">
+                <div className="mt-3 rounded-2xl bg-muted/50 border border-border px-4 py-3">
+                  <p className="text-xs text-muted-foreground">
                     {lang === "en" ? "Customer pays" : "应收现金"}
                   </p>
-                  <p className="text-2xl font-bold tabular-nums text-slate-900 mt-0.5">
+                  <p className="text-2xl font-bold tabular-nums text-foreground mt-0.5">
                     S${paidPreview.toFixed(2)}
                   </p>
-                  <p className="text-[11px] text-slate-500 mt-1">
+                  <p className="text-[11px] text-muted-foreground mt-1">
                     {lang === "en"
                       ? `Pay S$${paidPreview.toFixed(0)} get S$${faceNum || 0} to spend`
                       : `付 S$${paidPreview.toFixed(0)} 得 S$${faceNum || 0} 可花`}
@@ -375,20 +375,20 @@ export default function IssueSelfPage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
             />
-            <p className="text-[10px] text-slate-400 -mt-2">
+            <p className="text-[10px] text-muted-foreground -mt-2">
               {lang === "en"
                 ? "Optional. Without phone, customer uses the short code only."
                 : "可选。不填手机也能用短码核销。"}
             </p>
 
-            <label className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-white p-3 cursor-pointer">
+            <label className="flex items-start gap-3 rounded-2xl border border-border bg-card p-3 cursor-pointer">
               <input
                 type="checkbox"
-                className="mt-0.5 h-5 w-5 rounded border-slate-300"
+                className="mt-0.5 h-5 w-5 rounded border-border"
                 checked={cashConfirmed}
                 onChange={(e) => setCashConfirmed(e.target.checked)}
               />
-              <span className="text-sm text-slate-700 leading-snug">
+              <span className="text-sm text-foreground leading-snug">
                 {lang === "en"
                   ? `I have received S$${paidPreview.toFixed(2)} cash (or store payment)`
                   : `我已收到现金 S$${paidPreview.toFixed(2)}（或店内收款）`}
@@ -414,7 +414,7 @@ export default function IssueSelfPage() {
 
         {result && (
           <Card className="border-green-200 bg-green-50 overflow-hidden">
-            <div className="h-1.5 bg-slate-500" />
+            <div className="h-1.5 bg-muted-foreground/40" />
             <CardContent className="p-5 text-center space-y-3">
               <p className="text-sm font-medium text-green-800">
                 {t("issueSelf.ok")}
@@ -424,7 +424,7 @@ export default function IssueSelfPage() {
                     : " · 独享抽奖"
                   : ""}
               </p>
-              <p className="text-xs text-slate-600">
+              <p className="text-xs text-muted-foreground">
                 {lang === "en" ? "Paid" : "实收"} S$
                 {result.paidSgd ?? result.balanceSgd}
                 {" · "}
@@ -434,22 +434,22 @@ export default function IssueSelfPage() {
                   : ""}
               </p>
               {result.instantPrize && (
-                <div className="rounded-xl bg-white/80 border border-violet-100 px-3 py-2">
+                <div className="rounded-xl bg-card/80 border border-violet-100 px-3 py-2">
                   <p className="text-[10px] text-violet-600 font-medium">
                     {lang === "en" ? "Instant prize (store pays)" : "即时小奖（本店兑付）"}
                   </p>
-                  <p className="text-lg font-semibold text-slate-900 mt-0.5">
+                  <p className="text-lg font-semibold text-foreground mt-0.5">
                     {result.instantPrize.icon} {result.instantPrize.name}
-                    <span className="text-sm font-normal text-slate-500 ml-1">
+                    <span className="text-sm font-normal text-muted-foreground ml-1">
                       S${result.instantPrize.valueSgd}
                     </span>
                   </p>
                 </div>
               )}
-              <p className="text-[10px] text-slate-400 uppercase tracking-wide">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
                 {lang === "en" ? "Show this code to staff" : "核销短码（给顾客 / 写小票）"}
               </p>
-              <p className="text-4xl font-bold font-mono tracking-[0.25em] text-slate-900 tabular-nums">
+              <p className="text-4xl font-bold font-mono tracking-[0.25em] text-foreground tabular-nums">
                 {result.shortCode}
               </p>
               <div className="flex gap-2">
@@ -479,7 +479,7 @@ export default function IssueSelfPage() {
               </div>
               <button
                 type="button"
-                className="text-xs text-[#1A6EFF] font-medium"
+                className="text-xs text-primary font-medium"
                 onClick={() => router.push("/business/scan")}
               >
                 {lang === "en" ? "Go to redeem →" : "去核销台 →"}

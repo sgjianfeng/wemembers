@@ -39,21 +39,21 @@ export default async function CampaignMarketPage() {
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-slate-100 sticky top-0 bg-white z-10">
+      <div className="px-4 py-3 border-b border-border sticky top-0 bg-card z-10">
         <div className="flex items-center gap-2">
-          <Link href="/business" className="text-xs text-slate-500">← {t("market.back", lang)}</Link>
+          <Link href="/business" className="text-xs text-muted-foreground">← {t("market.back", lang)}</Link>
         </div>
         <h1 className="text-lg font-semibold mt-1">
           {t("market.title", lang)}
         </h1>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {t("market.subtitle", lang)}
         </p>
       </div>
 
       <div className="px-4 mt-3 space-y-3">
         {campaigns.length === 0 ? (
-          <div className="text-center py-16 text-slate-400">
+          <div className="text-center py-16 text-muted-foreground">
             <p className="text-5xl mb-4">🎰</p>
             <p className="text-sm">{t("market.noCampaigns", lang)}</p>
             <p className="text-xs mt-1">
@@ -75,10 +75,10 @@ export default async function CampaignMarketPage() {
                   <div className="flex items-start justify-between mb-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-900 truncate">{camp.name}</span>
+                        <span className="text-sm font-semibold text-foreground truncate">{camp.name}</span>
                         {isJoined && <Badge variant="green" size="sm">{t("market.joined", lang)}</Badge>}
                       </div>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         {camp.business?.businessName || "WeMembers"}
                         {" · "}{camp.joinCount || 0} {t("market.stores", lang)}
                         {" · "}{t("market.pool", lang)} S${totalPoolSgd}
@@ -96,12 +96,12 @@ export default async function CampaignMarketPage() {
                         {t("market.grand", lang)}: {topPrize.name}
                       </span>
                       {camp.prizes.length > 1 && (
-                        <span className="text-slate-300">+{camp.prizes.length - 1}</span>
+                        <span className="text-muted-foreground">+{camp.prizes.length - 1}</span>
                       )}
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between text-xs text-slate-500">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>
                       {daysLeft > 0
                         ? t("market.daysLeft", lang, { days: daysLeft })

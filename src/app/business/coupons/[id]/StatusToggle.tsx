@@ -18,7 +18,7 @@ export function StatusToggle({ couponId, currentStatus }: { couponId: string; cu
   return (
     <button
       onClick={toggle}
-      className="inline-flex items-center justify-center h-8 px-3 text-xs font-medium rounded-full border border-slate-200 text-slate-900 bg-white hover:bg-slate-50"
+      className="inline-flex items-center justify-center h-8 px-3 text-xs font-medium rounded-full border border-border text-foreground bg-card hover:bg-muted/50"
     >
       {currentStatus === "published" ? "⏸️ 暂停" : "▶️ 恢复"}
     </button>

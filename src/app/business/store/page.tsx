@@ -26,7 +26,7 @@ export default async function StoreSettingsPage() {
   });
   if (!store)
     return (
-      <div className="p-8 text-center text-slate-400">
+      <div className="p-8 text-center text-muted-foreground">
         {lang === "en" ? "Store not found" : "门店不存在"}
       </div>
     );
@@ -38,11 +38,11 @@ export default async function StoreSettingsPage() {
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-slate-100">
+      <div className="px-4 py-3 border-b border-border">
         <h1 className="text-lg font-semibold">
           {lang === "en" ? "This store" : "本店信息"}
         </h1>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {lang === "en"
             ? "Redeem-only access · fixed to this outlet"
             : "仅核销权限 · 固定本店"}
@@ -58,19 +58,19 @@ export default async function StoreSettingsPage() {
               rounded="xl"
             />
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-slate-900">
+              <h3 className="text-sm font-semibold text-foreground">
                 {store.name}
               </h3>
               {store.business.businessName && (
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {store.business.businessName}
                 </p>
               )}
               {store.address && (
-                <p className="text-xs text-slate-500 mt-1">📍 {store.address}</p>
+                <p className="text-xs text-muted-foreground mt-1">📍 {store.address}</p>
               )}
               {store.phone && (
-                <p className="text-xs text-slate-500">📞 {store.phone}</p>
+                <p className="text-xs text-muted-foreground">📞 {store.phone}</p>
               )}
             </div>
           </CardContent>
@@ -78,16 +78,16 @@ export default async function StoreSettingsPage() {
 
         <Card>
           <CardContent className="p-4">
-            <h3 className="text-sm font-semibold text-slate-900 mb-1">
+            <h3 className="text-sm font-semibold text-foreground mb-1">
               {lang === "en" ? "Store QR" : "本店二维码"}
             </h3>
-            <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+            <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
               {lang === "en"
                 ? "Customers scan to open this store’s deals page."
                 : "顾客扫码进入本店优惠页（与实体券 PT- 码不同）。"}
             </p>
             <div className="flex justify-center">
-              <div className="w-48 h-48 bg-slate-50 rounded-xl border border-slate-100 overflow-hidden">
+              <div className="w-48 h-48 bg-muted/50 rounded-xl border border-border overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`/api/store/qr?storeId=${store.id}&size=192`}
@@ -96,11 +96,11 @@ export default async function StoreSettingsPage() {
                 />
               </div>
             </div>
-            <div className="mt-3 bg-slate-50 rounded-lg p-3">
-              <p className="text-xs text-slate-400 mb-1">
+            <div className="mt-3 bg-muted/50 rounded-lg p-3">
+              <p className="text-xs text-muted-foreground mb-1">
                 {lang === "en" ? "Customer link" : "本店链接"}
               </p>
-              <p className="text-sm font-mono text-slate-700 break-all">
+              <p className="text-sm font-mono text-foreground break-all">
                 {storeUrl}
               </p>
             </div>
@@ -117,7 +117,7 @@ export default async function StoreSettingsPage() {
 
         <div className="grid grid-cols-2 gap-2">
           <Link href="/business/scan">
-            <Card className="bg-[#1A6EFF] border-0">
+            <Card className="bg-primary border-0">
               <CardContent className="p-3 text-white">
                 <p className="text-lg">📷</p>
                 <p className="text-sm font-semibold mt-1">
@@ -127,10 +127,10 @@ export default async function StoreSettingsPage() {
             </Card>
           </Link>
           <Link href="/business">
-            <Card className="hover:border-[#1A6EFF]/30">
+            <Card className="hover:border-primary/30">
               <CardContent className="p-3">
                 <p className="text-lg">📊</p>
-                <p className="text-sm font-semibold mt-1 text-slate-900">
+                <p className="text-sm font-semibold mt-1 text-foreground">
                   {lang === "en" ? "Dashboard" : "工作台"}
                 </p>
               </CardContent>
@@ -138,11 +138,11 @@ export default async function StoreSettingsPage() {
           </Link>
         </div>
 
-        <div className="p-4 bg-[#1A6EFF]/5 rounded-xl">
-          <h4 className="text-xs font-semibold text-[#1A6EFF] mb-2">
+        <div className="p-4 bg-primary/5 rounded-xl">
+          <h4 className="text-xs font-semibold text-primary mb-2">
             {lang === "en" ? "Staff tips" : "店员操作"}
           </h4>
-          <ul className="text-xs text-slate-500 space-y-1">
+          <ul className="text-xs text-muted-foreground space-y-1">
             <li>
               •{" "}
               {lang === "en"

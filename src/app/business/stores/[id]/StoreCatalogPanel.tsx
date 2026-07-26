@@ -69,33 +69,33 @@ export function StoreCatalogPanel({ storeId }: { storeId: string }) {
   }
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-4">
-      <h3 className="text-sm font-semibold text-slate-900">
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <h3 className="text-sm font-semibold text-foreground">
         {lang === "en" ? "Products for this store" : "本店可售产品"}
       </h3>
-      <p className="text-[11px] text-slate-400 mt-0.5 mb-3">
+      <p className="text-[11px] text-muted-foreground mt-0.5 mb-3">
         {lang === "en"
           ? "Enable company vouchers / exclusive draws for customers at this store"
           : "启用公司创建的代金券/独享抽奖后，本店顾客才可购买"}
       </p>
 
       {loading ? (
-        <p className="text-xs text-slate-400 py-2">
+        <p className="text-xs text-muted-foreground py-2">
           {lang === "en" ? "Loading…" : "加载中…"}
         </p>
       ) : products.length === 0 ? (
-        <p className="text-xs text-slate-400 py-2">
+        <p className="text-xs text-muted-foreground py-2">
           {lang === "en" ? (
             <>
               No products yet.{" "}
-              <Link href="/business/campaigns/new" className="text-[#1A6EFF]">
+              <Link href="/business/campaigns/new" className="text-primary">
                 Create from template
               </Link>
             </>
           ) : (
             <>
               暂无产品。
-              <Link href="/business/campaigns/new" className="text-[#1A6EFF]">
+              <Link href="/business/campaigns/new" className="text-primary">
                 从模版创建
               </Link>
             </>
@@ -106,14 +106,14 @@ export function StoreCatalogPanel({ storeId }: { storeId: string }) {
           {products.map((p) => (
             <li
               key={p.id}
-              className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2.5"
+              className="flex items-center justify-between gap-2 rounded-xl bg-muted/50 px-3 py-2.5"
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <p className="text-sm font-medium text-slate-800 truncate">
+                  <p className="text-sm font-medium text-foreground truncate">
                     {p.name}
                   </p>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white text-slate-500 border border-slate-100">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-card text-muted-foreground border border-border">
                     {p.productKind === "self_use"
                       ? lang === "en"
                         ? "Self-use"
@@ -122,11 +122,11 @@ export function StoreCatalogPanel({ storeId }: { storeId: string }) {
                         ? "Dist"
                         : "分发"}
                   </span>
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-[10px] text-muted-foreground">
                     {p.status}
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-0.5">
+                <p className="text-[10px] text-muted-foreground mt-0.5">
                   {p.enabledTiers?.length
                     ? p.enabledTiers.map((a) => `S$${a}`).join(" / ")
                     : "—"}
@@ -143,11 +143,11 @@ export function StoreCatalogPanel({ storeId }: { storeId: string }) {
                 disabled={saving === p.id}
                 onClick={() => toggle(p.id, !p.enabled)}
                 className={`shrink-0 w-12 h-6 rounded-full transition-colors ${
-                  p.enabled ? "bg-[#1A6EFF]" : "bg-slate-200"
+                  p.enabled ? "bg-primary" : "bg-muted"
                 }`}
               >
                 <div
-                  className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  className={`w-5 h-5 bg-card rounded-full shadow transition-transform ${
                     p.enabled ? "translate-x-6" : "translate-x-0.5"
                   }`}
                 />

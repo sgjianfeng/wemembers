@@ -35,9 +35,9 @@ export default async function StoresPage() {
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-slate-100 sticky top-0 bg-white z-10">
+      <div className="px-4 py-3 border-b border-border sticky top-0 bg-card z-10">
         <h1 className="text-lg font-semibold">{t("business.stores.title", lang)}</h1>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {lang === "en"
             ? "Company products are enabled per store. Staff redeem at their store."
             : "企业创建券/活动；门店选择启用。店员在本店核销。"}
@@ -78,21 +78,21 @@ export default async function StoresPage() {
                       rounded="xl"
                     />
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900">
+                      <p className="text-sm font-semibold text-foreground">
                         {store.name}
                       </p>
-                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                      <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
                         {companySlug
                           ? `${companySlug}/${store.slug}`
                           : store.slug}
                       </p>
                       {store.address && (
-                        <p className="text-xs text-slate-400 mt-0.5">
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           📍 {store.address}
                         </p>
                       )}
                       {store.phone && (
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-muted-foreground">
                           📞 {store.phone}
                         </p>
                       )}
@@ -105,7 +105,7 @@ export default async function StoresPage() {
                     className="w-20 h-20 rounded-lg border shrink-0"
                   />
                 </div>
-                <p className="text-[10px] text-slate-400 font-mono break-all mb-2">
+                <p className="text-[10px] text-muted-foreground font-mono break-all mb-2">
                   {storeUrl}
                 </p>
                 {store.staff.length > 0 ? (
@@ -117,13 +117,13 @@ export default async function StoresPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400 mb-3">
+                  <p className="text-xs text-muted-foreground mb-3">
                     {t("business.stores.noStaff", lang)}
                   </p>
                 )}
                 <Link
                   href={`/business/stores/${store.id}`}
-                  className="inline-flex h-9 items-center justify-center rounded-full bg-[#1A6EFF] px-4 text-xs font-semibold text-white w-full"
+                  className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-xs font-semibold text-white w-full"
                 >
                   {lang === "en" ? "Enter store →" : "进入门店 →"}
                 </Link>

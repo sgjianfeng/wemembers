@@ -154,7 +154,7 @@ export default async function BusinessLayout({
 
   return (
     <>
-      <div className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-50 px-3 h-11 flex items-center justify-between gap-2">
+      <div className="sticky top-0 z-30 bg-background/90 backdrop-blur border-b border-border px-3 h-11 flex items-center justify-between gap-2">
         <Link
           href={leftHref}
           className="min-w-0 flex items-center gap-2 max-w-[70%]"
@@ -167,7 +167,7 @@ export default async function BusinessLayout({
               rounded="lg"
             />
           )}
-          <span className="text-xs font-semibold text-slate-800 truncate">
+          <span className="text-xs font-semibold text-foreground truncate">
             {leftLabel}
           </span>
         </Link>

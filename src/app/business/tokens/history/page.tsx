@@ -31,9 +31,9 @@ export default async function TokenHistoryPage() {
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-slate-100">
+      <div className="px-4 py-3 border-b border-border">
         <h1 className="text-lg font-semibold">Token 流水</h1>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           余额: 🪙 {account?.balance.toLocaleString() ?? 0}
         </p>
       </div>
@@ -42,25 +42,25 @@ export default async function TokenHistoryPage() {
         {account?.transactions.map((tx) => {
           const style = labels[tx.type] || { label: tx.type, variant: "slate" as const };
           return (
-            <div key={tx.id} className="flex items-center justify-between px-3 py-2.5 bg-white rounded-lg border border-slate-50">
+            <div key={tx.id} className="flex items-center justify-between px-3 py-2.5 bg-card rounded-lg border border-border">
               <div className="min-w-0">
-                <p className="text-xs text-slate-600 truncate">{tx.description}</p>
+                <p className="text-xs text-foreground truncate">{tx.description}</p>
                 <div className="flex items-center gap-1.5 mt-1">
                   <Badge variant={style.variant} size="sm">{style.label}</Badge>
-                  <span className="text-[10px] text-slate-400">{timeAgo(tx.createdAt)}</span>
+                  <span className="text-[10px] text-muted-foreground">{timeAgo(tx.createdAt)}</span>
                 </div>
               </div>
               <div className="text-right shrink-0 ml-2">
-                <p className={`text-sm font-semibold ${tx.amount > 0 ? "text-green-600" : "text-slate-600"}`}>
+                <p className={`text-sm font-semibold ${tx.amount > 0 ? "text-green-600" : "text-foreground"}`}>
                   {tx.amount > 0 ? "+" : ""}{tx.amount}
                 </p>
-                <p className="text-[10px] text-slate-400">余额: {tx.balanceAfter}</p>
+                <p className="text-[10px] text-muted-foreground">余额: {tx.balanceAfter}</p>
               </div>
             </div>
           );
         })}
         {(!account || account.transactions.length === 0) && (
-          <div className="text-center py-12 text-slate-400">
+          <div className="text-center py-12 text-muted-foreground">
             <p className="text-3xl mb-2">📋</p>
             <p className="text-sm">暂无记录</p>
           </div>

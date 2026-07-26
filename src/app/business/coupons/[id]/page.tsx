@@ -24,7 +24,7 @@ export default async function CouponDetailPage({ params }: { params: Promise<{ i
     },
   });
 
-  if (!coupon) return <div className="p-8 text-center text-slate-400">{t("business.coupons.detail.notFound", lang)}</div>;
+  if (!coupon) return <div className="p-8 text-center text-muted-foreground">{t("business.coupons.detail.notFound", lang)}</div>;
 
   const statusBadge: Record<string, { variant: "green" | "orange" | "red" | "slate"; label: string }> = {
     published: { variant: "green", label: t("business.coupons.status.published", lang) },
@@ -38,8 +38,8 @@ export default async function CouponDetailPage({ params }: { params: Promise<{ i
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
-        <Link href="/business/coupons" className="text-sm text-slate-500">{t("common.back", lang)}</Link>
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
+        <Link href="/business/coupons" className="text-sm text-muted-foreground">{t("common.back", lang)}</Link>
         <h1 className="text-sm font-semibold">{t("business.coupons.detail.title", lang)}</h1>
         <Badge variant={sb.variant}>{sb.label}</Badge>
       </div>
@@ -48,7 +48,7 @@ export default async function CouponDetailPage({ params }: { params: Promise<{ i
         {/* 概览卡片 */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-3"><span className="text-3xl">🎫</span><div><p className="text-lg font-bold text-slate-900">{coupon.title}</p><p className="text-xs text-slate-500">{coupon.description || t("business.coupons.detail.noDescription", lang)}</p></div></div>
+            <div className="flex items-center gap-2 mb-3"><span className="text-3xl">🎫</span><div><p className="text-lg font-bold text-foreground">{coupon.title}</p><p className="text-xs text-muted-foreground">{coupon.description || t("business.coupons.detail.noDescription", lang)}</p></div></div>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <Info label={t("coupon.detail.type", lang)} value={t(`coupon.typeMap.${coupon.type}`, lang)} />
               <Info label={t("business.coupons.detail.faceValue", lang)} value={`S$${(coupon.valueCents / 100).toFixed(coupon.type === "percentage" ? 1 : 0)}${coupon.type === "percentage" ? t("coupon.detail.discountSuffix", lang) : ""}`} />
@@ -65,20 +65,20 @@ export default async function CouponDetailPage({ params }: { params: Promise<{ i
         {/* 核销漏斗 */}
         <Card>
           <CardContent className="p-4">
-            <h3 className="text-sm font-semibold text-slate-900 mb-3">{t("business.coupons.detail.conversionFunnel", lang)}</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">{t("business.coupons.detail.conversionFunnel", lang)}</h3>
             <div className="flex items-center gap-3">
-              <FunnelStep label={t("coupon.detail.claimed", lang)} value={coupon.claimedCount} color="bg-[#1A6EFF]" />
-              <span className="text-slate-300 text-lg">→</span>
+              <FunnelStep label={t("coupon.detail.claimed", lang)} value={coupon.claimedCount} color="bg-primary" />
+              <span className="text-muted-foreground text-lg">→</span>
               <FunnelStep label={t("business.coupons.detail.redeemed", lang)} value={coupon.usedCount} color="bg-[#16A34A]" />
-              <span className="text-slate-300 text-lg">→</span>
+              <span className="text-muted-foreground text-lg">→</span>
               <div className="text-center">
-                <p className="text-2xl font-bold text-[#FF6B35]">{rate}%</p>
-                <p className="text-[10px] text-slate-400">{t("business.coupons.detail.redemptionRate", lang)}</p>
+                <p className="text-2xl font-bold text-brand">{rate}%</p>
+                <p className="text-[10px] text-muted-foreground">{t("business.coupons.detail.redemptionRate", lang)}</p>
               </div>
             </div>
             {coupon.claimedCount > 0 && coupon.usedCount > 0 && (
-              <div className="mt-3 h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-[#1A6EFF] to-[#16A34A]" style={{ width: `${rate}%` }} />
+              <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-primary to-[#16A34A]" style={{ width: `${rate}%` }} />
               </div>
             )}
           </CardContent>
@@ -90,11 +90,11 @@ export default async function CouponDetailPage({ params }: { params: Promise<{ i
         {/* 最近领取 */}
         {coupon.claims.length > 0 && (
           <>
-            <h3 className="text-sm font-semibold text-slate-900">{t("business.coupons.detail.recentClaims", lang)}</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("business.coupons.detail.recentClaims", lang)}</h3>
             <div className="space-y-1">
               {coupon.claims.map((claim) => (
-                <div key={claim.id} className="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-slate-50 text-xs">
-                  <span className="text-slate-600">{claim.customer.displayName || claim.customer.phone}</span>
+                <div key={claim.id} className="flex items-center justify-between px-3 py-2 bg-card rounded-lg border border-border text-xs">
+                  <span className="text-foreground">{claim.customer.displayName || claim.customer.phone}</span>
                   <Badge variant={claim.status === "used" ? "green" : claim.status === "available" ? "orange" : "slate"} size="sm">
                     {claim.status === "used" ? t("business.coupons.detail.redeemed", lang) : claim.status === "available" ? t("business.claim.status.available", lang) : claim.status}
                   </Badge>
@@ -109,14 +109,14 @@ export default async function CouponDetailPage({ params }: { params: Promise<{ i
 }
 
 function Info({ label, value }: { label: string; value: string }) {
-  return <div className="flex justify-between"><span className="text-slate-400 text-xs">{label}</span><span className="text-slate-900 text-xs font-medium">{value}</span></div>;
+  return <div className="flex justify-between"><span className="text-muted-foreground text-xs">{label}</span><span className="text-foreground text-xs font-medium">{value}</span></div>;
 }
 
 function FunnelStep({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div className="text-center">
       <div className={`w-10 h-10 ${color} rounded-full flex items-center justify-center text-white font-bold mx-auto`}>{value}</div>
-      <p className="text-[10px] text-slate-400 mt-1">{label}</p>
+      <p className="text-[10px] text-muted-foreground mt-1">{label}</p>
     </div>
   );
 }

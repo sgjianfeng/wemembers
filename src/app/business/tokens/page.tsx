@@ -123,15 +123,15 @@ export default async function TokenRechargePage({
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-slate-100">
+      <div className="px-4 py-3 border-b border-border">
         <h1 className="text-lg font-semibold">{t("business.tokens.title", lang)}</h1>
-        <p className="text-xs text-slate-400 mt-0.5">{t("business.tokens.subtitle", lang)}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{t("business.tokens.subtitle", lang)}</p>
       </div>
 
       <div className="px-4 mt-4 space-y-4">
         {/* Balance Cards */}
         <div className="grid grid-cols-2 gap-2">
-          <Card className="bg-gradient-to-b from-[#1A6EFF] to-[#3B82F6] border-0">
+          <Card className="bg-gradient-to-b from-primary to-[#3B82F6] border-0">
             <CardContent className="p-3 text-white">
               <p className="text-xs text-white/60">
                 {lang === "en" ? "Withdrawable" : "可提现"}
@@ -160,10 +160,10 @@ export default async function TokenRechargePage({
               <p className="text-xl font-bold text-amber-700 mt-1">S${(frozen / 100).toFixed(2)}</p>
             </CardContent>
           </Card>
-          <Card className="bg-slate-50 border-0">
+          <Card className="bg-muted/50 border-0">
             <CardContent className="p-3">
-              <p className="text-xs text-slate-400">{t("business.tokens.earned", lang)}</p>
-              <p className="text-xl font-bold text-slate-900 mt-1">
+              <p className="text-xs text-muted-foreground">{t("business.tokens.earned", lang)}</p>
+              <p className="text-xl font-bold text-foreground mt-1">
                 S${((user?.tokenAccount?.totalEarned ?? 0) / 100).toFixed(0)}
               </p>
             </CardContent>
@@ -173,10 +173,10 @@ export default async function TokenRechargePage({
         {/* 分发券结算（平台钱包） */}
         <Card>
           <CardContent className="p-4">
-            <h3 className="text-sm font-semibold text-slate-900 mb-1">
+            <h3 className="text-sm font-semibold text-foreground mb-1">
               {t("tokens.distTitle", lang)}
             </h3>
-            <p className="text-[11px] text-slate-400 mb-3">
+            <p className="text-[11px] text-muted-foreground mb-3">
               {t("business.tokens.stripeTitle", lang)}
             </p>
             <StripeStatusPanel
@@ -191,38 +191,38 @@ export default async function TokenRechargePage({
         </Card>
 
         {/* 自用券：已收款 / 待核销（不进平台可用） */}
-        <Card className="border-slate-100">
+        <Card className="border-border">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-1 h-4 rounded-full bg-slate-500" />
-              <h3 className="text-sm font-semibold text-slate-900">
+              <div className="w-1 h-4 rounded-full bg-muted-foreground" />
+              <h3 className="text-sm font-semibold text-foreground">
                 {t("tokens.selfTitle", lang)}
               </h3>
             </div>
-            <p className="text-[11px] text-slate-400 mb-3">
+            <p className="text-[11px] text-muted-foreground mb-3">
               {t("tokens.selfHint", lang)}
             </p>
             <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-[10px] text-slate-400">
+              <div className="rounded-xl bg-muted/50 p-3">
+                <p className="text-[10px] text-muted-foreground">
                   {t("tokens.selfSold", lang)}
                 </p>
-                <p className="text-xl font-bold text-slate-800 tabular-nums mt-0.5">
+                <p className="text-xl font-bold text-foreground tabular-nums mt-0.5">
                   S${(selfSoldCents / 100).toFixed(2)}
                 </p>
               </div>
-              <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-[10px] text-slate-400">
+              <div className="rounded-xl bg-muted/50 p-3">
+                <p className="text-[10px] text-muted-foreground">
                   {t("tokens.selfPending", lang)}
                 </p>
-                <p className="text-xl font-bold text-slate-600 tabular-nums mt-0.5">
+                <p className="text-xl font-bold text-muted-foreground tabular-nums mt-0.5">
                   S${(selfPendingCents / 100).toFixed(2)}
                 </p>
               </div>
             </div>
             <a
               href="/business/issue-self"
-              className="mt-3 inline-flex text-xs font-medium text-[#1A6EFF]"
+              className="mt-3 inline-flex text-xs font-medium text-primary"
             >
               现金发自用券 →
             </a>
@@ -262,15 +262,15 @@ export default async function TokenRechargePage({
         {/* Transactions */}
         {transactions.length > 0 && (
           <div>
-            <h3 className="text-sm font-semibold text-slate-900 mb-2">{t("business.tokens.transactions", lang)}</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-2">{t("business.tokens.transactions", lang)}</h3>
             <div className="space-y-1">
               {transactions.map((tx) => {
-                const style = consumeTypeLabels[tx.type] || { zh: tx.type, en: tx.type, color: "text-slate-600" };
+                const style = consumeTypeLabels[tx.type] || { zh: tx.type, en: tx.type, color: "text-muted-foreground" };
                 return (
-                  <div key={tx.id} className="flex items-center justify-between px-3 py-2.5 bg-white rounded-lg border border-slate-50">
+                  <div key={tx.id} className="flex items-center justify-between px-3 py-2.5 bg-card rounded-lg border border-border">
                     <div className="min-w-0">
-                      <p className="text-xs text-slate-600 truncate">{tx.description}</p>
-                      <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
+                      <p className="text-xs text-muted-foreground truncate">{tx.description}</p>
+                      <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
                         <Badge variant="slate" size="sm">{lang === "zh" ? style.zh : style.en}</Badge>
                         <span>{timeAgo(tx.createdAt)}</span>
                       </div>

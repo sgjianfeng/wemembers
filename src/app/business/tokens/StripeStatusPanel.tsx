@@ -78,7 +78,7 @@ export function StripeStatusPanel({ initial }: { initial: StripeStatusSnapshot }
       {/* Status headline */}
       {!snap.hasAccount ? (
         <div>
-          <p className="text-xs text-slate-400 mb-2">
+          <p className="text-xs text-muted-foreground mb-2">
             {t("business.tokens.stripeSetupHint")}
           </p>
           <StripeSetupButton label={t("business.tokens.stripeSetup")} />
@@ -90,7 +90,7 @@ export function StripeStatusPanel({ initial }: { initial: StripeStatusSnapshot }
             <p className="text-sm text-green-700 font-medium">
               {t("business.tokens.stripeReady")}
             </p>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               {t("business.tokens.stripeReadyDesc")}
             </p>
           </div>
@@ -102,7 +102,7 @@ export function StripeStatusPanel({ initial }: { initial: StripeStatusSnapshot }
             <p className="text-sm text-blue-700 font-medium">
               {t("business.tokens.stripePartial")}
             </p>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               {t("business.tokens.stripePartialDesc")}
             </p>
           </div>
@@ -114,7 +114,7 @@ export function StripeStatusPanel({ initial }: { initial: StripeStatusSnapshot }
             <p className="text-sm text-amber-700 font-medium">
               {t("business.tokens.stripePending")}
             </p>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               {t("business.tokens.stripePendingDesc")}
             </p>
           </div>
@@ -123,22 +123,22 @@ export function StripeStatusPanel({ initial }: { initial: StripeStatusSnapshot }
 
       {/* Checklist — always clear, reduces misunderstanding */}
       {snap.hasAccount && (
-        <ul className="rounded-xl bg-slate-50 px-3 py-2.5 space-y-1.5 text-xs">
+        <ul className="rounded-xl bg-muted/50 px-3 py-2.5 space-y-1.5 text-xs">
           <li className="flex items-center gap-2">
             <span>{snap.detailsSubmitted ? "✅" : "○"}</span>
-            <span className="text-slate-600">
+            <span className="text-muted-foreground">
               {t("business.tokens.flagDetails")}
             </span>
           </li>
           <li className="flex items-center gap-2">
             <span>{snap.chargesEnabled ? "✅" : "○"}</span>
-            <span className="text-slate-600">
+            <span className="text-muted-foreground">
               {t("business.tokens.flagCharges")}
             </span>
           </li>
           <li className="flex items-center gap-2">
             <span>{snap.payoutsEnabled ? "✅" : "○"}</span>
-            <span className="text-slate-600">
+            <span className="text-muted-foreground">
               {t("business.tokens.flagPayouts")}
             </span>
           </li>
@@ -152,7 +152,7 @@ export function StripeStatusPanel({ initial }: { initial: StripeStatusSnapshot }
             type="button"
             onClick={() => void checkStatus()}
             disabled={checking}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-slate-200 bg-white text-sm text-slate-700 font-medium disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-border bg-card text-sm text-foreground font-medium disabled:opacity-50"
           >
             <RefreshCw
               className={`w-3.5 h-3.5 ${checking ? "animate-spin" : ""}`}
@@ -184,7 +184,7 @@ export function StripeStatusPanel({ initial }: { initial: StripeStatusSnapshot }
               ? "bg-green-50 text-green-700"
               : partial
                 ? "bg-blue-50 text-blue-800"
-                : "bg-slate-50 text-slate-600"
+                : "bg-muted/50 text-muted-foreground"
           }`}
         >
           {msg}

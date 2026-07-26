@@ -168,16 +168,16 @@ export default function BusinessTemplatesPage() {
 
   return (
     <div className="pb-10 min-h-screen">
-      <div className="px-4 py-3 border-b border-slate-100 sticky top-0 bg-white z-10">
+      <div className="px-4 py-3 border-b border-border sticky top-0 bg-card z-10">
         <div className="flex items-center gap-3">
-          <Link href="/business/hub" className="text-xs text-[#1A6EFF] font-medium">
+          <Link href="/business/hub" className="text-xs text-primary font-medium">
             ← {lang === "en" ? "Hub" : "功能仓"}
           </Link>
         </div>
         <h1 className="text-lg font-semibold mt-1">
           {lang === "en" ? "My templates" : "我的模版"}
         </h1>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {lang === "en"
             ? "Copy self-use / exclusive platform templates. Platform fee locked at 2%."
             : "拷贝自用/独享平台模版并改参数。平台服务费固定 2% 不可改。"}
@@ -187,13 +187,13 @@ export default function BusinessTemplatesPage() {
       <div className="px-4 mt-4 space-y-6">
         {/* 我的 */}
         <section>
-          <h2 className="text-sm font-semibold text-slate-800 mb-2">
+          <h2 className="text-sm font-semibold text-foreground mb-2">
             {lang === "en" ? "Saved" : "已保存"}
           </h2>
           {loading ? (
-            <p className="text-xs text-slate-400">…</p>
+            <p className="text-xs text-muted-foreground">…</p>
           ) : mine.length === 0 ? (
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted-foreground">
               {lang === "en"
                 ? "None yet — copy a platform template below."
                 : "暂无。请从下方拷贝平台模版。"}
@@ -201,14 +201,14 @@ export default function BusinessTemplatesPage() {
           ) : (
             <ul className="space-y-2">
               {mine.map((m) => (
-                <Card key={m.id} className="border-slate-100">
+                <Card key={m.id} className="border-border">
                   <CardContent className="p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900">
+                        <p className="text-sm font-semibold text-foreground">
                           {m.name}
                         </p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
                           {m.baseNameZh}
                           {m.isVoucher && m.discountPercent != null
                             ? ` · ${lang === "en" ? "discount" : "折扣"} ${m.discountPercent}%`
@@ -217,7 +217,7 @@ export default function BusinessTemplatesPage() {
                             ? ` · ${m.exclusiveTotalPercent}% = ${m.exclusiveSmallPrizePercent}+${m.exclusivePlatformFeePercent}+${m.exclusiveGrandPoolPercent}`
                             : ""}
                         </p>
-                        <p className="text-[10px] text-slate-400">
+                        <p className="text-[10px] text-muted-foreground">
                           {m.enabledTiers.map((a) => `S$${a}`).join(" / ")}
                         </p>
                       </div>
@@ -230,7 +230,7 @@ export default function BusinessTemplatesPage() {
                         </Button>
                         <button
                           type="button"
-                          className="text-[10px] text-slate-400"
+                          className="text-[10px] text-muted-foreground"
                           onClick={() => archive(m.id)}
                         >
                           {lang === "en" ? "Archive" : "归档"}
@@ -246,7 +246,7 @@ export default function BusinessTemplatesPage() {
 
         {/* 平台可拷贝 */}
         <section>
-          <h2 className="text-sm font-semibold text-slate-800 mb-2">
+          <h2 className="text-sm font-semibold text-foreground mb-2">
             {lang === "en" ? "Copy from platform" : "从平台拷贝"}
           </h2>
           <div className="space-y-2">
@@ -255,12 +255,12 @@ export default function BusinessTemplatesPage() {
                 key={c.id}
                 type="button"
                 onClick={() => openCopy(c)}
-                className="w-full text-left rounded-2xl border border-slate-100 bg-white p-3 hover:border-[#1A6EFF]/40 transition-colors"
+                className="w-full text-left rounded-2xl border border-border bg-card p-3 hover:border-primary/40 transition-colors"
               >
                 <p className="text-sm font-semibold">
                   {c.icon} {lang === "en" ? c.nameEn : c.nameZh}
                 </p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+                <p className="text-[11px] text-muted-foreground mt-0.5">
                   {lang === "en" ? c.taglineEn : c.taglineZh}
                 </p>
               </button>
@@ -276,18 +276,18 @@ export default function BusinessTemplatesPage() {
       {/* 拷贝弹层 */}
       {editing && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 max-h-[90vh] overflow-y-auto">
+          <div className="bg-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 max-h-[90vh] overflow-y-auto">
             <h3 className="text-base font-semibold">
               {lang === "en" ? "Copy template" : "拷贝模版"}
             </h3>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               {editing.icon}{" "}
               {lang === "en" ? editing.nameEn : editing.nameZh}
             </p>
 
             <div className="mt-4 space-y-3">
               <div>
-                <label className="text-xs text-slate-500">
+                <label className="text-xs text-muted-foreground">
                   {lang === "en" ? "Name" : "模版名称"}
                 </label>
                 <Input
@@ -299,7 +299,7 @@ export default function BusinessTemplatesPage() {
 
               {editing.kind === "voucher_discount" ? (
                 <div>
-                  <label className="text-xs text-slate-500">
+                  <label className="text-xs text-muted-foreground">
                     {lang === "en"
                       ? `Discount % (${editing.discountPercentMin}–${editing.discountPercentMax})`
                       : `折扣率 %（${editing.discountPercentMin}–${editing.discountPercentMax}）`}
@@ -312,7 +312,7 @@ export default function BusinessTemplatesPage() {
                     onChange={(e) => setDiscount(Number(e.target.value))}
                     className="mt-1"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">
+                  <p className="text-[10px] text-muted-foreground mt-1">
                     {lang === "en"
                       ? `Pay ${100 - discount} get 100`
                       : `付 ${100 - discount} 得 100`}
@@ -321,7 +321,7 @@ export default function BusinessTemplatesPage() {
               ) : (
                 <>
                   <div>
-                    <label className="text-xs text-slate-500">
+                    <label className="text-xs text-muted-foreground">
                       {lang === "en" ? "Total fee %" : "总扣点 %"}
                     </label>
                     <Input
@@ -334,7 +334,7 @@ export default function BusinessTemplatesPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500">
+                    <label className="text-xs text-muted-foreground">
                       {lang === "en" ? "Small prize %" : "小奖比例 %"}
                     </label>
                     <Input
@@ -347,7 +347,7 @@ export default function BusinessTemplatesPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500">
+                    <label className="text-xs text-muted-foreground">
                       {lang === "en" ? "Platform fee % (locked)" : "平台服务费 %（不可改）"}
                     </label>
                     <Input
@@ -358,7 +358,7 @@ export default function BusinessTemplatesPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500">
+                    <label className="text-xs text-muted-foreground">
                       {lang === "en" ? "Grand prize %" : "大奖比例 %"}
                     </label>
                     <Input

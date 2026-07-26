@@ -18,7 +18,7 @@ export function StoreCreateForm() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="w-full p-3 border-2 border-dashed border-slate-200 rounded-xl text-sm text-slate-400 hover:border-[#1A6EFF] hover:text-[#1A6EFF]"
+        className="w-full p-3 border-2 border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-primary hover:text-primary"
       >
         + 新增门店
       </button>
@@ -70,7 +70,7 @@ export function StoreCreateForm() {
           </Button>
           <button
             onClick={() => setOpen(false)}
-            className="flex-1 h-10 text-sm text-slate-500 bg-slate-100 rounded-full"
+            className="flex-1 h-10 text-sm text-foreground bg-muted rounded-full"
           >
             取消
           </button>

@@ -80,7 +80,7 @@ export function CampaignShare({ slug, campaignName, sellerId, campaignId }: Prop
         </div>
 
         {/* white bg kept intentionally — QR codes need light-on-dark contrast to scan */}
-        <div className="flex justify-center bg-white p-3 rounded-xl border border-border">
+        <div className="flex justify-center bg-card p-3 rounded-xl border border-border">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={qrUrl} alt="Campaign QR" className="w-44 h-44" />
         </div>

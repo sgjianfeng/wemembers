@@ -61,14 +61,14 @@ export function StoreSwitcher({
 
   if (locked || stores.length === 1) {
     return (
-      <div className="flex items-center gap-1.5 rounded-full bg-slate-50 border border-slate-100 px-2.5 py-1 max-w-[160px]">
+      <div className="flex items-center gap-1.5 rounded-full bg-muted/50 border border-border px-2.5 py-1 max-w-[160px]">
         <BrandAvatar
           src={resolveStoreLogo(current?.logoUrl, businessLogo)}
           name={current?.name}
           size={18}
           rounded="lg"
         />
-        <span className="text-[11px] font-medium text-slate-700 truncate">
+        <span className="text-[11px] font-medium text-foreground truncate">
           {current?.name || "—"}
         </span>
       </div>
@@ -98,8 +98,8 @@ export function StoreSwitcher({
         onClick={() => setOpen((v) => !v)}
         disabled={loading}
         className={cn(
-          "flex items-center gap-1 rounded-full bg-slate-50 border border-slate-100 px-2.5 py-1 max-w-[180px]",
-          "text-[11px] font-medium text-slate-700 hover:bg-slate-100 transition-colors",
+          "flex items-center gap-1 rounded-full bg-muted/50 border border-border px-2.5 py-1 max-w-[180px]",
+          "text-[11px] font-medium text-foreground hover:bg-muted transition-colors",
           loading && "opacity-60"
         )}
       >
@@ -110,7 +110,7 @@ export function StoreSwitcher({
           rounded="lg"
         />
         <span className="truncate">{current?.name || "—"}</span>
-        <span className="text-slate-400 shrink-0">▾</span>
+        <span className="text-muted-foreground shrink-0">▾</span>
       </button>
 
       {open && (
@@ -121,8 +121,8 @@ export function StoreSwitcher({
             aria-label="close"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 top-full mt-1 z-50 w-56 rounded-xl border border-slate-100 bg-white shadow-lg py-1 max-h-64 overflow-auto">
-            <p className="px-3 py-1.5 text-[10px] text-slate-400 font-medium">
+          <div className="absolute right-0 top-full mt-1 z-50 w-56 rounded-xl border border-border bg-card shadow-lg py-1 max-h-64 overflow-auto">
+            <p className="px-3 py-1.5 text-[10px] text-muted-foreground font-medium">
               {lang === "en" ? "Working store" : "当前工作门店"}
             </p>
             {stores.map((s) => (
@@ -131,8 +131,8 @@ export function StoreSwitcher({
                 type="button"
                 onClick={() => select(s.id)}
                 className={cn(
-                  "w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2",
-                  s.id === current?.id && "bg-blue-50 text-[#1A6EFF] font-semibold"
+                  "w-full text-left px-3 py-2 text-xs hover:bg-muted/50 flex items-center gap-2",
+                  s.id === current?.id && "bg-blue-50 text-primary font-semibold"
                 )}
               >
                 <BrandAvatar
@@ -144,7 +144,7 @@ export function StoreSwitcher({
                 <span className="min-w-0 flex-1">
                   <span className="block truncate">{s.name}</span>
                   {s.address && (
-                    <span className="block text-[10px] text-slate-400 truncate mt-0.5">
+                    <span className="block text-[10px] text-muted-foreground truncate mt-0.5">
                       {s.address}
                     </span>
                   )}
@@ -153,7 +153,7 @@ export function StoreSwitcher({
             ))}
             <a
               href="/business/stores"
-              className="block px-3 py-2 text-xs text-[#1A6EFF] border-t border-slate-50"
+              className="block px-3 py-2 text-xs text-primary border-t border-border"
             >
               {lang === "en" ? "Manage stores →" : "管理门店 →"}
             </a>

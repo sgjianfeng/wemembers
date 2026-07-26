@@ -66,7 +66,7 @@ export function StoreEditForm({ storeId, initial, lang }: Props) {
           setMsg(null);
           setErr(null);
         }}
-        className="text-xs font-medium text-[#1A6EFF] hover:underline"
+        className="text-xs font-medium text-primary hover:underline"
       >
         {lang === "en" ? "Edit name / address / phone" : "编辑名称 / 地址 / 电话"}
       </button>
@@ -74,9 +74,9 @@ export function StoreEditForm({ storeId, initial, lang }: Props) {
   }
 
   return (
-    <Card className="mt-2 border-slate-200">
+    <Card className="mt-2 border-border">
       <CardContent className="p-4 space-y-3">
-        <p className="text-sm font-semibold text-slate-900">
+        <p className="text-sm font-semibold text-foreground">
           {lang === "en" ? "Edit store" : "编辑门店信息"}
         </p>
         <Input
@@ -116,7 +116,7 @@ export function StoreEditForm({ storeId, initial, lang }: Props) {
               setPhone(initial.phone);
               setErr(null);
             }}
-            className="flex-1 h-10 text-sm text-slate-500 bg-slate-100 rounded-full"
+            className="flex-1 h-10 text-sm text-muted-foreground bg-muted rounded-full"
           >
             {lang === "en" ? "Cancel" : "取消"}
           </button>

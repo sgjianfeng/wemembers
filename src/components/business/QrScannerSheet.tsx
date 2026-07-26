@@ -139,7 +139,7 @@ export function QrScannerSheet({
             <button
               type="button"
               onClick={() => void close()}
-              className="p-2 rounded-full bg-white/10 hover:bg-white/20"
+              className="p-2 rounded-full bg-card/10 hover:bg-card/20"
               aria-label={lang === "en" ? "Close" : "关闭"}
             >
               <X className="w-5 h-5" />

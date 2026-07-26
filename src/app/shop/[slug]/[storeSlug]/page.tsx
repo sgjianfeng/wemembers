@@ -87,7 +87,7 @@ export default async function CompanyStorePage({
 
       <div className="bg-gradient-to-b from-primary to-primary/80 px-4 pt-8 pb-8 text-primary-foreground">
         <div className="text-center">
-          <div className="mx-auto w-20 h-20 rounded-2xl bg-white shadow-lg flex items-center justify-center p-1.5">
+          <div className="mx-auto w-20 h-20 rounded-2xl bg-card shadow-lg flex items-center justify-center p-1.5">
             <BrandAvatar
               src={resolveStoreLogo(null, business.businessLogo)}
               name={store.name}

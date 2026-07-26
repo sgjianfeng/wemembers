@@ -116,14 +116,14 @@ export default function CreateCouponPage() {
   return (
     <div className="pb-4 min-h-screen flex flex-col">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
-        <button onClick={() => step > 1 ? setStep((step - 1) as Step) : router.back()} className="text-sm text-slate-500">← 返回</button>
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
+        <button onClick={() => step > 1 ? setStep((step - 1) as Step) : router.back()} className="text-sm text-muted-foreground">← 返回</button>
         <div className="flex items-center gap-1">
           {[1, 2, 3].map((s) => (
-            <div key={s} className={`w-2 h-2 rounded-full ${s <= step ? "bg-[#1A6EFF]" : "bg-slate-200"}`} />
+            <div key={s} className={`w-2 h-2 rounded-full ${s <= step ? "bg-primary" : "bg-muted"}`} />
           ))}
         </div>
-        <span className="text-xs text-slate-400">免费创建</span>
+        <span className="text-xs text-muted-foreground">免费创建</span>
       </div>
 
       <div className="flex-1 px-4 overflow-auto">
@@ -145,9 +145,9 @@ export default function CreateCouponPage() {
             {/* 活动选择器 */}
             {campaigns.length > 0 && (
               <div className="mt-3">
-                <label className="block text-sm font-medium text-slate-700 mb-1">📅 所属活动 (可选)</label>
+                <label className="block text-sm font-medium text-foreground mb-1">📅 所属活动 (可选)</label>
                 <select value={campaignId} onChange={(e) => setCampaignId(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-slate-200 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#1A6EFF]">
+                  className="w-full h-10 px-3 rounded-lg border border-input text-sm text-foreground bg-background focus:outline-none focus:ring-2 focus:ring-primary">
                   <option value="">不关联活动</option>
                   {campaigns.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
@@ -156,8 +156,8 @@ export default function CreateCouponPage() {
               </div>
             )}
 
-            <h2 className="text-lg font-semibold text-slate-900 mb-1 mt-4">选择券类型</h2>
-            <p className="text-xs text-slate-400 mb-4">选择最适合的代金券形式</p>
+            <h2 className="text-lg font-semibold text-foreground mb-1 mt-4">选择券类型</h2>
+            <p className="text-xs text-muted-foreground mb-4">选择最适合的代金券形式</p>
 
             <div className="space-y-2">
               {types.map((t) => (
@@ -165,16 +165,16 @@ export default function CreateCouponPage() {
                   key={t.value}
                   onClick={() => setCouponType(t.value)}
                   className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                    couponType === t.value ? "border-[#1A6EFF] bg-blue-50" : "border-slate-100 hover:border-slate-200"
+                    couponType === t.value ? "border-primary bg-blue-50" : "border-border hover:border-border"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">{t.icon}</span>
                     <div>
-                      <p className="text-sm font-semibold text-slate-900">{t.label}</p>
-                      <p className="text-xs text-slate-500">{t.desc}</p>
+                      <p className="text-sm font-semibold text-foreground">{t.label}</p>
+                      <p className="text-xs text-muted-foreground">{t.desc}</p>
                     </div>
-                    {couponType === t.value && <span className="ml-auto text-[#1A6EFF] text-lg">✓</span>}
+                    {couponType === t.value && <span className="ml-auto text-primary text-lg">✓</span>}
                   </div>
                 </button>
               ))}
@@ -197,18 +197,18 @@ export default function CreateCouponPage() {
         {/* Step 2: Rules */}
         {step === 2 && (
           <div className="mt-4">
-            <h2 className="text-lg font-semibold text-slate-900 mb-1">设置规则</h2>
-            <p className="text-xs text-slate-400 mb-4">定义使用条件和限制</p>
+            <h2 className="text-lg font-semibold text-foreground mb-1">设置规则</h2>
+            <p className="text-xs text-muted-foreground mb-4">定义使用条件和限制</p>
 
             <div className="space-y-3">
               <Input label="最低消费 (元，0=无)" type="number" value={minSpend} onChange={(e) => setMinSpend(Number(e.target.value))} prefix="S$" />
               <Input label="有效期 (天)" type="number" value={validDays} onChange={(e) => setValidDays(Number(e.target.value))} />
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">发放数量</label>
+                <label className="block text-sm font-medium text-foreground mb-2">发放数量</label>
                 <div className="flex gap-2">
-                  <button onClick={() => setUnlimited(false)} className={`flex-1 py-2 rounded-lg text-sm font-medium ${!unlimited ? "bg-[#1A6EFF] text-white" : "bg-slate-100 text-slate-500"}`}>限量</button>
-                  <button onClick={() => setUnlimited(true)} className={`flex-1 py-2 rounded-lg text-sm font-medium ${unlimited ? "bg-[#1A6EFF] text-white" : "bg-slate-100 text-slate-500"}`}>不限量</button>
+                  <button onClick={() => setUnlimited(false)} className={`flex-1 py-2 rounded-lg text-sm font-medium ${!unlimited ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>限量</button>
+                  <button onClick={() => setUnlimited(true)} className={`flex-1 py-2 rounded-lg text-sm font-medium ${unlimited ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>不限量</button>
                 </div>
                 {!unlimited && (
                   <Input className="mt-2" type="number" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} />
@@ -218,21 +218,21 @@ export default function CreateCouponPage() {
               <Input label="每人限领" type="number" value={perCustomer} onChange={(e) => setPerCustomer(Number(e.target.value))} />
 
               <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-slate-700">允许转赠</span>
-                <button onClick={() => setIsGiftable(!isGiftable)} className={`w-12 h-6 rounded-full transition-colors ${isGiftable ? "bg-[#1A6EFF]" : "bg-slate-200"}`}>
-                  <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${isGiftable ? "translate-x-6" : "translate-x-0.5"}`} />
+                <span className="text-sm text-foreground">允许转赠</span>
+                <button onClick={() => setIsGiftable(!isGiftable)} className={`w-12 h-6 rounded-full transition-colors ${isGiftable ? "bg-primary" : "bg-muted"}`}>
+                  <div className={`w-5 h-5 bg-card rounded-full shadow transition-transform ${isGiftable ? "translate-x-6" : "translate-x-0.5"}`} />
                 </button>
               </div>
 
               {/* 推广分销设置 */}
-              <div className="pt-3 border-t border-slate-100">
+              <div className="pt-3 border-t border-border">
                 <div className="flex items-center justify-between py-2">
                   <div>
-                    <span className="text-sm font-medium text-slate-700">💸 允许推广分销</span>
-                    <p className="text-[10px] text-slate-400 mt-0.5">客户分享此券赚佣金，商家按效果付费</p>
+                    <span className="text-sm font-medium text-foreground">💸 允许推广分销</span>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">客户分享此券赚佣金，商家按效果付费</p>
                   </div>
-                  <button onClick={() => setAllowPromotion(!allowPromotion)} className={`w-12 h-6 rounded-full transition-colors ${allowPromotion ? "bg-green-500" : "bg-slate-200"}`}>
-                    <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${allowPromotion ? "translate-x-6" : "translate-x-0.5"}`} />
+                  <button onClick={() => setAllowPromotion(!allowPromotion)} className={`w-12 h-6 rounded-full transition-colors ${allowPromotion ? "bg-green-500" : "bg-muted"}`}>
+                    <div className={`w-5 h-5 bg-card rounded-full shadow transition-transform ${allowPromotion ? "translate-x-6" : "translate-x-0.5"}`} />
                   </button>
                 </div>
 
@@ -240,14 +240,14 @@ export default function CreateCouponPage() {
                   <div className="mt-3 space-y-3 p-3 bg-green-50 rounded-xl">
                     {/* 奖励类型选择 */}
                     <div>
-                      <label className="text-xs font-medium text-slate-700 mb-1 block">推广奖励类型</label>
+                      <label className="text-xs font-medium text-foreground mb-1 block">推广奖励类型</label>
                       <div className="flex gap-1.5">
                         {([
                           { key: "cash", icon: "💰", label: "现金佣金" },
                           { key: "item", icon: "🎁", label: "实物奖励" },
                           { key: "lottery", icon: "🎰", label: "幸运抽奖" },
                         ] as const).map((t) => (
-                          <button key={t.key} onClick={() => setRewardType(t.key)} className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${rewardType === t.key ? "bg-green-500 text-white" : "bg-white text-slate-500"}`}>
+                          <button key={t.key} onClick={() => setRewardType(t.key)} className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${rewardType === t.key ? "bg-green-500 text-white" : "bg-card text-muted-foreground"}`}>
                             {t.icon} {t.label}
                           </button>
                         ))}
@@ -258,10 +258,10 @@ export default function CreateCouponPage() {
                     {rewardType === "cash" && (
                       <>
                         <div>
-                          <label className="text-xs font-medium text-slate-700 mb-1 block">佣金方式</label>
+                          <label className="text-xs font-medium text-foreground mb-1 block">佣金方式</label>
                           <div className="flex gap-2">
-                            <button onClick={() => setCommissionType("percentage")} className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${commissionType === "percentage" ? "bg-green-500 text-white" : "bg-white text-slate-500"}`}>按比例</button>
-                            <button onClick={() => setCommissionType("fixed")} className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${commissionType === "fixed" ? "bg-green-500 text-white" : "bg-white text-slate-500"}`}>固定金额</button>
+                            <button onClick={() => setCommissionType("percentage")} className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${commissionType === "percentage" ? "bg-green-500 text-white" : "bg-card text-muted-foreground"}`}>按比例</button>
+                            <button onClick={() => setCommissionType("fixed")} className={`flex-1 py-1.5 rounded-lg text-xs font-medium ${commissionType === "fixed" ? "bg-green-500 text-white" : "bg-card text-muted-foreground"}`}>固定金额</button>
                           </div>
                         </div>
                         <Input label={commissionType === "percentage" ? "佣金比例 (%)" : "固定佣金 (分)"} type="number" value={commissionValue} onChange={(e) => setCommissionValue(Number(e.target.value))} prefix={commissionType === "percentage" ? "%" : "S$"} />
@@ -284,9 +284,9 @@ export default function CreateCouponPage() {
 
                     {/* 幸运抽奖 */}
                     {rewardType === "lottery" && (
-                      <div className="bg-white rounded-lg p-3">
-                        <p className="text-xs font-medium text-slate-700 mb-2">🎰 抽奖说明</p>
-                        <ul className="text-[10px] text-slate-500 space-y-1">
+                      <div className="bg-card rounded-lg p-3">
+                        <p className="text-xs font-medium text-foreground mb-2">🎰 抽奖说明</p>
+                        <ul className="text-[10px] text-muted-foreground space-y-1">
                           <li>• 推广者每成功推广核销一张，获得1次抽奖机会</li>
                           <li>• 中奖概率由商家设置的奖池权重决定</li>
                           <li>• 发布券后可在券详情页设置奖池</li>
@@ -298,9 +298,9 @@ export default function CreateCouponPage() {
                     {rewardType === "cash" && (
                       <>
                         <div className="flex items-center justify-between py-1">
-                          <span className="text-xs text-slate-600">允许推广者囤货</span>
-                          <button onClick={() => setAllowBulk(!allowBulk)} className={`w-10 h-5 rounded-full transition-colors ${allowBulk ? "bg-green-500" : "bg-slate-200"}`}>
-                            <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${allowBulk ? "translate-x-5" : "translate-x-0.5"}`} />
+                          <span className="text-xs text-muted-foreground">允许推广者囤货</span>
+                          <button onClick={() => setAllowBulk(!allowBulk)} className={`w-10 h-5 rounded-full transition-colors ${allowBulk ? "bg-green-500" : "bg-muted"}`}>
+                            <div className={`w-4 h-4 bg-card rounded-full shadow transition-transform ${allowBulk ? "translate-x-5" : "translate-x-0.5"}`} />
                           </button>
                         </div>
                         {allowBulk && <Input label="囤货折扣 (折)" type="number" value={bulkDiscount} onChange={(e) => setBulkDiscount(Number(e.target.value))} prefix="折" />}
@@ -311,28 +311,28 @@ export default function CreateCouponPage() {
               </div>
 
               {/* 领券赠品设置 */}
-              <div className="pt-3 border-t border-slate-100">
+              <div className="pt-3 border-t border-border">
                 <div className="flex items-center justify-between py-2">
                   <div>
-                    <span className="text-sm font-medium text-slate-700">🎀 领券赠好礼</span>
-                    <p className="text-[10px] text-slate-400 mt-0.5">顾客领取此券时额外获得赠品，提升领取率</p>
+                    <span className="text-sm font-medium text-foreground">🎀 领券赠好礼</span>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">顾客领取此券时额外获得赠品，提升领取率</p>
                   </div>
-                  <button onClick={() => setGiftType(giftType === "none" ? "points" : "none")} className={`w-12 h-6 rounded-full transition-colors ${giftType !== "none" ? "bg-pink-500" : "bg-slate-200"}`}>
-                    <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${giftType !== "none" ? "translate-x-6" : "translate-x-0.5"}`} />
+                  <button onClick={() => setGiftType(giftType === "none" ? "points" : "none")} className={`w-12 h-6 rounded-full transition-colors ${giftType !== "none" ? "bg-pink-500" : "bg-muted"}`}>
+                    <div className={`w-5 h-5 bg-card rounded-full shadow transition-transform ${giftType !== "none" ? "translate-x-6" : "translate-x-0.5"}`} />
                   </button>
                 </div>
 
                 {giftType !== "none" && (
                   <div className="mt-1 space-y-3 p-3 bg-pink-50 rounded-xl">
                     <div>
-                      <label className="text-xs font-medium text-slate-700 mb-1 block">赠品类型</label>
+                      <label className="text-xs font-medium text-foreground mb-1 block">赠品类型</label>
                       <div className="flex gap-1.5">
                         {([
                           { key: "points", icon: "⭐", label: "积分" },
                           { key: "item", icon: "🎁", label: "实物" },
                           { key: "lottery", icon: "🎰", label: "抽奖" },
                         ] as const).map((t) => (
-                          <button key={t.key} onClick={() => setGiftType(t.key)} className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${giftType === t.key ? "bg-pink-500 text-white" : "bg-white text-slate-500"}`}>
+                          <button key={t.key} onClick={() => setGiftType(t.key)} className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${giftType === t.key ? "bg-pink-500 text-white" : "bg-card text-muted-foreground"}`}>
                             {t.icon} {t.label}
                           </button>
                         ))}
@@ -354,14 +354,14 @@ export default function CreateCouponPage() {
                     )}
 
                     {giftType === "lottery" && (
-                      <div className="bg-white rounded-lg p-3">
-                        <p className="text-xs font-medium text-slate-700 mb-2">🎰 奖池配置</p>
+                      <div className="bg-card rounded-lg p-3">
+                        <p className="text-xs font-medium text-foreground mb-2">🎰 奖池配置</p>
                         {giftLotteryPrizes.map((prize, i) => (
                           <div key={i} className="flex items-center gap-2 mb-1.5 text-xs">
                             <span>{prize.icon}</span>
-                            <span className="flex-1 text-slate-600">{prize.name}</span>
-                            <span className="text-slate-400">权重</span>
-                            <input type="number" value={prize.weight} onChange={(e) => { const p = [...giftLotteryPrizes]; p[i].weight = Number(e.target.value); setGiftLotteryPrizes(p); }} className="w-12 h-6 px-1 rounded border border-slate-200 text-center text-xs" />
+                            <span className="flex-1 text-muted-foreground">{prize.name}</span>
+                            <span className="text-muted-foreground">权重</span>
+                            <input type="number" value={prize.weight} onChange={(e) => { const p = [...giftLotteryPrizes]; p[i].weight = Number(e.target.value); setGiftLotteryPrizes(p); }} className="w-12 h-6 px-1 rounded border border-border text-center text-xs" />
                           </div>
                         ))}
                       </div>
@@ -376,27 +376,27 @@ export default function CreateCouponPage() {
         {/* Step 3: Preview */}
         {step === 3 && (
           <div className="mt-4">
-            <h2 className="text-lg font-semibold text-slate-900 mb-1">确认发布</h2>
-            <p className="text-xs text-slate-400 mb-4">预览券在客户端的展示效果</p>
+            <h2 className="text-lg font-semibold text-foreground mb-1">确认发布</h2>
+            <p className="text-xs text-muted-foreground mb-4">预览券在客户端的展示效果</p>
 
             {/* Preview Card */}
-            <Card className="border-l-4 border-l-[#FF6B35]">
+            <Card className="border-l-4 border-l-brand">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-slate-400">预览效果</p>
-                  <span className="text-[10px] text-slate-300">客户视角</span>
+                  <p className="text-xs text-muted-foreground">预览效果</p>
+                  <span className="text-[10px] text-muted-foreground">客户视角</span>
                 </div>
-                <div className="border-t border-dashed border-slate-100 pt-3">
-                  <p className="text-3xl font-bold text-[#FF6B35]">{previewCoupon.display}</p>
-                  <p className="text-sm font-medium text-slate-900 mt-1">{previewCoupon.title}</p>
+                <div className="border-t border-dashed border-border pt-3">
+                  <p className="text-3xl font-bold text-brand">{previewCoupon.display}</p>
+                  <p className="text-sm font-medium text-foreground mt-1">{previewCoupon.title}</p>
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="text-xs text-slate-500">{previewCoupon.pointsRequired}⭐ 可领取</span>
-                    <span className="text-xs text-slate-400">·</span>
-                    <span className="text-xs text-slate-500">{validDays}天有效期</span>
+                    <span className="text-xs text-muted-foreground">{previewCoupon.pointsRequired}⭐ 可领取</span>
+                    <span className="text-xs text-muted-foreground">·</span>
+                    <span className="text-xs text-muted-foreground">{validDays}天有效期</span>
                   </div>
-                  <div className="mt-3 pt-3 border-t border-dashed border-slate-100 flex gap-2">
-                    <span className="px-3 py-1.5 bg-[#1A6EFF] text-white text-xs rounded-full">立即领取</span>
-                    {isGiftable && <span className="px-3 py-1.5 bg-slate-100 text-slate-500 text-xs rounded-full">🎁 转赠</span>}
+                  <div className="mt-3 pt-3 border-t border-dashed border-border flex gap-2">
+                    <span className="px-3 py-1.5 bg-primary text-white text-xs rounded-full">立即领取</span>
+                    {isGiftable && <span className="px-3 py-1.5 bg-muted text-muted-foreground text-xs rounded-full">🎁 转赠</span>}
                   </div>
                 </div>
               </CardContent>
@@ -447,7 +447,7 @@ export default function CreateCouponPage() {
             )}
 
             {/* Summary */}
-            <div className="mt-4 bg-slate-50 rounded-xl p-4 space-y-2">
+            <div className="mt-4 bg-muted/50 rounded-xl p-4 space-y-2">
               {[
                 { label: "券类型", value: types.find(t => t.value === couponType)?.label },
                 { label: "券标题", value: title || "(未填写)" },
@@ -461,8 +461,8 @@ export default function CreateCouponPage() {
 
               ].map((item) => (
                 <div key={item.label} className="flex justify-between text-xs">
-                  <span className="text-slate-500">{item.label}</span>
-                  <span className="text-slate-900 font-medium">{item.value}</span>
+                  <span className="text-muted-foreground">{item.label}</span>
+                  <span className="text-foreground font-medium">{item.value}</span>
                 </div>
               ))}
             </div>
@@ -473,7 +473,7 @@ export default function CreateCouponPage() {
       </div>
 
       {/* Bottom CTA */}
-      <div className="px-4 py-3 border-t border-slate-100 bg-white">
+      <div className="px-4 py-3 border-t border-border bg-card">
         {step < 3 ? (
           <Button className="w-full" size="lg" onClick={() => setStep((step + 1) as Step)}>
             下一步

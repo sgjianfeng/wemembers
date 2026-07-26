@@ -31,16 +31,16 @@ export default async function LuckyDrawPage() {
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
         <div>
           <h1 className="text-lg font-semibold">{t("business.luckyDraw.title", lang)}</h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {t("business.luckyDraw.subtitle", lang)}
           </p>
         </div>
         <Link
           href="/business/campaigns/new?type=lucky_draw"
-          className="px-3 py-1.5 bg-[#1A6EFF] text-white text-xs rounded-full"
+          className="px-3 py-1.5 bg-primary text-primary-foreground text-xs rounded-full"
         >
           {t("business.luckyDraw.create", lang)}
         </Link>
@@ -60,14 +60,14 @@ export default async function LuckyDrawPage() {
 
           return (
             <Link key={c.id} href={`/business/campaigns/${c.id}`}>
-              <Card className="hover:border-[#1A6EFF]/30">
+              <Card className="hover:border-primary/30">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-2xl">🎰</span>
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">{c.name}</p>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-sm font-semibold text-foreground">{c.name}</p>
+                        <p className="text-xs text-muted-foreground">
                           {c.startDate.toLocaleDateString(dateLocale)} ~ {c.endDate.toLocaleDateString(dateLocale)}
                           {c.drawDate && ` · ${c.drawDate.toLocaleDateString(dateLocale)} ${lang === "zh" ? "开奖" : "Draw"}`}
                         </p>
@@ -76,7 +76,7 @@ export default async function LuckyDrawPage() {
                     <Badge variant={sb.variant}>{sb.label}</Badge>
                   </div>
 
-                  <div className="flex items-center gap-3 text-xs text-slate-500">
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span>🎁 {prizeCount} {t("business.luckyDraw.prizes", lang)}</span>
                     <span>👤 {c.entryCount} {t("business.luckyDraw.entries", lang)}</span>
                     {c.minSpendCents && <span>💰 {t("business.luckyDraw.minSpend", lang, { amount: c.minSpendCents / 100 })}</span>}
@@ -88,15 +88,15 @@ export default async function LuckyDrawPage() {
         })}
 
         {campaigns.length === 0 && (
-          <div className="text-center py-16 text-slate-400">
+          <div className="text-center py-16 text-muted-foreground">
             <p className="text-5xl mb-4">🎰</p>
             <p className="text-sm">{t("business.luckyDraw.noData", lang)}</p>
-            <p className="text-xs mt-1 text-slate-300">
+            <p className="text-xs mt-1 text-muted-foreground">
               {t("business.luckyDraw.noDataHint", lang)}
             </p>
             <Link
               href="/business/campaigns/new?type=lucky_draw"
-              className="inline-block mt-4 px-6 py-2 bg-[#1A6EFF] text-white text-sm rounded-full"
+              className="inline-block mt-4 px-6 py-2 bg-primary text-primary-foreground text-sm rounded-full"
             >
               {t("business.luckyDraw.firstCampaign", lang)}
             </Link>

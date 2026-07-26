@@ -61,7 +61,7 @@ export function StoreStaffForm({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-xs font-medium text-[#1A6EFF] hover:underline"
+        className="text-xs font-medium text-primary hover:underline"
       >
         {lang === "en" ? "+ Add staff" : "+ 添加店员"}
       </button>
@@ -69,12 +69,12 @@ export function StoreStaffForm({
   }
 
   return (
-    <Card className="mt-2 border-slate-200">
+    <Card className="mt-2 border-border">
       <CardContent className="p-3 space-y-2">
-        <p className="text-sm font-semibold text-slate-900">
+        <p className="text-sm font-semibold text-foreground">
           {lang === "en" ? "Add store staff" : "添加本店店员"}
         </p>
-        <p className="text-[11px] text-slate-400 leading-relaxed">
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
           {lang === "en"
             ? "Phone login · redeem only. Optional password (min 6)."
             : "手机号登录 · 仅核销本店。建议设初始密码（≥6 位），也可用短信验证码登录后设密。"}
@@ -108,7 +108,7 @@ export function StoreStaffForm({
           </Button>
           <button
             type="button"
-            className="flex-1 h-9 text-xs text-slate-500 bg-slate-100 rounded-full"
+            className="flex-1 h-9 text-xs text-muted-foreground bg-muted rounded-full"
             onClick={() => setOpen(false)}
           >
             {lang === "en" ? "Cancel" : "取消"}

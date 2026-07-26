@@ -85,13 +85,13 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
 
       <div className="bg-gradient-to-b from-primary to-primary/80 px-4 pt-8 pb-8 text-primary-foreground">
         <div className="text-center">
-          <div className="mx-auto w-20 h-20 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center overflow-hidden p-1">
+          <div className="mx-auto w-20 h-20 rounded-2xl bg-card/15 border border-white/25 flex items-center justify-center overflow-hidden p-1">
             {business.businessLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={business.businessLogo}
                 alt={business.businessName || "Logo"}
-                className="w-full h-full object-contain rounded-xl bg-white"
+                className="w-full h-full object-contain rounded-xl bg-card"
               />
             ) : (
               <BrandAvatar
@@ -107,7 +107,7 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
             <Badge
               variant="slate"
               size="md"
-              className="!bg-white/20 !text-white mt-2"
+              className="!bg-card/20 !text-white mt-2"
             >
               {categoryLabel}
             </Badge>
@@ -190,7 +190,7 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
                     <Card
                       className={`hover:border-primary/30 active:scale-[0.98] transition-transform border-l-4 ${
                         isSelf
-                          ? "border-l-slate-500"
+                          ? "border-l-muted-foreground"
                           : isDraw
                             ? "border-l-brand"
                             : "border-l-amber-400"

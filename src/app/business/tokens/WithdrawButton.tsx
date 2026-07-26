@@ -38,7 +38,7 @@ export function WithdrawButton({ balance }: { balance: number }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex-1 py-3 bg-slate-100 text-slate-700 rounded-full font-medium text-sm"
+        className="flex-1 py-3 bg-muted text-foreground rounded-full font-medium text-sm"
       >
         🏦 提现
       </button>
@@ -50,26 +50,26 @@ export function WithdrawButton({ balance }: { balance: number }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/30 flex items-end" onClick={() => setOpen(false)}>
-      <div className="w-full bg-white rounded-t-2xl p-5 max-w-lg mx-auto" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-sm font-semibold text-slate-900 mb-1">提现到银行卡</h3>
-        <p className="text-xs text-slate-400 mb-3">可用余额 S${balanceSgd.toFixed(2)}</p>
+      <div className="w-full bg-card rounded-t-2xl p-5 max-w-lg mx-auto" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-sm font-semibold text-foreground mb-1">提现到银行卡</h3>
+        <p className="text-xs text-muted-foreground mb-3">可用余额 S${balanceSgd.toFixed(2)}</p>
 
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-slate-400 text-sm">S$</span>
+          <span className="text-muted-foreground text-sm">S$</span>
           <input
             type="number"
             value={amount || ""}
             onChange={(e) => setAmount(Number(e.target.value))}
-            className="flex-1 h-10 px-3 rounded-lg border border-slate-200 text-sm"
+            className="flex-1 h-10 px-3 rounded-lg border border-input text-sm"
             placeholder="提现金额"
             min={10}
             max={balanceSgd}
           />
         </div>
-        <p className="text-[10px] text-slate-400 mb-3">最低提现 S$10.00</p>
+        <p className="text-[10px] text-muted-foreground mb-3">最低提现 S$10.00</p>
 
         {amountSgd > 0 && amountSgd <= balanceSgd && (
-          <div className="mb-3 p-2 bg-slate-50 rounded-lg text-xs text-slate-500">
+          <div className="mb-3 p-2 bg-muted/50 rounded-lg text-xs text-muted-foreground">
             预计 1-2 个工作日到账
           </div>
         )}
@@ -83,11 +83,11 @@ export function WithdrawButton({ balance }: { balance: number }) {
         <button
           onClick={withdraw}
           disabled={loading || amountSgd < 10 || amountSgd > balanceSgd}
-          className="w-full py-3 bg-[#1A6EFF] text-white rounded-full font-medium text-sm disabled:opacity-50"
+          className="w-full py-3 bg-primary text-primary-foreground rounded-full font-medium text-sm disabled:opacity-50"
         >
           {loading ? "处理中..." : `🏦 提现 S$${amountSgd.toFixed(2)}`}
         </button>
-        <button onClick={() => setOpen(false)} className="w-full py-2 text-sm text-slate-400 mt-1">
+        <button onClick={() => setOpen(false)} className="w-full py-2 text-sm text-muted-foreground mt-1">
           取消
         </button>
       </div>

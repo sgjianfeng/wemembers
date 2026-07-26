@@ -194,7 +194,7 @@ export function StoreListingPanel({
                     >
                       <div
                         className={cn(
-                          "w-5 h-5 bg-white rounded-full shadow transition-transform",
+                          "w-5 h-5 bg-card rounded-full shadow transition-transform",
                           l.enabled ? "translate-x-6" : "translate-x-0.5"
                         )}
                       />

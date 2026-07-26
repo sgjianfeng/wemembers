@@ -346,9 +346,9 @@ export default function NewCampaignPage() {
   if (step === "kind") {
     return (
       <div className="pb-8 min-h-screen">
-        <div className="px-4 py-3 border-b border-slate-100">
+        <div className="px-4 py-3 border-b border-border">
           <h1 className="text-lg font-semibold">{tr("campaignNew.kindTitle")}</h1>
-          <p className="text-xs text-slate-400 mt-0.5">{tr("campaignNew.kindSubtitle")}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{tr("campaignNew.kindSubtitle")}</p>
         </div>
         <div className="px-4 mt-4">
           <VoucherTypePicker value={productKind} onChange={setProductKind} />
@@ -370,16 +370,16 @@ export default function NewCampaignPage() {
   if (step === "pick") {
     return (
       <div className="pb-8 min-h-screen">
-        <div className="px-4 py-3 border-b border-slate-100">
+        <div className="px-4 py-3 border-b border-border">
           <button
             type="button"
-            className="text-xs text-[#1A6EFF] font-medium mb-1"
+            className="text-xs text-primary font-medium mb-1"
             onClick={() => setStep("kind")}
           >
             {tr("campaignNew.backKind")}
           </button>
           <h1 className="text-lg font-semibold">{tr("campaignNew.pickTitle")}</h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {productKind === "self_use"
               ? tr("campaignNew.pickSelfHint")
               : tr("campaignNew.pickDistHint")}
@@ -395,7 +395,7 @@ export default function NewCampaignPage() {
                 </p>
                 <Link
                   href="/business/templates"
-                  className="text-[11px] text-[#1A6EFF] font-medium"
+                  className="text-[11px] text-primary font-medium"
                 >
                   {lang === "en" ? "Manage / copy" : "管理/拷贝"}
                 </Link>
@@ -413,12 +413,12 @@ export default function NewCampaignPage() {
                       key={m.id}
                       type="button"
                       onClick={() => pickBusinessTemplate(m)}
-                      className="w-full text-left rounded-xl bg-white border border-emerald-100 px-3 py-2"
+                      className="w-full text-left rounded-xl bg-card border border-emerald-100 px-3 py-2"
                     >
-                      <p className="text-sm font-medium text-slate-900">
+                      <p className="text-sm font-medium text-foreground">
                         {m.name}
                       </p>
-                      <p className="text-[10px] text-slate-400">
+                      <p className="text-[10px] text-muted-foreground">
                         {m.discountPercent != null
                           ? `${lang === "en" ? "discount" : "折扣"} ${m.discountPercent}%`
                           : ""}
@@ -433,7 +433,7 @@ export default function NewCampaignPage() {
             </div>
           )}
           {visibleTemplates.length === 0 && bizTemplates.length === 0 && (
-            <p className="text-sm text-slate-400 text-center py-8">
+            <p className="text-sm text-muted-foreground text-center py-8">
               {tr("campaignNew.loadingTemplates")}
             </p>
           )}
@@ -444,22 +444,22 @@ export default function NewCampaignPage() {
               onClick={() => pickTemplate(tpl)}
               className="w-full text-left"
             >
-              <Card className="hover:border-[#1A6EFF]/40 transition-colors active:scale-[0.99]">
+              <Card className="hover:border-primary/40 transition-colors active:scale-[0.99]">
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
                     <span className="text-2xl">{tpl.icon}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-900">
+                      <p className="text-sm font-semibold text-foreground">
                         {lang === "en" ? tpl.nameEn || tpl.nameZh : tpl.nameZh}
                       </p>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         {lang === "en" ? tpl.taglineEn || tpl.taglineZh : tpl.taglineZh}
                       </p>
-                      <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                      <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
                         {tpl.lockedSummaryZh}
                       </p>
                     </div>
-                    <span className="text-[#1A6EFF] text-xs font-medium shrink-0">
+                    <span className="text-primary text-xs font-medium shrink-0">
                       {tr("campaignNew.useTemplate")}
                     </span>
                   </div>
@@ -468,7 +468,7 @@ export default function NewCampaignPage() {
             </button>
           ))}
 
-          <p className="text-[11px] text-slate-400 text-center pt-2 px-2">
+          <p className="text-[11px] text-muted-foreground text-center pt-2 px-2">
             {tr("network.footerHint")}
           </p>
         </div>
@@ -478,11 +478,11 @@ export default function NewCampaignPage() {
 
   return (
     <div className="pb-4 min-h-screen flex flex-col">
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-3">
+      <div className="px-4 py-3 border-b border-border flex items-center gap-3">
         <button
           type="button"
           onClick={() => setStep("pick")}
-          className="text-sm text-slate-500"
+          className="text-sm text-muted-foreground"
         >
           {tr("campaignNew.backTemplates")}
         </button>
@@ -490,7 +490,7 @@ export default function NewCampaignPage() {
           <h1 className="text-lg font-semibold truncate">
             {selected?.icon} {selectedTitle || tr("campaignNew.configure")}
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5 truncate">{selectedTagline}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">{selectedTagline}</p>
         </div>
       </div>
 
@@ -505,12 +505,12 @@ export default function NewCampaignPage() {
         </Card>
 
         {selected && (
-          <Card className="bg-slate-50 border-slate-100">
+          <Card className="bg-muted/50 border-border">
             <CardContent className="p-3">
-              <p className="text-[11px] font-medium text-slate-500 mb-1">
+              <p className="text-[11px] font-medium text-muted-foreground mb-1">
                 {tr("campaignNew.lockedRules")}
               </p>
-              <p className="text-xs text-slate-600 leading-relaxed">{selected.lockedSummaryZh}</p>
+              <p className="text-xs text-foreground leading-relaxed">{selected.lockedSummaryZh}</p>
             </CardContent>
           </Card>
         )}
@@ -529,7 +529,7 @@ export default function NewCampaignPage() {
         />
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label className="block text-sm font-medium text-foreground mb-2">
             {tr("campaignNew.color")}
           </label>
           <div className="flex gap-2">
@@ -539,7 +539,7 @@ export default function NewCampaignPage() {
                 type="button"
                 onClick={() => setColor(c)}
                 className={`w-7 h-7 rounded-full transition-transform ${
-                  color === c ? "scale-125 ring-2 ring-offset-2 ring-slate-400" : ""
+                  color === c ? "scale-125 ring-2 ring-offset-2 ring-muted-foreground" : ""
                 }`}
                 style={{ backgroundColor: c }}
               />
@@ -565,15 +565,15 @@ export default function NewCampaignPage() {
         {selected?.editable?.includes("grandPrizes") && grandPrizes.length > 0 && (
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700">
+              <label className="block text-sm font-medium text-foreground">
                 {tr("campaignNew.grandPrizes")}
               </label>
-              <p className="text-[11px] text-slate-400 mt-0.5">
+              <p className="text-[11px] text-muted-foreground mt-0.5">
                 {tr("campaignNew.grandPrizesHint")}
               </p>
             </div>
             {grandPrizes.map((g, idx) => (
-              <Card key={g.id} className="border-slate-100">
+              <Card key={g.id} className="border-border">
                 <CardContent className="p-3 space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     {PRIZE_ICONS.map((ic) => (
@@ -582,7 +582,7 @@ export default function NewCampaignPage() {
                         type="button"
                         onClick={() => updateGrandPrize(idx, { icon: ic })}
                         className={`w-8 h-8 rounded-lg text-base ${
-                          g.icon === ic ? "bg-blue-50 ring-2 ring-[#1A6EFF]" : "bg-slate-50"
+                          g.icon === ic ? "bg-blue-50 ring-2 ring-primary" : "bg-muted/50"
                         }`}
                       >
                         {ic}
@@ -596,7 +596,7 @@ export default function NewCampaignPage() {
                     placeholder={tr("campaignNew.prizeNamePh")}
                   />
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                    <label className="block text-sm font-medium text-foreground mb-1">
                       {tr("campaignNew.targetSgd")}
                     </label>
                     <input
@@ -612,7 +612,7 @@ export default function NewCampaignPage() {
                       }
                       className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
                     />
-                    <p className="text-[10px] text-slate-400 mt-1">
+                    <p className="text-[10px] text-muted-foreground mt-1">
                       {tr("campaignNew.targetHint")}
                     </p>
                   </div>
@@ -624,7 +624,7 @@ export default function NewCampaignPage() {
 
         {selected?.rules.allowDiscount && (
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               {tr("campaignNew.discountRate", {
                 min: selected.rules.discountPercentMin,
                 max: selected.rules.discountPercentMax,
@@ -639,11 +639,11 @@ export default function NewCampaignPage() {
                 onChange={(e) => setDiscountPercent(Number(e.target.value))}
                 className="flex-1"
               />
-              <span className="text-sm font-semibold text-[#1A6EFF] w-12 text-right">
+              <span className="text-sm font-semibold text-primary w-12 text-right">
                 {discountPercent}%
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">
+            <p className="text-[11px] text-muted-foreground mt-1">
               {tr("campaignNew.discountExample", {
                 paid: (50 * (100 - discountPercent) / 100).toFixed(0),
                 commission: ((50 * (100 - discountPercent) / 100) * 0.05).toFixed(2),
@@ -654,7 +654,7 @@ export default function NewCampaignPage() {
 
         {selected && (
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               {tr("campaignNew.openTiers")}
             </label>
             <div className="flex flex-wrap gap-2">
@@ -666,7 +666,7 @@ export default function NewCampaignPage() {
                     type="button"
                     onClick={() => toggleTier(tier.amountSgd)}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium ${
-                      on ? "bg-[#1A6EFF] text-white" : "bg-slate-100 text-slate-500"
+                      on ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                     }`}
                   >
                     S${tier.amountSgd}
@@ -678,10 +678,10 @@ export default function NewCampaignPage() {
         )}
 
         {templateId !== "share_boost" && selected?.editable.includes("shareSelling") && (
-          <label className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+          <label className="flex items-center justify-between p-3 rounded-xl bg-muted/50 border border-border">
             <div>
-              <p className="text-sm font-medium text-slate-800">{tr("campaignNew.shareSelling")}</p>
-              <p className="text-[11px] text-slate-400">{tr("campaignNew.shareSellingHint")}</p>
+              <p className="text-sm font-medium text-foreground">{tr("campaignNew.shareSelling")}</p>
+              <p className="text-[11px] text-muted-foreground">{tr("campaignNew.shareSellingHint")}</p>
             </div>
             <input
               type="checkbox"
@@ -701,11 +701,11 @@ export default function NewCampaignPage() {
         )}
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
+          <label className="block text-sm font-medium text-foreground mb-2">
             {tr("campaignNew.invitePartners")}
           </label>
           {partners.length === 0 ? (
-            <p className="text-xs text-slate-400">{tr("campaignNew.noPartners")}</p>
+            <p className="text-xs text-muted-foreground">{tr("campaignNew.noPartners")}</p>
           ) : (
             <div className="space-y-2">
               {partners.map((p) => {
@@ -717,8 +717,8 @@ export default function NewCampaignPage() {
                     onClick={() => togglePartner(p.id)}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-sm border ${
                       on
-                        ? "border-[#1A6EFF] bg-blue-50 text-slate-900"
-                        : "border-slate-100 bg-white text-slate-600"
+                        ? "border-primary bg-blue-50 text-foreground"
+                        : "border-border bg-card text-foreground"
                     }`}
                   >
                     <span>{p.businessName || p.name || p.id.slice(0, 8)}</span>
@@ -735,7 +735,7 @@ export default function NewCampaignPage() {
         {error && <p className="text-sm text-red-500 text-center">{error}</p>}
       </div>
 
-      <div className="px-4 py-3 border-t border-slate-100 bg-white">
+      <div className="px-4 py-3 border-t border-border bg-card">
         <Button className="w-full" size="lg" onClick={handleCreate} loading={loading}>
           {tr("campaignNew.create")}
         </Button>

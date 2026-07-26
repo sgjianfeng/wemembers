@@ -46,7 +46,7 @@ export function AiGenerateButton({ onFill }: { onFill: (data: CouponData) => voi
             <span className="text-lg">🤖</span>
             <span className="text-sm font-semibold text-purple-700">AI 代金券生成器</span>
           </div>
-          <p className="text-xs text-slate-500 mb-3">
+          <p className="text-xs text-muted-foreground mb-3">
             描述你的目标，AI 自动生成最优代金券配置
           </p>
 
@@ -64,12 +64,12 @@ export function AiGenerateButton({ onFill }: { onFill: (data: CouponData) => voi
             </>
           ) : (
             <div className="space-y-2">
-              <div className="flex justify-between text-xs"><span className="text-slate-500">标题</span><span className="text-slate-900 font-medium">{result.title}</span></div>
-              <div className="flex justify-between text-xs"><span className="text-slate-500">类型</span><span className="text-slate-900">{{ fixed_amount: "定额减免", percentage: "折扣券", free_item: "免单券" }[result.type]}</span></div>
-              <div className="flex justify-between text-xs"><span className="text-slate-500">面值/折扣</span><span className="text-slate-900 font-bold">S${(result.valueCents / 100).toFixed(0)}</span></div>
-              <div className="flex justify-between text-xs"><span className="text-slate-500">所需积分</span><span className="text-[#FF6B35] font-bold">{result.pointsRequired}⭐</span></div>
-              <div className="flex justify-between text-xs"><span className="text-slate-500">有效期</span><span className="text-slate-900">{result.validDays}天</span></div>
-              <div className="flex justify-between text-xs"><span className="text-slate-500">说明</span><span className="text-slate-500 text-[11px]">{result.description}</span></div>
+              <div className="flex justify-between text-xs"><span className="text-muted-foreground">标题</span><span className="text-foreground font-medium">{result.title}</span></div>
+              <div className="flex justify-between text-xs"><span className="text-muted-foreground">类型</span><span className="text-foreground">{{ fixed_amount: "定额减免", percentage: "折扣券", free_item: "免单券" }[result.type]}</span></div>
+              <div className="flex justify-between text-xs"><span className="text-muted-foreground">面值/折扣</span><span className="text-foreground font-bold">S${(result.valueCents / 100).toFixed(0)}</span></div>
+              <div className="flex justify-between text-xs"><span className="text-muted-foreground">所需积分</span><span className="text-brand font-bold">{result.pointsRequired}⭐</span></div>
+              <div className="flex justify-between text-xs"><span className="text-muted-foreground">有效期</span><span className="text-foreground">{result.validDays}天</span></div>
+              <div className="flex justify-between text-xs"><span className="text-muted-foreground">说明</span><span className="text-muted-foreground text-[11px]">{result.description}</span></div>
               <div className="flex gap-2 mt-3">
                 <Button size="sm" variant="outline" className="flex-1" onClick={() => { setResult(null); setGoal(""); }}>重试</Button>
                 <Button size="sm" className="flex-1" onClick={apply}>✅ 使用此方案</Button>

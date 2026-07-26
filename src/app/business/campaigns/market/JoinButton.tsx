@@ -32,7 +32,7 @@ export function JoinButton({ campaignId, label }: JoinButtonProps) {
     <button
       onClick={handleJoin}
       disabled={loading}
-      className="px-4 py-1.5 bg-[#1A6EFF] text-white rounded-full text-xs font-medium disabled:opacity-50"
+      className="px-4 py-1.5 bg-primary text-primary-foreground rounded-full text-xs font-medium disabled:opacity-50"
     >
       {loading ? "..." : label}
     </button>
