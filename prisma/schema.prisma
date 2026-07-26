@@ -921,6 +921,8 @@ model PhysicalTicket {
   soldStoreId      String?                // 售出门店
   paidCents        Int      @default(0)   // 实收（分）
   paymentMethod    String?                // cash | free | physical
+  /// paid = 自充真钱已注池；gift = 含平台赠送，小奖门店兑、弱权重
+  prizeFunding     String?
   contactPhone     String?                // 售出时可选手机
   /// 绑定后对应线上自用 Voucher（与 CustomerCoupon 二选一；新路径用 voucher）
   voucherId        String?  @unique

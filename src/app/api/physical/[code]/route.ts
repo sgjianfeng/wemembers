@@ -144,6 +144,9 @@ export async function POST(
           };
         }
         try {
+          const prizeFunding =
+            (ticket as { prizeFunding?: string | null }).prizeFunding || "paid";
+          const realPrize = prizeFunding !== "gift";
           const mat = await materializePhysicalToVoucher(tx, {
             ticketId: ticket.id,
             customerId: session.userId,
@@ -152,6 +155,8 @@ export async function POST(
             soldStoreId: ticket.soldStoreId || ticket.storeId,
             markSold: true,
             soldById: ticket.soldById,
+            creditPrizeToBalance: realPrize,
+            weightFactor: realPrize ? 1 : 0.2,
           });
           return {
             error: null,
@@ -160,6 +165,7 @@ export async function POST(
             ticket: { ...ticket, ...mat.ticket, batch: ticket.batch },
             voucher: mat.voucher,
             instantPrize: mat.instantPrize,
+            prizeFulfillment: realPrize ? "balance" : "store",
           };
         } catch (e) {
           const msg = e instanceof Error ? e.message : "BIND_FAIL";
@@ -214,7 +220,10 @@ export async function POST(
         instantPrize: prize,
         message: isDraw
           ? prize
-            ? `已绑定：独享券可花 S$${v ? (v.balanceCents / 100).toFixed(2) : "—"}（含小奖 ${prize.name}）`
+            ? ("prizeFulfillment" in result &&
+              result.prizeFulfillment === "store")
+              ? `已绑定：可花面值在余额；小奖 ${prize.name} 请到店兑付（平台赠送通道）`
+              : `已绑定：独享券可花 S$${v ? (v.balanceCents / 100).toFixed(2) : "—"}（含小奖 ${prize.name}）`
             : "已绑定：独享券已放入余额，可看大奖进度（实体购买）"
           : "已绑定：自用券已放入余额（实体券购买）",
         goBalance: true,

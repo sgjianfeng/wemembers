@@ -149,8 +149,8 @@ export default async function TokenRechargePage({
               </p>
               <p className="text-[10px] text-emerald-600/80 mt-0.5">
                 {lang === "en"
-                  ? "Used for exclusive cash fees first"
-                  : "优先扣独享现金费用"}
+                  ? "Exclusive cash OK but no prize pool / store pays small prizes"
+                  : "可扣独享费用，但不注奖池；小奖请门店兑"}
               </p>
             </CardContent>
           </Card>

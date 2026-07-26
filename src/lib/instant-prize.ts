@@ -1,13 +1,15 @@
 /**
- * 即时小奖：抽奖 + 直观模式入账（中奖金额加进该券可花余额）
+ * 即时小奖
+ * - 真钱路径（realPrizeFunding）：中奖金额加进可花余额（直观模式）
+ * - gift 路径：只记中奖结果，门店兑付，不进余额
  */
 import type { Prisma } from "@prisma/client";
 import {
   drawInstantV2,
   type InstantPrizeV2,
   type VoucherTierConfig,
+  calculateTierWeight,
 } from "@/lib/draw-v2";
-import { calculateTierWeight } from "@/lib/draw-v2";
 
 type Tx = Prisma.TransactionClient | typeof import("@/lib/db").prisma;
 
@@ -16,12 +18,10 @@ export type InstantAwardResult = {
   balanceAfterCents: number;
   amountCents: number;
   creditedCents: number;
+  /** store = 门店兑付；balance = 已入可花余额 */
+  fulfillment: "balance" | "store";
 };
 
-/**
- * 抽即时奖 → 写 VoucherDraw → balance += 奖额
- * 并尽量从活动 instantPoolCents 扣减（与 3% 小奖计提对应）
- */
 export async function awardInstantPrizeToVoucher(
   db: Tx,
   params: {
@@ -30,10 +30,22 @@ export async function awardInstantPrizeToVoucher(
     tier: VoucherTierConfig;
     weightAtTime: number;
     instantPoolCents: number;
-    /** 是否重算大奖权重（余额变了） */
     recomputeWeight?: boolean;
+    /**
+     * true（默认）：直观模式，奖额加余额并从即时池扣
+     * false：仅展示/记录，门店兑，不改余额、不扣池
+     */
+    creditToBalance?: boolean;
+    /** 创建后把 drawWeight 乘以此系数（gift 路径 0.2） */
+    weightFactor?: number;
   }
 ): Promise<InstantAwardResult> {
+  const creditToBalance = params.creditToBalance !== false;
+  const weightFactor =
+    params.weightFactor != null && params.weightFactor > 0
+      ? params.weightFactor
+      : 1;
+
   const { prize } = drawInstantV2(params.tier, params.instantPoolCents);
   const credit = Math.max(0, Math.round(prize.valueCents));
 
@@ -63,9 +75,14 @@ export async function awardInstantPrizeToVoucher(
     throw new Error("VOUCHER_NOT_FOUND");
   }
 
-  const balanceAfter = before.balanceCents + credit;
+  const creditedCents = creditToBalance ? credit : 0;
+  const balanceAfter = before.balanceCents + creditedCents;
+
   let drawWeight = before.drawWeight;
-  if (params.recomputeWeight && before.drawWeight > 0) {
+  if (weightFactor !== 1 && drawWeight > 0) {
+    drawWeight = Math.max(1, Math.round(drawWeight * weightFactor));
+  }
+  if (params.recomputeWeight && creditedCents > 0 && before.drawWeight > 0) {
     const t = (before.tier as "small" | "medium" | "large") || "medium";
     drawWeight = calculateTierWeight(
       before.amountCents,
@@ -74,18 +91,26 @@ export async function awardInstantPrizeToVoucher(
       0,
       before.usedCents
     );
+    if (weightFactor !== 1) {
+      drawWeight = Math.max(1, Math.round(drawWeight * weightFactor));
+    }
+  } else if (weightFactor !== 1 && !params.recomputeWeight) {
+    // already scaled above from before.drawWeight
   }
+
+  const needWeightUpdate =
+    weightFactor !== 1 || (params.recomputeWeight && creditedCents > 0);
 
   await db.voucher.update({
     where: { id: params.voucherId },
     data: {
-      balanceCents: balanceAfter,
-      ...(params.recomputeWeight ? { drawWeight } : {}),
+      ...(creditedCents > 0 ? { balanceCents: balanceAfter } : {}),
+      ...(needWeightUpdate ? { drawWeight } : {}),
     },
   });
 
-  // 小奖池扣减（有多少扣多少，不强求覆盖全部奖额）
-  if (credit > 0) {
+  // 仅真钱入账时从即时池扣减
+  if (creditToBalance && credit > 0) {
     const camp = await db.campaign.findUnique({
       where: { id: params.campaignId },
       select: { instantPoolCents: true },
@@ -103,6 +128,7 @@ export async function awardInstantPrizeToVoucher(
     prize,
     balanceAfterCents: balanceAfter,
     amountCents: before.amountCents,
-    creditedCents: credit,
+    creditedCents,
+    fulfillment: creditToBalance ? "balance" : "store",
   };
 }

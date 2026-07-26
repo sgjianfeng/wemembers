@@ -20,6 +20,10 @@ export type MaterializeInput = {
   contactPhone?: string | null;
   /** 独享绑定后是否即时抽小奖，默认 true */
   instantDraw?: boolean;
+  /** 真钱路径：小奖进余额；gift 路径：false 门店兑 */
+  creditPrizeToBalance?: boolean;
+  /** gift 路径权重系数，默认 1 */
+  weightFactor?: number;
 };
 
 export async function materializePhysicalToVoucher(
@@ -189,9 +193,17 @@ export async function materializePhysicalToVoucher(
   const tierResolved = resolveTier(faceSgd);
   const tier = tierResolved?.tier || "small";
   const isDraw = batchType === "draw";
-  const weight = isDraw
+  const creditPrize = input.creditPrizeToBalance !== false;
+  const wFactor =
+    input.weightFactor != null && input.weightFactor > 0
+      ? input.weightFactor
+      : 1;
+  let weight = isDraw
     ? calculateTierWeight(faceCents, tier as "small" | "medium" | "large", faceCents, 0, 0)
     : 0;
+  if (isDraw && wFactor !== 1 && weight > 0) {
+    weight = Math.max(1, Math.round(weight * wFactor));
+  }
 
   let shortCode: string | null = null;
   for (let i = 0; i < 12 && !shortCode; i++) {
@@ -247,7 +259,9 @@ export async function materializePhysicalToVoucher(
       tier: tierResolved,
       weightAtTime: weight,
       instantPoolCents: camp?.instantPoolCents || 0,
-      recomputeWeight: true,
+      recomputeWeight: creditPrize,
+      creditToBalance: creditPrize,
+      weightFactor: creditPrize ? 1 : wFactor,
     });
     instantPrize = {
       name: awarded.prize.name,

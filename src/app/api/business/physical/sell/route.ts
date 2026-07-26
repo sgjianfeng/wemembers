@@ -133,8 +133,10 @@ export async function POST(request: NextRequest) {
         return { error: "实收不能大于面值", status: 400 as const };
       }
 
-      // 独享实体：现金售出扣 15%
+      // 独享实体：现金售出扣 15%（真钱进池 / gift 降级）
       let feeNote = "";
+      let realPrizeFunding = true;
+      let weightFactor = 1;
       if (ticket.batch.type === "draw") {
         if (!ticket.batch.campaignId) {
           return { error: "独享实体须关联独享活动", status: 400 as const };
@@ -157,12 +159,16 @@ export async function POST(request: NextRequest) {
             referenceId: code,
             label: `独享实体售出 · ${camp.name}`,
           });
-          feeNote = `已扣企业账户 S$${(fee.totalCents / 100).toFixed(2)}（15%）`;
+          realPrizeFunding = fee.realPrizeFunding;
+          weightFactor = fee.weightFactor;
+          feeNote = realPrizeFunding
+            ? `已扣自充 S$${(fee.totalCents / 100).toFixed(2)}（15%进池）`
+            : `已扣账户 S$${(fee.totalCents / 100).toFixed(2)}（含赠送：小奖门店兑、不注池、权重×${weightFactor}）`;
         } catch (e) {
           if (e instanceof Error && e.message === "INSUFFICIENT_TOKEN") {
             return {
               error:
-                "企业账户余额不足，无法现金售独享券。请先充值。",
+                "企业账户余额不足，无法现金售独享券。请先充值（自充可进奖池；赠送额度不注奖金）。",
               status: 402 as const,
               code: "NEED_TOPUP",
             };
@@ -183,6 +189,12 @@ export async function POST(request: NextRequest) {
           paidCents: finalPaid,
           paymentMethod: method,
           contactPhone: phone || null,
+          prizeFunding:
+            ticket.batch.type === "draw"
+              ? realPrizeFunding
+                ? "paid"
+                : "gift"
+              : null,
         },
         include: {
           soldStore: { select: { id: true, name: true } },
@@ -211,6 +223,8 @@ export async function POST(request: NextRequest) {
               markSold: true,
               soldById: session.userId,
               contactPhone: phone,
+              creditPrizeToBalance: realPrizeFunding,
+              weightFactor,
             });
             bound = true;
             voucherShort = mat.voucher.shortCode;
@@ -239,6 +253,7 @@ export async function POST(request: NextRequest) {
         feeNote,
         instantPrize,
         isDraw: ticket.batch.type === "draw",
+        realPrizeFunding,
       };
     });
 

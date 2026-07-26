@@ -184,20 +184,26 @@ export async function POST(request: NextRequest) {
 
     try {
       const result = await prisma.$transaction(async (tx) => {
-        // 独享现金/店收：从企业充值扣 15%（优先平台赠送额度）
+        let realPrize = true;
+        let wFactor = 1;
+        // 独享现金/店收：真钱自充→进池；含 gift→门店兑小奖、弱权重
         if (isDraw) {
           const { applyExclusiveCashSaleFees } = await import(
             "@/lib/exclusive-fees"
           );
           try {
-            const fee = await applyExclusiveCashSaleFees(tx, {
+            const feeResult = await applyExclusiveCashSaleFees(tx, {
               businessId,
               campaignId: campaign.id,
               faceCents,
               referenceId: shortCode,
               label: `独享柜台发券 · ${campaign.name}`,
             });
-            feeNote = `已扣企业账户 S$${(fee.totalCents / 100).toFixed(2)}（15%：小奖3%+服务费2%+大奖10%）`;
+            realPrize = feeResult.realPrizeFunding;
+            wFactor = feeResult.weightFactor;
+            feeNote = realPrize
+              ? `已扣自充 S$${(feeResult.totalCents / 100).toFixed(2)}（15%进池，小奖入余额）`
+              : `已扣账户 S$${(feeResult.totalCents / 100).toFixed(2)}（含平台赠送：小奖请门店兑、不注大奖池、权重×${wFactor}）`;
           } catch (e) {
             if (e instanceof Error && e.message === "INSUFFICIENT_TOKEN") {
               throw new Error("INSUFFICIENT_TOKEN");
@@ -205,6 +211,11 @@ export async function POST(request: NextRequest) {
             throw e;
           }
         }
+
+        const startWeight =
+          wFactor !== 1 && weight > 0
+            ? Math.max(1, Math.round(weight * wFactor))
+            : weight;
 
         const v = await tx.voucher.create({
           data: {
@@ -217,7 +228,7 @@ export async function POST(request: NextRequest) {
             balanceCents: faceCents,
             usedCents: 0,
             prizePoolContribution: 0,
-            drawWeight: weight,
+            drawWeight: startWeight,
             tier,
             status: "active",
             shortCode,
@@ -240,9 +251,11 @@ export async function POST(request: NextRequest) {
             voucherId: v.id,
             campaignId: campaign.id,
             tier: tierResolved,
-            weightAtTime: weight,
+            weightAtTime: startWeight,
             instantPoolCents: camp?.instantPoolCents || 0,
-            recomputeWeight: true,
+            recomputeWeight: realPrize,
+            creditToBalance: realPrize,
+            weightFactor: realPrize ? 1 : wFactor,
           });
           prize = {
             name: awarded.prize.name,
@@ -305,7 +318,9 @@ export async function POST(request: NextRequest) {
         feeNote: feeNote || undefined,
         note: isDraw
           ? instantPrize
-            ? `独享已发出；小奖 ${instantPrize.name} 已加入可花余额（现 S$${(balanceAfterCents / 100).toFixed(2)}）`
+            ? feeNote.includes("门店兑")
+              ? `独享已发出；小奖 ${instantPrize.name} 请门店兑付（未入余额）；可花 S$${(balanceAfterCents / 100).toFixed(2)}`
+              : `独享已发出；小奖 ${instantPrize.name} 已加入可花余额（现 S$${(balanceAfterCents / 100).toFixed(2)}）`
             : "独享券已发出：顾客款在店；15% 已从企业账户计提"
           : "自用券已发出：实收已在店，可花面值进余额；核销仅记履约",
       },
