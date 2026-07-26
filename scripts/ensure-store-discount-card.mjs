@@ -121,14 +121,14 @@ async function markFaceAsStoreOnly(businessId) {
 }
 
 async function ensureDiscountCard(businessId, businessName) {
+  // 勿用「9折」匹配门槛约9折原价券
   const existing = await prisma.voucherProduct.findFirst({
     where: {
       businessId,
       OR: [
         { slug: { contains: "discount-card" } },
         { slug: { contains: "discount-10" } },
-        { name: { contains: "9折" } },
-        { name: { contains: "优惠卡" } },
+        { name: "9折优惠卡" },
       ],
     },
   });
