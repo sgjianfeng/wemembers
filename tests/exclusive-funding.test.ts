@@ -1,5 +1,8 @@
 import { splitExclusiveSaleFees } from "@/lib/activity-fees";
-import { EXCLUSIVE_GIFT_WEIGHT_FACTOR } from "@/lib/exclusive-fees";
+import {
+  EXCLUSIVE_GIFT_WEIGHT_FACTOR,
+  exclusivePrizeFundingCents,
+} from "@/lib/exclusive-fees";
 
 describe("exclusive funding modes", () => {
   it("15% split unchanged", () => {
@@ -12,5 +15,18 @@ describe("exclusive funding modes", () => {
 
   it("gift weight factor is 0.2", () => {
     expect(EXCLUSIVE_GIFT_WEIGHT_FACTOR).toBe(0.2);
+  });
+
+  it("prize funding is 3%+10% only (not platform 2%)", () => {
+    const s = splitExclusiveSaleFees(10000);
+    expect(exclusivePrizeFundingCents(s)).toBe(1300);
+    expect(s.platformFeeCents).toBe(200);
+  });
+
+  it("platform fee alone is the cash-sale minimum (no forced topup for prizes)", () => {
+    const s = splitExclusiveSaleFees(10000);
+    // gift S$300 can cover many 2% fees without self-topup
+    expect(s.platformFeeCents).toBe(200);
+    expect(s.platformFeeCents).toBeLessThan(s.totalCents);
   });
 });

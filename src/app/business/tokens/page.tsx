@@ -149,8 +149,8 @@ export default async function TokenRechargePage({
               </p>
               <p className="text-[10px] text-emerald-600/80 mt-0.5">
                 {lang === "en"
-                  ? "Exclusive cash OK but no prize pool / store pays small prizes"
-                  : "可扣独享费用，但不注奖池；小奖请门店兑"}
+                  ? "Only covers exclusive platform fee (2%). Self-topup funds prize pool."
+                  : "仅可抵独享服务费 2%；自充才进奖池/抽小奖"}
               </p>
             </CardContent>
           </Card>

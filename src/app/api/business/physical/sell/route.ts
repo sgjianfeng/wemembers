@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
         return { error: "实收不能大于面值", status: 400 as const };
       }
 
-      // 独享实体：现金售出扣 15%（真钱进池 / gift 降级）
+      // 独享实体：服务费 2% 可 gift；自充够才扣 13% 进池，否则弱路径
       let feeNote = "";
       let realPrizeFunding = true;
       let weightFactor = 1;
@@ -161,14 +161,15 @@ export async function POST(request: NextRequest) {
           });
           realPrizeFunding = fee.realPrizeFunding;
           weightFactor = fee.weightFactor;
+          const charged = fee.chargedCents ?? fee.totalCents;
           feeNote = realPrizeFunding
-            ? `已扣自充 S$${(fee.totalCents / 100).toFixed(2)}（15%进池）`
-            : `已扣账户 S$${(fee.totalCents / 100).toFixed(2)}（含赠送：小奖门店兑、不注池、权重×${weightFactor}）`;
+            ? `已扣自充 S$${(charged / 100).toFixed(2)}（15%：小奖+服务费+大奖，已进池）`
+            : `已扣服务费 S$${(charged / 100).toFixed(2)}（2%）；未自充奖池：小奖门店送、不注池、权重×${weightFactor}`;
         } catch (e) {
           if (e instanceof Error && e.message === "INSUFFICIENT_TOKEN") {
             return {
               error:
-                "企业账户余额不足，无法现金售独享券。请先充值（自充可进奖池；赠送额度不注奖金）。",
+                "账户不足以支付平台服务费（2%）。平台赠送额度仅可抵服务费；自充才可进奖池。有赠送额度即可开卖，不强制充值。",
               status: 402 as const,
               code: "NEED_TOPUP",
             };

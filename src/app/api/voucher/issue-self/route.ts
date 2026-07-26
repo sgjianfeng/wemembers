@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
       const result = await prisma.$transaction(async (tx) => {
         let realPrize = true;
         let wFactor = 1;
-        // 独享现金/店收：真钱自充→进池；含 gift→门店兑小奖、弱权重
+        // 独享现金：自充够付奖池→进池；否则只扣服务费2%→门店送小奖、弱权重
         if (isDraw) {
           const { applyExclusiveCashSaleFees } = await import(
             "@/lib/exclusive-fees"
@@ -201,9 +201,10 @@ export async function POST(request: NextRequest) {
             });
             realPrize = feeResult.realPrizeFunding;
             wFactor = feeResult.weightFactor;
+            const charged = feeResult.chargedCents ?? feeResult.totalCents;
             feeNote = realPrize
-              ? `已扣自充 S$${(feeResult.totalCents / 100).toFixed(2)}（15%进池，小奖入余额）`
-              : `已扣账户 S$${(feeResult.totalCents / 100).toFixed(2)}（含平台赠送：小奖请门店兑、不注大奖池、权重×${wFactor}）`;
+              ? `已扣自充 S$${(charged / 100).toFixed(2)}（15%：小奖+服务费+大奖，已进池，小奖入余额）`
+              : `已扣服务费 S$${(charged / 100).toFixed(2)}（2%）；未自充奖池：小奖请门店送、不注大奖池、权重×${wFactor}`;
           } catch (e) {
             if (e instanceof Error && e.message === "INSUFFICIENT_TOKEN") {
               throw new Error("INSUFFICIENT_TOKEN");
@@ -286,7 +287,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             error:
-              "企业账户余额不足，无法现金发独享券。请先充值（平台赠送额度可扣费用但不可提现）。",
+              "账户不足以支付平台服务费（2%）。平台赠送额度仅可抵服务费；自充余额才可进奖池/抽小奖。有赠送额度即可开卖，不强制充值。",
             code: "NEED_TOPUP",
           },
           { status: 402 }

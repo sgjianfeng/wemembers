@@ -1,9 +1,15 @@
 /**
- * 独享：付款即扣 15%（小奖 3% + 服务费 2% + 大奖 10%）
+ * 独享：付款时费用
  *
- * 资金安全：
- * - 真钱（线上支付切 / 企业可提现 balance 自充）→ 进小奖池+大奖池，小奖可进顾客余额
- * - 平台赠送 gift 参与扣款 → 不注水奖池、小奖不进余额（门店兑）、大奖权重降低
+ * 拆分（面值 15%）：
+ * - 小奖 3% + 大奖 10% → 仅企业自充 balance 可扣，扣了才进池/抽小奖入余额
+ * - 服务费 2% → 平台赠送 gift 或自充均可扣
+ *
+ * 规则：
+ * - 有自充且够付 3%+10% → 真金路径：注池 + 小奖可进顾客余额，权重 1
+ * - 没有自充（或不够付奖池部分）→ 弱路径：只扣 2% 服务费，门店自己送小奖，权重 ×0.2
+ * - 不强制充值：gift 够付 2% 服务费即可售
+ * - 线上 PayNow 顾客实付 → 始终真金路径
  */
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
@@ -15,19 +21,21 @@ import {
 
 type Tx = Prisma.TransactionClient;
 
-/** gift 路径：大奖权重系数（仍给抽奖乐趣，弱进大奖） */
+/** gift/弱路径：大奖权重系数 */
 export const EXCLUSIVE_GIFT_WEIGHT_FACTOR = 0.2;
 
 export type ExclusiveFundingMode = "paid" | "gift";
 
 export type ExclusiveCashFeeResult = FeeSplit & {
-  /** paid = 全部来自可提现余额；gift = 用到了平台赠送 */
+  /** paid = 奖池部分由自充支付；gift = 未付奖池（仅服务费，弱路径） */
   fundingMode: ExclusiveFundingMode;
-  /** 是否把小奖加进顾客可花余额、是否注入平台奖池 */
+  /** 是否注入奖池、小奖是否进顾客可花余额 */
   realPrizeFunding: boolean;
   weightFactor: number;
   giftDebited: number;
   paidDebited: number;
+  /** 实际从企业账户扣的总额（弱路径通常只有 2% 服务费） */
+  chargedCents: number;
 };
 
 export async function ensureBusinessTokenAccount(
@@ -55,7 +63,7 @@ export async function ensureBusinessTokenAccount(
           accountId: account.id,
           amount: DEFAULT_BUSINESS_GIFT_CENTS,
           type: "platform_gift",
-          description: `平台赠送额度 S$${(DEFAULT_BUSINESS_GIFT_CENTS / 100).toFixed(0)}（不可提现，不可注奖金池）`,
+          description: `平台赠送额度 S$${(DEFAULT_BUSINESS_GIFT_CENTS / 100).toFixed(0)}（仅可抵独享服务费 2%，不可提现、不可注奖池）`,
           balanceAfter: account.balance,
         },
       });
@@ -71,91 +79,16 @@ export function spendableTokenCents(account: {
   return Math.max(0, account.balance) + Math.max(0, account.giftBalance);
 }
 
-/**
- * 扣款策略：
- * - 可提现 balance ≥ 应付 → 只扣 balance（真钱，可进池）
- * - 否则 gift+balance 够 → 先 gift 后 balance（含 gift，不进池）
- */
-export async function debitBusinessTokensForExclusive(
-  tx: Tx,
-  businessId: string,
-  amountCents: number,
-  opts: { type: string; description: string; referenceId?: string }
-): Promise<{
-  giftDebited: number;
-  paidDebited: number;
-  fundingMode: ExclusiveFundingMode;
-  giftAfter: number;
-  balanceAfter: number;
-}> {
-  const amount = Math.max(0, Math.round(amountCents));
-  const account = await ensureBusinessTokenAccount(tx, businessId);
-  const gift = Math.max(0, account.giftBalance);
-  const paid = Math.max(0, account.balance);
-
-  if (amount <= 0) {
-    return {
-      giftDebited: 0,
-      paidDebited: 0,
-      fundingMode: "paid",
-      giftAfter: gift,
-      balanceAfter: paid,
-    };
-  }
-
-  if (paid + gift < amount) {
-    throw new Error("INSUFFICIENT_TOKEN");
-  }
-
-  let giftDebited = 0;
-  let paidDebited = 0;
-  let fundingMode: ExclusiveFundingMode;
-
-  if (paid >= amount) {
-    // 真钱路径：只动可提现余额
-    paidDebited = amount;
-    fundingMode = "paid";
-  } else {
-    // 含平台赠送：先 gift 再 balance
-    giftDebited = Math.min(gift, amount);
-    paidDebited = amount - giftDebited;
-    fundingMode = "gift";
-  }
-
-  const updated = await tx.tokenAccount.update({
-    where: { id: account.id },
-    data: {
-      giftBalance: { decrement: giftDebited },
-      balance: { decrement: paidDebited },
-      totalSpent: { increment: amount },
-    },
-  });
-
-  await tx.tokenTransaction.create({
-    data: {
-      accountId: account.id,
-      amount: -amount,
-      type: opts.type,
-      description:
-        opts.description +
-        (fundingMode === "gift"
-          ? " · 含平台赠送（不注奖池/小奖门店兑）"
-          : " · 企业自充（可进奖池）"),
-      referenceId: opts.referenceId || null,
-      balanceAfter: updated.balance,
-    },
-  });
-
-  return {
-    giftDebited,
-    paidDebited,
-    fundingMode,
-    giftAfter: updated.giftBalance,
-    balanceAfter: updated.balance,
-  };
+/** 奖池相关：小奖 3% + 大奖 10%（只能自充） */
+export function exclusivePrizeFundingCents(split: FeeSplit): number {
+  return Math.max(0, split.smallPrizeCents) + Math.max(0, split.grandPoolCents);
 }
 
-/** 独享现金/实体售出：扣 15%；仅真钱路径注入奖池 */
+/**
+ * 独享现金/实体售出扣费：
+ * 1) 服务费 2%：gift 优先，不足再扣自充
+ * 2) 奖池 13%：仅自充；不够则不扣、不注池 → 弱路径
+ */
 export async function applyExclusiveCashSaleFees(
   tx: Tx,
   params: {
@@ -167,7 +100,10 @@ export async function applyExclusiveCashSaleFees(
   }
 ): Promise<ExclusiveCashFeeResult> {
   const split = splitExclusiveSaleFees(params.faceCents);
-  if (split.totalCents <= 0) {
+  const platformFee = Math.max(0, split.platformFeeCents);
+  const prizeNeed = exclusivePrizeFundingCents(split);
+
+  if (platformFee <= 0 && prizeNeed <= 0) {
     return {
       ...split,
       fundingMode: "paid",
@@ -175,34 +111,72 @@ export async function applyExclusiveCashSaleFees(
       weightFactor: 1,
       giftDebited: 0,
       paidDebited: 0,
+      chargedCents: 0,
     };
   }
 
-  const debited = await debitBusinessTokensForExclusive(
-    tx,
-    params.businessId,
-    split.totalCents,
-    {
+  const account = await ensureBusinessTokenAccount(tx, params.businessId);
+  const gift = Math.max(0, account.giftBalance);
+  const paid = Math.max(0, account.balance);
+
+  // 至少要付得起服务费（gift+自充）
+  if (gift + paid < platformFee) {
+    throw new Error("INSUFFICIENT_TOKEN");
+  }
+
+  // 服务费：gift 优先
+  const giftDebited = Math.min(gift, platformFee);
+  const paidForPlatform = platformFee - giftDebited;
+  const paidLeft = paid - paidForPlatform;
+
+  // 奖池部分：仅自充剩余
+  const realPrizeFunding = prizeNeed <= 0 || paidLeft >= prizeNeed;
+  const paidForPrize = realPrizeFunding ? prizeNeed : 0;
+  const paidDebited = paidForPlatform + paidForPrize;
+  const chargedCents = platformFee + paidForPrize;
+  const fundingMode: ExclusiveFundingMode = realPrizeFunding ? "paid" : "gift";
+  const weightFactor = realPrizeFunding ? 1 : EXCLUSIVE_GIFT_WEIGHT_FACTOR;
+
+  const updated = await tx.tokenAccount.update({
+    where: { id: account.id },
+    data: {
+      giftBalance: { decrement: giftDebited },
+      balance: { decrement: paidDebited },
+      totalSpent: { increment: chargedCents },
+    },
+  });
+
+  const baseLabel =
+    params.label ||
+    `独享活动扣点（服务费2%${realPrizeFunding ? "+小奖3%+大奖10%" : "；未自充奖池"}）`;
+
+  await tx.tokenTransaction.create({
+    data: {
+      accountId: account.id,
+      amount: -chargedCents,
       type: "exclusive_sale_fee",
       description:
-        params.label ||
-        `独享活动扣点 15%（小奖3%+服务费2%+大奖10%）S$${(split.totalCents / 100).toFixed(2)}`,
-      referenceId: params.referenceId,
-    }
-  );
+        `${baseLabel} S$${(chargedCents / 100).toFixed(2)}` +
+        (realPrizeFunding
+          ? " · 自充进奖池/可抽小奖"
+          : " · 仅服务费；小奖门店送、不注大奖池、弱权重"),
+      referenceId: params.referenceId || null,
+      balanceAfter: updated.balance,
+    },
+  });
 
-  const realPrizeFunding = debited.fundingMode === "paid";
-  if (realPrizeFunding) {
+  if (realPrizeFunding && prizeNeed > 0) {
     await creditExclusivePools(tx, params.campaignId, split);
   }
 
   return {
     ...split,
-    fundingMode: debited.fundingMode,
+    fundingMode,
     realPrizeFunding,
-    weightFactor: realPrizeFunding ? 1 : EXCLUSIVE_GIFT_WEIGHT_FACTOR,
-    giftDebited: debited.giftDebited,
-    paidDebited: debited.paidDebited,
+    weightFactor,
+    giftDebited,
+    paidDebited,
+    chargedCents,
   };
 }
 
@@ -221,7 +195,7 @@ export async function creditExclusivePools(
   });
 }
 
-/** 线上：支付真钱，始终进池 */
+/** 线上：支付真钱，始终进池（不扣企业 gift） */
 export async function applyExclusiveOnlineSaleFees(
   tx: Tx,
   params: { campaignId: string; faceCents: number }
@@ -235,9 +209,15 @@ export async function applyExclusiveOnlineSaleFees(
     weightFactor: 1,
     giftDebited: 0,
     paidDebited: 0,
+    chargedCents: split.totalCents,
   };
 }
 
+/**
+ * 现金售独享门槛：
+ * - ok：gift+自充 ≥ 服务费 2%（不强制充值）
+ * - canFullPrizeMode：自充在付完服务费后仍够 3%+10%
+ */
 export async function canAffordExclusiveCash(
   businessId: string,
   faceCents: number
@@ -247,21 +227,35 @@ export async function canAffordExclusiveCash(
   haveCents: number;
   paidCents: number;
   giftCents: number;
+  platformFeeCents: number;
+  prizeNeedCents: number;
   canFullPrizeMode: boolean;
 }> {
   const split = splitExclusiveSaleFees(faceCents);
+  const platformFeeCents = split.platformFeeCents;
+  const prizeNeedCents = exclusivePrizeFundingCents(split);
   const account = await prisma.tokenAccount.findUnique({
     where: { userId: businessId },
   });
-  const paid = account?.balance ?? 0;
-  const gift = account?.giftBalance ?? 0;
+  const paid = Math.max(0, account?.balance ?? 0);
+  const gift = Math.max(0, account?.giftBalance ?? 0);
   const have = paid + gift;
+
+  const giftForPlatform = Math.min(gift, platformFeeCents);
+  const paidForPlatform = platformFeeCents - giftForPlatform;
+  const paidLeft = paid - paidForPlatform;
+  const canFullPrizeMode =
+    have >= platformFeeCents &&
+    (prizeNeedCents <= 0 || paidLeft >= prizeNeedCents);
+
   return {
-    ok: have >= split.totalCents,
-    needCents: split.totalCents,
+    ok: have >= platformFeeCents,
+    needCents: platformFeeCents,
     haveCents: have,
     paidCents: paid,
     giftCents: gift,
-    canFullPrizeMode: paid >= split.totalCents,
+    platformFeeCents,
+    prizeNeedCents,
+    canFullPrizeMode,
   };
 }
