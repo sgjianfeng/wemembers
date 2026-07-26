@@ -50,10 +50,10 @@ export function WalletClient({ claims }: { claims: WalletClaim[] }) {
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-4 border-b border-slate-100">
+      <div className="px-4 py-4 border-b border-border">
         <h1 className="text-lg font-semibold">{t("wallet.title")}</h1>
       </div>
-      <div className="px-4 py-3 flex gap-1 bg-white border-b border-slate-50 overflow-x-auto">
+      <div className="px-4 py-3 flex gap-1 bg-card border-b border-slate-50 overflow-x-auto">
         {tabs.map((item) => (
           <button
             key={item.key}
@@ -62,7 +62,7 @@ export function WalletClient({ claims }: { claims: WalletClaim[] }) {
             className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
               tab === item.key
                 ? "bg-[#1A6EFF] text-white"
-                : "text-slate-500 hover:bg-slate-100"
+                : "text-muted-foreground hover:bg-muted"
             }`}
           >
             {item.label} · {item.count}
@@ -89,16 +89,16 @@ export function WalletClient({ claims }: { claims: WalletClaim[] }) {
               <CardContent className="p-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       {claim.coupon.businessName}
                     </p>
-                    <p className="text-lg font-bold text-slate-900 mt-0.5">
+                    <p className="text-lg font-bold text-foreground mt-0.5">
                       S${(claim.coupon.valueCents / 100).toFixed(0)}
                     </p>
-                    <p className="text-xs text-slate-500">{claim.coupon.title}</p>
+                    <p className="text-xs text-muted-foreground">{claim.coupon.title}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       {t("wallet.expires")}{" "}
                       {new Date(claim.coupon.validUntil).toLocaleDateString(
                         dateLocale
@@ -109,18 +109,18 @@ export function WalletClient({ claims }: { claims: WalletClaim[] }) {
                         {t("wallet.useNow")}
                       </span>
                     ) : statusBadge ? (
-                      <span className="inline-block mt-2 px-3 py-1 bg-slate-100 text-slate-500 text-xs rounded-full">
+                      <span className="inline-block mt-2 px-3 py-1 bg-muted text-muted-foreground text-xs rounded-full">
                         {statusBadge}
                       </span>
                     ) : null}
                   </div>
                 </div>
                 {isAvailable && (
-                  <div className="mt-2 pt-2 border-t border-dashed border-slate-100 flex items-center justify-between">
-                    <span className="text-[10px] text-slate-400 font-mono">
+                  <div className="mt-2 pt-2 border-t border-dashed border-border flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground font-mono">
                       {claim.qrCode}
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-muted-foreground">
                       {t("wallet.gift")}
                     </span>
                   </div>
@@ -138,7 +138,7 @@ export function WalletClient({ claims }: { claims: WalletClaim[] }) {
           );
         })}
         {list.length === 0 && (
-          <div className="text-center py-12 text-slate-400">
+          <div className="text-center py-12 text-muted-foreground">
             <p className="text-4xl mb-2">🎫</p>
             <p className="text-sm">{t(emptyKeys[tab])}</p>
           </div>

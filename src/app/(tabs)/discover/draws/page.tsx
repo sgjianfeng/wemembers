@@ -30,7 +30,7 @@ export default async function DiscoverDrawsPage() {
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-4 border-b border-slate-100">
+      <div className="px-4 py-4 border-b border-border">
         <Link
           href="/home"
           className="text-xs font-medium text-[#1A6EFF] mb-1 inline-block"
@@ -40,7 +40,7 @@ export default async function DiscoverDrawsPage() {
         <h1 className="text-lg font-semibold">
           {t("discover.draws.title", lang)}
         </h1>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {t("discover.draws.subtitle", lang, { count: campaigns.length })}
         </p>
       </div>
@@ -49,12 +49,12 @@ export default async function DiscoverDrawsPage() {
         {campaigns.length === 0 ? (
           <div className="text-center py-16 px-4">
             <div className="flex justify-center mb-2">
-              <Sparkles size={48} className="text-slate-300" />
+              <Sparkles size={48} className="text-muted-foreground" />
             </div>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-muted-foreground">
               {t("discover.draws.empty", lang)}
             </p>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
               {t("discover.draws.emptyHint", lang)}
             </p>
           </div>
@@ -67,18 +67,18 @@ export default async function DiscoverDrawsPage() {
               <Link key={d.id} href={href}>
                 <Card className="hover:border-[#1A6EFF]/30 transition-colors">
                   <CardContent className="p-3 flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0">
+                    <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-950/35 border border-amber-100 dark:border-amber-800/50 flex items-center justify-center shrink-0">
                       {isDraw ? (
-                        <Sparkles size={20} className="text-amber-600" />
+                        <Sparkles size={20} className="text-amber-600 dark:text-amber-400" />
                       ) : (
-                        <Ticket size={20} className="text-amber-600" />
+                        <Ticket size={20} className="text-amber-600 dark:text-amber-400" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-900 truncate">
+                      <p className="text-sm font-semibold text-foreground truncate">
                         {d.name}
                       </p>
-                      <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                      <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                         {d.business?.businessName || "—"}
                         {" · "}
                         {t("discover.draws.ends", lang)}{" "}

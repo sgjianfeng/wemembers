@@ -165,7 +165,7 @@ export default function CreateCouponPage() {
                   key={t.value}
                   onClick={() => setCouponType(t.value)}
                   className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                    couponType === t.value ? "border-primary bg-blue-50" : "border-border hover:border-border"
+                    couponType === t.value ? "border-primary bg-blue-50 dark:bg-blue-950/35" : "border-border hover:border-border"
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -237,7 +237,7 @@ export default function CreateCouponPage() {
                 </div>
 
                 {allowPromotion && (
-                  <div className="mt-3 space-y-3 p-3 bg-green-50 rounded-xl">
+                  <div className="mt-3 space-y-3 p-3 bg-green-50 dark:bg-green-950/35 rounded-xl">
                     {/* 奖励类型选择 */}
                     <div>
                       <label className="text-xs font-medium text-foreground mb-1 block">推广奖励类型</label>
@@ -265,7 +265,7 @@ export default function CreateCouponPage() {
                           </div>
                         </div>
                         <Input label={commissionType === "percentage" ? "佣金比例 (%)" : "固定佣金 (分)"} type="number" value={commissionValue} onChange={(e) => setCommissionValue(Number(e.target.value))} prefix={commissionType === "percentage" ? "%" : "S$"} />
-                        <p className="text-[10px] text-green-700">
+                        <p className="text-[10px] text-green-700 dark:text-green-400">
                           {commissionType === "percentage" ? `每核销一张，推广者得券面值的 ${commissionValue}%（平台抽20%）` : `每核销一张，推广者得 S$${(commissionValue / 100).toFixed(2)}（平台抽20%）`}
                         </p>
                       </>
@@ -276,7 +276,7 @@ export default function CreateCouponPage() {
                       <>
                         <Input label="奖品名称" placeholder="如：招牌奶茶一杯" value={itemRewardName} onChange={(e) => setItemRewardName(e.target.value)} />
                         <Input label="奖品库存 (0=不限)" type="number" value={itemRewardQty} onChange={(e) => setItemRewardQty(Number(e.target.value))} />
-                        <p className="text-[10px] text-green-700">
+                        <p className="text-[10px] text-green-700 dark:text-green-400">
                           推广者每成功推广核销一张券，即可获得「{itemRewardName || "奖品"}」
                         </p>
                       </>
@@ -410,8 +410,8 @@ export default function CreateCouponPage() {
                     <CardContent className="p-3 flex items-center gap-3">
                       <span className="text-2xl">⭐</span>
                       <div>
-                        <p className="text-sm font-semibold text-amber-700">领取即送积分</p>
-                        <p className="text-xs text-amber-600">额外获得 +{giftPoints} 积分</p>
+                        <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">领取即送积分</p>
+                        <p className="text-xs text-amber-600 dark:text-amber-400">额外获得 +{giftPoints} 积分</p>
                       </div>
                     </CardContent>
                   </Card>

@@ -28,7 +28,7 @@ export default async function DiscoverStoresPage() {
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-4 border-b border-slate-100">
+      <div className="px-4 py-4 border-b border-border">
         <Link
           href="/home"
           className="text-xs font-medium text-[#1A6EFF] mb-1 inline-block"
@@ -38,7 +38,7 @@ export default async function DiscoverStoresPage() {
         <h1 className="text-lg font-semibold">
           {t("discover.stores.title", lang)}
         </h1>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {t("discover.stores.subtitle", lang, { count: stores.length })}
         </p>
       </div>
@@ -47,12 +47,12 @@ export default async function DiscoverStoresPage() {
         {stores.length === 0 ? (
           <div className="text-center py-16 px-4">
             <div className="flex justify-center mb-2">
-              <Store size={48} className="text-slate-300" />
+              <Store size={48} className="text-muted-foreground" />
             </div>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-muted-foreground">
               {t("discover.stores.empty", lang)}
             </p>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
               {t("discover.stores.emptyHint", lang)}
             </p>
           </div>
@@ -87,10 +87,10 @@ export default async function DiscoverStoresPage() {
                       size={44}
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-900 truncate">
+                      <p className="text-sm font-semibold text-foreground truncate">
                         {s.businessName}
                       </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+                      <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
                         {bits.length > 0
                           ? bits.join(" · ")
                           : t("discover.stores.noActivity", lang)}

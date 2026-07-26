@@ -134,7 +134,7 @@ export default function PromoterPage() {
               <p className="text-white/70 text-xs">可提现余额</p>
               <p className="text-3xl font-bold mt-1 nums">S${((account?.availableBalance || 0) / 100).toFixed(2)}</p>
               {account.availableBalance >= 1000 && (
-                <button onClick={() => router.push("/promoter/withdraw")} className="mt-2 px-3 py-1 bg-card/20 text-white text-xs rounded-full active:scale-[0.97] transition-transform">提现 →</button>
+                <button onClick={() => router.push("/promoter/withdraw")} className="mt-2 px-3 py-1 bg-white/20 text-white text-xs rounded-full active:scale-[0.97] transition-transform">提现 →</button>
               )}
             </div>
           </div>

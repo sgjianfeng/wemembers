@@ -62,7 +62,7 @@ export function VoucherTabs({
               className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
                 active === f.key
                   ? "bg-[#1A6EFF] text-white shadow-sm"
-                  : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                  : "bg-muted text-muted-foreground hover:bg-slate-200"
               }`}
             >
               {t(f.labelKey)}
@@ -91,7 +91,7 @@ export function VoucherTabs({
               <Card
                 className={`hover:border-[#1A6EFF]/30 border-l-4 transition-colors ${
                   c.isClaimed
-                    ? "border-l-green-400 bg-green-50/50"
+                    ? "border-l-green-400 bg-green-50 dark:bg-green-950/35/50"
                     : soldOut
                     ? "border-l-slate-300 opacity-50"
                     : scarce
@@ -127,8 +127,8 @@ export function VoucherTabs({
                         </Badge>
                       )}
                     </div>
-                    <p className="text-sm font-medium text-slate-900 mt-1 truncate">{c.title}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
+                    <p className="text-sm font-medium text-foreground mt-1 truncate">{c.title}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
                       {c.business.businessName}
                       {" · "}
                       {t("home.deal.claimed", { n: String(c.claimedCount) })}
@@ -148,7 +148,7 @@ export function VoucherTabs({
                         {t("home.claim")}
                       </span>
                     ) : (
-                      <span className="px-3 py-1 bg-slate-200 text-slate-400 text-[10px] rounded-full font-medium">
+                      <span className="px-3 py-1 bg-slate-200 text-muted-foreground text-[10px] rounded-full font-medium">
                         {t("home.deal.soldOut")}
                       </span>
                     )}
@@ -160,15 +160,15 @@ export function VoucherTabs({
         })}
 
         {filtered.length === 0 && (
-          <div className="text-center py-10 px-4 bg-slate-50 rounded-2xl border border-slate-100">
+          <div className="text-center py-10 px-4 bg-muted/50 rounded-2xl border border-border">
             <p className="text-4xl mb-2">🎫</p>
-            <p className="text-sm font-medium text-slate-600">{t("home.discover.emptyTitle")}</p>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+            <p className="text-sm font-medium text-muted-foreground">{t("home.discover.emptyTitle")}</p>
+            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
               {t("home.discover.emptyHint")}
             </p>
             <Link
               href="/wallet"
-              className="inline-flex mt-4 px-4 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:border-[#1A6EFF] hover:text-[#1A6EFF] transition-colors"
+              className="inline-flex mt-4 px-4 py-1.5 rounded-full text-xs font-semibold bg-card border border-border text-foreground/90 hover:border-[#1A6EFF] hover:text-[#1A6EFF] transition-colors"
             >
               {t("home.discover.goWallet")}
             </Link>

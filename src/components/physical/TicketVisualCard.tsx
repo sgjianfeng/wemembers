@@ -66,7 +66,7 @@ export function TicketVisualCard({
         isShare
           ? "w-full aspect-square rounded-2xl"
           : "rounded-xl border print:border-slate-400",
-        isBold ? "border-transparent" : "border-slate-200 bg-white",
+        isBold ? "border-transparent" : "border-border bg-card",
         className
       )}
       style={
@@ -88,7 +88,7 @@ export function TicketVisualCard({
                 src={businessLogo}
                 alt=""
                 className={cn(
-                  "object-contain rounded-lg shrink-0 bg-white",
+                  "object-contain rounded-lg shrink-0 bg-card",
                   isShare ? "w-14 h-14" : "w-10 h-10",
                   "border border-white/20"
                 )}
@@ -98,7 +98,7 @@ export function TicketVisualCard({
                 className={cn(
                   "rounded-lg shrink-0 flex items-center justify-center text-lg",
                   isShare ? "w-14 h-14" : "w-10 h-10",
-                  isBold ? "bg-white/15" : "bg-slate-100"
+                  isBold ? "bg-white/15" : "bg-muted"
                 )}
               >
                 🏪
@@ -109,7 +109,7 @@ export function TicketVisualCard({
                 className={cn(
                   "font-semibold truncate",
                   isShare ? "text-sm" : "text-[10px]",
-                  isBold ? "text-white" : "text-slate-800"
+                  isBold ? "text-white" : "text-foreground"
                 )}
               >
                 {businessName || "Store"}
@@ -118,7 +118,7 @@ export function TicketVisualCard({
                 className={cn(
                   "tracking-wider uppercase",
                   isShare ? "text-[10px]" : "text-[9px]",
-                  isBold ? "text-white/60" : "text-amber-700/80"
+                  isBold ? "text-white/60" : "text-amber-700 dark:text-amber-400/80"
                 )}
               >
                 WeMembers
@@ -144,7 +144,7 @@ export function TicketVisualCard({
           className={cn(
             "font-bold mt-2 leading-snug",
             isShare ? "text-xl mt-4" : "text-sm",
-            isBold ? "text-white" : "text-slate-900"
+            isBold ? "text-white" : "text-foreground"
           )}
         >
           {title}
@@ -179,7 +179,7 @@ export function TicketVisualCard({
           className={cn(
             "mt-1",
             isShare ? "text-sm mt-2" : "text-[11px]",
-            isBold ? "text-white/75" : "text-slate-500"
+            isBold ? "text-white/75" : "text-muted-foreground"
           )}
         >
           🏪 {storeName}
@@ -209,14 +209,14 @@ export function TicketVisualCard({
               src={qrSrc}
               alt="QR"
               className={cn(
-                "rounded-lg bg-white shrink-0",
+                "rounded-lg bg-card shrink-0",
                 isShare ? "w-28 h-28 border-2 border-white/30" : "w-24 h-24 border"
               )}
             />
           ) : (
             <div
               className={cn(
-                "rounded-lg bg-white/90 shrink-0 flex items-center justify-center text-slate-300",
+                "rounded-lg bg-white/90 shrink-0 flex items-center justify-center text-muted-foreground",
                 isShare ? "w-28 h-28" : "w-24 h-24"
               )}
             >
@@ -227,7 +227,7 @@ export function TicketVisualCard({
             <p
               className={cn(
                 isShare ? "text-xs" : "text-[10px]",
-                isBold ? "text-white/50" : "text-slate-400"
+                isBold ? "text-white/50" : "text-muted-foreground"
               )}
             >
               {lang === "en" ? "Code" : "券码"}
@@ -236,7 +236,7 @@ export function TicketVisualCard({
               className={cn(
                 "font-mono font-semibold break-all",
                 isShare ? "text-sm" : "text-xs",
-                isBold ? "text-white" : "text-slate-800"
+                isBold ? "text-white" : "text-foreground"
               )}
             >
               {code}
@@ -245,7 +245,7 @@ export function TicketVisualCard({
               className={cn(
                 "mt-1",
                 isShare ? "text-xs" : "text-[10px]",
-                isBold ? "text-white/50" : "text-slate-400"
+                isBold ? "text-white/50" : "text-muted-foreground"
               )}
             >
               {lang === "en" ? "Valid until" : "有效期至"} {validLabel}
@@ -254,7 +254,7 @@ export function TicketVisualCard({
               className={cn(
                 "mt-1 leading-snug",
                 isShare ? "text-xs" : "text-[10px]",
-                isBold ? "text-white/70" : "text-slate-500"
+                isBold ? "text-white/70" : "text-muted-foreground"
               )}
             >
               {lang === "en"

@@ -518,7 +518,7 @@ export default function ScanClient({
       </div>
 
       {!storeId && (
-        <div className="mx-4 mt-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+        <div className="mx-4 mt-3 rounded-xl border border-amber-100 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/35 px-3 py-2.5 text-xs text-amber-900">
           {lang === "en"
             ? "No store assigned. Contact your company admin."
             : "未绑定门店，请联系企业管理员。"}
@@ -732,8 +732,8 @@ export default function ScanClient({
             <Card
               className={
                 voucherResult.ok
-                  ? "border-green-200 bg-green-50"
-                  : "border-red-200 bg-red-50"
+                  ? "border-green-200 bg-green-50 dark:bg-green-950/35"
+                  : "border-red-200 bg-red-50 dark:bg-red-950/35"
               }
             >
               <CardContent className="p-4 text-center space-y-1">
@@ -748,7 +748,7 @@ export default function ScanClient({
                 {voucherResult.ok && (
                   <>
                     {voucherInfo?.productKind !== "self_use" && (
-                      <p className="text-xs text-green-700">
+                      <p className="text-xs text-green-700 dark:text-green-400">
                         {t("scan.income")} S${voucherResult.income} · {t("scan.fee")}{" "}
                         S${voucherResult.fee}
                       </p>
@@ -901,14 +901,14 @@ export default function ScanClient({
                       : ` · ${t("scan.physicalUnbound")}`}
                 </p>
                 {physicalInfo.needSellFirst && (
-                  <p className="text-xs text-amber-800 bg-amber-50 rounded-lg p-2">
+                  <p className="text-xs text-amber-800 bg-amber-50 dark:bg-amber-950/35 rounded-lg p-2">
                     {lang === "en"
                       ? "Not sold yet — register cash payment before redeem."
                       : "尚未售出：请先登记收款，再核销。"}
                   </p>
                 )}
                 {physicalInfo.suggestClaim && (
-                  <p className="text-xs text-amber-800 bg-amber-50 rounded-lg p-2">
+                  <p className="text-xs text-amber-800 bg-amber-50 dark:bg-amber-950/35 rounded-lg p-2">
                     {t("scan.physicalDrawBind")}
                   </p>
                 )}
@@ -989,8 +989,8 @@ export default function ScanClient({
             <Card
               className={
                 physicalMsg.ok
-                  ? "border-green-200 bg-green-50"
-                  : "border-red-200 bg-red-50"
+                  ? "border-green-200 bg-green-50 dark:bg-green-950/35"
+                  : "border-red-200 bg-red-50 dark:bg-red-950/35"
               }
             >
               <CardContent className="p-4 text-center text-sm">

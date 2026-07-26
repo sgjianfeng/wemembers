@@ -72,7 +72,7 @@ export default async function CampaignsPage() {
                             className={
                               c.productKind === "self_use"
                                 ? "text-muted-foreground font-medium"
-                                : "text-amber-700 font-medium"
+                                : "text-amber-700 dark:text-amber-400 font-medium"
                             }
                           >
                             {c.type === "lucky_draw_v2" || c.type === "lucky_draw"

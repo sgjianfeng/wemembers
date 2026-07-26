@@ -48,7 +48,7 @@ export function BrandAvatar({
         className={cn(
           radius,
           // contain: brand marks should not be cropped like photos
-          "object-contain bg-white border border-slate-100 shrink-0 p-0.5",
+          "object-contain bg-card border border-border shrink-0 p-0.5",
           className
         )}
         style={{ width: size, height: size }}

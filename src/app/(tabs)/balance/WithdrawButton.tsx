@@ -67,7 +67,7 @@ export function WithdrawButton({
       >
         {mode === "voucher" ? t("balance.withdrawVoucher") : t("balance.withdrawDraw")}
       </Button>
-      {msg && <p className="text-[10px] text-slate-500 mt-1 text-center">{msg}</p>}
+      {msg && <p className="text-[10px] text-muted-foreground mt-1 text-center">{msg}</p>}
     </div>
   );
 }

@@ -112,7 +112,7 @@ export default async function BalancePage() {
   return (
     <div className="pb-4">
       {/* 页面标题 */}
-      <div className="px-4 py-4 border-b border-slate-100">
+      <div className="px-4 py-4 border-b border-border">
         <h1 className="text-lg font-semibold">
           {t("voucher.balance.title", lang)}
         </h1>
@@ -141,7 +141,7 @@ export default async function BalancePage() {
       {/* 可核销的券列表 */}
       {activeVouchers.length > 0 && (
         <div className="px-4 mt-6">
-          <h2 className="text-sm font-semibold text-slate-900 mb-3">
+          <h2 className="text-sm font-semibold text-foreground mb-3">
             {t("balance.myVouchers", lang)}
           </h2>
           <div className="space-y-2">
@@ -159,10 +159,10 @@ export default async function BalancePage() {
                         <span
                           className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
                             isSelf
-                              ? "bg-slate-100 text-slate-700"
+                              ? "bg-muted text-foreground/90"
                               : isDraw
-                                ? "bg-orange-50 text-orange-700"
-                                : "bg-amber-50 text-amber-800"
+                                ? "bg-orange-50 dark:bg-orange-950/35 text-orange-700"
+                                : "bg-amber-50 dark:bg-amber-950/35 text-amber-800"
                           }`}
                         >
                           {isDraw
@@ -181,7 +181,7 @@ export default async function BalancePage() {
                                 ? "Distribution"
                                 : "分发券"}
                         </span>
-                        <p className="text-sm font-medium text-slate-900 truncate">
+                        <p className="text-sm font-medium text-foreground truncate">
                           {v.campaign?.name || t("seller.type.draw", lang)}
                         </p>
                       </div>
@@ -190,22 +190,22 @@ export default async function BalancePage() {
                           {v.shortCode}
                         </p>
                       ) : (
-                        <p className="text-[10px] text-slate-400 font-mono break-all mt-0.5">
+                        <p className="text-[10px] text-muted-foreground font-mono break-all mt-0.5">
                           {t("balance.voucherId", lang)}: {v.id}
                         </p>
                       )}
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-amber-600">
+                      <p className="text-sm font-bold text-amber-600 dark:text-amber-400">
                         S${formatMoney(v.balanceCents)}
                       </p>
-                      <p className="text-[10px] text-slate-400">
+                      <p className="text-[10px] text-muted-foreground">
                         {t("balance.face", lang)} S${formatMoney(v.amountCents)}
                       </p>
                     </div>
                   </div>
                   {isDraw && (
-                    <p className="text-[10px] text-slate-400 mt-2">
+                    <p className="text-[10px] text-muted-foreground mt-2">
                       {t("balance.drawWeightHint", lang)}
                     </p>
                   )}
@@ -236,7 +236,7 @@ export default async function BalancePage() {
 
       {/* 购券记录 */}
       <div className="px-4 mt-6">
-        <h2 className="text-sm font-semibold text-slate-900 mb-3">
+        <h2 className="text-sm font-semibold text-foreground mb-3">
           {t("balance.purchases", lang)}
         </h2>
         <div className="space-y-2">
@@ -268,20 +268,20 @@ export default async function BalancePage() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {isSelf && (
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-muted text-foreground/90">
                               {lang === "en" ? "Self-use" : "自用券"}
                             </span>
                           )}
                           {how && (
-                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-800">
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/35 text-blue-800">
                               {how}
                             </span>
                           )}
-                          <p className="text-sm font-medium text-slate-900 truncate">
+                          <p className="text-sm font-medium text-foreground truncate">
                             {p.campaign?.name || "—"}
                           </p>
                         </div>
-                        <p className="text-xs text-slate-400 mt-0.5">
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           {timeAgo(p.createdAt)}
                           {p.shortCode ? ` · ${p.shortCode}` : ""}
                           {p.physicalTicket?.code
@@ -291,13 +291,13 @@ export default async function BalancePage() {
                         </p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-slate-900">
+                        <p className="text-sm font-semibold text-foreground">
                           {t("balance.purchaseRow", lang, {
                             paid: formatMoney(p.paidCents),
                             face: formatMoney(p.amountCents),
                           })}
                         </p>
-                        <p className="text-[10px] text-slate-400 mt-0.5 nums">
+                        <p className="text-[10px] text-muted-foreground mt-0.5 nums">
                           {lang === "en" ? "Left" : "剩余"} S$
                           {formatMoney(p.balanceCents)}
                         </p>
@@ -308,9 +308,9 @@ export default async function BalancePage() {
               );
             })
           ) : (
-            <div className="text-center py-8 text-slate-400">
+            <div className="text-center py-8 text-muted-foreground">
               <div className="flex justify-center mb-2">
-                <Receipt size={40} className="text-slate-300" />
+                <Receipt size={40} className="text-muted-foreground" />
               </div>
               <p className="text-sm">{t("balance.noPurchases", lang)}</p>
             </div>
@@ -320,7 +320,7 @@ export default async function BalancePage() {
 
       {/* 核销 / 消费记录 */}
       <div className="px-4 mt-6">
-        <h2 className="text-sm font-semibold text-slate-900 mb-3">
+        <h2 className="text-sm font-semibold text-foreground mb-3">
           {t("voucher.balance.usages", lang)}
         </h2>
         <div className="space-y-2">
@@ -330,17 +330,17 @@ export default async function BalancePage() {
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                          <Store size={16} className="text-slate-600" />
+                        <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+                          <Store size={16} className="text-muted-foreground" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-slate-900 truncate">
+                          <p className="text-sm font-medium text-foreground truncate">
                             {u.store?.name ||
                               t("voucher.balance.spendAt", lang, {
                                 store: "",
                               })}
                           </p>
-                          <p className="text-xs text-slate-400 mt-0.5">
+                          <p className="text-xs text-muted-foreground mt-0.5">
                             {u.voucher?.campaign?.name
                               ? `${u.voucher.campaign.name} · `
                               : ""}
@@ -349,10 +349,10 @@ export default async function BalancePage() {
                         </div>
                       </div>
                       <div className="text-right shrink-0 ml-3">
-                        <p className="text-sm font-semibold text-slate-900 nums">
+                        <p className="text-sm font-semibold text-foreground nums">
                           -S${formatMoney(u.amountCents)}
                         </p>
-                        <p className="text-xs text-slate-400 mt-0.5 nums">
+                        <p className="text-xs text-muted-foreground mt-0.5 nums">
                           {t("voucher.balanceAfter", lang)} S$
                           {formatMoney(u.balanceAfter)}
                         </p>
@@ -362,9 +362,9 @@ export default async function BalancePage() {
                 </Card>
               ))
             : (
-                <div className="text-center py-12 text-slate-400">
+                <div className="text-center py-12 text-muted-foreground">
                   <div className="flex justify-center mb-2">
-                    <CreditCard size={48} className="text-slate-300" />
+                    <CreditCard size={48} className="text-muted-foreground" />
                   </div>
                   <p className="text-sm">
                     {t("voucher.balance.noUsages", lang)}

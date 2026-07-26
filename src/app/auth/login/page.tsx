@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
+import { BrandMark } from "@/components/ui/BrandMark";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
@@ -87,7 +87,7 @@ function PasswordField({
         <button
           type="button"
           onClick={onToggleShow}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 hover:text-slate-600"
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-muted-foreground hover:text-muted-foreground"
           aria-label={show ? hideLabel : showLabel}
         >
           <EyeIcon open={show} />
@@ -273,36 +273,33 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-white to-white">
-      <TopHeader variant="default" fallbackUrl="/" />
+      <TopHeader variant="default" fallbackUrl="/" preferFallback />
 
       <div className="flex-1 flex flex-col px-6 pt-5 pb-8 max-w-md mx-auto w-full">
         {/* Brand */}
         <div className="text-center mb-5">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#240444] p-1 shadow-lg ring-2 ring-[#240444]/10">
-            <Image
-              src="/logo-mark.png"
-              alt="WeMembers"
-              width={48}
-              height={48}
-              className="h-10 w-10 object-contain"
+          <div className="mx-auto mb-3 flex justify-center">
+            <BrandMark
+              size={56}
               priority
+              className="shadow-lg ring-2 ring-[#240444]/15"
             />
           </div>
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-amber-600/90 uppercase">
+          <p className="text-[11px] font-semibold tracking-[0.18em] text-amber-600 dark:text-amber-400/90 uppercase">
             WeMembers.store
           </p>
-          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-900">
+          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-foreground">
             {t("auth.login.title")}
           </h1>
           {!inSetPasswordFlow && (
-            <p className="mt-1 text-sm text-slate-500 leading-relaxed">{subtitle}</p>
+            <p className="mt-1 text-sm text-muted-foreground leading-relaxed">{subtitle}</p>
           )}
         </div>
 
         {/* Role tabs */}
         {!inSetPasswordFlow && (
           <div
-            className="mb-4 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1"
+            className="mb-4 grid grid-cols-3 gap-1 rounded-2xl bg-muted p-1"
             role="tablist"
             aria-label={t("auth.login.subtitle")}
           >
@@ -322,8 +319,8 @@ export default function LoginPage() {
                 className={cn(
                   "rounded-xl py-2.5 text-sm font-semibold transition-all",
                   tab === item.id
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-500 hover:text-slate-700"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground/90"
                 )}
               >
                 {item.label}
@@ -333,7 +330,7 @@ export default function LoginPage() {
         )}
 
         {/* Card */}
-        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           {/* 密码登录：客户 / 商家 */}
           {showPasswordForm && (
             <>
@@ -368,11 +365,11 @@ export default function LoginPage() {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#1A6EFF] focus:ring-[#1A6EFF]"
                 />
-                <span className="text-sm text-slate-700 leading-snug">
+                <span className="text-sm text-foreground/90 leading-snug">
                   {tab === "customer"
                     ? t("auth.login.rememberCustomer")
                     : t("auth.login.rememberBusiness")}
-                  <span className="block text-xs text-slate-400 mt-0.5">
+                  <span className="block text-xs text-muted-foreground mt-0.5">
                     {tab === "customer"
                       ? t("auth.login.rememberHintCustomer")
                       : t("auth.login.rememberHintBusiness")}
@@ -381,7 +378,7 @@ export default function LoginPage() {
               </label>
 
               {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
-              <p className="mt-2 text-xs text-slate-400 leading-relaxed">{t("auth.login.hint")}</p>
+              <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{t("auth.login.hint")}</p>
               <Button
                 className="w-full mt-5"
                 size="lg"
@@ -408,7 +405,7 @@ export default function LoginPage() {
           {showCodeForm && mode === "code" && (
             <>
               {isAdminTab && (
-                <div className="mb-3 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
+                <div className="mb-3 rounded-xl bg-amber-50 dark:bg-amber-950/35 border border-amber-100 dark:border-amber-800/50 px-3 py-2.5">
                   <p className="text-xs text-amber-800 leading-relaxed">
                     {t("auth.login.codeAdminNote")}
                   </p>
@@ -434,14 +431,14 @@ export default function LoginPage() {
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#1A6EFF] focus:ring-[#1A6EFF]"
                   />
-                  <span className="text-sm text-slate-700 leading-snug">
+                  <span className="text-sm text-foreground/90 leading-snug">
                     {tab === "customer"
                       ? t("auth.login.rememberCustomer")
                       : t("auth.login.rememberBusiness")}
                   </span>
                 </label>
               )}
-              <p className="mt-2 text-xs text-slate-400 leading-relaxed">{t("auth.login.codeHint")}</p>
+              <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{t("auth.login.codeHint")}</p>
               <Button className="w-full mt-5" size="lg" onClick={handleSendCode} loading={loading}>
                 {t("auth.login.sendCode")}
               </Button>
@@ -463,29 +460,29 @@ export default function LoginPage() {
           {/* 验证码：6 位 */}
           {mode === "code-verify" && (
             <>
-              <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-3 mb-5">
-                <p className="text-xs text-slate-500">{t("auth.register.codeSent")}</p>
-                <p className="mt-0.5 text-sm font-medium text-slate-900 break-all">
+              <div className="rounded-xl bg-muted/50 border border-border px-3 py-3 mb-5">
+                <p className="text-xs text-muted-foreground">{t("auth.register.codeSent")}</p>
+                <p className="mt-0.5 text-sm font-medium text-foreground break-all">
                   {normalizedContact}
                 </p>
-                <p className="mt-1.5 text-xs text-slate-400">{t("auth.login.codeHint")}</p>
+                <p className="mt-1.5 text-xs text-muted-foreground">{t("auth.login.codeHint")}</p>
               </div>
               {devCode && (
-                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3">
+                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/35 px-3 py-3">
                   <p className="text-[11px] font-medium text-amber-800">
                     本地开发 · 未真发短信
                   </p>
                   <p className="mt-1 text-center text-2xl font-bold tracking-[0.35em] text-amber-900">
                     {devCode}
                   </p>
-                  <p className="mt-1 text-center text-[11px] text-amber-700">
+                  <p className="mt-1 text-center text-[11px] text-amber-700 dark:text-amber-400">
                     请输入上方 6 位验证码
                   </p>
                 </div>
               )}
               <CodeInput length={6} onComplete={handleVerify} error={error} />
               {loading && (
-                <p className="mt-3 text-center text-xs text-slate-400">{t("auth.login.verifying")}</p>
+                <p className="mt-3 text-center text-xs text-muted-foreground">{t("auth.login.verifying")}</p>
               )}
               <div className="mt-6 flex flex-col items-center gap-3">
                 <button
@@ -498,7 +495,7 @@ export default function LoginPage() {
                 >
                   ← {t("auth.login.changeContact")}
                 </button>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-muted-foreground">
                   {t("auth.register.notReceived")}{" "}
                   <button
                     type="button"
@@ -516,11 +513,11 @@ export default function LoginPage() {
           {/* 设密提示 */}
           {mode === "set-password-prompt" && (
             <div className="text-center py-2">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-xl">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-950/35 text-xl">
                 🔐
               </div>
-              <h2 className="text-lg font-semibold text-slate-900">{t("auth.login.setPwTitle")}</h2>
-              <p className="mt-2 text-sm text-slate-500 leading-relaxed px-1">
+              <h2 className="text-lg font-semibold text-foreground">{t("auth.login.setPwTitle")}</h2>
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed px-1">
                 {t("auth.login.setPwBody")}
               </p>
               <Button
@@ -537,7 +534,7 @@ export default function LoginPage() {
               </Button>
               <button
                 type="button"
-                className="mt-3 w-full text-sm font-medium text-slate-500 hover:text-slate-700"
+                className="mt-3 w-full text-sm font-medium text-muted-foreground hover:text-foreground/90"
                 onClick={() => goHome(pendingRole)}
               >
                 {t("auth.login.setPwSkip")}
@@ -579,7 +576,7 @@ export default function LoginPage() {
               </Button>
               <button
                 type="button"
-                className="mt-3 w-full text-sm font-medium text-slate-500"
+                className="mt-3 w-full text-sm font-medium text-muted-foreground"
                 onClick={() => goHome(pendingRole)}
               >
                 {t("auth.login.setPwSkip")}
@@ -590,7 +587,7 @@ export default function LoginPage() {
 
         {!inSetPasswordFlow && (
           <div className="mt-6 text-center">
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-muted-foreground">
               {t("auth.login.noAccount")}{" "}
               <Link href="/auth/register" className="text-[#1A6EFF] font-medium">
                 {t("auth.login.register")}
@@ -599,7 +596,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <p className="mt-auto pt-8 text-center text-[11px] text-slate-300">
+        <p className="mt-auto pt-8 text-center text-[11px] text-muted-foreground">
           {t("auth.login.agreement")}
         </p>
       </div>

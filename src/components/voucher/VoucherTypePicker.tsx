@@ -48,10 +48,10 @@ export function VoucherTypePicker({
   return (
     <div className="space-y-3">
       <div>
-        <h2 className="text-base font-semibold text-slate-900">
+        <h2 className="text-base font-semibold text-foreground">
           {t("productKind.pickTitle")}
         </h2>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {t("productKind.pickHint")}
         </p>
       </div>
@@ -64,21 +64,21 @@ export function VoucherTypePicker({
               type="button"
               onClick={() => onChange(c.id)}
               className={cn(
-                "w-full text-left rounded-2xl border bg-white overflow-hidden transition-colors",
-                selected ? c.selectedRing : "border-slate-100 hover:border-slate-200"
+                "w-full text-left rounded-2xl border bg-card overflow-hidden transition-colors",
+                selected ? c.selectedRing : "border-border hover:border-border"
               )}
             >
               <div className="flex">
                 <div className={cn("w-1.5 shrink-0", c.rail)} />
                 <div className="flex-1 p-4">
-                  <p className="text-sm font-semibold text-slate-900">
+                  <p className="text-sm font-semibold text-foreground">
                     {c.title}
                   </p>
                   <ul className="mt-2 space-y-1">
                     {c.lines.map((line) => (
                       <li
                         key={line}
-                        className="text-xs text-slate-500 leading-snug"
+                        className="text-xs text-muted-foreground leading-snug"
                       >
                         · {line}
                       </li>
@@ -91,11 +91,11 @@ export function VoucherTypePicker({
                       "w-5 h-5 rounded-full border-2 flex items-center justify-center",
                       selected
                         ? "border-[#1A6EFF] bg-[#1A6EFF]"
-                        : "border-slate-200"
+                        : "border-border"
                     )}
                   >
                     {selected && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-card" />
                     )}
                   </span>
                 </div>

@@ -381,7 +381,7 @@ function CampaignCardSheet({
 
   if (layout === "sticker") {
     return (
-      <div className="w-full max-w-[320px] aspect-square rounded-3xl border-2 border-slate-200 bg-white p-5 flex flex-col items-center justify-between shadow-sm print:border-slate-400">
+      <div className="w-full max-w-[320px] aspect-square rounded-3xl border-2 border-border bg-card p-5 flex flex-col items-center justify-between shadow-sm print:border-slate-400">
         <div className="w-full flex items-center gap-2">
           {businessLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -395,7 +395,7 @@ function CampaignCardSheet({
           )}
           <div className="min-w-0">
             <p className="text-sm font-bold truncate">{campaignName}</p>
-            <p className="text-[10px] text-slate-400 truncate">
+            <p className="text-[10px] text-muted-foreground truncate">
               {businessName}
             </p>
           </div>
@@ -407,7 +407,7 @@ function CampaignCardSheet({
             {headline}
           </p>
           {isDist && (
-            <p className="text-[10px] font-semibold text-amber-700 mt-1">
+            <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 mt-1">
               {lang === "en" ? "Via" : "分发"} · {distLabel}
             </p>
           )}
@@ -418,7 +418,7 @@ function CampaignCardSheet({
 
   if (layout === "poster") {
     return (
-      <div className="w-full max-w-[400px] rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white print:border-slate-400">
+      <div className="w-full max-w-[400px] rounded-2xl overflow-hidden border border-border shadow-sm bg-card print:border-slate-400">
         <div
           className="px-6 pt-8 pb-6 text-white text-center"
           style={{
@@ -430,7 +430,7 @@ function CampaignCardSheet({
             <img
               src={businessLogo}
               alt=""
-              className="w-16 h-16 object-contain rounded-2xl bg-white mx-auto p-1"
+              className="w-16 h-16 object-contain rounded-2xl bg-card mx-auto p-1"
             />
           ) : (
             <div className="w-16 h-16 rounded-2xl bg-white/20 mx-auto flex items-center justify-center text-3xl">
@@ -448,21 +448,21 @@ function CampaignCardSheet({
           )}
         </div>
         <div className="px-6 py-6 text-center">
-          <p className="text-lg font-bold text-slate-900">{headline}</p>
-          <p className="text-xs text-slate-500 mt-1">{sub}</p>
+          <p className="text-lg font-bold text-foreground">{headline}</p>
+          <p className="text-xs text-muted-foreground mt-1">{sub}</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={qrSrc}
             alt="QR"
-            className="w-52 h-52 mx-auto mt-4 rounded-2xl border p-2 bg-white"
+            className="w-52 h-52 mx-auto mt-4 rounded-2xl border p-2 bg-card"
           />
-          <p className="text-xs text-slate-400 mt-3">
+          <p className="text-xs text-muted-foreground mt-3">
             {lang === "en" ? "Until" : "活动至"} {valid}
           </p>
-          <p className="text-[9px] font-mono text-slate-400 break-all mt-2">
+          <p className="text-[9px] font-mono text-muted-foreground break-all mt-2">
             {buyUrl}
           </p>
-          <p className="text-[10px] text-slate-300 mt-4 tracking-widest uppercase">
+          <p className="text-[10px] text-muted-foreground mt-4 tracking-widest uppercase">
             WeMembers
           </p>
         </div>
@@ -472,9 +472,9 @@ function CampaignCardSheet({
 
   // tent
   return (
-    <div className="w-full max-w-[360px] rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden print:border-slate-400">
+    <div className="w-full max-w-[360px] rounded-2xl border border-border bg-card shadow-sm overflow-hidden print:border-slate-400">
       <div className="px-5 pt-5 pb-2 text-center">
-        <p className="text-[10px] font-semibold tracking-[0.2em] text-amber-700/90 uppercase">
+        <p className="text-[10px] font-semibold tracking-[0.2em] text-amber-700 dark:text-amber-400/90 uppercase">
           WeMembers · {lang === "en" ? "Activity" : "活动"}
         </p>
         <div className="flex items-center justify-center gap-2 mt-3">
@@ -487,16 +487,16 @@ function CampaignCardSheet({
             />
           ) : null}
           <div className="text-left min-w-0">
-            <h1 className="text-lg font-bold text-slate-900 leading-tight">
+            <h1 className="text-lg font-bold text-foreground leading-tight">
               {campaignName}
             </h1>
             {businessName && (
-              <p className="text-[11px] text-slate-400">{businessName}</p>
+              <p className="text-[11px] text-muted-foreground">{businessName}</p>
             )}
           </div>
         </div>
         {isDist && (
-          <p className="mt-2 text-[11px] font-semibold text-amber-800 bg-amber-50 inline-block px-2 py-0.5 rounded-full">
+          <p className="mt-2 text-[11px] font-semibold text-amber-800 bg-amber-50 dark:bg-amber-950/35 inline-block px-2 py-0.5 rounded-full">
             {lang === "en" ? "Via" : "分发"} · {distLabel}
           </p>
         )}
@@ -506,18 +506,18 @@ function CampaignCardSheet({
         <img
           src={qrSrc}
           alt="QR"
-          className="w-52 h-52 rounded-2xl border p-2 bg-white"
+          className="w-52 h-52 rounded-2xl border p-2 bg-card"
         />
       </div>
       <div className="px-5 pb-5 text-center">
         <p className="text-base font-bold" style={{ color: accent }}>
           {headline}
         </p>
-        <p className="text-[11px] text-slate-500 mt-1">{sub}</p>
-        <p className="text-[10px] text-slate-400 mt-2">
+        <p className="text-[11px] text-muted-foreground mt-1">{sub}</p>
+        <p className="text-[10px] text-muted-foreground mt-2">
           {lang === "en" ? "Until" : "活动至"} {valid}
         </p>
-        <p className="text-[9px] font-mono text-slate-400 break-all mt-2">
+        <p className="text-[9px] font-mono text-muted-foreground break-all mt-2">
           {buyUrl}
         </p>
       </div>

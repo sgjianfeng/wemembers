@@ -41,11 +41,11 @@ export function CountdownCard({ draws, emptyCta }: CountdownCardProps) {
 
   if (draws.length === 0) {
     return (
-      <Card className="bg-gradient-to-r from-slate-50 to-slate-100 border-slate-200">
+      <Card className="bg-gradient-to-r from-slate-50 to-slate-100 border-border">
         <CardContent className="p-4 text-center">
           <p className="text-2xl mb-2">🎰</p>
-          <p className="text-sm text-slate-600 font-medium">{t("home.countdown.noActive")}</p>
-          <p className="text-xs text-slate-400 mt-1.5 leading-relaxed px-2">
+          <p className="text-sm text-muted-foreground font-medium">{t("home.countdown.noActive")}</p>
+          <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed px-2">
             {t("home.countdown.noActiveHint")}
           </p>
           {emptyCta && (
@@ -95,7 +95,7 @@ export function CountdownCard({ draws, emptyCta }: CountdownCardProps) {
   return (
     <div className="space-y-2">
       {draws.length > 1 && (
-        <h2 className="text-sm font-semibold text-slate-900 px-0.5">
+        <h2 className="text-sm font-semibold text-foreground px-0.5">
           {t("home.section.campaigns")}
         </h2>
       )}
@@ -108,8 +108,8 @@ export function CountdownCard({ draws, emptyCta }: CountdownCardProps) {
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-xl shrink-0">{isV2 ? "🎟️" : "🎰"}</span>
                 <div className="min-w-0">
-                  <h3 className="text-sm font-semibold text-slate-900 truncate">{draw.name}</h3>
-                  <p className="text-[10px] text-slate-400 truncate">{draw.businessName}</p>
+                  <h3 className="text-sm font-semibold text-foreground truncate">{draw.name}</h3>
+                  <p className="text-[10px] text-muted-foreground truncate">{draw.businessName}</p>
                 </div>
               </div>
               {draw.myTicketCount > 0 && (
@@ -120,7 +120,7 @@ export function CountdownCard({ draws, emptyCta }: CountdownCardProps) {
             </div>
 
             {isExpired ? (
-              <div className="text-center py-3 bg-red-50 rounded-xl mb-3">
+              <div className="text-center py-3 bg-red-50 dark:bg-red-950/35 rounded-xl mb-3">
                 <p className="text-sm font-bold text-red-500">🔔 {t("draw.ended")}</p>
               </div>
             ) : (
@@ -143,7 +143,7 @@ export function CountdownCard({ draws, emptyCta }: CountdownCardProps) {
             {/* Pool */}
             <div>
               <div className="flex justify-between text-[10px] mb-1">
-                <span className="text-amber-700 font-medium">
+                <span className="text-amber-700 dark:text-amber-400 font-medium">
                   {t("home.countdown.pool", {
                     amount: poolValue.toLocaleString(undefined, {
                       minimumFractionDigits: 0,
@@ -195,11 +195,11 @@ export function CountdownCard({ draws, emptyCta }: CountdownCardProps) {
           .slice(0, 2)
           .map((d) => (
             <Link key={d.id} href={d.href}>
-              <Card className="border-amber-100 hover:border-amber-200 transition-colors">
+              <Card className="border-amber-100 dark:border-amber-800/50 hover:border-amber-200 transition-colors">
                 <CardContent className="p-3 flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-900 truncate">{d.name}</p>
-                    <p className="text-[10px] text-slate-400 truncate">{d.businessName}</p>
+                    <p className="text-sm font-medium text-foreground truncate">{d.name}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{d.businessName}</p>
                   </div>
                   <span className="shrink-0 text-[11px] font-medium text-[#FF6B35]">
                     {d.kind === "lucky_draw" ? t("home.countdown.enterDraw") : t("home.countdown.buyAndDraw")}
@@ -215,7 +215,7 @@ export function CountdownCard({ draws, emptyCta }: CountdownCardProps) {
 function TimeBlock({ v, label, urgent }: { v: number; label: string; urgent?: boolean }) {
   return (
     <div className={`text-center min-w-[28px] px-1 py-1 rounded-lg ${urgent ? "bg-red-100" : "bg-white/60"}`}>
-      <span className={`text-lg font-bold tabular-nums ${urgent ? "text-red-500 animate-pulse" : "text-amber-700"}`}>
+      <span className={`text-lg font-bold tabular-nums ${urgent ? "text-red-500 animate-pulse" : "text-amber-700 dark:text-amber-400"}`}>
         {String(v).padStart(2, "0")}
       </span>
       <span className="block text-[9px] text-amber-400">{label}</span>

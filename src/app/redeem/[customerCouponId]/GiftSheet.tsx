@@ -45,15 +45,15 @@ export function GiftSheet({ claimId, couponTitle }: { claimId: string; couponTit
 
       {show && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-end" onClick={() => setShow(false)}>
-          <div className="w-full max-w-lg mx-auto bg-white rounded-t-2xl p-6" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-slate-900 mb-1">转赠代金券</h3>
-            <p className="text-sm text-slate-500 mb-4">{couponTitle}</p>
+          <div className="w-full max-w-lg mx-auto bg-card rounded-t-2xl p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-foreground mb-1">转赠代金券</h3>
+            <p className="text-sm text-muted-foreground mb-4">{couponTitle}</p>
 
             <Input label="好友手机号" placeholder="输入手机号" value={phone} onChange={(e) => setPhone(e.target.value)} />
             <Input label="留言 (选填)" placeholder="如：请你喝杯咖啡~" className="mt-3" value={message} onChange={(e) => setMessage(e.target.value)} />
 
             {result && (
-              <div className={`mt-3 p-3 rounded-xl text-sm text-center ${result.success ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+              <div className={`mt-3 p-3 rounded-xl text-sm text-center ${result.success ? "bg-green-50 dark:bg-green-950/35 text-green-700 dark:text-green-400" : "bg-red-50 dark:bg-red-950/35 text-red-600"}`}>
                 {result.success ? "转赠成功！🎉" : result.error}
               </div>
             )}

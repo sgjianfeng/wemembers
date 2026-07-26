@@ -53,7 +53,7 @@ export function DailyCheckIn() {
   const streakIcons: Record<number, string> = { 3: "🔥", 7: "🌟", 15: "💎", 30: "👑" };
 
   return (
-    <Card className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-100">
+    <Card className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/30 border-amber-100 dark:border-amber-800/50">
       <CardContent className="p-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -67,14 +67,14 @@ export function DailyCheckIn() {
                 : "📅"}
             </span>
             <div>
-              <p className="text-sm font-semibold text-slate-900">
+              <p className="text-sm font-semibold text-foreground">
                 {status === "done"
                   ? t("home.checkin.success", { reward: String(reward) })
                   : status === "checked"
                   ? t("home.checkin.done", { streak: String(streak) })
                   : t("home.checkin.title")}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 {streak >= 3
                   ? t("home.checkin.streak", { streak: String(streak) })
                   : t("home.checkin.subtitle")}
@@ -90,7 +90,7 @@ export function DailyCheckIn() {
               status === "checked" || status === "done"
                 ? "bg-green-100 text-green-600"
                 : animating
-                ? "bg-amber-200 text-amber-700 animate-pulse"
+                ? "bg-amber-200 text-amber-700 dark:text-amber-400 animate-pulse"
                 : "bg-amber-400 text-white hover:bg-amber-500 active:scale-95"
             }`}
           >
@@ -111,11 +111,11 @@ export function DailyCheckIn() {
               return (
                 <div
                   key={i}
-                  className={`flex-1 h-1 rounded-full ${filled ? "bg-amber-400" : "bg-amber-100"}`}
+                  className={`flex-1 h-1 rounded-full ${filled ? "bg-amber-400" : "bg-amber-100 dark:bg-amber-900/40"}`}
                 />
               );
             })}
-            <span className="text-[10px] text-amber-600 ml-2">
+            <span className="text-[10px] text-amber-600 dark:text-amber-400 ml-2">
               {t("home.checkin.days", { n: String(streak % 7 || 7) })}
             </span>
           </div>

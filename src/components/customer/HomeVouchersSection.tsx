@@ -26,7 +26,7 @@ export function HomeVouchersSection({
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between px-0.5">
-        <h2 className="text-sm font-semibold text-slate-900">
+        <h2 className="text-sm font-semibold text-foreground">
           {t("home.section.vouchers", lang)}
         </h2>
         {vouchers.length > 0 && (
@@ -37,11 +37,11 @@ export function HomeVouchersSection({
       </div>
 
       {vouchers.length === 0 ? (
-        <Card className="border-slate-100 bg-slate-50/80">
+        <Card className="border-border bg-muted/50/80">
           <CardContent className="p-4 text-center">
             <p className="text-2xl mb-1">💳</p>
-            <p className="text-sm font-medium text-slate-700">{t("home.vouchers.empty", lang)}</p>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+            <p className="text-sm font-medium text-foreground/90">{t("home.vouchers.empty", lang)}</p>
+            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
               {t("home.vouchers.emptyHint", lang)}
             </p>
             <Link
@@ -82,19 +82,19 @@ export function HomeVouchersSection({
                       <span
                         className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
                           v.kind === "draw"
-                            ? "bg-orange-50 text-orange-700"
-                            : "bg-blue-50 text-blue-700"
+                            ? "bg-orange-50 dark:bg-orange-950/35 text-orange-700"
+                            : "bg-blue-50 dark:bg-blue-950/35 text-blue-700 dark:text-blue-400"
                         }`}
                       >
                         {v.kind === "draw"
                           ? t("home.vouchers.badge.draw", lang)
                           : t("home.vouchers.badge.discount", lang)}
                       </span>
-                      <p className="text-sm font-medium text-slate-900 truncate">
+                      <p className="text-sm font-medium text-foreground truncate">
                         {v.campaignName}
                       </p>
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
                       {t("home.vouchers.face", lang, {
                         amount: formatMoney(v.amountCents),
                       })}
@@ -102,7 +102,7 @@ export function HomeVouchersSection({
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-bold text-amber-600">
+                    <p className="text-sm font-bold text-amber-600 dark:text-amber-400">
                       S${formatMoney(v.balanceCents)}
                     </p>
                   </div>

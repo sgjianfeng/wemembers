@@ -388,9 +388,9 @@ export default function NewCampaignPage() {
 
         <div className="px-4 mt-4 space-y-3">
           {productKind === "self_use" && (
-            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3">
+            <div className="rounded-2xl border border-emerald-100 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-950/35/60 p-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-medium text-emerald-800">
+                <p className="text-xs font-medium text-emerald-800 dark:text-emerald-300">
                   {lang === "en" ? "My copies" : "我的拷贝模版"}
                 </p>
                 <Link
@@ -401,7 +401,7 @@ export default function NewCampaignPage() {
                 </Link>
               </div>
               {bizTemplates.length === 0 ? (
-                <p className="text-[11px] text-emerald-700/70 mt-1">
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-400/70 mt-1">
                   {lang === "en"
                     ? "Copy a platform template to customize discount or exclusive fees."
                     : "可拷贝平台模版，改折扣或独享总率/小奖/大奖（平台 2% 不可改）。"}
@@ -413,7 +413,7 @@ export default function NewCampaignPage() {
                       key={m.id}
                       type="button"
                       onClick={() => pickBusinessTemplate(m)}
-                      className="w-full text-left rounded-xl bg-card border border-emerald-100 px-3 py-2"
+                      className="w-full text-left rounded-xl bg-card border border-emerald-100 dark:border-emerald-800/50 px-3 py-2"
                     >
                       <p className="text-sm font-medium text-foreground">
                         {m.name}
@@ -495,7 +495,7 @@ export default function NewCampaignPage() {
       </div>
 
       <div className="flex-1 px-4 mt-4 space-y-4">
-        <Card className="border-blue-100 bg-blue-50/60">
+        <Card className="border-blue-100 dark:border-blue-800/50 bg-blue-50 dark:bg-blue-950/35/60">
           <CardContent className="p-3">
             <p className="text-xs font-medium text-blue-900">{tr("network.bannerTitle")}</p>
             <p className="text-[11px] text-blue-800/80 mt-1 leading-relaxed">
@@ -582,7 +582,7 @@ export default function NewCampaignPage() {
                         type="button"
                         onClick={() => updateGrandPrize(idx, { icon: ic })}
                         className={`w-8 h-8 rounded-lg text-base ${
-                          g.icon === ic ? "bg-blue-50 ring-2 ring-primary" : "bg-muted/50"
+                          g.icon === ic ? "bg-blue-50 dark:bg-blue-950/35 ring-2 ring-primary" : "bg-muted/50"
                         }`}
                       >
                         {ic}
@@ -717,7 +717,7 @@ export default function NewCampaignPage() {
                     onClick={() => togglePartner(p.id)}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-sm border ${
                       on
-                        ? "border-primary bg-blue-50 text-foreground"
+                        ? "border-primary bg-blue-50 dark:bg-blue-950/35 text-foreground"
                         : "border-border bg-card text-foreground"
                     }`}
                   >

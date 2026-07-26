@@ -75,7 +75,7 @@ export function WithdrawButton({ balance }: { balance: number }) {
         )}
 
         {message && (
-          <div className={`mb-3 text-center p-2 rounded-lg text-xs ${message.startsWith("✅") ? "bg-green-50 text-green-700" : "bg-red-50 text-red-500"}`}>
+          <div className={`mb-3 text-center p-2 rounded-lg text-xs ${message.startsWith("✅") ? "bg-green-50 dark:bg-green-950/35 text-green-700 dark:text-green-400" : "bg-red-50 dark:bg-red-950/35 text-red-500"}`}>
             {message}
           </div>
         )}

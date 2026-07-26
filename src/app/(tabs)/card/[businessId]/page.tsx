@@ -41,7 +41,7 @@ export default async function CardDetailPage({
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
         <p className="text-4xl mb-3">💳</p>
-        <p className="text-sm text-slate-500">{t("card.detail.notFound", lang)}</p>
+        <p className="text-sm text-muted-foreground">{t("card.detail.notFound", lang)}</p>
         <Link
           href="/card"
           className="mt-4 text-sm font-medium text-[#1A6EFF]"
@@ -105,7 +105,7 @@ export default async function CardDetailPage({
 
   return (
     <div className="pb-6">
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+      <div className="px-4 py-3 border-b border-border flex items-center gap-2">
         <Link href="/card" className="text-sm text-[#1A6EFF] font-medium">
           ← {t("card.detail.backList", lang)}
         </Link>
@@ -167,7 +167,7 @@ export default async function CardDetailPage({
       </div>
 
       <div className="px-4 mt-5">
-        <h2 className="text-sm font-semibold text-slate-900 mb-2">
+        <h2 className="text-sm font-semibold text-foreground mb-2">
           {t("card.detail.benefits", lang)}
         </h2>
         <Card>
@@ -177,7 +177,7 @@ export default async function CardDetailPage({
                 {benefits.map((b, i) => (
                   <li
                     key={i}
-                    className="text-sm text-slate-700 flex items-start gap-2"
+                    className="text-sm text-foreground/90 flex items-start gap-2"
                   >
                     <span className="text-amber-500 shrink-0">✦</span>
                     <span>{b}</span>
@@ -185,7 +185,7 @@ export default async function CardDetailPage({
                 ))}
               </ul>
             ) : (
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 {t("card.detail.noBenefits", lang)}
               </p>
             )}

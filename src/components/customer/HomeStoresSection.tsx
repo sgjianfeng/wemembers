@@ -31,7 +31,7 @@ export function HomeStoresSection({
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between px-0.5">
-        <h2 className="text-sm font-semibold text-slate-900">
+        <h2 className="text-sm font-semibold text-foreground">
           {t("home.section.stores", lang)}
         </h2>
         {stores.length > 0 && (
@@ -42,16 +42,16 @@ export function HomeStoresSection({
       </div>
 
       {stores.length === 0 ? (
-        <Card className="border-slate-100 bg-slate-50/80">
+        <Card className="border-border bg-muted/50/80">
           <CardContent className="p-4 text-center">
             <p className="text-2xl mb-1">🏪</p>
-            <p className="text-sm font-medium text-slate-700">{t("home.stores.empty", lang)}</p>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+            <p className="text-sm font-medium text-foreground/90">{t("home.stores.empty", lang)}</p>
+            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
               {t("home.stores.emptyHint", lang)}
             </p>
             <Link
               href="/discover/stores"
-              className="inline-flex mt-3 px-4 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-700"
+              className="inline-flex mt-3 px-4 py-1.5 rounded-full text-xs font-semibold bg-card border border-border text-foreground/90"
             >
               {t("discover.stores.browse", lang)}
             </Link>
@@ -72,12 +72,12 @@ export function HomeStoresSection({
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-semibold text-slate-900 truncate">
+                      <p className="text-sm font-semibold text-foreground truncate">
                         {s.businessName}
                       </p>
                       {s.isFavorite && <span className="text-xs">⭐</span>}
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
                       {t("home.stores.points", lang, { points: s.points })}
                       {" · "}
                       {t("home.stores.tier", lang, { tier: tierLabel })}
@@ -91,7 +91,7 @@ export function HomeStoresSection({
                       )}
                     </p>
                   </div>
-                  <span className="text-slate-300 shrink-0">→</span>
+                  <span className="text-muted-foreground shrink-0">→</span>
                 </CardContent>
               </Card>
             </Link>

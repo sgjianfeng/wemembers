@@ -63,13 +63,13 @@ export function PasswordField({
         <button
           type="button"
           onClick={onToggleShow}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 hover:text-slate-600"
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-muted-foreground hover:text-muted-foreground"
           aria-label={show ? hideLabel : showLabel}
         >
           <EyeIcon open={show} />
         </button>
       </div>
-      {hint && <p className="mt-1.5 text-xs text-slate-400 leading-relaxed">{hint}</p>}
+      {hint && <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{hint}</p>}
     </div>
   );
 }

@@ -102,9 +102,9 @@ export default async function TokenRechargePage({
 
   const consumeTypeLabels: Record<string, { zh: string; en: string; color: string }> = {
     purchase: { zh: "购买", en: "Purchase", color: "text-green-600" },
-    free_grant: { zh: "赠送", en: "Free Grant", color: "text-blue-600" },
-    signup_bonus: { zh: "注册奖励", en: "Signup Bonus", color: "text-blue-600" },
-    referral_bonus: { zh: "推荐奖励", en: "Referral Bonus", color: "text-blue-600" },
+    free_grant: { zh: "赠送", en: "Free Grant", color: "text-blue-600 dark:text-blue-400" },
+    signup_bonus: { zh: "注册奖励", en: "Signup Bonus", color: "text-blue-600 dark:text-blue-400" },
+    referral_bonus: { zh: "推荐奖励", en: "Referral Bonus", color: "text-blue-600 dark:text-blue-400" },
     admin_adjust: { zh: "管理员调整", en: "Admin Adjustment", color: "text-purple-600" },
     coupon_create: { zh: "创建代金券", en: "Create Coupon", color: "text-orange-600" },
     sms_notify: { zh: "短信通知", en: "SMS Notification", color: "text-orange-600" },
@@ -114,11 +114,11 @@ export default async function TokenRechargePage({
     export_report: { zh: "导出报表", en: "Export Report", color: "text-orange-600" },
     stripe_topup: { zh: "Stripe 充值", en: "Stripe Top-Up", color: "text-green-600" },
     withdrawal: { zh: "提现", en: "Withdrawal", color: "text-red-600" },
-    settlement_earn: { zh: "跨店结算", en: "Cross-store Settlement", color: "text-amber-600" },
-    voucher_redeem_income: { zh: "核销收入", en: "Redeem income", color: "text-amber-600" },
-    voucher_spend_income: { zh: "购券即用", en: "Spend-at-buy", color: "text-amber-600" },
+    settlement_earn: { zh: "跨店结算", en: "Cross-store Settlement", color: "text-amber-600 dark:text-amber-400" },
+    voucher_redeem_income: { zh: "核销收入", en: "Redeem income", color: "text-amber-600 dark:text-amber-400" },
+    voucher_spend_income: { zh: "购券即用", en: "Spend-at-buy", color: "text-amber-600 dark:text-amber-400" },
     seller_commission: { zh: "卖券佣金", en: "Seller commission", color: "text-green-600" },
-    t1_release: { zh: "T+1 解冻", en: "T+1 unlock", color: "text-blue-600" },
+    t1_release: { zh: "T+1 解冻", en: "T+1 unlock", color: "text-blue-600 dark:text-blue-400" },
   };
 
   return (
@@ -139,25 +139,25 @@ export default async function TokenRechargePage({
               <p className="text-xl font-bold mt-1">S${(balance / 100).toFixed(2)}</p>
             </CardContent>
           </Card>
-          <Card className="bg-emerald-50 border-emerald-100">
+          <Card className="bg-emerald-50 dark:bg-emerald-950/35 border-emerald-100 dark:border-emerald-800/50">
             <CardContent className="p-3">
-              <p className="text-xs text-emerald-700">
+              <p className="text-xs text-emerald-700 dark:text-emerald-400">
                 {lang === "en" ? "Platform credit (no withdraw)" : "平台额度（不可提）"}
               </p>
-              <p className="text-xl font-bold text-emerald-800 mt-1">
+              <p className="text-xl font-bold text-emerald-800 dark:text-emerald-300 mt-1">
                 S${(giftBalance / 100).toFixed(2)}
               </p>
-              <p className="text-[10px] text-emerald-600/80 mt-0.5">
+              <p className="text-[10px] text-emerald-600 dark:text-emerald-400/80 mt-0.5">
                 {lang === "en"
                   ? "Only covers exclusive platform fee (2%). Self-topup funds prize pool."
                   : "仅可抵独享服务费 2%；自充才进奖池/抽小奖"}
               </p>
             </CardContent>
           </Card>
-          <Card className="bg-amber-50 border-amber-100">
+          <Card className="bg-amber-50 dark:bg-amber-950/35 border-amber-100 dark:border-amber-800/50">
             <CardContent className="p-3">
-              <p className="text-xs text-amber-600">{t("business.tokens.frozen", lang)}</p>
-              <p className="text-xl font-bold text-amber-700 mt-1">S${(frozen / 100).toFixed(2)}</p>
+              <p className="text-xs text-amber-600 dark:text-amber-400">{t("business.tokens.frozen", lang)}</p>
+              <p className="text-xl font-bold text-amber-700 dark:text-amber-400 mt-1">S${(frozen / 100).toFixed(2)}</p>
             </CardContent>
           </Card>
           <Card className="bg-muted/50 border-0">
@@ -237,24 +237,24 @@ export default async function TokenRechargePage({
 
         {/* Status messages — accurate after Stripe refresh above */}
         {sp.onboarding === "success" && isStripeFullyReady && (
-          <div className="text-center p-3 bg-green-50 text-green-700 text-sm rounded-xl">
+          <div className="text-center p-3 bg-green-50 dark:bg-green-950/35 text-green-700 dark:text-green-400 text-sm rounded-xl">
             {t("business.tokens.onboardingDone", lang)}
           </div>
         )}
         {sp.onboarding === "success" && isStripePartial && (
-          <div className="text-center p-3 bg-blue-50 text-blue-800 text-sm rounded-xl">
+          <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/35 text-blue-800 text-sm rounded-xl">
             {t("business.tokens.onboardingPartial", lang)}
           </div>
         )}
         {sp.onboarding === "success" &&
           !isStripeFullyReady &&
           !isStripePartial && (
-            <div className="text-center p-3 bg-amber-50 text-amber-800 text-sm rounded-xl">
+            <div className="text-center p-3 bg-amber-50 dark:bg-amber-950/35 text-amber-800 text-sm rounded-xl">
               {t("business.tokens.onboardingIncomplete", lang)}
             </div>
           )}
         {sp.topup === "success" && (
-          <div className="text-center p-3 bg-green-50 text-green-700 text-sm rounded-xl">
+          <div className="text-center p-3 bg-green-50 dark:bg-green-950/35 text-green-700 dark:text-green-400 text-sm rounded-xl">
             {t("business.tokens.paymentSuccess", lang)}
           </div>
         )}

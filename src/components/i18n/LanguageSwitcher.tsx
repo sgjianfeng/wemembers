@@ -25,7 +25,7 @@ export function LanguageSwitcher({ variant = "default" }: LanguageSwitcherProps)
       className={`text-xs px-2 py-1 rounded-full border transition-colors ${
         isLight
           ? "border-white/20 text-white/70 hover:bg-white/10"
-          : "border-slate-200 text-slate-500 hover:bg-slate-100"
+          : "border-border text-muted-foreground hover:bg-muted"
       }`}
       title={lang === "zh" ? "Switch to English" : "切换到中文"}
     >

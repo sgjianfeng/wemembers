@@ -70,7 +70,7 @@ export default async function CampaignMarketPage() {
             const topPrize = camp.prizes[0];
 
             return (
-              <Card key={camp.id} className={isJoined ? "border-green-200 bg-green-50/30" : ""}>
+              <Card key={camp.id} className={isJoined ? "border-green-200 bg-green-50 dark:bg-green-950/35/30" : ""}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div className="min-w-0 flex-1">
@@ -92,7 +92,7 @@ export default async function CampaignMarketPage() {
                   {topPrize && (
                     <div className="flex items-center gap-1.5 mb-2 text-xs">
                       <span>{topPrize.icon}</span>
-                      <span className="text-amber-600 font-medium">
+                      <span className="text-amber-600 dark:text-amber-400 font-medium">
                         {t("market.grand", lang)}: {topPrize.name}
                       </span>
                       {camp.prizes.length > 1 && (

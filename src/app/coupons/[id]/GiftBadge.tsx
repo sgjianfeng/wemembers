@@ -50,8 +50,8 @@ export function GiftBadge({ type, data }: { type: string; data: string }) {
         <CardContent className="p-3 flex items-center gap-3">
           <span className="text-2xl">⭐</span>
           <div>
-            <p className="text-sm font-semibold text-amber-700">领取即送积分</p>
-            <p className="text-xs text-amber-600">额外获得 +{config.points || 0} 积分</p>
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">领取即送积分</p>
+            <p className="text-xs text-amber-600 dark:text-amber-400">额外获得 +{config.points || 0} 积分</p>
           </div>
         </CardContent>
       </Card>

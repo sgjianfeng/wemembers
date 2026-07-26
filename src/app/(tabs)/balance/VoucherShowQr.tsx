@@ -28,7 +28,7 @@ export function VoucherShowQr({
         {open ? t("balance.hideQr") : t("balance.showQr")}
       </Button>
       {open && (
-        <div className="mt-3 p-3 bg-white rounded-xl border border-slate-100 text-center">
+        <div className="mt-3 p-3 bg-card rounded-xl border border-border text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={`/api/voucher/qr?id=${encodeURIComponent(voucherId)}&size=260`}
@@ -40,16 +40,16 @@ export function VoucherShowQr({
               <p className="text-2xl font-bold font-mono tracking-[0.25em] text-[#1A6EFF] mt-3">
                 {shortCode}
               </p>
-              <p className="text-[10px] text-slate-500 mt-1">
+              <p className="text-[10px] text-muted-foreground mt-1">
                 {t("balance.shortCodeHint")}
               </p>
             </>
           ) : (
-            <p className="text-[10px] text-slate-400 mt-2 font-mono break-all">
+            <p className="text-[10px] text-muted-foreground mt-2 font-mono break-all">
               {voucherId}
             </p>
           )}
-          <p className="text-[10px] text-slate-500 mt-1">{t("balance.qrNetwork")}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">{t("balance.qrNetwork")}</p>
         </div>
       )}
     </div>

@@ -85,7 +85,7 @@ export default function PhysicalClaimPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-sm text-slate-400">
+      <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
         加载中…
       </div>
     );
@@ -104,13 +104,13 @@ export default function PhysicalClaimPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white px-4 py-8 max-w-md mx-auto">
-      <p className="text-[11px] font-semibold tracking-wider text-amber-700 uppercase text-center">
+      <p className="text-[11px] font-semibold tracking-wider text-amber-700 dark:text-amber-400 uppercase text-center">
         WeMembers
       </p>
-      <h1 className="text-xl font-bold text-center text-slate-900 mt-2">
+      <h1 className="text-xl font-bold text-center text-foreground mt-2">
         {data.title}
       </h1>
-      <p className="text-center text-xs text-slate-500 mt-1">
+      <p className="text-center text-xs text-muted-foreground mt-1">
         {data.businessName || "商家"} · 🏪 {data.storeName}
       </p>
 
@@ -125,10 +125,10 @@ export default function PhysicalClaimPage() {
               🎰 抽奖券 · 绑定后可看大奖
             </p>
           )}
-          <p className="text-xs text-center text-slate-500">
+          <p className="text-xs text-center text-muted-foreground">
             自用券打印版 · 同品牌可核 · 绑后进余额
           </p>
-          <p className="text-[11px] text-center font-mono text-slate-400 break-all">
+          <p className="text-[11px] text-center font-mono text-muted-foreground break-all">
             {data.code}
           </p>
           <p className="text-xs text-center">
@@ -151,7 +151,7 @@ export default function PhysicalClaimPage() {
               <Button className="w-full" size="lg" onClick={claim} loading={claiming}>
                 绑定到我的账号
               </Button>
-              <p className="text-[11px] text-slate-400 text-center leading-relaxed">
+              <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
                 未登录将跳转登录/注册。绑后券进钱包；抽奖可看大奖进度。
               </p>
               <div className="flex gap-2 justify-center text-xs">
@@ -161,7 +161,7 @@ export default function PhysicalClaimPage() {
                 >
                   登录
                 </Link>
-                <span className="text-slate-300">|</span>
+                <span className="text-muted-foreground">|</span>
                 <Link
                   href={`/auth/register?redirect=${encodeURIComponent(`/c/${code}`)}`}
                   className="text-[#1A6EFF]"
@@ -174,7 +174,7 @@ export default function PhysicalClaimPage() {
 
           {data.status === "claimed" && data.claimedByYou && (
             <div className="space-y-2">
-              <p className="text-sm text-emerald-600 text-center font-medium">
+              <p className="text-sm text-emerald-600 dark:text-emerald-400 text-center font-medium">
                 已绑定到你的账号
                 {data.type === "voucher"
                   ? " · 按线上券处理"
@@ -189,24 +189,24 @@ export default function PhysicalClaimPage() {
           )}
 
           {data.status === "claimed" && !data.claimedByYou && (
-            <p className="text-sm text-amber-700 text-center font-medium bg-amber-50 rounded-lg p-3">
+            <p className="text-sm text-amber-700 dark:text-amber-400 text-center font-medium bg-amber-50 dark:bg-amber-950/35 rounded-lg p-3">
               该券已绑定其他账号，无法再绑。请使用持有人账号登录查看。
             </p>
           )}
 
           {data.status === "redeemed" && (
-            <p className="text-sm text-slate-500 text-center">该券已在店内核销</p>
+            <p className="text-sm text-muted-foreground text-center">该券已在店内核销</p>
           )}
 
           {msg && (
-            <p className="text-xs text-center text-slate-600 bg-slate-50 rounded-lg p-2">
+            <p className="text-xs text-center text-muted-foreground bg-muted/50 rounded-lg p-2">
               {msg}
             </p>
           )}
         </CardContent>
       </Card>
 
-      <p className="text-[11px] text-slate-400 text-center mt-6 leading-relaxed px-4">
+      <p className="text-[11px] text-muted-foreground text-center mt-6 leading-relaxed px-4">
         到店可直接给店员扫码核销代金券（可不绑定）。  
         抽奖建议绑定，方便查看大奖与中奖记录。
       </p>

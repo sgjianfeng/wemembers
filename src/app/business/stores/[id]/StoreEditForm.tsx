@@ -102,7 +102,7 @@ export function StoreEditForm({ storeId, initial, lang }: Props) {
           placeholder="91251676"
         />
         {err && <p className="text-xs text-red-500">{err}</p>}
-        {msg && <p className="text-xs text-emerald-600">{msg}</p>}
+        {msg && <p className="text-xs text-emerald-600 dark:text-emerald-400">{msg}</p>}
         <div className="flex gap-2">
           <Button className="flex-1" onClick={save} loading={loading}>
             {lang === "en" ? "Save" : "保存"}

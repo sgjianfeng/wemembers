@@ -34,8 +34,8 @@ export function VoucherTypeBadge({
           "inline-flex items-center font-semibold rounded-full border",
           size === "sm" ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2.5 py-1",
           self
-            ? "bg-slate-100 text-slate-700 border-slate-200"
-            : "bg-orange-50 text-amber-800 border-orange-100"
+            ? "bg-muted text-foreground/90 border-border"
+            : "bg-orange-50 dark:bg-orange-950/35 text-amber-800 border-orange-100"
         )}
       >
         {label}

@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
 import { SettingsEditForm } from "./SettingsEditForm";
 import { BrandLogoUpload } from "./BrandLogoUpload";
+import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 import Link from "next/link";
 
 export default async function BusinessSettingsPage() {
@@ -59,6 +60,20 @@ export default async function BusinessSettingsPage() {
       </div>
 
       <div className="px-4 mt-4 space-y-4 min-w-0 max-w-full">
+        <Card className="min-w-0 overflow-hidden">
+          <CardContent className="p-4">
+            <h2 className="text-sm font-semibold text-foreground mb-1">
+              {lang === "en" ? "Appearance" : "外观 / 主题"}
+            </h2>
+            <p className="text-[11px] text-muted-foreground mb-3">
+              {lang === "en"
+                ? "Light, dark, or follow system"
+                : "亮色、暗色，或跟随系统"}
+            </p>
+            <ThemeSwitcher />
+          </CardContent>
+        </Card>
+
         <BrandLogoUpload
           lang={lang}
           initialUrl={user.businessLogo || null}

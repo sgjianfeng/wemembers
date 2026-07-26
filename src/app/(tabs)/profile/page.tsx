@@ -9,6 +9,7 @@ import { ProfileReferral } from "./ProfileReferral";
 import { ProfileEditName } from "./ProfileEditName";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { DailyCheckIn } from "@/components/customer/DailyCheckIn";
+import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 import { t } from "@/lib/i18n";
 import { cookies } from "next/headers";
 import { Ticket, CreditCard, TrendingUp, Megaphone, Medal } from "lucide-react";
@@ -55,7 +56,7 @@ export default async function ProfilePage() {
   return (
     <div className="pb-4">
       {/* 头像 + 等级 */}
-      <div className="px-4 pt-6 pb-4 bg-gradient-to-b from-[#1A6EFF] to-white">
+      <div className="px-4 pt-6 pb-4 bg-gradient-to-b from-[#1A6EFF] to-background">
         <div className="flex items-center gap-3">
           <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold text-white">
             {(user.displayName || t("profile.defaultInitial", lang)).charAt(0)}
@@ -73,12 +74,24 @@ export default async function ProfilePage() {
         {/* 统计小格 */}
         <div className="grid grid-cols-4 gap-2 mt-4">
           {[{ v: user.streakDays, l: t("profile.streakDays", lang) },{ v: checkInCount, l: t("profile.totalCheckins", lang) },{ v: claimCount, l: t("profile.claimCount", lang) },{ v: inviteCount, l: t("profile.inviteCount", lang) }].map(s => (
-            <div key={s.l} className="text-center bg-white/60 rounded-lg py-2">
-              <p className="text-base font-bold text-slate-900">{s.v}</p>
-              <p className="text-[10px] text-slate-500">{s.l}</p>
+            <div key={s.l} className="text-center bg-white/20 backdrop-blur rounded-lg py-2">
+              <p className="text-base font-bold text-white">{s.v}</p>
+              <p className="text-[10px] text-white/75">{s.l}</p>
             </div>
           ))}
         </div>
+      </div>
+
+      {/* 主题 */}
+      <div className="px-4 mt-4">
+        <h3 className="text-sm font-semibold text-foreground mb-2">
+          {lang === "en" ? "Appearance" : "外观"}
+        </h3>
+        <Card className="border-border">
+          <CardContent className="p-3">
+            <ThemeSwitcher />
+          </CardContent>
+        </Card>
       </div>
 
       {/* 每日签到（从首页降级到个人中心） */}
@@ -88,28 +101,28 @@ export default async function ProfilePage() {
 
       {/* 徽章 */}
       <div className="px-4 mt-4">
-        <h3 className="text-sm font-semibold text-slate-900 mb-2">🏅 {t("profile.myBadges", lang)} ({userBadges.length}/12)</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-2">🏅 {t("profile.myBadges", lang)} ({userBadges.length}/12)</h3>
         {userBadges.length > 0 ? (
           <div className="grid grid-cols-6 gap-2">
             {userBadges.map((ub) => (
               <div key={ub.id} className="text-center">
-                <div className="w-10 h-10 mx-auto rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-lg">
+                <div className="w-10 h-10 mx-auto rounded-xl bg-amber-50 dark:bg-amber-950/35 border border-amber-100 dark:border-amber-800/50 flex items-center justify-center text-lg">
                   {ub.badge.icon}
                 </div>
-                <p className="text-[9px] text-slate-500 mt-1 truncate">{ub.badge.name}</p>
+                <p className="text-[9px] text-muted-foreground mt-1 truncate">{ub.badge.name}</p>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-4 bg-slate-50 rounded-xl">
-            <p className="text-xs text-slate-400">{t("profile.noBadges", lang)}</p>
+          <div className="text-center py-4 bg-muted/50 rounded-xl">
+            <p className="text-xs text-muted-foreground">{t("profile.noBadges", lang)}</p>
           </div>
         )}
       </div>
 
       {/* 已实现功能入口 — 保证全部可从「我的」到达 */}
       <div className="px-4 mt-4">
-        <h3 className="text-sm font-semibold text-slate-900 mb-2">
+        <h3 className="text-sm font-semibold text-foreground mb-2">
           {t("profile.menu", lang)}
         </h3>
         <div className="space-y-2">
@@ -160,15 +173,15 @@ export default async function ProfilePage() {
                 >
                   <CardContent className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3 min-w-0">
-                      <IconComponent size={24} className="text-slate-600 shrink-0" />
+                      <IconComponent size={24} className="text-muted-foreground shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900">
+                        <p className="text-sm font-semibold text-foreground">
                           {item.title}
                         </p>
-                        <p className="text-xs text-slate-500 truncate">{item.desc}</p>
+                        <p className="text-xs text-muted-foreground truncate">{item.desc}</p>
                       </div>
                     </div>
-                    <span className="text-slate-300 shrink-0">→</span>
+                    <span className="text-muted-foreground shrink-0">→</span>
                   </CardContent>
                 </Card>
               </Link>
@@ -188,7 +201,7 @@ export default async function ProfilePage() {
           label={lang === "en" ? "Log out" : "退出登录"}
           variant="outline"
         />
-        <p className="text-center text-xs text-slate-300">{t("profile.version", lang)}</p>
+        <p className="text-center text-xs text-muted-foreground">{t("profile.version", lang)}</p>
       </div>
     </div>
   );

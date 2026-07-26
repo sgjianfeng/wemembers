@@ -35,12 +35,12 @@ export function ProfileReferral() {
   return (
     <Card className="border-dashed border-amber-200">
       <CardContent className="p-4 text-center">
-        <p className="text-sm font-semibold text-slate-900">🎁 邀请好友</p>
-        <p className="text-xs text-slate-500 mt-1">你和好友各得 100 积分</p>
+        <p className="text-sm font-semibold text-foreground">🎁 邀请好友</p>
+        <p className="text-xs text-muted-foreground mt-1">你和好友各得 100 积分</p>
 
         {code ? (
           <div className="mt-3">
-            <div className="bg-slate-50 rounded-lg px-3 py-2 font-mono text-sm text-slate-700 tracking-widest">
+            <div className="bg-muted/50 rounded-lg px-3 py-2 font-mono text-sm text-foreground/90 tracking-widest">
               {code}
             </div>
             <div className="flex gap-2 mt-2">
@@ -48,7 +48,7 @@ export function ProfileReferral() {
                 {copied ? "已复制 ✓" : "复制链接"}
               </Button>
             </div>
-            {count > 0 && <p className="text-xs text-slate-400 mt-2">已邀请 {count} 位好友</p>}
+            {count > 0 && <p className="text-xs text-muted-foreground mt-2">已邀请 {count} 位好友</p>}
           </div>
         ) : (
           <Button size="sm" variant="default" className="mt-3" onClick={generate} loading={loading}>

@@ -85,7 +85,7 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
 
       <div className="bg-gradient-to-b from-primary to-primary/80 px-4 pt-8 pb-8 text-primary-foreground">
         <div className="text-center">
-          <div className="mx-auto w-20 h-20 rounded-2xl bg-card/15 border border-white/25 flex items-center justify-center overflow-hidden p-1">
+          <div className="mx-auto w-20 h-20 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center overflow-hidden p-1">
             {business.businessLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -107,7 +107,7 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
             <Badge
               variant="slate"
               size="md"
-              className="!bg-card/20 !text-white mt-2"
+              className="!bg-white/20 !text-white mt-2"
             >
               {categoryLabel}
             </Badge>

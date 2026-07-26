@@ -42,7 +42,7 @@ export default async function DiscoverCouponsPage() {
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-4 border-b border-slate-100">
+      <div className="px-4 py-4 border-b border-border">
         <Link
           href="/home"
           className="text-xs font-medium text-[#1A6EFF] mb-1 inline-block"
@@ -52,7 +52,7 @@ export default async function DiscoverCouponsPage() {
         <h1 className="text-lg font-semibold">
           {t("discover.coupons.title", lang)}
         </h1>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           {t("discover.coupons.subtitle", lang, { count: coupons.length })}
         </p>
       </div>
@@ -61,17 +61,17 @@ export default async function DiscoverCouponsPage() {
         {coupons.length === 0 ? (
           <div className="text-center py-16 px-4">
             <div className="flex justify-center mb-2">
-              <Ticket size={48} className="text-slate-300" />
+              <Ticket size={48} className="text-muted-foreground" />
             </div>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-muted-foreground">
               {t("discover.coupons.empty", lang)}
             </p>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
               {t("discover.coupons.emptyHint", lang)}
             </p>
             <Link
               href="/wallet"
-              className="inline-flex mt-4 px-4 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-700"
+              className="inline-flex mt-4 px-4 py-1.5 rounded-full text-xs font-semibold bg-card border border-border text-foreground/90"
             >
               {t("home.discover.goWallet", lang)}
             </Link>
@@ -95,7 +95,7 @@ export default async function DiscoverCouponsPage() {
                 <Card
                   className={`border-l-4 transition-colors hover:border-[#1A6EFF]/30 ${
                     isClaimed
-                      ? "border-l-green-400 bg-green-50/40"
+                      ? "border-l-green-400 bg-green-50 dark:bg-green-950/35/40"
                       : "border-l-[#FF6B35]"
                   }`}
                 >
@@ -122,10 +122,10 @@ export default async function DiscoverCouponsPage() {
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm font-medium text-slate-900 mt-1 truncate">
+                      <p className="text-sm font-medium text-foreground mt-1 truncate">
                         {coupon.title}
                       </p>
-                      <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+                      <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
                         {coupon.business.businessName}
                         {" · "}
                         {t("wallet.expires", lang)}{" "}

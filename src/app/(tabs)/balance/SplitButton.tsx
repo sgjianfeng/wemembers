@@ -172,27 +172,27 @@ export function SplitButton({
           {t("balance.split.btn")}
         </Button>
       ) : (
-        <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3 space-y-2">
+        <div className="rounded-xl border border-border bg-muted/50/80 p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-slate-800">
+            <p className="text-xs font-semibold text-foreground">
               {t("balance.split.title")}
             </p>
             <button
               type="button"
-              className="text-[11px] text-slate-400"
+              className="text-[11px] text-muted-foreground"
               onClick={() => setOpen(false)}
             >
               {lang === "en" ? "Cancel" : "取消"}
             </button>
           </div>
-          <p className="text-[10px] text-slate-500">
+          <p className="text-[10px] text-muted-foreground">
             {t("balance.split.hint", { amount: balanceSgd.toFixed(2) })}
           </p>
 
           <div className="flex flex-wrap gap-1.5">
             <button
               type="button"
-              className="text-[10px] px-2 py-1 rounded-full bg-white border border-slate-200"
+              className="text-[10px] px-2 py-1 rounded-full bg-card border border-border"
               onClick={applyHalf}
             >
               {t("balance.split.half")}
@@ -200,7 +200,7 @@ export function SplitButton({
             {balanceCents >= MIN_PART_CENTS * 3 && (
               <button
                 type="button"
-                className="text-[10px] px-2 py-1 rounded-full bg-white border border-slate-200"
+                className="text-[10px] px-2 py-1 rounded-full bg-card border border-border"
                 onClick={applyHalfPlusTwo}
               >
                 {t("balance.split.halfPlusTwo")}
@@ -211,11 +211,11 @@ export function SplitButton({
           <div className="space-y-1.5">
             {parts.map((val, i) => (
               <div key={i} className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400 w-10 shrink-0">
+                <span className="text-[10px] text-muted-foreground w-10 shrink-0">
                   #{i + 1}
                 </span>
-                <div className="flex-1 flex items-center rounded-lg border border-slate-200 bg-white px-2">
-                  <span className="text-xs text-slate-400">S$</span>
+                <div className="flex-1 flex items-center rounded-lg border border-border bg-card px-2">
+                  <span className="text-xs text-muted-foreground">S$</span>
                   <input
                     type="number"
                     min={1}
@@ -230,7 +230,7 @@ export function SplitButton({
                 {parts.length > 2 && (
                   <button
                     type="button"
-                    className="text-xs text-slate-400 px-1"
+                    className="text-xs text-muted-foreground px-1"
                     onClick={() => removeRow(i)}
                     aria-label="remove"
                   >
@@ -253,7 +253,7 @@ export function SplitButton({
 
           <p
             className={`text-[11px] tabular-nums ${
-              match ? "text-green-600" : "text-slate-500"
+              match ? "text-green-600" : "text-muted-foreground"
             }`}
           >
             {t("balance.split.sum", {

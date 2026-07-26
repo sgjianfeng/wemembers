@@ -98,7 +98,7 @@ export default async function BusinessStoreDetailPage({
             {store.address ? (
               <p className="text-xs text-muted-foreground mt-0.5">📍 {store.address}</p>
             ) : (
-              <p className="text-xs text-amber-600 mt-0.5">
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
                 {lang === "en"
                   ? "No address yet — add unit number below"
                   : "尚未填写地址 — 请在下方编辑门牌"}

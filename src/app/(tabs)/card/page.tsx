@@ -25,7 +25,7 @@ export default async function CardIndexPage() {
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-4 border-b border-slate-100">
+      <div className="px-4 py-4 border-b border-border">
         <h1 className="text-lg font-semibold">{t("card.title", lang)}</h1>
       </div>
 
@@ -40,19 +40,19 @@ export default async function CardIndexPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-semibold text-slate-900">
+                      <p className="text-sm font-semibold text-foreground">
                         {m.business.businessName || t("card.unknownShop", lang)}
                       </p>
                       {m.isFavorite && <Star size={14} className="text-amber-500 fill-amber-500" />}
                     </div>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       {t("card.pointsAndVisits", lang, {
                         points: m.points,
                         visits: m.visitsCount,
                       })}
                     </p>
                   </div>
-                  <span className="text-slate-300">→</span>
+                  <span className="text-muted-foreground">→</span>
                 </CardContent>
               </Card>
             </Link>
@@ -61,10 +61,10 @@ export default async function CardIndexPage() {
       ) : (
         <div className="text-center py-20 px-6">
           <div className="flex justify-center mb-4">
-            <CreditCard size={56} className="text-slate-300" />
+            <CreditCard size={56} className="text-muted-foreground" />
           </div>
-          <p className="text-sm text-slate-400">{t("card.noCard", lang)}</p>
-          <p className="text-xs text-slate-300 mt-1">{t("card.noCardHint", lang)}</p>
+          <p className="text-sm text-muted-foreground">{t("card.noCard", lang)}</p>
+          <p className="text-xs text-muted-foreground mt-1">{t("card.noCardHint", lang)}</p>
           <Link
             href="/home"
             className="inline-block mt-4 px-6 py-2 bg-[#1A6EFF] text-white text-sm rounded-full"

@@ -5,6 +5,7 @@ import { t } from "@/lib/i18n";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { BrandAvatar } from "@/components/ui/BrandAvatar";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
+import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 
@@ -171,7 +172,10 @@ export default async function BusinessLayout({
             {leftLabel}
           </span>
         </Link>
-        <LanguageSwitcher />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <ThemeSwitcher variant="compact" />
+          <LanguageSwitcher />
+        </div>
       </div>
       <main className="pb-16 min-h-screen">{children}</main>
       {dbUser.role === "staff" ? (

@@ -372,7 +372,7 @@ export default function BusinessTemplatesPage() {
                   </div>
                   <p
                     className={`text-[11px] ${
-                      sumOk ? "text-emerald-600" : "text-red-500"
+                      sumOk ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"
                     }`}
                   >
                     {smallPct} + {FEE_PLATFORM_PERCENT} + {grandPct} ={" "}

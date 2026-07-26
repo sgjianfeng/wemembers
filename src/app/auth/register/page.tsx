@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
+import { BrandMark } from "@/components/ui/BrandMark";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLang } from "@/components/i18n/LanguageProvider";
@@ -177,28 +177,25 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-white to-white">
-      <TopHeader variant="default" fallbackUrl="/" />
+      <TopHeader variant="default" fallbackUrl="/" preferFallback />
 
       <div className="flex-1 flex flex-col px-6 pt-5 pb-8 max-w-md mx-auto w-full">
         {/* Brand */}
         <div className="text-center mb-5">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#240444] p-1 shadow-lg ring-2 ring-[#240444]/10">
-            <Image
-              src="/logo-mark.png"
-              alt="WeMembers"
-              width={48}
-              height={48}
-              className="h-10 w-10 object-contain"
+          <div className="mx-auto mb-3 flex justify-center">
+            <BrandMark
+              size={56}
               priority
+              className="shadow-lg ring-2 ring-[#240444]/15"
             />
           </div>
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-amber-600/90 uppercase">
+          <p className="text-[11px] font-semibold tracking-[0.18em] text-amber-600 dark:text-amber-400/90 uppercase">
             WeMembers.store
           </p>
-          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-900">
+          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-foreground">
             {t("auth.register.title")}
           </h1>
-          <p className="mt-1 text-sm text-slate-500 leading-relaxed max-w-[300px] mx-auto">
+          <p className="mt-1 text-sm text-muted-foreground leading-relaxed max-w-[300px] mx-auto">
             {subtitle}
           </p>
         </div>
@@ -207,15 +204,15 @@ export default function RegisterPage() {
         <div className="mb-4 flex items-center justify-center gap-1.5 text-[11px] font-medium">
           {steps.map((label, i) => (
             <div key={label} className="flex items-center gap-1.5">
-              {i > 0 && <span className="text-slate-300 px-0.5">→</span>}
+              {i > 0 && <span className="text-muted-foreground px-0.5">→</span>}
               <span
                 className={cn(
                   "rounded-full px-2.5 py-1",
                   i === stepIndex
                     ? "bg-slate-900 text-white"
                     : i < stepIndex
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-slate-100 text-slate-400"
+                      ? "bg-emerald-50 dark:bg-emerald-950/35 text-emerald-700 dark:text-emerald-400"
+                      : "bg-muted text-muted-foreground"
                 )}
               >
                 {i + 1}. {label}
@@ -225,11 +222,11 @@ export default function RegisterPage() {
         </div>
 
         {/* Card */}
-        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           {/* ── 选身份 ── */}
           {step === "role" && (
             <>
-              <p className="text-sm font-medium text-slate-700 mb-3">{t("auth.register.role")}</p>
+              <p className="text-sm font-medium text-foreground/90 mb-3">{t("auth.register.role")}</p>
               <div className="space-y-3">
                 {(
                   [
@@ -262,15 +259,15 @@ export default function RegisterPage() {
                     className={cn(
                       "w-full p-4 rounded-2xl border-2 text-left transition-all",
                       role === item.id
-                        ? "border-[#1A6EFF] bg-blue-50/80 shadow-sm"
-                        : "border-slate-100 hover:border-slate-200"
+                        ? "border-[#1A6EFF] bg-blue-50 dark:bg-blue-950/35/80 shadow-sm"
+                        : "border-border hover:border-border"
                     )}
                   >
-                    <p className="font-semibold text-slate-900">{item.title}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">{item.desc}</p>
+                    <p className="font-semibold text-foreground">{item.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
                     <ul className="mt-2 space-y-1">
                       {item.points.map((p) => (
-                        <li key={p} className="text-[11px] text-slate-500 flex gap-1.5">
+                        <li key={p} className="text-[11px] text-muted-foreground flex gap-1.5">
                           <span className="text-[#1A6EFF]">✓</span>
                           <span>{p}</span>
                         </li>
@@ -305,7 +302,7 @@ export default function RegisterPage() {
                 onChange={(e) => setContact(e.target.value)}
                 className="h-12 rounded-xl"
               />
-              <p className="mt-1.5 text-xs text-slate-400 leading-relaxed">
+              <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
                 {role === "business"
                   ? t("auth.register.contactHintBusiness")
                   : t("auth.register.contactHintCustomer")}
@@ -345,7 +342,7 @@ export default function RegisterPage() {
                       className="h-12 rounded-xl font-mono tracking-wide"
                       autoCapitalize="characters"
                     />
-                    <p className="mt-1.5 text-xs text-slate-400 leading-relaxed">
+                    <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
                       {t("auth.register.uenHint")}
                     </p>
                   </div>
@@ -404,7 +401,7 @@ export default function RegisterPage() {
               </Button>
               <button
                 type="button"
-                className="w-full text-center text-sm text-slate-400 mt-3 hover:text-slate-600"
+                className="w-full text-center text-sm text-muted-foreground mt-3 hover:text-muted-foreground"
                 onClick={() => {
                   setStep("role");
                   setError("");
@@ -418,27 +415,27 @@ export default function RegisterPage() {
           {/* ── 验证码 ── */}
           {step === "code" && (
             <>
-              <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-3 mb-5">
-                <p className="text-xs text-slate-500">{t("auth.register.codeSent")}</p>
-                <p className="mt-0.5 text-sm font-medium text-slate-900 break-all">{contactNorm}</p>
-                <p className="mt-1.5 text-xs text-slate-400">{t("auth.login.codeHint")}</p>
+              <div className="rounded-xl bg-muted/50 border border-border px-3 py-3 mb-5">
+                <p className="text-xs text-muted-foreground">{t("auth.register.codeSent")}</p>
+                <p className="mt-0.5 text-sm font-medium text-foreground break-all">{contactNorm}</p>
+                <p className="mt-1.5 text-xs text-muted-foreground">{t("auth.login.codeHint")}</p>
               </div>
               {devCode && (
-                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3">
+                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/35 px-3 py-3">
                   <p className="text-[11px] font-medium text-amber-800">
                     本地开发 · 未真发短信
                   </p>
                   <p className="mt-1 text-center text-2xl font-bold tracking-[0.35em] text-amber-900">
                     {devCode}
                   </p>
-                  <p className="mt-1 text-center text-[11px] text-amber-700">
+                  <p className="mt-1 text-center text-[11px] text-amber-700 dark:text-amber-400">
                     请输入上方 6 位验证码
                   </p>
                 </div>
               )}
               <CodeInput length={6} onComplete={handleVerifyAndRegister} error={error} />
               {loading && (
-                <p className="mt-3 text-center text-xs text-slate-400">{t("auth.login.verifying")}</p>
+                <p className="mt-3 text-center text-xs text-muted-foreground">{t("auth.login.verifying")}</p>
               )}
               <div className="mt-6 flex flex-col items-center gap-3">
                 <button
@@ -451,7 +448,7 @@ export default function RegisterPage() {
                 >
                   {t("auth.register.modify")}
                 </button>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-muted-foreground">
                   {t("auth.register.notReceived")}{" "}
                   <button
                     type="button"
@@ -468,7 +465,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="mt-6 text-center">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             {t("auth.register.hasAccount")}{" "}
             <Link href="/auth/login" className="text-[#1A6EFF] font-medium">
               {t("auth.register.goLogin")}
@@ -476,7 +473,7 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        <p className="mt-auto pt-8 text-center text-[11px] text-slate-300">
+        <p className="mt-auto pt-8 text-center text-[11px] text-muted-foreground">
           {t("auth.login.agreement")}
         </p>
       </div>

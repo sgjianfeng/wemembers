@@ -46,7 +46,7 @@ export default async function StoresPage() {
 
       <div className="px-4 mt-4 space-y-4">
         {stores.length === 0 && (
-          <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+          <div className="rounded-2xl border border-amber-100 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/35 p-4">
             <p className="text-sm font-semibold text-amber-900">
               {lang === "en"
                 ? "Add your first store"

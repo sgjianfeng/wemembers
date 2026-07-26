@@ -327,26 +327,32 @@ export default async function CustomerHome() {
 
   return (
     <div className="pb-4">
-      {/* Compact header — not platform points wall */}
-      <div className="px-4 pt-5 pb-3 border-b border-border">
-        <div className="flex items-center justify-between gap-3">
+      {/* 问候 + 余额：同一信息带，不再飘胶囊 */}
+      <div className="px-4 pt-4 pb-3">
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-3.5 py-3 shadow-sm">
           <div className="min-w-0">
-            <p className="text-xs text-muted-foreground">{t("home.greeting", lang)}</p>
-            <p className="text-lg font-semibold text-foreground truncate">{displayName}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {t("home.greeting", lang)}
+            </p>
+            <p className="text-base font-semibold text-foreground truncate mt-0.5">
+              {displayName}
+            </p>
           </div>
           <Link
             href="/balance"
-            className="shrink-0 text-right rounded-2xl bg-gold/10 border border-gold/25 px-3 py-2 active:scale-[0.97] transition-transform"
+            className="shrink-0 text-right pl-3 border-l border-border active:opacity-80 transition-opacity"
           >
-            <p className="text-[10px] text-[color:var(--gold-strong)]">{t("home.balancePeek", lang)}</p>
-            <p className="text-base font-bold text-[color:var(--gold-strong)] nums">
+            <p className="text-[10px] text-muted-foreground">
+              {t("home.balancePeek", lang)}
+            </p>
+            <p className="text-[15px] font-bold text-foreground nums tracking-tight mt-0.5">
               S${formatMoney(totalBalanceCents)}
             </p>
           </Link>
         </div>
       </div>
 
-      <div className="px-4 mt-4 space-y-6">
+      <div className="px-4 mt-1 space-y-6">
         <HomeDrawsSection myDraws={myDraws} openDraws={openDraws} />
 
         {/* Sections render only with content — new users see discover, not stacked empty cards */}

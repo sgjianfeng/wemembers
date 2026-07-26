@@ -26,7 +26,8 @@ export function LogoutButton({
     } catch {
       // still leave
     }
-    router.replace("/auth/login");
+    // 退出到公开首页；勿 replace 登录页再 history.back，否则会撞上受保护页被拦回
+    router.replace("/");
     router.refresh();
   }
 
@@ -38,8 +39,8 @@ export function LogoutButton({
       className={cn(
         "transition-colors disabled:opacity-50",
         variant === "outline"
-          ? "w-full h-11 rounded-full border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50"
-          : "text-xs font-medium text-slate-500 hover:text-slate-800 px-2 py-1 rounded-lg hover:bg-slate-50",
+          ? "w-full h-11 rounded-full border border-border text-sm font-medium text-muted-foreground hover:bg-muted/50"
+          : "text-xs font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded-lg hover:bg-muted/50",
         className
       )}
     >

@@ -407,13 +407,13 @@ export default function IssueSelfPage() {
         )}
 
         {error && (
-          <p className="text-xs text-red-600 bg-red-50 rounded-xl px-3 py-2">
+          <p className="text-xs text-red-600 bg-red-50 dark:bg-red-950/35 rounded-xl px-3 py-2">
             {error}
           </p>
         )}
 
         {result && (
-          <Card className="border-green-200 bg-green-50 overflow-hidden">
+          <Card className="border-green-200 bg-green-50 dark:bg-green-950/35 overflow-hidden">
             <div className="h-1.5 bg-muted-foreground/40" />
             <CardContent className="p-5 text-center space-y-3">
               <p className="text-sm font-medium text-green-800">
@@ -434,7 +434,7 @@ export default function IssueSelfPage() {
                   : ""}
               </p>
               {result.instantPrize && (
-                <div className="rounded-xl bg-card/80 border border-violet-100 px-3 py-2">
+                <div className="rounded-xl bg-white/80 border border-violet-100 px-3 py-2">
                   <p className="text-[10px] text-violet-600 font-medium">
                     {lang === "en" ? "Instant prize (store pays)" : "即时小奖（本店兑付）"}
                   </p>

@@ -111,7 +111,7 @@ export function StoreQrPrintClient({
     <div className="px-4 mt-4 space-y-4">
       {/* Layout picker */}
       <div className="print:hidden">
-        <p className="text-xs font-medium text-slate-500 mb-2">
+        <p className="text-xs font-medium text-muted-foreground mb-2">
           {lang === "en" ? "Print layout (system templates)" : "印刷版式（系统模版）"}
         </p>
         <div className="grid grid-cols-3 gap-2">
@@ -123,14 +123,14 @@ export function StoreQrPrintClient({
               className={cn(
                 "rounded-xl border p-2.5 text-left transition-colors",
                 layout === L.id
-                  ? "border-[#1A6EFF] bg-blue-50/70"
-                  : "border-slate-100 hover:border-slate-200"
+                  ? "border-[#1A6EFF] bg-blue-50 dark:bg-blue-950/35/70"
+                  : "border-border hover:border-border"
               )}
             >
-              <p className="text-xs font-semibold text-slate-900">
+              <p className="text-xs font-semibold text-foreground">
                 {lang === "en" ? L.labelEn : L.labelZh}
               </p>
-              <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">
+              <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">
                 {lang === "en" ? L.hintEn : L.hintZh}
               </p>
             </button>
@@ -161,7 +161,7 @@ export function StoreQrPrintClient({
         <a
           href={pngDownload}
           download
-          className="inline-flex h-9 items-center rounded-full bg-slate-100 px-4 text-xs font-semibold text-slate-700"
+          className="inline-flex h-9 items-center rounded-full bg-muted px-4 text-xs font-semibold text-foreground/90"
         >
           {lang === "en" ? "QR only PNG" : "仅二维码 PNG"}
         </a>
@@ -169,27 +169,27 @@ export function StoreQrPrintClient({
           href={publicUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex h-9 items-center rounded-full border border-slate-200 px-4 text-xs font-semibold text-slate-600"
+          className="inline-flex h-9 items-center rounded-full border border-border px-4 text-xs font-semibold text-muted-foreground"
         >
           {lang === "en" ? "Preview customer page" : "预览顾客页"}
         </a>
       </div>
 
       {/* What customer sees after scan */}
-      <div className="print:hidden rounded-2xl border border-slate-100 bg-slate-50 p-3">
-        <p className="text-xs font-semibold text-slate-800">
+      <div className="print:hidden rounded-2xl border border-border bg-muted/50 p-3">
+        <p className="text-xs font-semibold text-foreground">
           {lang === "en" ? "After scan → customer sees" : "顾客扫码后看到"}
         </p>
-        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+        <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
           {lang === "en"
             ? "Store page with your brand, active vouchers & campaigns for this outlet. Ask them to log in to claim."
             : "进入本店顾客页：品牌、本店可用代金券与活动。引导登录后领券/参与。"}
         </p>
-        <p className="text-[10px] font-mono text-slate-400 break-all mt-2">
+        <p className="text-[10px] font-mono text-muted-foreground break-all mt-2">
           {publicUrl}
         </p>
         {!businessLogo && (
-          <p className="text-[11px] text-amber-700 mt-2">
+          <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-2">
             {lang === "en" ? (
               <>
                 Tip:{" "}
@@ -227,7 +227,7 @@ export function StoreQrPrintClient({
         />
       </div>
 
-      <p className="print:hidden text-[11px] text-slate-400 text-center leading-relaxed pb-4">
+      <p className="print:hidden text-[11px] text-muted-foreground text-center leading-relaxed pb-4">
         {lang === "en"
           ? "Print tip: use colour if possible; keep QR unobstructed and ≥ 4cm wide."
           : "打印建议：尽量彩色；二维码无遮挡，边长建议 ≥ 4cm，放在光线充足处。"}
@@ -261,7 +261,7 @@ function StoreQrSheet({
 }) {
   if (layout === "sticker") {
     return (
-      <div className="w-full max-w-[320px] aspect-square rounded-3xl border-2 border-slate-200 bg-white p-6 flex flex-col items-center justify-between print:border-slate-400 shadow-sm">
+      <div className="w-full max-w-[320px] aspect-square rounded-3xl border-2 border-border bg-card p-6 flex flex-col items-center justify-between print:border-slate-400 shadow-sm">
         <div className="flex items-center gap-2 w-full">
           {businessLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -274,8 +274,8 @@ function StoreQrSheet({
             <span className="text-2xl">🏪</span>
           )}
           <div className="min-w-0">
-            <p className="text-sm font-bold text-slate-900 truncate">{storeName}</p>
-            <p className="text-[10px] text-slate-400 truncate">
+            <p className="text-sm font-bold text-foreground truncate">{storeName}</p>
+            <p className="text-[10px] text-muted-foreground truncate">
               {businessName || "WeMembers"}
             </p>
           </div>
@@ -284,7 +284,7 @@ function StoreQrSheet({
         <img
           src={qrSrc}
           alt="QR"
-          className="w-44 h-44 rounded-2xl border border-slate-100"
+          className="w-44 h-44 rounded-2xl border border-border"
         />
         <div className="text-center w-full">
           <p className="text-sm font-bold text-[#1A6EFF]">{headline}</p>
@@ -298,14 +298,14 @@ function StoreQrSheet({
 
   if (layout === "poster") {
     return (
-      <div className="w-full max-w-[400px] rounded-2xl overflow-hidden border border-slate-200 print:border-slate-400 shadow-sm bg-white">
+      <div className="w-full max-w-[400px] rounded-2xl overflow-hidden border border-border print:border-slate-400 shadow-sm bg-card">
         <div className="bg-gradient-to-br from-[#1A6EFF] to-[#3B82F6] px-6 pt-8 pb-6 text-white text-center">
           {businessLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={businessLogo}
               alt=""
-              className="w-16 h-16 object-contain rounded-2xl bg-white mx-auto p-1"
+              className="w-16 h-16 object-contain rounded-2xl bg-card mx-auto p-1"
             />
           ) : (
             <div className="w-16 h-16 rounded-2xl bg-white/20 mx-auto flex items-center justify-center text-3xl">
@@ -321,19 +321,19 @@ function StoreQrSheet({
           )}
         </div>
         <div className="px-6 py-6 text-center">
-          <p className="text-lg font-bold text-slate-900">{headline}</p>
-          <p className="text-xs text-slate-500 mt-1">{sub}</p>
+          <p className="text-lg font-bold text-foreground">{headline}</p>
+          <p className="text-xs text-muted-foreground mt-1">{sub}</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={qrSrc}
             alt="QR"
-            className="w-56 h-56 mx-auto mt-5 rounded-2xl border border-slate-100 bg-white p-2"
+            className="w-56 h-56 mx-auto mt-5 rounded-2xl border border-border bg-card p-2"
           />
           <p className="text-sm font-semibold text-red-600 mt-4">{onlyHere}</p>
-          <p className="text-[9px] font-mono text-slate-400 break-all mt-3 px-2">
+          <p className="text-[9px] font-mono text-muted-foreground break-all mt-3 px-2">
             {publicUrl}
           </p>
-          <p className="text-[10px] text-slate-300 mt-4 tracking-widest uppercase">
+          <p className="text-[10px] text-muted-foreground mt-4 tracking-widest uppercase">
             WeMembers
           </p>
         </div>
@@ -343,9 +343,9 @@ function StoreQrSheet({
 
   // tent — default counter card
   return (
-    <div className="w-full max-w-[360px] rounded-2xl border border-slate-200 print:border-slate-400 bg-white shadow-sm overflow-hidden">
+    <div className="w-full max-w-[360px] rounded-2xl border border-border print:border-slate-400 bg-card shadow-sm overflow-hidden">
       <div className="px-5 pt-5 pb-2 text-center">
-        <p className="text-[10px] font-semibold tracking-[0.2em] text-amber-700/90 uppercase">
+        <p className="text-[10px] font-semibold tracking-[0.2em] text-amber-700 dark:text-amber-400/90 uppercase">
           WeMembers
         </p>
         <div className="flex items-center justify-center gap-2 mt-3">
@@ -354,20 +354,20 @@ function StoreQrSheet({
             <img
               src={businessLogo}
               alt=""
-              className="w-12 h-12 object-contain rounded-xl border border-slate-100"
+              className="w-12 h-12 object-contain rounded-xl border border-border"
             />
           ) : null}
           <div className="text-left min-w-0">
-            <h1 className="text-lg font-bold text-slate-900 leading-tight">
+            <h1 className="text-lg font-bold text-foreground leading-tight">
               {storeName}
             </h1>
             {businessName && (
-              <p className="text-[11px] text-slate-400 truncate">{businessName}</p>
+              <p className="text-[11px] text-muted-foreground truncate">{businessName}</p>
             )}
           </div>
         </div>
         {address && (
-          <p className="text-[11px] text-slate-400 mt-2">📍 {address}</p>
+          <p className="text-[11px] text-muted-foreground mt-2">📍 {address}</p>
         )}
       </div>
       <div className="px-5 py-3 flex justify-center">
@@ -375,14 +375,14 @@ function StoreQrSheet({
         <img
           src={qrSrc}
           alt="QR"
-          className="w-52 h-52 rounded-2xl border border-slate-100 bg-white p-2"
+          className="w-52 h-52 rounded-2xl border border-border bg-card p-2"
         />
       </div>
       <div className="px-5 pb-5 text-center">
         <p className="text-base font-bold text-[#1A6EFF]">{headline}</p>
-        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">{sub}</p>
+        <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{sub}</p>
         <p className="text-xs font-semibold text-red-600/90 mt-2">{onlyHere}</p>
-        <p className="text-[9px] font-mono text-slate-400 break-all mt-3">
+        <p className="text-[9px] font-mono text-muted-foreground break-all mt-3">
           {publicUrl}
         </p>
       </div>

@@ -155,7 +155,7 @@ export default async function BusinessDashboard() {
                   : `${stores.length} 家门店 · 点「门店」进入具体店`}
               </p>
               {!user.businessLogo && (
-                <p className="text-[10px] text-amber-600 mt-0.5">
+                <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
                   {lang === "en"
                     ? "Upload brand logo in Settings"
                     : "设置中可上传品牌 Logo"}
@@ -164,16 +164,16 @@ export default async function BusinessDashboard() {
             </div>
           </Link>
           <Link href="/business/tokens" className="shrink-0">
-            <div className="flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-100">
-              <Coins size={16} className="text-amber-600" />
-              <span className="text-sm font-semibold text-amber-700 nums">S${balanceSgd}</span>
+            <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/35 px-2.5 py-1 rounded-full border border-amber-100 dark:border-amber-800/50">
+              <Coins size={16} className="text-amber-600 dark:text-amber-400" />
+              <span className="text-sm font-semibold text-amber-700 dark:text-amber-400 nums">S${balanceSgd}</span>
             </div>
           </Link>
         </div>
       </div>
 
       {stores.length === 0 && (
-        <div className="mx-4 mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4">
+        <div className="mx-4 mt-4 rounded-2xl border border-amber-100 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/35 p-4">
           <p className="text-sm font-semibold text-amber-900">
             {lang === "en" ? "Add stores next" : "下一步：添加门店"}
           </p>

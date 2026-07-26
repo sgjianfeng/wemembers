@@ -52,7 +52,7 @@ export function StoreSwitcher({
     return (
       <a
         href="/business/stores"
-        className="flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-100 px-2.5 py-1 text-[11px] font-medium text-amber-800"
+        className="flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/35 border border-amber-100 dark:border-amber-800/50 px-2.5 py-1 text-[11px] font-medium text-amber-800"
       >
         🏪 {lang === "en" ? "Add a store" : "请先添加门店"}
       </a>
@@ -132,7 +132,7 @@ export function StoreSwitcher({
                 onClick={() => select(s.id)}
                 className={cn(
                   "w-full text-left px-3 py-2 text-xs hover:bg-muted/50 flex items-center gap-2",
-                  s.id === current?.id && "bg-blue-50 text-primary font-semibold"
+                  s.id === current?.id && "bg-blue-50 dark:bg-blue-950/35 text-primary font-semibold"
                 )}
               >
                 <BrandAvatar

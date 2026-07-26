@@ -34,9 +34,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const initialLang = (langCookie === "en" ? "en" : "zh") as "zh" | "en";
 
   return (
-    <html lang={initialLang === "en" ? "en" : "zh-CN"} className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <html
+      lang={initialLang === "en" ? "en" : "zh-CN"}
+      className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      suppressHydrationWarning
+    >
       <body className="min-h-screen bg-background text-foreground font-sans">
-        <div className="max-w-lg mx-auto min-h-screen relative">
+        <div className="max-w-lg mx-auto min-h-screen relative bg-background">
           <LangWrapper initialLang={initialLang}>
             {children}
           </LangWrapper>

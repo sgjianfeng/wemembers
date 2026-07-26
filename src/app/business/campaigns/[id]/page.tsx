@@ -154,7 +154,7 @@ export default async function CampaignDetailPage({
         </div>
         {tags.length > 0 && (
           <div className="flex gap-1 flex-wrap mt-2">
-            {tags.map((tag) => <span key={tag} className="px-2 py-0.5 bg-card/60 text-muted-foreground text-[10px] rounded-full">{tag}</span>)}
+            {tags.map((tag) => <span key={tag} className="px-2 py-0.5 bg-white/60 text-muted-foreground text-[10px] rounded-full">{tag}</span>)}
           </div>
         )}
       </div>

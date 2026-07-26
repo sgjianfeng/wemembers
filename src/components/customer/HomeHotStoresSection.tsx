@@ -16,7 +16,7 @@ export function HomeHotStoresSection({
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between px-0.5">
-        <h2 className="text-sm font-semibold text-slate-900">
+        <h2 className="text-sm font-semibold text-foreground">
           {t("home.section.hotStores", lang)}
         </h2>
         <Link
@@ -28,18 +28,18 @@ export function HomeHotStoresSection({
       </div>
 
       {stores.length === 0 ? (
-        <Card className="border-slate-100 bg-slate-50/80">
+        <Card className="border-border bg-muted/50/80">
           <CardContent className="p-4 text-center">
             <p className="text-2xl mb-1">🏪</p>
-            <p className="text-sm font-medium text-slate-700">
+            <p className="text-sm font-medium text-foreground/90">
               {t("discover.stores.empty", lang)}
             </p>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
               {t("discover.stores.emptyHint", lang)}
             </p>
             <Link
               href="/discover/stores"
-              className="inline-flex mt-3 px-4 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-700"
+              className="inline-flex mt-3 px-4 py-1.5 rounded-full text-xs font-semibold bg-card border border-border text-foreground/90"
             >
               {t("home.vouchers.viewAll", lang)}
             </Link>
@@ -62,10 +62,10 @@ export function HomeHotStoresSection({
                     size={44}
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-900 truncate">
+                    <p className="text-sm font-semibold text-foreground truncate">
                       {s.businessName}
                     </p>
-                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+                    <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
                       {cat ? `${cat} · ` : ""}
                       {s.campaignCount > 0
                         ? t("home.stores.campaigns", lang, {
@@ -78,7 +78,7 @@ export function HomeHotStoresSection({
                           : t("discover.stores.enter", lang)}
                     </p>
                   </div>
-                  <span className="text-slate-300 shrink-0">→</span>
+                  <span className="text-muted-foreground shrink-0">→</span>
                 </CardContent>
               </Card>
             </Link>

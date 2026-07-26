@@ -24,9 +24,9 @@ export default async function RedeemPage({ params }: { params: Promise<{ custome
 
   if (!claim) {
     return (
-      <div className="min-h-screen flex flex-col bg-white">
+      <div className="min-h-screen flex flex-col bg-card">
         <TopHeader fallbackUrl="/wallet" />
-        <div className="flex-1 flex items-center justify-center text-slate-400">
+        <div className="flex-1 flex items-center justify-center text-muted-foreground">
           <p>{t("redeem.notFound", lang)}</p>
         </div>
       </div>
@@ -38,25 +38,25 @@ export default async function RedeemPage({ params }: { params: Promise<{ custome
   const dateLocale = lang === "en" ? "en-US" : "zh-CN";
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-card">
       <TopHeader fallbackUrl="/wallet" />
       <div className="flex-1 flex flex-col items-center justify-center px-6">
         {/* Coupon Info */}
-        <p className="text-xs text-slate-400 mb-1">{claim.coupon.business?.businessName}</p>
+        <p className="text-xs text-muted-foreground mb-1">{claim.coupon.business?.businessName}</p>
         <p className="text-3xl font-bold text-[#FF6B35]">S${(claim.coupon.valueCents / 100).toFixed(0)}</p>
-        <p className="text-sm text-slate-600 mt-1">{claim.coupon.title}</p>
+        <p className="text-sm text-muted-foreground mt-1">{claim.coupon.title}</p>
 
         {/* QR Code Placeholder */}
-        <div className="mt-6 w-56 h-56 bg-white border-2 border-slate-200 rounded-2xl flex items-center justify-center">
+        <div className="mt-6 w-56 h-56 bg-card border-2 border-border rounded-2xl flex items-center justify-center">
           <div className="text-center">
             <p className="text-7xl mb-2">📱</p>
-            <p className="text-xs text-slate-300">{t("redeem.qrCode", lang)}</p>
+            <p className="text-xs text-muted-foreground">{t("redeem.qrCode", lang)}</p>
           </div>
         </div>
 
         {/* Code */}
-        <p className="mt-4 text-2xl font-mono font-bold text-slate-900 tracking-widest">{formattedCode}</p>
-        <p className="text-xs text-slate-400 mt-1">{t("redeem.presentToStaff", lang)}</p>
+        <p className="mt-4 text-2xl font-mono font-bold text-foreground tracking-widest">{formattedCode}</p>
+        <p className="text-xs text-muted-foreground mt-1">{t("redeem.presentToStaff", lang)}</p>
 
         {/* Info badges */}
         <div className="flex gap-2 mt-4">

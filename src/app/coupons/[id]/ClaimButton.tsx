@@ -48,7 +48,7 @@ export function ClaimButton({ couponId, pointsRequired, soldOut, expired }: {
       </Button>
 
       {result && (
-        <div className={`text-center p-4 rounded-xl text-sm ${result.success ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+        <div className={`text-center p-4 rounded-xl text-sm ${result.success ? "bg-green-50 dark:bg-green-950/35 text-green-700 dark:text-green-400" : "bg-red-50 dark:bg-red-950/35 text-red-600"}`}>
           {result.success ? result.message : result.error}
           {result.success && result.gift && (
             <div className="mt-2 pt-2 border-t border-green-200 flex items-center justify-center gap-2">

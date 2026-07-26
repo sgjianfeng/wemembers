@@ -29,8 +29,8 @@ const content = {
           { title: "跨店结算", body: "三方自动分账，推广费+平台费" },
         ],
         gradient: "from-blue-500 to-blue-600",
-        bg: "bg-blue-50",
-        text: "text-blue-700",
+        bg: "bg-blue-50 dark:bg-blue-950/35",
+        text: "text-blue-700 dark:text-blue-400",
       },
       {
         icon: "👥",
@@ -43,8 +43,8 @@ const content = {
           { title: "数据追踪", body: "积分流水、等级进度可视化" },
         ],
         gradient: "from-emerald-500 to-emerald-600",
-        bg: "bg-emerald-50",
-        text: "text-emerald-700",
+        bg: "bg-emerald-50 dark:bg-emerald-950/35",
+        text: "text-emerald-700 dark:text-emerald-400",
       },
       {
         icon: "🎰",
@@ -102,8 +102,8 @@ const content = {
           { title: "Settlement", body: "Auto 3-way split: issuer, redeemer, platform" },
         ],
         gradient: "from-blue-500 to-blue-600",
-        bg: "bg-blue-50",
-        text: "text-blue-700",
+        bg: "bg-blue-50 dark:bg-blue-950/35",
+        text: "text-blue-700 dark:text-blue-400",
       },
       {
         icon: "👥",
@@ -116,8 +116,8 @@ const content = {
           { title: "Analytics", body: "Points log, tier progress visualization" },
         ],
         gradient: "from-emerald-500 to-emerald-600",
-        bg: "bg-emerald-50",
-        text: "text-emerald-700",
+        bg: "bg-emerald-50 dark:bg-emerald-950/35",
+        text: "text-emerald-700 dark:text-emerald-400",
       },
       {
         icon: "🎰",
@@ -157,7 +157,7 @@ export default function ForBusinessPage() {
   const t = content[lang as keyof typeof content] || content.zh;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <TopHeader variant="transparent" />
 
       {/* ── Hero ── */}
@@ -195,13 +195,13 @@ export default function ForBusinessPage() {
         <div className="max-w-sm mx-auto">
           <div className="grid grid-cols-3 gap-3">
             {t.stats.map((s, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-slate-100 py-4 px-2 text-center shadow-sm">
-                <p className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              <div key={i} className="bg-card rounded-2xl border border-border py-4 px-2 text-center shadow-sm">
+                <p className="text-2xl font-extrabold text-foreground tracking-tight">
                   {s.valuePrefix && <span className="text-base">{s.value}</span>}
                   {s.valueAlt || s.value}
-                  <span className="text-sm font-normal text-slate-400 ml-0.5">{s.unit}</span>
+                  <span className="text-sm font-normal text-muted-foreground ml-0.5">{s.unit}</span>
                 </p>
-                <p className="text-[11px] text-slate-400 mt-1">{s.label}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">{s.label}</p>
               </div>
             ))}
           </div>
@@ -211,17 +211,17 @@ export default function ForBusinessPage() {
       {/* ── Pillars ── */}
       <section className="px-5 pt-16 pb-8 max-w-sm mx-auto">
         <div className="text-center mb-10">
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">
+          <h2 className="text-2xl font-bold text-foreground mb-2">
             {lang === "zh" ? "三大核心功能" : "Three Core Products"}
           </h2>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             {lang === "zh" ? "覆盖商户营销全流程" : "End-to-end merchant marketing"}
           </p>
         </div>
 
         <div className="space-y-6">
           {t.pillars.map((p, i) => (
-            <div key={i} className="group relative bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+            <div key={i} className="group relative bg-card rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow">
               <div className={`h-1.5 bg-gradient-to-r ${p.gradient}`} />
               <div className="p-5">
                 <div className="flex items-center gap-4 mb-4">
@@ -230,10 +230,10 @@ export default function ForBusinessPage() {
                   </div>
                   <div>
                     <h3 className={`text-lg font-bold ${p.text}`}>{p.title}</h3>
-                    <p className="text-xs text-slate-400">{p.subtitle}</p>
+                    <p className="text-xs text-muted-foreground">{p.subtitle}</p>
                   </div>
                 </div>
-                <p className="text-sm text-slate-500 leading-relaxed mb-4">{p.desc}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">{p.desc}</p>
                 <div className="space-y-2">
                   {p.features.map((f, j) => (
                     <div key={j} className="flex items-start gap-2.5">
@@ -243,8 +243,8 @@ export default function ForBusinessPage() {
                         </svg>
                       </div>
                       <div>
-                        <p className="text-xs font-semibold text-slate-700">{f.title}</p>
-                        <p className="text-[11px] text-slate-400">{f.body}</p>
+                        <p className="text-xs font-semibold text-foreground/90">{f.title}</p>
+                        <p className="text-[11px] text-muted-foreground">{f.body}</p>
                       </div>
                     </div>
                   ))}
@@ -256,10 +256,10 @@ export default function ForBusinessPage() {
       </section>
 
       {/* ── How It Works ── */}
-      <section className="px-5 py-16 bg-slate-50">
+      <section className="px-5 py-16 bg-muted/50">
         <div className="max-w-sm mx-auto">
-          <h2 className="text-2xl font-bold text-slate-900 text-center mb-2">{t.flow.title}</h2>
-          <p className="text-sm text-slate-400 text-center mb-8">
+          <h2 className="text-2xl font-bold text-foreground text-center mb-2">{t.flow.title}</h2>
+          <p className="text-sm text-muted-foreground text-center mb-8">
             {lang === "zh" ? "从注册到营业，只需三步" : "From signup to live in three steps"}
           </p>
 
@@ -267,7 +267,7 @@ export default function ForBusinessPage() {
             {t.flow.steps.map((s, i) => (
               <div key={i} className="flex gap-4">
                 <div className="flex flex-col items-center shrink-0">
-                  <div className="w-10 h-10 rounded-full bg-white border-2 border-blue-100 flex items-center justify-center text-sm font-bold text-blue-600 shadow-sm">
+                  <div className="w-10 h-10 rounded-full bg-card border-2 border-blue-100 dark:border-blue-800/50 flex items-center justify-center text-sm font-bold text-blue-600 dark:text-blue-400 shadow-sm">
                     {s.num}
                   </div>
                   {i < t.flow.steps.length - 1 && (
@@ -277,9 +277,9 @@ export default function ForBusinessPage() {
                 <div className="pb-6">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xl">{s.icon}</span>
-                    <h3 className="font-semibold text-slate-900">{s.title}</h3>
+                    <h3 className="font-semibold text-foreground">{s.title}</h3>
                   </div>
-                  <p className="text-sm text-slate-500">{s.desc}</p>
+                  <p className="text-sm text-muted-foreground">{s.desc}</p>
                 </div>
               </div>
             ))}
@@ -306,7 +306,7 @@ export default function ForBusinessPage() {
 
       {/* ── Footer ── */}
       <footer className="px-5 pb-10 text-center">
-        <Link href="/" className="text-xs text-slate-300 hover:text-slate-500 transition-colors">
+        <Link href="/" className="text-xs text-muted-foreground hover:text-muted-foreground transition-colors">
           ← {lang === "zh" ? "返回顾客首页" : "Back to Home"}
         </Link>
         <p className="text-xs text-slate-200 mt-1">{t.footer}</p>

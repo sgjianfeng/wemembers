@@ -29,7 +29,7 @@ export default async function StaffStoreQrPage() {
   });
   if (!store) {
     return (
-      <div className="p-8 text-center text-slate-400 text-sm">
+      <div className="p-8 text-center text-muted-foreground text-sm">
         {lang === "en" ? "Store not found" : "门店不存在"}
       </div>
     );
@@ -42,7 +42,7 @@ export default async function StaffStoreQrPage() {
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-slate-100 sticky top-0 bg-white z-10 print:hidden">
+      <div className="px-4 py-3 border-b border-border sticky top-0 bg-background/95 z-10 backdrop-blur print:hidden">
         <Link href="/business/store" className="text-xs text-[#1A6EFF] font-medium">
           ← {lang === "en" ? "Store info" : "本店信息"}
         </Link>

@@ -87,7 +87,7 @@ export function StripeStatusPanel({ initial }: { initial: StripeStatusSnapshot }
         <div className="flex items-start gap-2">
           <span className="text-green-500 text-lg leading-none">✅</span>
           <div>
-            <p className="text-sm text-green-700 font-medium">
+            <p className="text-sm text-green-700 dark:text-green-400 font-medium">
               {t("business.tokens.stripeReady")}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -99,7 +99,7 @@ export function StripeStatusPanel({ initial }: { initial: StripeStatusSnapshot }
         <div className="flex items-start gap-2">
           <span className="text-blue-500 text-lg leading-none">⏳</span>
           <div>
-            <p className="text-sm text-blue-700 font-medium">
+            <p className="text-sm text-blue-700 dark:text-blue-400 font-medium">
               {t("business.tokens.stripePartial")}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -111,7 +111,7 @@ export function StripeStatusPanel({ initial }: { initial: StripeStatusSnapshot }
         <div className="flex items-start gap-2">
           <span className="text-amber-500 text-lg leading-none">⚠️</span>
           <div>
-            <p className="text-sm text-amber-700 font-medium">
+            <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">
               {t("business.tokens.stripePending")}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -181,9 +181,9 @@ export function StripeStatusPanel({ initial }: { initial: StripeStatusSnapshot }
         <p
           className={`text-xs rounded-lg px-3 py-2 ${
             fullyReady
-              ? "bg-green-50 text-green-700"
+              ? "bg-green-50 dark:bg-green-950/35 text-green-700 dark:text-green-400"
               : partial
-                ? "bg-blue-50 text-blue-800"
+                ? "bg-blue-50 dark:bg-blue-950/35 text-blue-800"
                 : "bg-muted/50 text-muted-foreground"
           }`}
         >

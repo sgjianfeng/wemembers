@@ -24,7 +24,7 @@ import { resolveTier } from "@/lib/draw-v2";
 
 function TrustPill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-white/90 text-[10px] font-medium text-slate-700 border border-white/40">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-white/90 text-[10px] font-medium text-foreground/90 border border-white/40">
       {children}
     </span>
   );
@@ -259,14 +259,14 @@ function VoucherDrawInner() {
 
   if (loading || confirming) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-slate-400">
+      <div className="min-h-screen flex items-center justify-center text-muted-foreground">
         <p>{confirming ? t("voucher.confirming") : t("common.loading")}</p>
       </div>
     );
   }
   if (!campaign) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-background">
         <TopHeader variant="default" />
         <div className="flex items-center justify-center py-32">
           <div className="flex flex-col items-center text-center text-muted-foreground">
@@ -366,7 +366,7 @@ function VoucherDrawInner() {
 
       <div className="px-4 -mt-2 pb-8 space-y-3">
         {paidCancelled && !result && (
-          <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-center text-xs text-amber-700">
+          <div className="p-3 bg-amber-50 dark:bg-amber-950/35 border border-amber-100 dark:border-amber-800/50 rounded-xl text-center text-xs text-amber-700 dark:text-amber-400">
             {t("voucher.payCancelled")}
           </div>
         )}
@@ -383,34 +383,34 @@ function VoucherDrawInner() {
           <Card className="mb-2">
             <CardContent className="p-4">
               {/* Money transparency */}
-              <div className="mb-4 p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <p className="text-[11px] font-semibold text-slate-700 mb-2">
+              <div className="mb-4 p-3 rounded-xl bg-muted/50 border border-border">
+                <p className="text-[11px] font-semibold text-foreground/90 mb-2">
                   {t("voucher.trust.moneyTitle")}
                 </p>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
-                    <p className="text-[10px] text-slate-400">{t("voucher.trust.face")}</p>
-                    <p className="text-sm font-bold text-slate-800">
+                    <p className="text-[10px] text-muted-foreground">{t("voucher.trust.face")}</p>
+                    <p className="text-sm font-bold text-foreground">
                       S${facePreview.toFixed(0)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-400">{t("voucher.trust.pay")}</p>
+                    <p className="text-[10px] text-muted-foreground">{t("voucher.trust.pay")}</p>
                     <p className="text-sm font-bold text-[#1A6EFF]">
                       S${paidPreview.toFixed(0)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[10px] text-muted-foreground">
                       {isDraw ? t("voucher.trust.credit") : t("voucher.trust.spendable")}
                     </p>
-                    <p className="text-sm font-bold text-emerald-600">
+                    <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
                       S${creditPreview.toFixed(0)}
                     </p>
                   </div>
                 </div>
                 {!isDraw && discountPercent > 0 && (
-                  <p className="text-[10px] text-blue-700/80 mt-2 text-center">
+                  <p className="text-[10px] text-blue-700 dark:text-blue-400/80 mt-2 text-center">
                     {t("voucher.payGetFace", {
                       paid: paidPreview.toFixed(0),
                       face: facePreview.toFixed(0),
@@ -419,18 +419,18 @@ function VoucherDrawInner() {
                   </p>
                 )}
                 {!isDraw && discountPercent === 0 && (
-                  <p className="text-[10px] text-slate-400 mt-2 text-center">
+                  <p className="text-[10px] text-muted-foreground mt-2 text-center">
                     {t("voucher.balanceEqFace")}
                   </p>
                 )}
                 {isDraw && (
-                  <p className="text-[10px] text-slate-400 mt-2 text-center">
+                  <p className="text-[10px] text-muted-foreground mt-2 text-center">
                     {t("voucher.balanceEqPaid")}
                   </p>
                 )}
               </div>
 
-              <h3 className="text-sm font-semibold text-slate-900 mb-2">{t("voucher.selectTier")}</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-2">{t("voucher.selectTier")}</h3>
               <div className="mb-4">
                 <VoucherTierSelector
                   selectedAmount={selectedAmount}
@@ -448,11 +448,11 @@ function VoucherDrawInner() {
               {/* 抽奖可保留「先花」；代金默认不展示（无最少留 20% 约束） */}
               {isDraw && (
                 <div className="mb-3">
-                  <label className="block text-xs font-medium text-slate-500 mb-1.5">
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
                     {t("voucher.spendNow")}
                   </label>
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400 text-sm">S$</span>
+                    <span className="text-muted-foreground text-sm">S$</span>
                     <input
                       type="number"
                       value={spendNow}
@@ -463,21 +463,21 @@ function VoucherDrawInner() {
                     <span
                       className={`text-xs px-2 py-1 rounded shrink-0 ${
                         balancePreview >= creditPreview * 0.2
-                          ? "bg-green-50 text-green-600"
-                          : "bg-red-50 text-red-500"
+                          ? "bg-green-50 dark:bg-green-950/35 text-green-600"
+                          : "bg-red-50 dark:bg-red-950/35 text-red-500"
                       }`}
                     >
                       {t("voucher.balanceAfter")}: S${balancePreview.toFixed(0)}
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-1">
+                  <p className="text-[10px] text-muted-foreground mt-1">
                     {t("voucher.minRemain")} S${(creditPreview * 0.2).toFixed(0)}
                   </p>
                 </div>
               )}
 
               {isDraw && selectedAmount < 100 && (
-                <p className="text-[10px] text-amber-600 mb-3 text-center bg-amber-50 rounded-lg py-1.5">
+                <p className="text-[10px] text-amber-600 dark:text-amber-400 mb-3 text-center bg-amber-50 dark:bg-amber-950/35 rounded-lg py-1.5">
                   {t("voucher.upgradeHint", { amount: "100" })}
                 </p>
               )}
@@ -489,7 +489,7 @@ function VoucherDrawInner() {
                   ? t("voucher.payDraw")
                   : t("voucher.payAmount", { amount: paidPreview.toFixed(0) })}
               </Button>
-              <p className="text-[10px] text-slate-400 text-center mt-2">
+              <p className="text-[10px] text-muted-foreground text-center mt-2">
                 {t("voucher.paynowHint")}
               </p>
             </CardContent>
@@ -505,25 +505,25 @@ function VoucherDrawInner() {
         {!result && <RulesDrawer isSelfUse={isSelfUse} isDraw={isDraw} t={t} />}
 
         {result && (
-          <Card className="border-green-200 bg-green-50 dark:border-emerald-900 dark:bg-emerald-950/40">
+          <Card className="border-green-200 bg-green-50 dark:bg-green-950/35 dark:border-emerald-900 dark:bg-emerald-950/40">
             <CardContent className="p-4 text-center space-y-2">
               <PartyPopper size={30} className="mx-auto text-emerald-600 dark:text-emerald-400" />
-              <p className="text-lg font-semibold text-green-700 dark:text-emerald-300">
+              <p className="text-lg font-semibold text-green-700 dark:text-green-400 dark:text-emerald-300">
                 {result.instantPrize ? t("voucher.winCongrats") : t("voucher.buySuccess")}
               </p>
               {result.instantPrize && (
-                <p className="text-xl font-bold text-green-700">
+                <p className="text-xl font-bold text-green-700 dark:text-green-400">
                   {result.instantPrize?.icon} {result.instantPrize?.name}
                 </p>
               )}
 
-              <div className="my-3 p-3 bg-white rounded-xl border border-green-100">
-                <p className="text-[10px] text-slate-400">{t("voucher.success.balance")}</p>
-                <p className="text-2xl font-bold text-emerald-600 mt-0.5">
+              <div className="my-3 p-3 bg-card rounded-xl border border-green-100 dark:border-green-800/50">
+                <p className="text-[10px] text-muted-foreground">{t("voucher.success.balance")}</p>
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
                   S${result.voucher?.balanceSgd}
                 </p>
                 {result.instantPrize && (
-                  <p className="text-[11px] text-amber-700 mt-1 font-medium">
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1 font-medium">
                     {result.instantPrize.icon} {result.instantPrize.name}
                     {lang === "en"
                       ? " · added to spendable balance"
@@ -531,7 +531,7 @@ function VoucherDrawInner() {
                   </p>
                 )}
                 {result.voucher?.paidSgd != null && (
-                  <p className="text-[11px] text-slate-500 mt-1">
+                  <p className="text-[11px] text-muted-foreground mt-1">
                     {t("voucher.paid")} S${result.voucher.paidSgd}
                     {result.voucher?.amountSgd
                       ? ` · ${t("balance.face")} S$${result.voucher.amountSgd}`
@@ -545,13 +545,13 @@ function VoucherDrawInner() {
                 )}
               </div>
 
-              <p className="text-[11px] text-slate-600">{t("voucher.success.showHint")}</p>
+              <p className="text-[11px] text-muted-foreground">{t("voucher.success.showHint")}</p>
               {result.voucher?.id && !result.voucher?.shortCode && (
-                <p className="text-[10px] text-slate-400 font-mono break-all">
+                <p className="text-[10px] text-muted-foreground font-mono break-all">
                   {t("voucher.networkId")}: {result.voucher.id}
                 </p>
               )}
-              <p className="text-[10px] text-slate-500">
+              <p className="text-[10px] text-muted-foreground">
                 {isSelfUse || result.voucher?.productKind === "self_use"
                   ? t("voucher.selfUse.afterBuy")
                   : t("voucher.networkAfterBuy")}
@@ -566,17 +566,17 @@ function VoucherDrawInner() {
 
               {result.grandPoolEntry ? (
                 <>
-                  <p className="text-xs text-amber-600 mt-2 font-medium">
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 font-medium">
                     ✅ {t("voucher.enteredGrand")} — {t("voucher.weight")}:{" "}
                     {result.voucher?.drawWeight}
                   </p>
 
                   {!result.shareBoosted ? (
-                    <div className="mt-2 p-3 bg-amber-100 rounded-xl border border-amber-200">
+                    <div className="mt-2 p-3 bg-amber-100 dark:bg-amber-900/40 rounded-xl border border-amber-200">
                       <p className="text-sm font-semibold text-amber-800 mb-1">
                         🚀 {t("voucher.shareBoostTitle")}
                       </p>
-                      <p className="text-[11px] text-amber-600 mb-2">{t("voucher.shareBoostHint")}</p>
+                      <p className="text-[11px] text-amber-600 dark:text-amber-400 mb-2">{t("voucher.shareBoostHint")}</p>
                       <button
                         type="button"
                         onClick={handleShareBoost}
@@ -592,8 +592,8 @@ function VoucherDrawInner() {
                   )}
                 </>
               ) : result.instantPrize && isDraw ? (
-                <div className="mt-2 p-3 bg-slate-100 rounded-xl">
-                  <p className="text-xs text-slate-500">
+                <div className="mt-2 p-3 bg-muted rounded-xl">
+                  <p className="text-xs text-muted-foreground">
                     {t("voucher.upgradeHint", { amount: "100" })}
                   </p>
                 </div>
@@ -610,7 +610,7 @@ export default function VoucherDrawPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center text-slate-400">
+        <div className="min-h-screen flex items-center justify-center text-muted-foreground">
           <p>…</p>
         </div>
       }

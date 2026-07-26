@@ -34,8 +34,8 @@ const content = {
           { title: "跨店结算", body: "三方自动分账，推广费+平台费" },
         ],
         gradient: "from-blue-500 to-blue-600",
-        bg: "bg-blue-50",
-        text: "text-blue-700",
+        bg: "bg-blue-50 dark:bg-blue-950/35",
+        text: "text-blue-700 dark:text-blue-400",
       },
       {
         icon: "👥",
@@ -48,8 +48,8 @@ const content = {
           { title: "数据追踪", body: "积分流水、等级进度可视化" },
         ],
         gradient: "from-emerald-500 to-emerald-600",
-        bg: "bg-emerald-50",
-        text: "text-emerald-700",
+        bg: "bg-emerald-50 dark:bg-emerald-950/35",
+        text: "text-emerald-700 dark:text-emerald-400",
       },
       {
         icon: "🎰",
@@ -108,8 +108,8 @@ const content = {
           { title: "Settlement", body: "Auto 3-way split: issuer, redeemer, platform" },
         ],
         gradient: "from-blue-500 to-blue-600",
-        bg: "bg-blue-50",
-        text: "text-blue-700",
+        bg: "bg-blue-50 dark:bg-blue-950/35",
+        text: "text-blue-700 dark:text-blue-400",
       },
       {
         icon: "👥",
@@ -122,8 +122,8 @@ const content = {
           { title: "Analytics", body: "Points log, tier progress visualization" },
         ],
         gradient: "from-emerald-500 to-emerald-600",
-        bg: "bg-emerald-50",
-        text: "text-emerald-700",
+        bg: "bg-emerald-50 dark:bg-emerald-950/35",
+        text: "text-emerald-700 dark:text-emerald-400",
       },
       {
         icon: "🎰",
@@ -184,7 +184,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       {/*
         产品 IA：/ = 消费者站；商家站 = /for-business
         不再用「我是消费者 / 我是商家」双 Tab 混在同一首页
@@ -279,11 +279,11 @@ export default function HomePage() {
       <ConsumerView isZh={isZh} lang={lang} />
 
       {/* ── Footer：消费者站底部商家入口 ── */}
-      <footer className="px-5 pb-10 pt-4 text-center border-t border-slate-100">
-        <p className="text-xs text-slate-300 mb-3">{t.footer}</p>
+      <footer className="px-5 pb-10 pt-4 text-center border-t border-border">
+        <p className="text-xs text-muted-foreground mb-3">{t.footer}</p>
         <Link
           href="/for-business"
-          className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-[#1A6EFF] transition-colors"
+          className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-[#1A6EFF] transition-colors"
         >
           {isZh ? "我是商家 · 入驻与发券 →" : "For business · Issue vouchers →"}
         </Link>
@@ -328,13 +328,13 @@ function CountdownBadge({ days, isZh }: { days: number | undefined; isZh: boolea
   }
   if (days <= 3) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-600 rounded-full text-[10px] font-bold">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 dark:bg-red-950/35 text-red-600 rounded-full text-[10px] font-bold">
         {isZh ? `仅剩 ${days} 天` : `${days} days left`}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-[10px] font-bold">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 dark:bg-amber-950/35 text-amber-700 dark:text-amber-400 rounded-full text-[10px] font-bold">
       {isZh ? `预计 ${days} 天` : `~${days} days`}
     </span>
   );
@@ -365,7 +365,7 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
       {/* ══════ Section 1 — Scenario Demo（更清晰的三步） ══════ */}
       <section className="relative -mt-5 px-4 pb-4">
         <div className="max-w-sm mx-auto">
-          <div className="bg-white rounded-2xl shadow-md border border-amber-100/80 overflow-hidden">
+          <div className="bg-card rounded-2xl shadow-md border border-amber-100 dark:border-amber-800/50/80 overflow-hidden">
             <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1.5 flex items-center justify-center">
               <span className="text-white text-[11px] font-bold tracking-wide">
                 {isZh ? "💡 三步看懂怎么玩" : "💡 How it works in 3 steps"}
@@ -379,11 +379,11 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
                     1
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-slate-900">
+                    <p className="text-xs font-semibold text-foreground">
                       {isZh ? "PayNow 买预付券" : "PayNow buy prepaid voucher"}
-                      <span className="ml-1.5 text-slate-500 font-bold">S$100</span>
+                      <span className="ml-1.5 text-muted-foreground font-bold">S$100</span>
                     </p>
-                    <p className="text-[10px] text-slate-500 leading-snug">
+                    <p className="text-[10px] text-muted-foreground leading-snug">
                       {isZh
                         ? "入账余额 = 实付金额，可跨店花，用不完可提现"
                         : "Balance = amount paid · network spend · withdrawable"}
@@ -395,11 +395,11 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
                     2
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-slate-900">
+                    <p className="text-xs font-semibold text-foreground">
                       {isZh ? "100% 抽即时小奖" : "100% instant small prize"}
-                      <span className="ml-1.5 text-emerald-600 font-bold">🎉 +S$10</span>
+                      <span className="ml-1.5 text-emerald-600 dark:text-emerald-400 font-bold">🎉 +S$10</span>
                     </p>
-                    <p className="text-[10px] text-slate-500 leading-snug">
+                    <p className="text-[10px] text-muted-foreground leading-snug">
                       {isZh
                         ? "购券当场开奖，必中小奖（示例）"
                         : "Draw right after purchase — guaranteed small win (example)"}
@@ -411,10 +411,10 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
                     3
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-slate-900">
+                    <p className="text-xs font-semibold text-foreground">
                       {isZh ? "到店花余额 · 冲大奖池" : "Spend in-store · fund grand pool"}
                     </p>
-                    <p className="text-[10px] text-slate-500 leading-snug">
+                    <p className="text-[10px] text-muted-foreground leading-snug">
                       {isZh
                         ? "核销金额约 20% 进奖池；核销越多，大奖权重越高"
                         : "~20% of each redeem funds prizes; more spend → higher weight"}
@@ -424,20 +424,20 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
               </ol>
 
               {/* Mini money strip */}
-              <div className="flex items-center justify-between gap-1 rounded-xl bg-slate-50 border border-slate-100 px-2.5 py-2 text-center">
+              <div className="flex items-center justify-between gap-1 rounded-xl bg-muted/50 border border-border px-2.5 py-2 text-center">
                 <div className="flex-1">
-                  <p className="text-[9px] text-slate-400">{isZh ? "你付" : "You pay"}</p>
-                  <p className="text-sm font-extrabold text-slate-800">S$100</p>
+                  <p className="text-[9px] text-muted-foreground">{isZh ? "你付" : "You pay"}</p>
+                  <p className="text-sm font-extrabold text-foreground">S$100</p>
                 </div>
-                <span className="text-slate-300 text-xs">→</span>
+                <span className="text-muted-foreground text-xs">→</span>
                 <div className="flex-1">
-                  <p className="text-[9px] text-slate-400">{isZh ? "余额可花" : "Balance"}</p>
-                  <p className="text-sm font-extrabold text-blue-600">S$100</p>
+                  <p className="text-[9px] text-muted-foreground">{isZh ? "余额可花" : "Balance"}</p>
+                  <p className="text-sm font-extrabold text-blue-600 dark:text-blue-400">S$100</p>
                 </div>
-                <span className="text-slate-300 text-xs">+</span>
+                <span className="text-muted-foreground text-xs">+</span>
                 <div className="flex-1">
-                  <p className="text-[9px] text-slate-400">{isZh ? "即时奖" : "Instant"}</p>
-                  <p className="text-sm font-extrabold text-emerald-600">S$10</p>
+                  <p className="text-[9px] text-muted-foreground">{isZh ? "即时奖" : "Instant"}</p>
+                  <p className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">S$10</p>
                 </div>
               </div>
             </div>
@@ -449,12 +449,12 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
       <section className="px-5 pb-6">
         <div className="max-w-sm mx-auto">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-              <Trophy size={20} className="text-amber-600" />
+            <h2 className="text-base font-extrabold text-foreground flex items-center gap-2">
+              <Trophy size={20} className="text-amber-600 dark:text-amber-400" />
               {isZh ? "大奖池倒计时" : "Grand Prize Countdown"}
             </h2>
             {mainDraw && (
-              <span className="text-[10px] text-slate-400 nums">
+              <span className="text-[10px] text-muted-foreground nums">
                 {isZh ? "奖池 " : "Pool "}S${mainDraw.totalPoolSgd}
               </span>
             )}
@@ -472,7 +472,7 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
               const targetNum = parseInt(String(targetSgd).replace(/,/g, "")) || 1;
 
               return (
-                <div key={prize.key} className="relative bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden hover:shadow-lg transition-shadow">
+                <div key={prize.key} className="relative bg-card rounded-2xl shadow-md border border-border overflow-hidden hover:shadow-lg transition-shadow">
                   {/* Product image strip */}
                   <div className="relative h-32 bg-gradient-to-r from-slate-800 to-slate-900 overflow-hidden">
                     <img
@@ -507,15 +507,15 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
                   <div className="p-4">
                     {/* Big progress bar */}
                     <div className="mb-2">
-                      <div className="flex justify-between text-[10px] text-slate-400 mb-1 nums">
+                      <div className="flex justify-between text-[10px] text-muted-foreground mb-1 nums">
                         <span>
-                          {isZh ? "已筹" : "Raised"} <b className="text-slate-700">S${Number(currentSgd).toLocaleString()}</b>
+                          {isZh ? "已筹" : "Raised"} <b className="text-foreground/90">S${Number(currentSgd).toLocaleString()}</b>
                         </span>
                         <span>
-                          {isZh ? "目标" : "Goal"} <b className="text-slate-700">S${Number(targetSgd).toLocaleString()}</b>
+                          {isZh ? "目标" : "Goal"} <b className="text-foreground/90">S${Number(targetSgd).toLocaleString()}</b>
                         </span>
                       </div>
-                      <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-2.5 bg-muted rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-700"
                           style={{
@@ -531,7 +531,7 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
                       <span className="text-[11px] font-bold" style={{ color: prize.accent }}>
                         {Math.min(100, Math.max(0, pct)).toFixed(1)}%
                       </span>
-                      <div className="flex items-center gap-3 text-[10px] text-slate-400">
+                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                         {days !== undefined && days > 0 && (
                           <span>
                             {isZh ? "每天约" : "~"} S${Math.max(1, Math.round(currentNum / Math.max(1, days))).toLocaleString()}
@@ -557,7 +557,7 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
             >
               🎰 {isZh ? "免费注册" : "Sign up free"}
             </a>
-            <p className="text-[10px] text-slate-400 mt-2">
+            <p className="text-[10px] text-muted-foreground mt-2">
               {isZh ? "100% 中奖 · 到店核销 · 倒计时大奖" : "100% Win · Redeem in-store · Countdown prizes"}
             </p>
           </div>
@@ -569,15 +569,15 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
         <section className="px-5 pt-2 pb-6 max-w-sm mx-auto">
           <div className="flex items-end justify-between mb-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-amber-600 font-bold mb-1 flex items-center gap-1.5">
+              <p className="text-xs uppercase tracking-[0.2em] text-amber-600 dark:text-amber-400 font-bold mb-1 flex items-center gap-1.5">
                 <span className="text-lg">🔥</span>
                 {isZh ? "热门代金券" : "HOT VOUCHERS"}
               </p>
-              <h2 className="text-base font-extrabold text-slate-900">
+              <h2 className="text-base font-extrabold text-foreground">
                 {isZh ? "黑金甄选" : "Black Gold Selection"}
               </h2>
             </div>
-            <a href="/home" className="text-[11px] text-amber-600 font-semibold hover:text-amber-700 transition-colors">
+            <a href="/home" className="text-[11px] text-amber-600 font-semibold hover:text-amber-700 dark:text-amber-400 transition-colors">
               {isZh ? "查看更多 →" : "View All →"}
             </a>
           </div>
@@ -596,7 +596,7 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
             const el = document.querySelector('[data-role-switch="business"]');
             if (el instanceof HTMLElement) el.click();
           }}
-          className="w-full py-3 bg-slate-50 rounded-xl text-xs text-slate-400 hover:bg-slate-100 transition-colors flex items-center justify-center gap-2"
+          className="w-full py-3 bg-muted/50 rounded-xl text-xs text-muted-foreground hover:bg-muted transition-colors flex items-center justify-center gap-2"
         >
           <Store size={16} />
           {isZh ? "我是商家，查看营销工具" : "I'm a business, view marketing tools"}
