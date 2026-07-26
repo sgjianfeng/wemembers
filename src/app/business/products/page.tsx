@@ -131,9 +131,71 @@ export default function BusinessProductsPage() {
         </h1>
         <p className="text-xs text-muted-foreground mt-0.5">
           {lang === "en"
-            ? "Create products from templates. Activate/archive. Activities pick products; stores join activities."
-            : "从默认模版创建产品 → 激活/下架。活动勾选产品，门店选择参与活动。"}
+            ? "What customers buy. One product = one sellable line with its own link."
+            : "顾客实际购买的东西。一个产品 = 一条可售卖线，自带购买链接。"}
         </p>
+      </div>
+
+      <div className="px-4 mt-3">
+        <div className="rounded-2xl border border-border bg-muted/40 px-3 py-2.5">
+          <p className="text-[11px] font-medium text-foreground mb-1.5">
+            {lang === "en" ? "Four layers (do this order)" : "四层结构（按这个顺序）"}
+          </p>
+          <ol className="text-[11px] text-muted-foreground space-y-1 list-decimal list-inside leading-relaxed">
+            <li>
+              {lang === "en" ? (
+                <>
+                  <span className="text-foreground font-medium">Template</span> — fee/discount rules
+                  (Hub → My templates)
+                </>
+              ) : (
+                <>
+                  <span className="text-foreground font-medium">模版</span>
+                  ：费率/折扣规则（功能仓 → 我的模版）
+                </>
+              )}
+            </li>
+            <li>
+              {lang === "en" ? (
+                <>
+                  <span className="text-foreground font-medium">Product</span> — this page; create &amp;
+                  activate
+                </>
+              ) : (
+                <>
+                  <span className="text-foreground font-medium">券产品</span>
+                  ：本页创建并上架
+                </>
+              )}
+            </li>
+            <li>
+              {lang === "en" ? (
+                <>
+                  <span className="text-foreground font-medium">Activity</span> — pick which products
+                  run together
+                </>
+              ) : (
+                <>
+                  <span className="text-foreground font-medium">活动</span>
+                  ：勾选要一起卖的产品
+                </>
+              )}
+            </li>
+            <li>
+              {lang === "en" ? (
+                <>
+                  <span className="text-foreground font-medium">Store</span> — store opts into the
+                  activity
+                </>
+              ) : (
+                <>
+                  <span className="text-foreground font-medium">门店</span>
+                  ：门店选择参与哪个活动
+                </>
+              )}
+            </li>
+          </ol>
+        </div>
       </div>
 
       <div className="px-4 mt-4 space-y-4">
@@ -200,7 +262,13 @@ export default function BusinessProductsPage() {
             </p>
           ) : (
             <ul className="space-y-2">
-              {products.map((p) => (
+              {[...products]
+                .sort((a, b) => {
+                  const rank = (s: string) =>
+                    s === "active" ? 0 : s === "draft" ? 1 : 2;
+                  return rank(a.status) - rank(b.status);
+                })
+                .map((p) => (
                 <Card key={p.id}>
                   <CardContent className="p-3">
                     <div className="flex items-start justify-between gap-2">
@@ -225,13 +293,16 @@ export default function BusinessProductsPage() {
                               ? lang === "en"
                                 ? "Off"
                                 : "已下架"
-                              : p.status}
+                              : lang === "en"
+                                ? "Draft"
+                                : "草稿"}
                           {" · "}
-                          {lang === "en" ? "in" : "活动"} {p.activityCount}
+                          {lang === "en" ? "in activities" : "活动"}{" "}
+                          {p.activityCount}
                           {" · "}
                           {lang === "en" ? "sold" : "已售"} {p.voucherCount}
                         </p>
-                        {p.buyPath && (
+                        {p.buyPath && p.status === "active" && (
                           <p className="text-[10px] text-primary mt-1 break-all">
                             {p.buyPath}
                           </p>

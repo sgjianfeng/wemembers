@@ -14,9 +14,21 @@ export default async function CampaignsPage() {
   const c = await cookies();
   const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
 
+  // 只列「活动」容器；product_mirror 是购券兼容镜像，归在「券产品」
   const campaigns = await prisma.campaign.findMany({
-    where: { businessId: session.userId },
-    include: { coupons: { select: { id: true } } },
+    where: {
+      businessId: session.userId,
+      role: { not: "product_mirror" },
+    },
+    include: {
+      coupons: { select: { id: true } },
+      catalogProducts: {
+        include: {
+          product: { select: { id: true, name: true, status: true } },
+        },
+        orderBy: { sortOrder: "asc" },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -39,14 +51,38 @@ export default async function CampaignsPage() {
 
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-        <div>
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
+        <div className="min-w-0">
           <h1 className="text-lg font-semibold">{t("business.campaigns.title", lang)}</h1>
           <p className="text-xs text-muted-foreground mt-0.5">{t("business.campaigns.subtitle", lang)}</p>
         </div>
-        <Link href="/business/campaigns/new" className="px-3 py-1.5 bg-primary text-primary-foreground text-xs rounded-full">
+        <Link href="/business/campaigns/new" className="shrink-0 px-3 py-1.5 bg-primary text-primary-foreground text-xs rounded-full">
           + {t("business.campaigns.create", lang)}
         </Link>
+      </div>
+
+      <div className="px-4 mt-3">
+        <div className="rounded-2xl border border-border bg-muted/40 px-3 py-2.5 text-[11px] text-muted-foreground leading-relaxed">
+          {lang === "en" ? (
+            <>
+              <span className="font-medium text-foreground">Flow: </span>
+              Templates →{" "}
+              <Link href="/business/products" className="text-primary font-medium">
+                Products
+              </Link>{" "}
+              (what you sell) → this page (pick products + which stores join).
+            </>
+          ) : (
+            <>
+              <span className="font-medium text-foreground">怎么用：</span>
+              先在{" "}
+              <Link href="/business/products" className="text-primary font-medium">
+                券产品
+              </Link>{" "}
+              上架要卖的线，再在这里勾选产品、让门店参与。活动本身不直接定价。
+            </>
+          )}
+        </div>
       </div>
 
       <div className="px-4 mt-4 space-y-3">
@@ -55,6 +91,10 @@ export default async function CampaignsPage() {
           const sb = statusBadge[c.status] || statusBadge.draft;
           const now = new Date();
           const daysLeft = Math.ceil((c.endDate.getTime() - now.getTime()) / 86400000);
+          const productNames = c.catalogProducts
+            .map((x) => x.product.name)
+            .filter(Boolean);
+          const productCount = productNames.length;
 
           return (
             <Link key={c.id} href={`/business/campaigns/${c.id}`}>
@@ -97,9 +137,30 @@ export default async function CampaignsPage() {
                     <Badge variant={sb.variant}>{sb[lang]}</Badge>
                   </div>
 
-                  {c.description && <p className="text-xs text-muted-foreground mb-2 line-clamp-1">{c.description}</p>}
+                  <p className="text-[11px] text-foreground/80 mb-2 line-clamp-2">
+                    {productCount > 0 ? (
+                      <>
+                        <span className="text-muted-foreground">
+                          {lang === "en" ? "Products: " : "含产品："}
+                        </span>
+                        {productNames.join(" · ")}
+                      </>
+                    ) : (
+                      <span className="text-amber-700 dark:text-amber-400">
+                        {lang === "en"
+                          ? "No products linked — open to pick catalog products"
+                          : "未挂券产品 — 点进勾选「券产品」"}
+                      </span>
+                    )}
+                  </p>
 
                   <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="bg-muted/50 rounded-lg py-2">
+                      <p className="text-lg font-bold text-foreground">{productCount}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {lang === "en" ? "Products" : "券产品"}
+                      </p>
+                    </div>
                     <div className="bg-muted/50 rounded-lg py-2">
                       <p className="text-lg font-bold text-foreground">{c.totalClaims}</p>
                       <p className="text-[10px] text-muted-foreground">{t("business.campaigns.claimed", lang)}</p>
@@ -107,10 +168,6 @@ export default async function CampaignsPage() {
                     <div className="bg-muted/50 rounded-lg py-2">
                       <p className="text-lg font-bold text-foreground">{c.totalRedemptions}</p>
                       <p className="text-[10px] text-muted-foreground">{t("business.campaigns.redeemed", lang)}</p>
-                    </div>
-                    <div className="bg-muted/50 rounded-lg py-2">
-                      <p className="text-lg font-bold text-foreground">{c.totalClaims > 0 ? Math.round((c.totalRedemptions / c.totalClaims) * 100) : 0}%</p>
-                      <p className="text-[10px] text-muted-foreground">{t("business.campaigns.conversionRate", lang)}</p>
                     </div>
                   </div>
 
@@ -129,6 +186,12 @@ export default async function CampaignsPage() {
             <p className="text-4xl mb-2">📅</p>
             <p className="text-sm">{t("business.campaigns.noCampaigns", lang)}</p>
             <p className="text-xs mt-1">{t("business.campaigns.noCampaignsHint", lang)}</p>
+            <Link
+              href="/business/products"
+              className="inline-flex mt-4 text-xs font-medium text-primary"
+            >
+              {lang === "en" ? "Create products first →" : "先去创建券产品 →"}
+            </Link>
           </div>
         )}
       </div>

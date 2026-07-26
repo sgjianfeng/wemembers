@@ -108,6 +108,28 @@ export default async function CampaignDetailPage({
 
   if (!campaign) return <div className="p-8 text-center text-muted-foreground">{t("campaign.detail.notFound", lang)}</div>;
 
+  // 产品镜像不属于「活动」列表；引导回券产品页，避免两套入口混淆
+  if (campaign.role === "product_mirror") {
+    return (
+      <div className="px-4 py-10 text-center space-y-3">
+        <p className="text-sm font-semibold text-foreground">
+          {lang === "en" ? "This is a product shelf (internal)" : "这是券产品货架（系统内部）"}
+        </p>
+        <p className="text-xs text-muted-foreground leading-relaxed max-w-sm mx-auto">
+          {lang === "en"
+            ? "Purchase links attach to products, not activities. Manage it under Voucher products."
+            : "购买链接挂在「券产品」上，不在活动列表里展示。请到券产品页管理。"}
+        </p>
+        <Link
+          href="/business/products"
+          className="inline-flex h-9 items-center rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground"
+        >
+          {lang === "en" ? "Go to products" : "去券产品"}
+        </Link>
+      </div>
+    );
+  }
+
   const coupons = campaign.coupons;
   const totalClaims = coupons.reduce((s, c) => s + c.claimedCount, 0);
   const totalUsed = coupons.reduce((s, c) => s + c.usedCount, 0);

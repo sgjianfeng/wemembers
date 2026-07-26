@@ -521,10 +521,10 @@ const zh: Record<string, string> = {
   "business.luckyDraw.entries": "参与",
   "business.luckyDraw.minSpend": "满{amount}获得资格",
 
-  "business.campaigns.title": "活动管理",
+  "business.campaigns.title": "活动",
   "business.campaigns.create": "创建活动",
-  "business.campaigns.create.subtitle": "创建一个活动来批量管理代金券",
-  "business.campaigns.subtitle": "批量管理代金券和推广活动",
+  "business.campaigns.create.subtitle": "活动 = 勾选已上架的券产品 + 门店参与",
+  "business.campaigns.subtitle": "勾选券产品，决定哪些门店参与售卖",
   "business.campaigns.claimed": "领取",
   "business.campaigns.redeemed": "核销",
   "business.campaigns.conversionRate": "转化率",
@@ -562,7 +562,7 @@ const zh: Record<string, string> = {
 
   "business.campaigns.daysLeft": "还剩 {days} 天",
   "business.campaigns.noCampaigns": "还没有活动",
-  "business.campaigns.noCampaignsHint": "创建活动来批量管理代金券",
+  "business.campaigns.noCampaignsHint": "先创建券产品，再创建活动并勾选产品与门店",
 
   "business.settings.title": "企业设置",
   "business.settings.shopInfo": "企业信息",
@@ -1741,10 +1741,10 @@ const en: Record<string, string> = {
   "business.luckyDraw.entries": "entries",
   "business.luckyDraw.minSpend": "Spend S${amount} to enter",
 
-  "business.campaigns.title": "Campaigns",
-  "business.campaigns.create": "New Campaign",
-  "business.campaigns.create.subtitle": "Create a campaign to manage vouchers in batches",
-  "business.campaigns.subtitle": "Batch manage vouchers and promotions",
+  "business.campaigns.title": "Activities",
+  "business.campaigns.create": "New activity",
+  "business.campaigns.create.subtitle": "Activity = pick catalog products + which stores join",
+  "business.campaigns.subtitle": "Pick products and which stores sell them",
   "business.campaigns.claimed": "Claimed",
   "business.campaigns.redeemed": "Redeemed",
   "business.campaigns.conversionRate": "Conversion",
@@ -1781,8 +1781,8 @@ const en: Record<string, string> = {
   "campaign.detail.noEntries": "No entries yet",
 
   "business.campaigns.daysLeft": "{days} days left",
-  "business.campaigns.noCampaigns": "No campaigns yet",
-  "business.campaigns.noCampaignsHint": "Create a campaign to manage vouchers in batches",
+  "business.campaigns.noCampaigns": "No activities yet",
+  "business.campaigns.noCampaignsHint": "Create products first, then an activity with products + stores",
 
   "business.settings.title": "Company settings",
   "business.settings.shopInfo": "Company profile",

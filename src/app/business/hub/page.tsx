@@ -43,13 +43,24 @@ export default async function BusinessHubPage() {
       primary: true,
     },
     {
+      id: "products",
+      icon: ClipboardList,
+      title: lang === "en" ? "Voucher products" : "券产品",
+      desc:
+        lang === "en"
+          ? "Create sellable lines from packs → activate. Activities pick products; stores join."
+          : "从默认包创建可售卖线 → 上架。活动勾选产品，门店参与活动。",
+      href: "/business/products",
+      primary: true,
+    },
+    {
       id: "templates",
       icon: ClipboardList,
       title: lang === "en" ? "My templates" : "我的模版",
       desc:
         lang === "en"
-          ? "Copy self-use / exclusive templates (edit discount or fee split; platform 2% fixed)"
-          : "拷贝自用/独享模版（改折扣或总率/小奖/大奖；平台 2% 固定）",
+          ? "Fee/discount rules only (not sellable). After editing, create products from packs."
+          : "只改费率/折扣规则（不可直接售卖）。改完后在「券产品」用默认包创建。",
       href: "/business/templates",
     },
     {

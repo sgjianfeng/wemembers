@@ -179,9 +179,26 @@ export default function BusinessTemplatesPage() {
         </h1>
         <p className="text-xs text-muted-foreground mt-0.5">
           {lang === "en"
-            ? "Copy self-use / exclusive platform templates. Platform fee locked at 2%."
-            : "拷贝自用/独享平台模版并改参数。平台服务费固定 2% 不可改。"}
+            ? "Fee/discount rules only — not sellable. Sell under Voucher products."
+            : "只存费率/折扣规则，不能直接卖。真正上架请用「券产品」。"}
         </p>
+      </div>
+
+      <div className="px-4 mt-3">
+        <Link
+          href="/business/products"
+          className="block rounded-2xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-[11px] leading-relaxed"
+        >
+          <span className="font-medium text-foreground">
+            {lang === "en" ? "Next step: " : "下一步："}
+          </span>
+          <span className="text-muted-foreground">
+            {lang === "en"
+              ? "Create sellable products from default packs (with purchase links)."
+              : "在「券产品」用默认包创建可售卖线（带购买链接）。"}
+          </span>
+          <span className="text-primary font-medium ml-1">→</span>
+        </Link>
       </div>
 
       <div className="px-4 mt-4 space-y-6">

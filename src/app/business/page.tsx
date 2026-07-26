@@ -67,6 +67,7 @@ export default async function BusinessDashboard() {
       where: {
         businessId: user.id,
         status: "active",
+        role: { not: "product_mirror" },
         type: { in: ["lucky_draw_v2", "voucher_sale"] },
       },
     }),

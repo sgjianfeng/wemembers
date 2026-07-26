@@ -29,7 +29,10 @@ export function CampaignProductsPanel({ campaignId }: { campaignId: string }) {
       ]);
       if (pr.ok) {
         const j = await pr.json();
-        setAll(j.data || []);
+        // 活动只挂已上架产品；草稿/下架不出现在勾选列表
+        setAll(
+          ((j.data || []) as Product[]).filter((p) => p.status === "active")
+        );
       }
       if (ln.ok) {
         const j = await ln.json();
