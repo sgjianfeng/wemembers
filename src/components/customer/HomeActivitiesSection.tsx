@@ -9,27 +9,17 @@ import {
   ChevronRight,
   MapPin,
   Flame,
-  Store,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useLang } from "@/components/i18n/LanguageProvider";
-import type { JoinableActivity } from "@/lib/discover-activities";
+import {
+  offerBlurb,
+  offerCta,
+  offerKindLabel,
+  type JoinableActivity,
+} from "@/lib/discover-activities";
 
 const HERO_LIMIT = 2;
-
-function kindLabel(
-  tag: JoinableActivity["kindTag"],
-  lang: "zh" | "en"
-): string {
-  const map: Record<JoinableActivity["kindTag"], { zh: string; en: string }> = {
-    exclusive_draw: { zh: "独享抽奖", en: "Exclusive draw" },
-    co_win_draw: { zh: "共赢抽奖", en: "Co-win draw" },
-    self_use: { zh: "自用券", en: "Self-use" },
-    distribution: { zh: "分发券", en: "Network" },
-    draw: { zh: "抽奖", en: "Draw" },
-  };
-  return map[tag][lang];
-}
 
 function storeLine(a: JoinableActivity, lang: "zh" | "en"): string {
   if (a.storeCount === 0) {
@@ -55,21 +45,6 @@ function storeLine(a: JoinableActivity, lang: "zh" | "en"): string {
     .join(" · ");
   if (a.storeCount <= 2) return names;
   return `${names} ${lang === "en" ? `+${a.storeCount - 2}` : `等${a.storeCount}家`}`;
-}
-
-function productLine(a: JoinableActivity, lang: "zh" | "en"): string | null {
-  if (a.products.length === 0) return null;
-  const names = a.products.slice(0, 2).map((p) => p.name);
-  if (a.products.length <= 2) {
-    return (lang === "en" ? "Includes: " : "含：") + names.join(" · ");
-  }
-  return (
-    (lang === "en" ? "Includes: " : "含：") +
-    names.join(" · ") +
-    (lang === "en"
-      ? ` +${a.products.length - 2}`
-      : ` 等${a.products.length}个`)
-  );
 }
 
 export function HomeActivitiesSection({
@@ -103,18 +78,25 @@ export function HomeActivitiesSection({
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between px-0.5">
-        <h2 className="text-sm font-semibold text-foreground">
-          {discoverOnly
-            ? L === "en"
-              ? "Hot activities"
-              : "热门活动"
-            : L === "en"
-              ? "Activities"
-              : "可参与活动"}
-        </h2>
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">
+            {discoverOnly
+              ? L === "en"
+                ? "Popular offers"
+                : "热门优惠"
+              : L === "en"
+                ? "For you"
+                : "推荐给你"}
+          </h2>
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            {L === "en"
+              ? "Store credit to spend · prize draws to join"
+              : "到店代金可买 · 抽奖优惠可玩"}
+          </p>
+        </div>
         <Link
           href="/discover/draws"
-          className="text-xs font-medium text-primary inline-flex items-center gap-0.5"
+          className="text-xs font-medium text-primary inline-flex items-center gap-0.5 shrink-0"
         >
           {t("home.vouchers.viewAll")}
           <ChevronRight size={14} className="opacity-70" />
@@ -124,20 +106,20 @@ export function HomeActivitiesSection({
       {primary.length === 0 && discover.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card">
           <EmptyState
-            icon="trophy"
-            tone="festive"
-            title={L === "en" ? "No activities yet" : "暂无可参与活动"}
+            icon="wallet"
+            tone="calm"
+            title={L === "en" ? "No offers yet" : "暂无优惠"}
             description={
               L === "en"
-                ? "Browse when merchants open activities with products and stores."
-                : "商家上架活动并开放门店后，会出现在这里。"
+                ? "When stores list vouchers or prize draws, they show up here."
+                : "门店上架代金券或抽奖后，会出现在这里。"
             }
             action={
               <Link
                 href="/discover/draws"
-                className="inline-flex items-center gap-1 rounded-full bg-festive px-5 py-2 text-xs font-semibold text-white shadow-sm active:scale-[0.97] transition-transform"
+                className="inline-flex items-center gap-1 rounded-full bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground shadow-sm active:scale-[0.97] transition-transform"
               >
-                {L === "en" ? "Browse activities" : "浏览活动"}
+                {L === "en" ? "Browse offers" : "看看有什么"}
                 <ChevronRight size={14} />
               </Link>
             }
@@ -145,20 +127,24 @@ export function HomeActivitiesSection({
         </div>
       ) : (
         <div className="rounded-3xl bg-muted/45 border border-border/60 p-2.5 space-y-2.5">
-          {heroes.map((d) => (
-            <ActivityHero key={d.id} a={d} now={now} lang={L} />
-          ))}
+          {heroes.map((d) =>
+            d.displayMode === "draw" ? (
+              <DrawHero key={d.id} a={d} now={now} lang={L} />
+            ) : (
+              <VoucherHero key={d.id} a={d} lang={L} />
+            )
+          )}
 
           {(extraDiscover.length > 0 ||
             (primary.length === 0 && overflow.length > 0)) && (
             <div className="pt-0.5 space-y-1.5">
               {primary.length > 0 && discover.length > 0 && (
                 <p className="text-[11px] font-medium text-muted-foreground px-1 pt-1">
-                  {L === "en" ? "Hot near you" : "热门活动"}
+                  {L === "en" ? "More popular" : "更多热门"}
                 </p>
               )}
               {(primary.length > 0 ? extraDiscover : overflow).map((d) => (
-                <ActivityRow key={d.id} a={d} lang={L} />
+                <OfferRow key={d.id} a={d} lang={L} />
               ))}
             </div>
           )}
@@ -168,7 +154,71 @@ export function HomeActivitiesSection({
   );
 }
 
-function ActivityHero({
+/** Calm card — prepaid store credit, not a draw UI */
+function VoucherHero({
+  a,
+  lang,
+}: {
+  a: JoinableActivity;
+  lang: "zh" | "en";
+}) {
+  return (
+    <Link href={a.href} className="block active:scale-[0.99] transition-transform">
+      <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-card shadow-sm ring-1 ring-primary/5">
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
+        <div className="p-3.5 pl-4">
+          <div className="flex items-start gap-2.5">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+              <Ticket size={17} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="rounded-full bg-primary/10 text-primary px-1.5 py-0.5 text-[9px] font-bold">
+                  {offerKindLabel(a.kindTag, lang)}
+                </span>
+                {a.hot && (
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 text-[9px] font-bold">
+                    <Flame size={10} />
+                    {lang === "en" ? "HOT" : "热"}
+                  </span>
+                )}
+              </div>
+              <h3 className="mt-1 truncate text-[14px] font-bold leading-snug text-foreground">
+                {a.name}
+              </h3>
+              <p className="truncate text-[11px] text-muted-foreground mt-0.5">
+                {a.businessName}
+              </p>
+            </div>
+            {a.joined && a.myCount > 0 && (
+              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold tabular-nums text-foreground">
+                ×{a.myCount}
+              </span>
+            )}
+          </div>
+
+          <p className="mt-2.5 text-[12px] text-foreground/85 leading-snug">
+            {offerBlurb(a, lang)}
+          </p>
+          <p className="mt-1.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+            <MapPin size={12} className="shrink-0" />
+            <span className="truncate">{storeLine(a, lang)}</span>
+          </p>
+
+          <div className="mt-3 flex items-center justify-end">
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-primary px-3.5 py-1.5 text-[12px] font-bold text-primary-foreground">
+              {offerCta(a, lang)}
+              <ChevronRight size={14} />
+            </span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+/** Festive card — prize draw only */
+function DrawHero({
   a,
   now,
   lang,
@@ -181,13 +231,9 @@ function ActivityHero({
   const days = Math.max(0, Math.floor(remaining / 86400000));
   const hours = Math.max(0, Math.floor((remaining % 86400000) / 3600000));
   const minutes = Math.max(0, Math.floor((remaining % 3600000) / 60000));
-  const isDraw =
-    a.kindTag === "exclusive_draw" ||
-    a.kindTag === "co_win_draw" ||
-    a.kindTag === "draw";
   const dead = a.grandPoolSgd === "0" && a.smallPoolSgd === "0";
   const prizePreview = a.prizes.slice(0, 2);
-  const prods = productLine(a, lang);
+  const showCountdown = days <= 60;
 
   return (
     <Link href={a.href} className="block active:scale-[0.99] transition-transform">
@@ -202,13 +248,13 @@ function ActivityHero({
         <div className="relative p-3.5">
           <div className="flex items-start gap-2.5">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/10">
-              {isDraw ? <Trophy size={17} /> : <Ticket size={17} />}
+              <Trophy size={17} />
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <h3 className="truncate text-[14px] font-bold leading-snug">
-                  {a.name}
-                </h3>
+                <span className="rounded-full bg-white/18 px-1.5 py-0.5 text-[9px] font-bold">
+                  {offerKindLabel(a.kindTag, lang)}
+                </span>
                 {a.hot && (
                   <span className="inline-flex items-center gap-0.5 rounded-full bg-white/20 px-1.5 py-0.5 text-[9px] font-bold">
                     <Flame size={10} />
@@ -216,10 +262,11 @@ function ActivityHero({
                   </span>
                 )}
               </div>
+              <h3 className="mt-1 truncate text-[14px] font-bold leading-snug">
+                {a.name}
+              </h3>
               <p className="truncate text-[11px] text-white/70 mt-0.5">
                 {a.businessName}
-                <span className="mx-1 opacity-50">·</span>
-                <span className="text-white/80">{kindLabel(a.kindTag, lang)}</span>
               </p>
             </div>
             {a.joined && a.myCount > 0 && (
@@ -229,15 +276,15 @@ function ActivityHero({
             )}
           </div>
 
-          <p className="mt-2 flex items-center gap-1 text-[11px] text-white/80">
+          <p className="mt-2 text-[11px] text-white/85 leading-snug">
+            {offerBlurb(a, lang)}
+          </p>
+          <p className="mt-1.5 flex items-center gap-1 text-[11px] text-white/75">
             <MapPin size={12} className="shrink-0 opacity-90" />
             <span className="truncate">{storeLine(a, lang)}</span>
           </p>
-          {prods && (
-            <p className="mt-1 text-[10px] text-white/65 truncate">{prods}</p>
-          )}
 
-          {!dead && isDraw && (
+          {!dead && (
             <>
               <div className="mt-3 flex items-end justify-between gap-2">
                 <div>
@@ -254,8 +301,8 @@ function ActivityHero({
                 {a.participantCount > 0 && (
                   <p className="text-[10px] text-white/70 text-right pb-0.5">
                     {lang === "en"
-                      ? `${a.participantCount} joined`
-                      : `${a.participantCount} 人参与`}
+                      ? `${a.participantCount} playing`
+                      : `${a.participantCount} 人在玩`}
                   </p>
                 )}
               </div>
@@ -288,21 +335,21 @@ function ActivityHero({
           )}
 
           <div className="mt-3 flex items-center gap-2">
-            <span className="flex min-w-0 flex-1 items-center gap-1 text-[11px] text-white/80">
-              <Clock size={12} className="shrink-0 opacity-90" />
-              <span className="truncate nums">
-                {days}d {String(hours).padStart(2, "0")}h{" "}
-                {String(minutes).padStart(2, "0")}m
+            {showCountdown ? (
+              <span className="flex min-w-0 flex-1 items-center gap-1 text-[11px] text-white/80">
+                <Clock size={12} className="shrink-0 opacity-90" />
+                <span className="truncate nums">
+                  {days}d {String(hours).padStart(2, "0")}h{" "}
+                  {String(minutes).padStart(2, "0")}m
+                </span>
               </span>
-            </span>
+            ) : (
+              <span className="flex-1 text-[11px] text-white/70">
+                {lang === "en" ? "Ongoing" : "长期进行中"}
+              </span>
+            )}
             <span className="shrink-0 inline-flex items-center gap-0.5 rounded-full border border-white/55 bg-white/12 px-3 py-1.5 text-[12px] font-bold text-white backdrop-blur-sm">
-              {a.joined
-                ? lang === "en"
-                  ? "View"
-                  : "查看"
-                : lang === "en"
-                  ? "Join"
-                  : "参与"}
+              {offerCta(a, lang)}
               <ChevronRight size={14} className="opacity-90" />
             </span>
           </div>
@@ -312,45 +359,49 @@ function ActivityHero({
   );
 }
 
-function ActivityRow({
+function OfferRow({
   a,
   lang,
 }: {
   a: JoinableActivity;
   lang: "zh" | "en";
 }) {
+  const isDraw = a.displayMode === "draw";
   return (
     <Link href={a.href} className="block active:scale-[0.99] transition-transform">
       <div className="flex items-center gap-3 rounded-2xl border border-border/80 bg-card/90 px-3 py-2.5 shadow-sm">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gold/12 text-[color:var(--gold-strong)]">
-          {a.hot ? <Flame size={16} /> : <Store size={16} />}
+        <span
+          className={
+            isDraw
+              ? "grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400"
+              : "grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"
+          }
+        >
+          {isDraw ? <Trophy size={16} /> : <Ticket size={16} />}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <p className="truncate text-sm font-medium text-foreground">
-              {a.name}
-            </p>
+            <span className="shrink-0 text-[9px] font-bold text-muted-foreground">
+              {offerKindLabel(a.kindTag, lang)}
+            </span>
             {a.hot && (
               <span className="shrink-0 text-[9px] font-bold text-amber-600 dark:text-amber-400">
                 {lang === "en" ? "HOT" : "热"}
               </span>
             )}
           </div>
+          <p className="truncate text-sm font-medium text-foreground">
+            {a.name}
+          </p>
           <p className="truncate text-[10px] text-muted-foreground">
             {a.businessName}
             {" · "}
             {storeLine(a, lang)}
-            {a.grandPoolSgd !== "0" ? ` · S$${a.grandPoolSgd}` : ""}
+            {isDraw && a.grandPoolSgd !== "0" ? ` · S$${a.grandPoolSgd}` : ""}
           </p>
         </div>
         <span className="flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-primary">
-          {a.joined
-            ? lang === "en"
-              ? "View"
-              : "查看"
-            : lang === "en"
-              ? "Join"
-              : "参与"}
+          {offerCta(a, lang)}
           <ChevronRight size={14} className="opacity-60" />
         </span>
       </div>

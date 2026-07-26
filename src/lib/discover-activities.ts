@@ -33,6 +33,9 @@ export type ActivityStoreBrief = {
   name: string;
 };
 
+/** voucher = prepaid credit; draw = prize / ballot path */
+export type OfferDisplayMode = "voucher" | "draw";
+
 export type JoinableActivity = {
   id: string;
   name: string;
@@ -61,14 +64,80 @@ export type JoinableActivity = {
   joined: boolean;
   myCount: number;
   kindTag: "exclusive_draw" | "co_win_draw" | "self_use" | "distribution" | "draw";
+  /** Customer UI branch: calm voucher card vs festive draw card */
+  displayMode: OfferDisplayMode;
 };
 
 function kindTag(type: string, productKind: string): JoinableActivity["kindTag"] {
   if (type === "lucky_draw_v2" || type === "lucky_draw") {
     return productKind === "self_use" ? "exclusive_draw" : "co_win_draw";
   }
-  if (type === "lucky_draw") return "draw";
   return productKind === "self_use" ? "self_use" : "distribution";
+}
+
+export function offerDisplayMode(
+  type: string,
+  kind?: JoinableActivity["kindTag"]
+): OfferDisplayMode {
+  if (
+    type === "lucky_draw" ||
+    type === "lucky_draw_v2" ||
+    kind === "exclusive_draw" ||
+    kind === "co_win_draw" ||
+    kind === "draw"
+  ) {
+    return "draw";
+  }
+  return "voucher";
+}
+
+/** Customer-facing short label (not merchant jargon) */
+export function offerKindLabel(
+  tag: JoinableActivity["kindTag"],
+  lang: "zh" | "en"
+): string {
+  const map: Record<JoinableActivity["kindTag"], { zh: string; en: string }> = {
+    exclusive_draw: { zh: "抽大奖", en: "Prize draw" },
+    co_win_draw: { zh: "联合抽奖", en: "Shared draw" },
+    self_use: { zh: "到店代金", en: "Store credit" },
+    distribution: { zh: "通用代金", en: "Network credit" },
+    draw: { zh: "幸运抽奖", en: "Lucky draw" },
+  };
+  return map[tag][lang];
+}
+
+/** One-line benefit for cards */
+export function offerBlurb(
+  a: Pick<JoinableActivity, "kindTag" | "displayMode" | "description">,
+  lang: "zh" | "en"
+): string {
+  if (a.displayMode === "draw") {
+    if (a.kindTag === "exclusive_draw") {
+      return lang === "en"
+        ? "Buy · small win chance · box for grand prize"
+        : "购买后可抽小奖 · 消费入箱冲大奖";
+    }
+    return lang === "en"
+      ? "Buy to enter · win from shared pool"
+      : "购买即参与 · 共享奖池开奖";
+  }
+  if (a.kindTag === "self_use") {
+    return lang === "en"
+      ? "Pay face value · spend at store"
+      : "付多少抵多少 · 到店核销使用";
+  }
+  return lang === "en"
+    ? "Buy online · redeem at partner stores"
+    : "线上购买 · 合作门店通用";
+}
+
+export function offerCta(
+  a: Pick<JoinableActivity, "displayMode" | "joined">,
+  lang: "zh" | "en"
+): string {
+  if (a.joined) return lang === "en" ? "View" : "查看";
+  if (a.displayMode === "draw") return lang === "en" ? "Enter draw" : "去抽奖";
+  return lang === "en" ? "Buy" : "去购买";
 }
 
 function poolMeta(campaign: {
@@ -400,6 +469,8 @@ export async function listJoinableActivities(
       }
     }
 
+    const tag = kindTag(c.type, c.productKind);
+    const mode = offerDisplayMode(c.type, tag);
     return {
       id: c.id,
       name: c.name,
@@ -429,7 +500,8 @@ export async function listJoinableActivities(
       prizes: meta.prizes,
       joined: myCount > 0,
       myCount,
-      kindTag: kindTag(c.type, c.productKind),
+      kindTag: tag,
+      displayMode: mode,
     };
   });
 

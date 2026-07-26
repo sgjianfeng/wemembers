@@ -215,19 +215,19 @@ export default async function CustomerHome() {
               <p className="text-sm text-muted-foreground">
                 {lang === "en"
                   ? "Nothing here yet"
-                  : "还没有可参与的内容"}
+                  : "暂无优惠"}
               </p>
               <p className="text-xs text-muted-foreground/70 mt-1.5 leading-relaxed">
                 {lang === "en"
-                  ? "Open activities will show when merchants list products and stores."
-                  : "商家上架活动与门店后会出现在这里。"}
+                  ? "Store credit and prize draws will show when stores go live."
+                  : "门店上架到店代金或抽奖后会出现在这里。"}
               </p>
               <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                 <Link
                   href="/discover/draws"
                   className="px-3 py-1.5 rounded-full text-xs font-semibold bg-card border border-border text-foreground active:scale-[0.97] transition-transform"
                 >
-                  {lang === "en" ? "Browse activities" : "浏览活动"}
+                  {lang === "en" ? "Browse offers" : "看看优惠"}
                 </Link>
                 <Link
                   href="/discover/stores"

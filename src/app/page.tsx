@@ -304,6 +304,7 @@ type LandingActivity = {
   products: { name: string }[];
   grandPoolSgd: string;
   kindTag: string;
+  displayMode?: "voucher" | "draw";
   endDate: string;
 };
 
@@ -409,18 +410,17 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
         </div>
       </section>
 
-      {/* ══════ Section 2 — Hot activities ══════ */}
+      {/* ══════ Section 2 — Hot offers (voucher vs draw language) ══════ */}
       <section className="px-5 pb-6">
         <div className="max-w-sm mx-auto">
           <div className="flex items-end justify-between mb-3">
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-amber-600 dark:text-amber-400 font-bold mb-1 flex items-center gap-1.5">
                 <span className="text-lg">🔥</span>
-                {isZh ? "热门活动" : "HOT ACTIVITIES"}
+                {isZh ? "热门优惠" : "POPULAR OFFERS"}
               </p>
-              <h2 className="text-base font-extrabold text-foreground flex items-center gap-2">
-                <Trophy size={18} className="text-amber-600 dark:text-amber-400" />
-                {isZh ? "可参与活动" : "Join an activity"}
+              <h2 className="text-base font-extrabold text-foreground">
+                {isZh ? "代金可买 · 抽奖可玩" : "Credit to buy · draws to join"}
               </h2>
             </div>
             <a
@@ -436,75 +436,121 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
           ) : activities.length === 0 ? (
             <div className="rounded-2xl border border-border bg-card p-5 text-center">
               <p className="text-sm text-muted-foreground">
-                {isZh ? "暂无可参与活动" : "No open activities yet"}
+                {isZh ? "暂无优惠" : "No offers yet"}
               </p>
               <p className="text-[11px] text-muted-foreground mt-1">
                 {isZh
-                  ? "商家上架活动后会出现在这里"
-                  : "Activities appear when merchants go live"}
+                  ? "门店上架代金券或抽奖后会出现在这里"
+                  : "Vouchers and prize draws will show here"}
               </p>
             </div>
           ) : (
             <div className="space-y-2.5">
               {activities.map((a) => {
+                const isDraw =
+                  a.displayMode === "draw" ||
+                  a.kindTag === "exclusive_draw" ||
+                  a.kindTag === "co_win_draw" ||
+                  a.kindTag === "draw";
                 const stores = a.stores
                   ?.slice(0, 2)
                   .map((s) => s.name)
                   .join(" · ");
-                const prod =
-                  a.products?.length === 1
-                    ? a.products[0].name
-                    : a.products?.length
-                      ? isZh
-                        ? `${a.products.length} 个产品`
-                        : `${a.products.length} products`
-                      : null;
+                const kindZh =
+                  a.kindTag === "exclusive_draw"
+                    ? "抽大奖"
+                    : a.kindTag === "co_win_draw"
+                      ? "联合抽奖"
+                      : a.kindTag === "draw"
+                        ? "幸运抽奖"
+                        : a.kindTag === "distribution"
+                          ? "通用代金"
+                          : "到店代金";
+                const kindEn =
+                  a.kindTag === "exclusive_draw"
+                    ? "Prize draw"
+                    : a.kindTag === "co_win_draw"
+                      ? "Shared draw"
+                      : a.kindTag === "draw"
+                        ? "Lucky draw"
+                        : a.kindTag === "distribution"
+                          ? "Network credit"
+                          : "Store credit";
+                const blurb = isDraw
+                  ? isZh
+                    ? "购买后可抽 · 冲大奖"
+                    : "Buy · enter prize draw"
+                  : isZh
+                    ? "付多少抵多少 · 到店花"
+                    : "Pay face · spend in store";
+                const cta = isDraw
+                  ? isZh
+                    ? "去抽奖"
+                    : "Enter"
+                  : isZh
+                    ? "去购买"
+                    : "Buy";
                 return (
                   <a
                     key={a.id}
                     href={a.href}
-                    className="block rounded-2xl border border-border bg-card p-3.5 shadow-sm hover:border-primary/30 active:scale-[0.99] transition-all"
+                    className={`block rounded-2xl border p-3.5 shadow-sm active:scale-[0.99] transition-all ${
+                      isDraw
+                        ? "border-amber-200/80 dark:border-amber-800/50 bg-card hover:border-amber-400/50"
+                        : "border-primary/20 bg-card hover:border-primary/40"
+                    }`}
                   >
                     <div className="flex items-start gap-3">
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
-                        <Ticket size={18} />
+                      <span
+                        className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${
+                          isDraw
+                            ? "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400"
+                            : "bg-primary/10 text-primary"
+                        }`}
+                      >
+                        {isDraw ? <Trophy size={18} /> : <Ticket size={18} />}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-bold text-foreground truncate">
-                            {a.name}
-                          </p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
+                              isDraw
+                                ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
+                                : "bg-primary/10 text-primary"
+                            }`}
+                          >
+                            {isZh ? kindZh : kindEn}
+                          </span>
                           {a.hot && (
                             <span className="shrink-0 text-[9px] font-bold text-amber-600 dark:text-amber-400">
                               {isZh ? "热" : "HOT"}
                             </span>
                           )}
                         </div>
+                        <p className="text-sm font-bold text-foreground truncate mt-1">
+                          {a.name}
+                        </p>
                         <p className="text-[11px] text-muted-foreground truncate mt-0.5">
                           {a.businessName}
-                          {a.grandPoolSgd !== "0"
+                          {isDraw && a.grandPoolSgd !== "0"
                             ? ` · ${isZh ? "奖池" : "Pool"} S$${a.grandPoolSgd}`
                             : ""}
                         </p>
-                        {(stores || prod) && (
-                          <p className="text-[10px] text-muted-foreground/80 truncate mt-1">
-                            {stores
-                              ? `${stores}${
-                                  a.storeCount > 2
-                                    ? isZh
-                                      ? ` 等${a.storeCount}家`
-                                      : ` +${a.storeCount - 2}`
-                                    : ""
-                                }`
-                              : isZh
-                                ? `${a.storeCount} 家门店`
-                                : `${a.storeCount} stores`}
-                            {prod ? ` · ${prod}` : ""}
-                          </p>
-                        )}
+                        <p className="text-[10px] text-muted-foreground/90 mt-1 truncate">
+                          {blurb}
+                          {stores
+                            ? ` · ${stores}${
+                                a.storeCount > 2
+                                  ? isZh
+                                    ? ` 等${a.storeCount}家`
+                                    : ` +${a.storeCount - 2}`
+                                  : ""
+                              }`
+                            : ""}
+                        </p>
                       </div>
                       <span className="shrink-0 text-[11px] font-semibold text-primary self-center">
-                        {isZh ? "参与" : "Join"}
+                        {cta}
                       </span>
                     </div>
                   </a>
@@ -513,7 +559,10 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
             </div>
           )}
 
-          {featured && featured.grandPoolSgd !== "0" && (
+          {featured &&
+            featured.grandPoolSgd !== "0" &&
+            (featured.displayMode === "draw" ||
+              featured.kindTag === "exclusive_draw") && (
             <p className="mt-3 text-center text-[10px] text-muted-foreground nums">
               {isZh ? "焦点奖池 · " : "Featured pool · "}
               {featured.name} · S${featured.grandPoolSgd}
@@ -525,12 +574,12 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
               href="/auth/register?role=customer"
               className="inline-flex items-center justify-center gap-2 px-10 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-200 hover:from-amber-600 hover:to-orange-600 transition-all active:scale-[0.98]"
             >
-              {isZh ? "免费注册 · 参与活动" : "Sign up · Join activities"}
+              {isZh ? "免费注册 · 买券或抽奖" : "Sign up · buy or draw"}
             </a>
             <p className="text-[10px] text-muted-foreground mt-2">
               {isZh
-                ? "选活动 → 买产品 → 到店核销"
-                : "Pick activity → buy product → redeem in-store"}
+                ? "选优惠 → 购买 → 到店使用"
+                : "Pick offer → buy → redeem in-store"}
             </p>
           </div>
         </div>
