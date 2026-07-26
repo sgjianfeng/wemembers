@@ -10,14 +10,6 @@ const prisma = new PrismaClient();
 
 async function main() {
   // ensure columns exist (caller should db push first)
-  const sellable = await prisma.campaign.findMany({
-    where: {
-      type: { in: ["voucher_sale", "lucky_draw_v2"] },
-      OR: [{ role: "activity" }, { role: null }, { role: { equals: undefined } }],
-    },
-  });
-
-  // Prisma may not like role null if field required with default - use raw filter
   const all = await prisma.campaign.findMany({
     where: { type: { in: ["voucher_sale", "lucky_draw_v2"] } },
   });
