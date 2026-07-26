@@ -44,11 +44,16 @@ export default async function DiscoverCouponsPage() {
     <div className="pb-4">
       <div className="px-4 py-4 border-b border-border">
         <Link
-          href="/home"
+          href="/discover/draws"
           className="text-xs font-medium text-[#1A6EFF] mb-1 inline-block"
         >
-          ← {t("discover.backHome", lang)}
+          ← {lang === "en" ? "Activities" : "可参与活动"}
         </Link>
+        <p className="text-[10px] text-muted-foreground mt-1">
+          {lang === "en"
+            ? "Legacy free coupons — prefer joining activities on the home feed."
+            : "旧版免费优惠券入口；主推首页「可参与活动」。"}
+        </p>
         <h1 className="text-lg font-semibold">
           {t("discover.coupons.title", lang)}
         </h1>

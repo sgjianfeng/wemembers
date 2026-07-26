@@ -1,10 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Ticket, Store, Trophy, Sparkles } from "lucide-react";
+import { Ticket, Store, Trophy } from "lucide-react";
 import { useLang } from "@/components/i18n/LanguageProvider";
 import { TopHeader } from "@/components/ui/TopHeader";
-import { PremiumCouponCard } from "@/components/landing/PremiumCouponCard";
 
 const content = {
   zh: {
@@ -294,71 +293,36 @@ export default function HomePage() {
 
 // ──── Consumer View Component ────
 
-// Prize card config — real product images from Unsplash
-const GRAND_PRIZES = [
-  {
-    key: "iPad", emoji: "📲", labelZh: "iPad", labelEn: "iPad",
-    targetSgd: "3,000", targetCents: 300000,
-    img: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=600&h=400&fit=crop&auto=format",
-    color: "from-slate-600 to-slate-800", accent: "#6e6e73",
-  },
-  {
-    key: "iPhone", emoji: "📱", labelZh: "iPhone 17", labelEn: "iPhone 17",
-    targetSgd: "5,000", targetCents: 500000,
-    img: "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=600&h=400&fit=crop&auto=format",
-    color: "from-slate-700 to-slate-900", accent: "#0071e3",
-  },
-  {
-    key: "BYD", emoji: "🚗", labelZh: "BYD 海豹", labelEn: "BYD Seal",
-    targetSgd: "667,000", targetCents: 66700000,
-    img: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=600&h=400&fit=crop&auto=format",
-    color: "from-red-700 to-red-900", accent: "#e31837",
-  },
-];
-
-function CountdownBadge({ days, isZh }: { days: number | undefined; isZh: boolean }) {
-  if (days === undefined) return null;
-  if (days <= 0) {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-600 rounded-full text-[10px] font-bold animate-pulse">
-        <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-        {isZh ? "即将开奖" : "SOON"}
-      </span>
-    );
-  }
-  if (days <= 3) {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 dark:bg-red-950/35 text-red-600 rounded-full text-[10px] font-bold">
-        {isZh ? `仅剩 ${days} 天` : `${days} days left`}
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 dark:bg-amber-950/35 text-amber-700 dark:text-amber-400 rounded-full text-[10px] font-bold">
-      {isZh ? `预计 ${days} 天` : `~${days} days`}
-    </span>
-  );
-}
+type LandingActivity = {
+  id: string;
+  name: string;
+  businessName: string;
+  href: string;
+  hot: boolean;
+  storeCount: number;
+  stores: { name: string }[];
+  products: { name: string }[];
+  grandPoolSgd: string;
+  kindTag: string;
+  endDate: string;
+};
 
 function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
-  const [draws, setDraws] = useState<any[]>([]);
-  const [coupons, setCoupons] = useState<any[]>([]);
+  const [activities, setActivities] = useState<LandingActivity[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     async function load() {
-      const [drawRes, couponRes] = await Promise.all([
-        fetch("/api/campaign/active-draws").then(r => r.json()).catch(() => ({ data: [] })),
-        fetch("/api/coupons/discover").then(r => r.json()).catch(() => ({ data: [] })),
-      ]);
-      setDraws(drawRes.data || []);
-      setCoupons((couponRes.data || []).slice(0, 6));
+      const res = await fetch("/api/campaign/active-activities")
+        .then((r) => r.json())
+        .catch(() => ({ data: [] }));
+      setActivities((res.data || []).slice(0, 8));
       setLoaded(true);
     }
     load();
   }, []);
 
-  const mainDraw = draws[0] || null;
+  const featured = activities.find((a) => a.grandPoolSgd !== "0") || activities[0] || null;
 
   return (
     <>
@@ -445,149 +409,132 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
         </div>
       </section>
 
-      {/* ══════ Section 2 — Grand Prize Countdown Cards ══════ */}
+      {/* ══════ Section 2 — Hot activities ══════ */}
       <section className="px-5 pb-6">
         <div className="max-w-sm mx-auto">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-extrabold text-foreground flex items-center gap-2">
-              <Trophy size={20} className="text-amber-600 dark:text-amber-400" />
-              {isZh ? "大奖池倒计时" : "Grand Prize Countdown"}
-            </h2>
-            {mainDraw && (
-              <span className="text-[10px] text-muted-foreground nums">
-                {isZh ? "奖池 " : "Pool "}S${mainDraw.totalPoolSgd}
-              </span>
-            )}
+          <div className="flex items-end justify-between mb-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-amber-600 dark:text-amber-400 font-bold mb-1 flex items-center gap-1.5">
+                <span className="text-lg">🔥</span>
+                {isZh ? "热门活动" : "HOT ACTIVITIES"}
+              </p>
+              <h2 className="text-base font-extrabold text-foreground flex items-center gap-2">
+                <Trophy size={18} className="text-amber-600 dark:text-amber-400" />
+                {isZh ? "可参与活动" : "Join an activity"}
+              </h2>
+            </div>
+            <a
+              href="/auth/login?redirect=/discover/draws"
+              className="text-[11px] text-amber-600 font-semibold hover:text-amber-700 dark:text-amber-400 transition-colors"
+            >
+              {isZh ? "更多 →" : "More →"}
+            </a>
           </div>
 
-          <div className="space-y-3">
-            {GRAND_PRIZES.map((prize) => {
-              const cd = mainDraw?.countdown?.find((c: any) => c.prizeName === prize.key) || null;
-              const currentSgd = cd?.currentSgd || "0";
-              const targetSgd = cd?.targetSgd || prize.targetSgd.replace(",", "");
-              const pct = cd?.progress || 0;
-              const days = cd?.daysPredicted;
-              const accelerating = cd?.accelerating || false;
-              const currentNum = parseInt(String(currentSgd).replace(/,/g, "")) || 0;
-              const targetNum = parseInt(String(targetSgd).replace(/,/g, "")) || 1;
-
-              return (
-                <div key={prize.key} className="relative bg-card rounded-2xl shadow-md border border-border overflow-hidden hover:shadow-lg transition-shadow">
-                  {/* Product image strip */}
-                  <div className="relative h-32 bg-gradient-to-r from-slate-800 to-slate-900 overflow-hidden">
-                    <img
-                      src={prize.img}
-                      alt={prize.labelEn}
-                      className="absolute inset-0 w-full h-full object-cover opacity-70"
-                      loading="lazy"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                    />
-                    {/* Gradient overlay */}
-                    <div className={`absolute inset-0 bg-gradient-to-r ${prize.color} opacity-50`} />
-                    {/* Prize label overlay */}
-                    <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
-                      <div>
-                        <p className="text-white/70 text-[10px] font-medium uppercase tracking-wide">
-                          {isZh ? "大奖" : "GRAND PRIZE"}
-                        </p>
-                        <p className="text-white text-xl font-extrabold">
-                          {prize.emoji} {isZh ? prize.labelZh : prize.labelEn}
-                        </p>
-                      </div>
-                      <CountdownBadge days={days} isZh={isZh} />
-                      {accelerating && (
-                        <span className="absolute top-3 right-3 px-2 py-0.5 bg-green-400/90 text-white rounded-full text-[9px] font-bold">
-                          🚀 {isZh ? "加速中" : "ACCEL"}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Progress + stats */}
-                  <div className="p-4">
-                    {/* Big progress bar */}
-                    <div className="mb-2">
-                      <div className="flex justify-between text-[10px] text-muted-foreground mb-1 nums">
-                        <span>
-                          {isZh ? "已筹" : "Raised"} <b className="text-foreground/90">S${Number(currentSgd).toLocaleString()}</b>
-                        </span>
-                        <span>
-                          {isZh ? "目标" : "Goal"} <b className="text-foreground/90">S${Number(targetSgd).toLocaleString()}</b>
-                        </span>
-                      </div>
-                      <div className="h-2.5 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-700"
-                          style={{
-                            width: `${Math.min(100, Math.max(0, pct))}%`,
-                            background: `linear-gradient(90deg, ${prize.accent}cc, ${prize.accent})`,
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Bottom stats row */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold" style={{ color: prize.accent }}>
-                        {Math.min(100, Math.max(0, pct)).toFixed(1)}%
+          {!loaded ? (
+            <p className="text-xs text-muted-foreground py-6 text-center">…</p>
+          ) : activities.length === 0 ? (
+            <div className="rounded-2xl border border-border bg-card p-5 text-center">
+              <p className="text-sm text-muted-foreground">
+                {isZh ? "暂无可参与活动" : "No open activities yet"}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                {isZh
+                  ? "商家上架活动后会出现在这里"
+                  : "Activities appear when merchants go live"}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {activities.map((a) => {
+                const stores = a.stores
+                  ?.slice(0, 2)
+                  .map((s) => s.name)
+                  .join(" · ");
+                const prod =
+                  a.products?.length === 1
+                    ? a.products[0].name
+                    : a.products?.length
+                      ? isZh
+                        ? `${a.products.length} 个产品`
+                        : `${a.products.length} products`
+                      : null;
+                return (
+                  <a
+                    key={a.id}
+                    href={a.href}
+                    className="block rounded-2xl border border-border bg-card p-3.5 shadow-sm hover:border-primary/30 active:scale-[0.99] transition-all"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+                        <Ticket size={18} />
                       </span>
-                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                        {days !== undefined && days > 0 && (
-                          <span>
-                            {isZh ? "每天约" : "~"} S${Math.max(1, Math.round(currentNum / Math.max(1, days))).toLocaleString()}
-                            {isZh ? "/天" : "/day"}
-                          </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-bold text-foreground truncate">
+                            {a.name}
+                          </p>
+                          {a.hot && (
+                            <span className="shrink-0 text-[9px] font-bold text-amber-600 dark:text-amber-400">
+                              {isZh ? "热" : "HOT"}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                          {a.businessName}
+                          {a.grandPoolSgd !== "0"
+                            ? ` · ${isZh ? "奖池" : "Pool"} S$${a.grandPoolSgd}`
+                            : ""}
+                        </p>
+                        {(stores || prod) && (
+                          <p className="text-[10px] text-muted-foreground/80 truncate mt-1">
+                            {stores
+                              ? `${stores}${
+                                  a.storeCount > 2
+                                    ? isZh
+                                      ? ` 等${a.storeCount}家`
+                                      : ` +${a.storeCount - 2}`
+                                    : ""
+                                }`
+                              : isZh
+                                ? `${a.storeCount} 家门店`
+                                : `${a.storeCount} stores`}
+                            {prod ? ` · ${prod}` : ""}
+                          </p>
                         )}
-                        <span>
-                          {isZh ? "大奖池抽取" : "Grand pool draw"}
-                        </span>
                       </div>
+                      <span className="shrink-0 text-[11px] font-semibold text-primary self-center">
+                        {isZh ? "参与" : "Join"}
+                      </span>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  </a>
+                );
+              })}
+            </div>
+          )}
 
-          {/* CTA — 消费者注册（带 role=customer） */}
+          {featured && featured.grandPoolSgd !== "0" && (
+            <p className="mt-3 text-center text-[10px] text-muted-foreground nums">
+              {isZh ? "焦点奖池 · " : "Featured pool · "}
+              {featured.name} · S${featured.grandPoolSgd}
+            </p>
+          )}
+
           <div className="mt-5 text-center">
             <a
               href="/auth/register?role=customer"
               className="inline-flex items-center justify-center gap-2 px-10 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-200 hover:from-amber-600 hover:to-orange-600 transition-all active:scale-[0.98]"
             >
-              🎰 {isZh ? "免费注册" : "Sign up free"}
+              {isZh ? "免费注册 · 参与活动" : "Sign up · Join activities"}
             </a>
             <p className="text-[10px] text-muted-foreground mt-2">
-              {isZh ? "100% 中奖 · 到店核销 · 倒计时大奖" : "100% Win · Redeem in-store · Countdown prizes"}
+              {isZh
+                ? "选活动 → 买产品 → 到店核销"
+                : "Pick activity → buy product → redeem in-store"}
             </p>
           </div>
         </div>
       </section>
-
-      {/* ══════ Section 3 — Hot Coupons (Premium Black-Gold) ══════ */}
-      {loaded && coupons.length > 0 && (
-        <section className="px-5 pt-2 pb-6 max-w-sm mx-auto">
-          <div className="flex items-end justify-between mb-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-amber-600 dark:text-amber-400 font-bold mb-1 flex items-center gap-1.5">
-                <span className="text-lg">🔥</span>
-                {isZh ? "热门代金券" : "HOT VOUCHERS"}
-              </p>
-              <h2 className="text-base font-extrabold text-foreground">
-                {isZh ? "黑金甄选" : "Black Gold Selection"}
-              </h2>
-            </div>
-            <a href="/home" className="text-[11px] text-amber-600 font-semibold hover:text-amber-700 dark:text-amber-400 transition-colors">
-              {isZh ? "查看更多 →" : "View All →"}
-            </a>
-          </div>
-          <div className="flex gap-2.5 overflow-x-auto pb-3 -mx-1 px-1 snap-x scrollbar-none">
-            {coupons.map((c: any) => (
-              <PremiumCouponCard key={c.id} coupon={c} isZh={isZh} />
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* ══════ For Business Entry ══════ */}
       <section className="px-5 pb-14 max-w-sm mx-auto">

@@ -9,6 +9,7 @@ const PUBLIC_STARTS = [
   "/api/stripe",
   "/for-business",
   "/voucher",
+  "/activity", // multi-product activity landing
   "/draw", // legacy V1 draw links redirect to /voucher
   "/p",
   "/seller",

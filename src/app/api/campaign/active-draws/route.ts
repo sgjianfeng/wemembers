@@ -15,8 +15,14 @@ import {
 } from "@/lib/templates";
 
 export async function GET() {
+  // Prefer product_mirror-free activities; keep for legacy pool widgets
   const campaigns = await prisma.campaign.findMany({
-    where: { type: "lucky_draw_v2", status: "active", endDate: { gt: new Date() } },
+    where: {
+      type: "lucky_draw_v2",
+      status: "active",
+      endDate: { gt: new Date() },
+      role: { not: "product_mirror" },
+    },
     orderBy: { endDate: "asc" },
     take: 3,
     select: {
