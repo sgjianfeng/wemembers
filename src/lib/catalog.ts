@@ -290,6 +290,190 @@ export async function setProductStatus(
   return prisma.voucherProduct.findUnique({ where: { id: productId } });
 }
 
+/** Normalize face amounts (SGD): unique, sorted, min S$2, max 20 tiers */
+export function normalizeEnabledTiers(raw: unknown): number[] {
+  if (!Array.isArray(raw)) throw new Error("TIERS_REQUIRED");
+  const nums = raw
+    .map((x) => Math.round(Number(x)))
+    .filter((n) => Number.isFinite(n) && n >= 2 && n <= 100_000);
+  const unique = [...new Set(nums)].sort((a, b) => a - b);
+  if (unique.length === 0) throw new Error("TIERS_REQUIRED");
+  if (unique.length > 20) throw new Error("TIERS_TOO_MANY");
+  return unique;
+}
+
+function parseSnapshotJson(
+  raw: string | null | undefined
+): Record<string, unknown> {
+  if (!raw) return {};
+  try {
+    const o = JSON.parse(raw) as Record<string, unknown>;
+    return o && typeof o === "object" ? o : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Update product name / description / face-value tiers.
+ * Syncs rulesSnapshot.enabledTiers + voucherTiers to:
+ *  - VoucherProduct
+ *  - product_mirror Campaign
+ *  - all activity campaigns linked via CampaignProduct
+ */
+export async function updateVoucherProduct(
+  businessId: string,
+  productId: string,
+  input: {
+    name?: string;
+    description?: string | null;
+    enabledTiers?: number[];
+  }
+) {
+  const product = await prisma.voucherProduct.findFirst({
+    where: { id: productId, businessId },
+  });
+  if (!product) throw new Error("NOT_FOUND");
+
+  const data: {
+    name?: string;
+    description?: string | null;
+    rulesSnapshot?: string;
+    voucherTiers?: string | null;
+  } = {};
+
+  if (typeof input.name === "string" && input.name.trim()) {
+    data.name = input.name.trim();
+  }
+  if (input.description !== undefined) {
+    data.description =
+      typeof input.description === "string" ? input.description : null;
+  }
+
+  let snap = parseSnapshotJson(product.rulesSnapshot);
+  let voucherTiersJson: string | null = product.voucherTiers;
+
+  if (input.enabledTiers !== undefined) {
+    const tiers = normalizeEnabledTiers(input.enabledTiers);
+    snap = {
+      ...snap,
+      enabledTiers: tiers,
+      snapshottedAt: new Date().toISOString(),
+    };
+    const isDraw =
+      product.type === "lucky_draw_v2" ||
+      snap.campaignType === "lucky_draw_v2" ||
+      snap.kind === "draw" ||
+      snap.packKind === "exclusive_ballot";
+    const tiersArr = tiersToVoucherTiersJson(tiers, {
+      instantCap: (sgd) =>
+        isDraw ? (sgd >= 100 ? 20 : sgd >= 50 ? 8 : 0) : 0,
+    });
+    data.rulesSnapshot = JSON.stringify(snap);
+    data.voucherTiers = JSON.stringify(tiersArr);
+    voucherTiersJson = data.voucherTiers;
+  }
+
+  if (
+    !data.name &&
+    data.description === undefined &&
+    !data.rulesSnapshot
+  ) {
+    return product;
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.voucherProduct.update({
+      where: { id: productId },
+      data,
+    });
+
+    const campaignPatch: {
+      name?: string;
+      description?: string | null;
+      rulesSnapshot?: string;
+      voucherTiers?: string | null;
+    } = {};
+    if (data.name) campaignPatch.name = data.name;
+    if (data.description !== undefined) {
+      campaignPatch.description = data.description;
+    }
+    if (data.rulesSnapshot) {
+      campaignPatch.rulesSnapshot = data.rulesSnapshot;
+      campaignPatch.voucherTiers = voucherTiersJson;
+    }
+
+    if (Object.keys(campaignPatch).length > 0) {
+      if (product.mirrorCampaignId) {
+        await tx.campaign.update({
+          where: { id: product.mirrorCampaignId },
+          data: campaignPatch,
+        });
+      }
+
+      // Activities that include this product — keep tier/rules in sync
+      // so store catalog + purchase paths stay consistent.
+      const links = await tx.campaignProduct.findMany({
+        where: { productId },
+        select: { campaignId: true },
+      });
+      for (const link of links) {
+        const camp = await tx.campaign.findUnique({
+          where: { id: link.campaignId },
+          select: {
+            id: true,
+            role: true,
+            rulesSnapshot: true,
+          },
+        });
+        if (!camp || camp.role === "product_mirror") continue;
+
+        // Only rewrite tiers on single-product shelf activities, or when
+        // the activity snapshot already matches this product's pack (name sync always).
+        const campSnap = parseSnapshotJson(camp.rulesSnapshot);
+        const onlyName = !data.rulesSnapshot;
+        if (onlyName) {
+          if (data.name || data.description !== undefined) {
+            await tx.campaign.update({
+              where: { id: camp.id },
+              data: {
+                ...(data.name ? { name: data.name } : {}),
+                ...(data.description !== undefined
+                  ? { description: data.description }
+                  : {}),
+              },
+            });
+          }
+          continue;
+        }
+
+        // Multi-product activities: still update tiers if this is the sole product
+        const siblingCount = await tx.campaignProduct.count({
+          where: { campaignId: camp.id },
+        });
+        if (siblingCount > 1) {
+          // Don't overwrite multi-product activity rules; product has own mirror for buy.
+          continue;
+        }
+
+        await tx.campaign.update({
+          where: { id: camp.id },
+          data: {
+            ...campaignPatch,
+            // Prefer product name only when activity was a 1:1 shelf clone
+            ...(data.name &&
+            (campSnap.packKind === snap.packKind || siblingCount === 1)
+              ? { name: data.name }
+              : {}),
+          },
+        });
+      }
+    }
+
+    return updated;
+  });
+}
+
 /** 购券：slug → 可用的镜像 campaignId + productId */
 export async function resolveSellableBySlug(slug: string): Promise<{
   productId: string | null;

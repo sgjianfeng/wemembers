@@ -262,9 +262,9 @@ async function main() {
     businessId: meow.id,
     storeIdsJson,
     slug: SLUGS.exclusiveBallot,
-    name: "消费入箱大奖·独享15%",
+    name: "大奖倒计时·品牌独享",
     description:
-      "长期 · 结账/餐桌扫码付 S$50 或 S$100 · 扣点 3%小奖+2%平台+10%大奖 · 打印入箱票投箱 · 默认开店包 B",
+      "长期 · 结账/餐桌扫码付 S$50 或 S$100 · 购买可抽 · 冲大奖 · 品牌独享 · 默认开店包 B",
     type: "lucky_draw_v2",
     snapshot: snapExclusive(),
     voucherTiers: tiersJson([50, 100], true),

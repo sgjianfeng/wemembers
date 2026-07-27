@@ -8,6 +8,7 @@ import { t } from "@/lib/i18n";
 import { SettingsEditForm } from "./SettingsEditForm";
 import { BrandLogoUpload } from "./BrandLogoUpload";
 import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 import Link from "next/link";
 
 export default async function BusinessSettingsPage() {
@@ -104,6 +105,15 @@ export default async function BusinessSettingsPage() {
             <Link href="/business/tokens" className="block text-xs text-primary">
               {lang === "en" ? "Wallet & withdraw →" : "账户与提现 →"}
             </Link>
+          </CardContent>
+        </Card>
+
+        <Card className="min-w-0 overflow-hidden">
+          <CardContent className="p-4">
+            <LogoutButton
+              variant="outline"
+              label={lang === "en" ? "Log out" : "退出登录"}
+            />
           </CardContent>
         </Card>
 

@@ -478,8 +478,12 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
                           : "Store credit";
                 const blurb = isDraw
                   ? isZh
-                    ? "购买后可抽 · 冲大奖"
-                    : "Buy · enter prize draw"
+                    ? a.kindTag === "exclusive_draw"
+                      ? "购买后可抽 · 冲大奖 · 品牌独享"
+                      : "购买后可抽 · 冲大奖"
+                    : a.kindTag === "exclusive_draw"
+                      ? "Buy · draw · brand exclusive"
+                      : "Buy · enter prize draw"
                   : isZh
                     ? "付多少抵多少 · 到店花"
                     : "Pay face · spend in store";

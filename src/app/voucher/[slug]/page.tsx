@@ -182,15 +182,27 @@ function VoucherDrawInner() {
       setError(t("voucher.selectTier") || "请选择券面");
       return;
     }
-    const amt = spendNow === "" ? 0 : parseFloat(spendNow);
-    const maxSpend = isDraw ? selectedAmount * 0.8 : selectedAmount;
-    if (isNaN(amt) || amt < 0 || amt > maxSpend) {
-      setError(
-        isDraw
-          ? t("voucher.invalidSpend")
-          : t("voucher.invalidSpendVoucher") || "本次消费不能超过可花余额"
-      );
-      return;
+    // 独享：付款即完成，不支持「先花」；联合抽奖才可填 spendNow
+    const exclusive =
+      (campaign?.productKind === "self_use" ||
+        poolStatus?.campaign?.productKind === "self_use") &&
+      campaign?.type !== "voucher_sale" &&
+      campaign?.isDraw !== false;
+    const amt = exclusive
+      ? 0
+      : spendNow === ""
+        ? 0
+        : parseFloat(spendNow);
+    if (!exclusive) {
+      const maxSpend = isDraw ? selectedAmount * 0.8 : selectedAmount;
+      if (isNaN(amt) || amt < 0 || amt > maxSpend) {
+        setError(
+          isDraw
+            ? t("voucher.invalidSpend")
+            : t("voucher.invalidSpendVoucher") || "本次消费不能超过可花余额"
+        );
+        return;
+      }
     }
     setSubmitting(true);
     setError("");
@@ -283,6 +295,8 @@ function VoucherDrawInner() {
   const isSelfUse =
     campaign.productKind === "self_use" ||
     poolStatus?.campaign?.productKind === "self_use";
+  /** 独享抽奖：付款即扣费进奖池，无「先花 / 留余额 max」 */
+  const isExclusiveDraw = isDraw && isSelfUse;
   const discountPercent = poolStatus?.rules?.discountPercent ?? 0;
   // 代金：付 P 得 F（F=券面）；抽奖：付=面=入账
   const facePreview = selectedAmount;
@@ -441,12 +455,20 @@ function VoucherDrawInner() {
 
               {isDraw && tier && (
                 <div className="mb-4">
-                  <InstantPrizePreview tier={tier} selectedAmount={selectedAmount} />
+                  <InstantPrizePreview
+                    tier={tier}
+                    selectedAmount={selectedAmount}
+                    compareAmounts={
+                      poolStatus?.rules?.enabledTiers?.length
+                        ? poolStatus.rules.enabledTiers
+                        : [50, 100, 200]
+                    }
+                  />
                 </div>
               )}
 
-              {/* 抽奖可保留「先花」；代金默认不展示（无最少留 20% 约束） */}
-              {isDraw && (
+              {/* 联合抽奖可「先花」；独享付款即扣费，不展示 max / 留余额 */}
+              {isDraw && !isExclusiveDraw && (
                 <div className="mb-3">
                   <label className="block text-xs font-medium text-muted-foreground mb-1.5">
                     {t("voucher.spendNow")}
@@ -476,7 +498,15 @@ function VoucherDrawInner() {
                 </div>
               )}
 
-              {isDraw && selectedAmount < 100 && (
+              {isExclusiveDraw && (
+                <p className="text-[10px] text-muted-foreground mb-3 text-center rounded-lg bg-muted/50 py-1.5 px-2">
+                  {lang === "en"
+                    ? "Pay now · fee funds prize pools · draw on purchase"
+                    : "付款即参与 · 费用进奖池 · 购买当场抽奖"}
+                </p>
+              )}
+
+              {isDraw && !isExclusiveDraw && selectedAmount < 100 && (
                 <p className="text-[10px] text-amber-600 dark:text-amber-400 mb-3 text-center bg-amber-50 dark:bg-amber-950/35 rounded-lg py-1.5">
                   {t("voucher.upgradeHint", { amount: "100" })}
                 </p>

@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { createVoucherProduct } from "@/lib/catalog";
 import { feeErrorMessage } from "@/lib/business-templates";
+import { parseRulesSnapshot } from "@/lib/templates";
 
 /** GET 券产品列表 */
 export async function GET() {
@@ -28,27 +29,45 @@ export async function GET() {
     });
 
     return NextResponse.json({
-      data: products.map((p) => ({
-        id: p.id,
-        name: p.name,
-        description: p.description,
-        type: p.type,
-        productKind: p.productKind,
-        status: p.status,
-        slug: p.slug,
-        templateId: p.templateId,
-        color: p.color,
-        mirrorCampaignId: p.mirrorCampaignId,
-        buyPath: p.slug ? `/voucher/${p.slug}` : null,
-        activityCount: p.campaignLinks.filter(
-          (l) => l.campaign.role === "activity"
-        ).length,
-        voucherCount: p._count.vouchers,
-        rulesSnapshot: p.rulesSnapshot,
-        voucherTiers: p.voucherTiers,
-        createdAt: p.createdAt,
-        updatedAt: p.updatedAt,
-      })),
+      data: products.map((p) => {
+        const snap = parseRulesSnapshot(p.rulesSnapshot);
+        let enabledTiers: number[] = Array.isArray(snap?.enabledTiers)
+          ? (snap!.enabledTiers as number[])
+          : [];
+        if (!enabledTiers.length && p.voucherTiers) {
+          try {
+            const tiers = JSON.parse(p.voucherTiers) as { min?: number }[];
+            enabledTiers = tiers
+              .map((t) => Number(t.min))
+              .filter((n) => Number.isFinite(n) && n > 0)
+              .sort((a, b) => a - b);
+          } catch {
+            /* ignore */
+          }
+        }
+        return {
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          type: p.type,
+          productKind: p.productKind,
+          status: p.status,
+          slug: p.slug,
+          templateId: p.templateId,
+          color: p.color,
+          mirrorCampaignId: p.mirrorCampaignId,
+          buyPath: p.slug ? `/voucher/${p.slug}` : null,
+          activityCount: p.campaignLinks.filter(
+            (l) => l.campaign.role === "activity"
+          ).length,
+          voucherCount: p._count.vouchers,
+          enabledTiers,
+          rulesSnapshot: p.rulesSnapshot,
+          voucherTiers: p.voucherTiers,
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+        };
+      }),
     });
   } catch (e) {
     console.error("products GET", e);

@@ -47,11 +47,14 @@ export async function GET(
       }
     }
 
+    // Only activity campaigns — product_mirror is a purchase ledger twin of the
+    // catalog product and would double every row in this store shelf UI.
     const campaigns = await prisma.campaign.findMany({
       where: {
         businessId: store.businessId,
         type: { in: ["voucher_sale", "lucky_draw_v2"] },
         status: { in: ["active", "draft"] },
+        role: { not: "product_mirror" },
       },
       orderBy: { createdAt: "desc" },
       select: {
@@ -134,7 +137,11 @@ export async function PATCH(
     }
 
     const campaign = await prisma.campaign.findFirst({
-      where: { id: campaignId, businessId: session.userId },
+      where: {
+        id: campaignId,
+        businessId: session.userId,
+        role: { not: "product_mirror" },
+      },
       select: { id: true, storeIds: true },
     });
     if (!campaign) {

@@ -182,6 +182,41 @@ export function offerKindLabel(
   return map[tag][lang];
 }
 
+/**
+ * Rewrite merchant/seed titles for customer cards.
+ * Hide fee % (e.g. 15%) and "入箱" ops jargon; prefer countdown + brand exclusive.
+ */
+export function customerOfferTitle(
+  name: string,
+  opts?: {
+    kindTag?: JoinableActivity["kindTag"];
+    packKind?: string | null;
+    lang?: "zh" | "en";
+  }
+): string {
+  const lang = opts?.lang === "en" ? "en" : "zh";
+  // Default exclusive pack / fee jargon → fixed customer title
+  if (/消费入箱|独享\s*15|入箱大奖|exclusive\s*15|\b15\s*%/i.test(name)) {
+    return lang === "en"
+      ? "Grand prize countdown · Brand exclusive"
+      : "大奖倒计时·品牌独享";
+  }
+
+  // Soft cleanup for residual merchant jargon (keep merchant-custom core name)
+  let n = name
+    .replace(/消费入箱大奖/g, lang === "en" ? "Grand prize countdown" : "大奖倒计时")
+    .replace(/消费入箱/g, lang === "en" ? "Grand prize" : "大奖")
+    .replace(/独享\s*15\s*%?/g, lang === "en" ? "Brand exclusive" : "品牌独享")
+    .replace(/exclusive\s*15\s*%?/gi, "Brand exclusive")
+    .replace(/·\s*15\s*%/g, "")
+    .replace(/\s*15\s*%/g, "")
+    .replace(/··+/g, "·")
+    .replace(/^·|·$/g, "")
+    .trim();
+
+  return n || name;
+}
+
 /** One-line benefit for cards */
 export function offerBlurb(
   a: Pick<
@@ -193,8 +228,8 @@ export function offerBlurb(
   if (a.displayMode === "draw") {
     if (a.kindTag === "exclusive_draw") {
       return lang === "en"
-        ? "Buy · small win chance · box for grand prize"
-        : "购买后可抽小奖 · 消费入箱冲大奖";
+        ? "Buy · draw for small prizes · countdown to grand prize"
+        : "购买后可抽 · 冲大奖 · 品牌独享";
     }
     return lang === "en"
       ? "Buy to enter · win from shared pool"
@@ -621,9 +656,14 @@ export async function listJoinableActivities(
       packKind,
     });
 
+    const customerName = customerOfferTitle(c.name, {
+      kindTag: tag,
+      packKind,
+    });
+
     return {
       id: c.id,
-      name: c.name,
+      name: customerName,
       description: c.description,
       type: effectiveType,
       productKind: c.productKind,
