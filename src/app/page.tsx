@@ -275,7 +275,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <ConsumerView isZh={isZh} lang={lang} />
+      <ConsumerView isZh={isZh} lang={lang} isLoggedIn={!!isCustomer} />
 
       {/* ── Footer：消费者站底部商家入口 ── */}
       <footer className="px-5 pb-10 pt-4 text-center border-t border-border">
@@ -308,7 +308,15 @@ type LandingActivity = {
   endDate: string;
 };
 
-function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
+function ConsumerView({
+  isZh,
+  lang,
+  isLoggedIn = false,
+}: {
+  isZh: boolean;
+  lang: string;
+  isLoggedIn?: boolean;
+}) {
   const [activities, setActivities] = useState<LandingActivity[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -574,17 +582,35 @@ function ConsumerView({ isZh, lang }: { isZh: boolean; lang: string }) {
           )}
 
           <div className="mt-5 text-center">
-            <a
-              href="/auth/register?role=customer"
-              className="inline-flex items-center justify-center gap-2 px-10 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-200 hover:from-amber-600 hover:to-orange-600 transition-all active:scale-[0.98]"
-            >
-              {isZh ? "免费注册 · 买券或抽奖" : "Sign up · buy or draw"}
-            </a>
-            <p className="text-[10px] text-muted-foreground mt-2">
-              {isZh
-                ? "选优惠 → 购买 → 到店使用"
-                : "Pick offer → buy → redeem in-store"}
-            </p>
+            {isLoggedIn ? (
+              <>
+                <a
+                  href="/home"
+                  className="inline-flex items-center justify-center gap-2 px-10 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-200 hover:from-amber-600 hover:to-orange-600 transition-all active:scale-[0.98]"
+                >
+                  {isZh ? "进入我的首页" : "Go to my home"}
+                </a>
+                <p className="text-[10px] text-muted-foreground mt-2">
+                  {isZh
+                    ? "已登录 · 去首页看优惠与余额"
+                    : "Signed in · open home for offers & balance"}
+                </p>
+              </>
+            ) : (
+              <>
+                <a
+                  href="/auth/register?role=customer"
+                  className="inline-flex items-center justify-center gap-2 px-10 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-200 hover:from-amber-600 hover:to-orange-600 transition-all active:scale-[0.98]"
+                >
+                  {isZh ? "免费注册 · 买券或抽奖" : "Sign up · buy or draw"}
+                </a>
+                <p className="text-[10px] text-muted-foreground mt-2">
+                  {isZh
+                    ? "选优惠 → 购买 → 到店使用"
+                    : "Pick offer → buy → redeem in-store"}
+                </p>
+              </>
+            )}
           </div>
         </div>
       </section>
