@@ -59,18 +59,32 @@ export default async function CompanyStorePage({
     customerId: session?.role === "customer" ? session.userId : null,
   });
 
-  // 仅本店参与的活动/产品
-  const storeOffers = allOffers.filter(
-    (o) => o.storesAll || o.stores.some((s) => s.id === store.id)
-  );
+  // 仅本店参与；抽奖置顶
+  const storeOffers = allOffers
+    .filter((o) => o.storesAll || o.stores.some((s) => s.id === store.id))
+    .sort((a, b) => {
+      const rank = (o: (typeof allOffers)[0]) =>
+        o.displayMode === "draw"
+          ? 0
+          : o.kindTag === "discount_card" || o.discountPercent > 0
+            ? 1
+            : 2;
+      const d = rank(a) - rank(b);
+      return d !== 0 ? d : b.heat - a.heat;
+    });
 
   return (
     <div className="min-h-screen bg-muted/50">
       <TopHeader variant="default" title={store.name} />
 
-      <div className="bg-gradient-to-b from-primary to-primary/80 px-4 pt-8 pb-8 text-primary-foreground">
+      {/* 门店页：主色顶栏 + 本店标签（与公司品牌页区分） */}
+      <div className="bg-gradient-to-b from-primary to-primary/80 px-4 pt-7 pb-10 text-primary-foreground">
         <div className="text-center">
-          <div className="mx-auto w-20 h-20 rounded-2xl bg-card shadow-lg flex items-center justify-center p-1.5">
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/20 border border-white/25 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide">
+            <MapPin size={12} />
+            {lang === "en" ? "This store" : "本店"}
+          </span>
+          <div className="mx-auto mt-3 w-20 h-20 rounded-2xl bg-card shadow-lg flex items-center justify-center p-1.5">
             <BrandAvatar
               src={resolveStoreLogo(null, business.businessLogo)}
               name={store.name}
@@ -90,19 +104,25 @@ export default async function CompanyStorePage({
           )}
           <p className="text-white/50 text-[11px] mt-3 max-w-[280px] mx-auto leading-relaxed">
             {lang === "en"
-              ? "Welcome — buy store credit or join prize draws here"
-              : "欢迎光临 · 在本店购买代金或参与抽奖"}
+              ? "Welcome — buy store credit or join prize draws at this outlet"
+              : "欢迎光临 · 仅显示本店可购活动"}
           </p>
+          <Link
+            href={`/shop/${business.businessSlug}`}
+            className="inline-flex mt-3 text-[11px] font-medium text-white/85 underline-offset-2 hover:underline"
+          >
+            {lang === "en" ? "← All brand outlets" : "← 返回品牌全部门店"}
+          </Link>
         </div>
       </div>
 
       <div className="px-4 -mt-4 pb-8">
-        <div className="bg-card rounded-t-2xl pt-5 px-1">
-          <div className="mx-3 mb-4 rounded-xl bg-muted/50 border border-border px-3 py-2.5">
+        <div className="bg-card rounded-t-2xl pt-5 px-1 shadow-sm">
+          <div className="mx-3 mb-4 rounded-xl bg-primary/5 border border-primary/10 px-3 py-2.5">
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               {lang === "en"
-                ? "You scanned this store’s code. Pick an offer below to buy."
-                : "你已扫入本店。下方为可购优惠，点进去购买即可。"}
+                ? "You scanned this store’s code. Offers below are available here."
+                : "你已扫入本店。下方为在本店可用的活动，点进去购买即可。"}
             </p>
             {!isLoggedIn && (
               <Link
@@ -114,37 +134,49 @@ export default async function CompanyStorePage({
             )}
           </div>
 
-          <div className="flex items-center justify-between px-3 mb-3">
-            <h2 className="text-base font-semibold text-foreground">
-              {lang === "en" ? "Store offers" : "本店优惠"}
-            </h2>
+          <div className="flex items-center justify-between px-3 mb-1">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">
+                {lang === "en" ? "Offers at this store" : "本店活动"}
+              </h2>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {store.name}
+              </p>
+            </div>
             <span className="text-xs text-muted-foreground nums">
               {storeOffers.length}
             </span>
           </div>
 
           {storeOffers.length > 0 ? (
-            <div className="space-y-2 px-3 mb-4">
+            <div className="space-y-2.5 px-3 mb-4 mt-3">
               {storeOffers.map((offer) => {
                 const isDraw = offer.displayMode === "draw";
                 return (
                   <Link key={offer.id} href={offer.href}>
                     <Card
-                      className={`hover:border-primary/30 active:scale-[0.98] transition-transform border-l-4 ${
+                      className={`hover:border-primary/30 active:scale-[0.98] transition-transform overflow-hidden ${
                         isDraw
-                          ? "border-l-amber-500"
-                          : offer.kindTag === "discount_card"
-                            ? "border-l-emerald-500"
-                            : "border-l-primary"
+                          ? "border-amber-300/80 dark:border-amber-700/50 shadow-sm ring-1 ring-amber-200/40"
+                          : "border-border"
                       }`}
                     >
-                      <CardContent className="p-3 flex items-center justify-between gap-2">
+                      {isDraw && (
+                        <div className="h-1 w-full bg-gradient-to-r from-amber-400 via-orange-500 to-red-500" />
+                      )}
+                      <CardContent
+                        className={`p-3 flex items-center justify-between gap-2 ${
+                          isDraw ? "bg-amber-50/40 dark:bg-amber-950/20" : ""
+                        }`}
+                      >
                         <div className="flex items-start gap-2.5 min-w-0 flex-1">
                           <span
-                            className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${
+                            className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${
                               isDraw
-                                ? "bg-amber-50 dark:bg-amber-950/40 text-amber-600"
-                                : "bg-primary/10 text-primary"
+                                ? "bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm"
+                                : offer.kindTag === "discount_card"
+                                  ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600"
+                                  : "bg-primary/10 text-primary"
                             }`}
                           >
                             {isDraw ? (
@@ -156,26 +188,48 @@ export default async function CompanyStorePage({
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <Badge
-                                variant={isDraw ? "purple" : "slate"}
+                                variant={isDraw ? "orange" : "slate"}
                                 size="sm"
                               >
                                 {offerKindLabel(offer.kindTag, lang)}
                               </Badge>
+                              {isDraw && (
+                                <span className="text-[9px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100/80 px-1.5 py-0.5 rounded-full">
+                                  {lang === "en" ? "FEATURED" : "大奖"}
+                                </span>
+                              )}
                               {offer.discountPercent > 0 && !isDraw && (
                                 <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full">
                                   −{offer.discountPercent}%
                                 </span>
                               )}
                             </div>
-                            <p className="text-sm font-semibold text-foreground mt-1 truncate">
+                            <p
+                              className={`font-semibold text-foreground mt-1 truncate ${
+                                isDraw ? "text-[15px]" : "text-sm"
+                              }`}
+                            >
                               {offer.name}
                             </p>
                             <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
                               {offerBlurb(offer, lang)}
                             </p>
+                            <p className="flex items-center gap-1 text-[11px] text-foreground/70 mt-1.5 font-medium">
+                              <MapPin
+                                size={12}
+                                className="shrink-0 text-primary/70"
+                              />
+                              <span className="truncate">{store.name}</span>
+                            </p>
                           </div>
                         </div>
-                        <span className="shrink-0 inline-block px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-full">
+                        <span
+                          className={`shrink-0 inline-block px-3 py-1.5 text-xs font-semibold rounded-full ${
+                            isDraw
+                              ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white"
+                              : "bg-primary text-primary-foreground"
+                          }`}
+                        >
                           {offerCta(offer, lang)}
                         </span>
                       </CardContent>
@@ -190,7 +244,7 @@ export default async function CompanyStorePage({
               title={
                 lang === "en"
                   ? "No offers at this store yet"
-                  : "本店暂无可购优惠"
+                  : "本店暂无活动"
               }
               description={
                 lang === "en"
