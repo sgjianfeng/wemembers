@@ -1,20 +1,27 @@
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
 import { TopHeader } from "@/components/ui/TopHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { daysUntil, resolveStoreLogo, storeIdsAllows } from "@/lib/utils";
+import { resolveStoreLogo } from "@/lib/utils";
 import { BrandAvatar } from "@/components/ui/BrandAvatar";
 import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MapPin } from "lucide-react";
+import { MapPin, Ticket, Trophy } from "lucide-react";
+import {
+  listJoinableActivities,
+  offerBlurb,
+  offerCta,
+  offerKindLabel,
+} from "@/lib/discover-activities";
 
 /**
  * 门店顾客页（主入口）
  * URL: /shop/{company-slug}/{store-slug}
- * 仅展示对本店启用的券 / 活动（storeIds 为空 = 全部门店）
+ * 仅展示本店参与的可购券产品/活动（不再展示可领取 Coupon）
  */
 export default async function CompanyStorePage({
   params,
@@ -23,7 +30,7 @@ export default async function CompanyStorePage({
 }) {
   const { slug: companySlug, storeSlug } = await params;
   const c = await cookies();
-  const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
+  const lang = (c.get("gwm_lang")?.value === "en" ? "en" : "zh") as "zh" | "en";
 
   const business = await prisma.user.findFirst({
     where: { businessSlug: companySlug, role: "business", status: "active" },
@@ -41,45 +48,21 @@ export default async function CompanyStorePage({
   });
   if (!store) notFound();
 
-  const allCoupons = await prisma.coupon.findMany({
-    where: {
-      businessId: business.id,
-      status: "published",
-      validUntil: { gt: new Date() },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-  const coupons = allCoupons.filter((c) =>
-    storeIdsAllows((c as { storeIds?: string | null }).storeIds, store.id)
-  );
-
-  const allCampaigns = await prisma.campaign.findMany({
-    where: {
-      businessId: business.id,
-      type: { in: ["lucky_draw_v2", "voucher_sale"] },
-      status: "active",
-      endDate: { gt: new Date() },
-      slug: { not: null },
-    },
-    orderBy: { endDate: "asc" },
-    take: 20,
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      description: true,
-      color: true,
-      endDate: true,
-      storeIds: true,
-    },
-  });
-  const drawCampaigns = allCampaigns.filter((camp) =>
-    storeIdsAllows(camp.storeIds, store.id)
-  );
-
   const session = await getSession();
   const isLoggedIn = !!session;
   const path = `/shop/${companySlug}/${storeSlug}`;
+
+  const allOffers = await listJoinableActivities({
+    limit: 40,
+    listScope: "all",
+    businessId: business.id,
+    customerId: session?.role === "customer" ? session.userId : null,
+  });
+
+  // 仅本店参与的活动/产品
+  const storeOffers = allOffers.filter(
+    (o) => o.storesAll || o.stores.some((s) => s.id === store.id)
+  );
 
   return (
     <div className="min-h-screen bg-muted/50">
@@ -107,20 +90,19 @@ export default async function CompanyStorePage({
           )}
           <p className="text-white/50 text-[11px] mt-3 max-w-[280px] mx-auto leading-relaxed">
             {lang === "en"
-              ? "Welcome — claim vouchers & join draws at this outlet"
-              : "欢迎光临 · 领取本店优惠券与抽奖活动"}
+              ? "Welcome — buy store credit or join prize draws here"
+              : "欢迎光临 · 在本店购买代金或参与抽奖"}
           </p>
         </div>
       </div>
 
       <div className="px-4 -mt-4 pb-8">
         <div className="bg-card rounded-t-2xl pt-5 px-1">
-          {/* 扫码落地快捷说明 */}
           <div className="mx-3 mb-4 rounded-xl bg-muted/50 border border-border px-3 py-2.5">
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               {lang === "en"
-                ? "You scanned this store’s code. Browse offers below — log in to claim."
-                : "你已扫入本店。下方为本店可用优惠；登录后即可领取。"}
+                ? "You scanned this store’s code. Pick an offer below to buy."
+                : "你已扫入本店。下方为可购优惠，点进去购买即可。"}
             </p>
             {!isLoggedIn && (
               <Link
@@ -132,87 +114,70 @@ export default async function CompanyStorePage({
             )}
           </div>
 
-          {drawCampaigns.length > 0 && (
-            <div className="px-3 mb-5">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-semibold text-foreground">
-                  {t("store.public.drawTitle", lang)}
-                </h2>
-                <span className="text-xs text-muted-foreground nums">{drawCampaigns.length}</span>
-              </div>
-              <div className="space-y-2">
-                {drawCampaigns.map((camp) => (
-                  <Link key={camp.id} href={`/voucher/${camp.slug}`}>
-                    <Card
-                      className="hover:border-primary/30 active:scale-[0.98] transition-transform border-l-4"
-                      style={{ borderLeftColor: camp.color || "var(--primary)" }}
-                    >
-                      <CardContent className="p-3 flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-foreground truncate">
-                            {camp.name}
-                          </p>
-                          {camp.description && (
-                            <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
-                              {camp.description}
-                            </p>
-                          )}
-                        </div>
-                        <span className="px-3 py-1 bg-primary text-primary-foreground text-[10px] rounded-full shrink-0">
-                          {t("store.public.buy", lang)}
-                        </span>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
           <div className="flex items-center justify-between px-3 mb-3">
             <h2 className="text-base font-semibold text-foreground">
-              {t("store.public.title", lang)}
+              {lang === "en" ? "Store offers" : "本店优惠"}
             </h2>
             <span className="text-xs text-muted-foreground nums">
-              {coupons.length}
-              {t("store.public.countUnit", lang)}
+              {storeOffers.length}
             </span>
           </div>
 
-          {coupons.length > 0 ? (
-            <div className="space-y-2 px-3">
-              {coupons.map((c) => {
-                const displayValue =
-                  c.type === "percentage"
-                    ? `${(c.valueCents / 100).toFixed(0)}${t("store.public.percentOff", lang)}`
-                    : c.type === "free_item"
-                      ? t("store.public.free", lang)
-                      : `S$${(c.valueCents / 100).toFixed(0)}`;
-                const soldOut =
-                  c.remainingQuantity !== null && c.remainingQuantity <= 0;
+          {storeOffers.length > 0 ? (
+            <div className="space-y-2 px-3 mb-4">
+              {storeOffers.map((offer) => {
+                const isDraw = offer.displayMode === "draw";
                 return (
-                  <Link key={c.id} href={`/coupons/${c.id}`}>
+                  <Link key={offer.id} href={offer.href}>
                     <Card
-                      className={`hover:border-primary/30 active:scale-[0.98] transition-transform border-l-4 border-l-brand ${soldOut ? "opacity-50" : ""}`}
+                      className={`hover:border-primary/30 active:scale-[0.98] transition-transform border-l-4 ${
+                        isDraw
+                          ? "border-l-amber-500"
+                          : offer.kindTag === "discount_card"
+                            ? "border-l-emerald-500"
+                            : "border-l-primary"
+                      }`}
                     >
-                      <CardContent className="p-3 flex items-center justify-between">
-                        <div>
-                          <p className="text-base font-bold text-brand nums">
-                            {displayValue}
-                          </p>
-                          <p className="text-sm font-medium text-foreground mt-1">
-                            {c.title}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5 nums">
-                            {daysUntil(c.validUntil)}
-                            {t("store.public.daysUnit", lang)}
-                          </p>
-                        </div>
-                        {!soldOut && (
-                          <span className="px-3 py-1 bg-primary text-primary-foreground text-[10px] rounded-full shrink-0">
-                            {t("store.public.claim", lang)}
+                      <CardContent className="p-3 flex items-center justify-between gap-2">
+                        <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                          <span
+                            className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${
+                              isDraw
+                                ? "bg-amber-50 dark:bg-amber-950/40 text-amber-600"
+                                : "bg-primary/10 text-primary"
+                            }`}
+                          >
+                            {isDraw ? (
+                              <Trophy size={18} />
+                            ) : (
+                              <Ticket size={18} />
+                            )}
                           </span>
-                        )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <Badge
+                                variant={isDraw ? "purple" : "slate"}
+                                size="sm"
+                              >
+                                {offerKindLabel(offer.kindTag, lang)}
+                              </Badge>
+                              {offer.discountPercent > 0 && !isDraw && (
+                                <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full">
+                                  −{offer.discountPercent}%
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm font-semibold text-foreground mt-1 truncate">
+                              {offer.name}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
+                              {offerBlurb(offer, lang)}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="shrink-0 inline-block px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-full">
+                          {offerCta(offer, lang)}
+                        </span>
                       </CardContent>
                     </Card>
                   </Link>
@@ -222,16 +187,27 @@ export default async function CompanyStorePage({
           ) : (
             <EmptyState
               icon="coupons"
-              title={t("store.public.noCoupons", lang)}
+              title={
+                lang === "en"
+                  ? "No offers at this store yet"
+                  : "本店暂无可购优惠"
+              }
+              description={
+                lang === "en"
+                  ? "Ask staff or check back when products are listed."
+                  : "商家上架并开放本店后会出现在这里。"
+              }
               className="py-12"
             />
           )}
         </div>
 
-        {!isLoggedIn && coupons.length > 0 && (
+        {!isLoggedIn && storeOffers.length > 0 && (
           <div className="mx-3 mt-4 p-4 bg-primary/5 rounded-xl text-center">
             <p className="text-sm text-foreground/80">
-              {t("store.public.loginPrompt", lang)}
+              {lang === "en"
+                ? "Log in to buy and keep balances in your wallet"
+                : "登录后购买，余额会保存在你的券包"}
             </p>
             <Link
               href={`/auth/login?redirect=${encodeURIComponent(path)}`}

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { BrandAvatar } from "@/components/ui/BrandAvatar";
 import { TopHeader } from "@/components/ui/TopHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { daysUntil, resolveStoreLogo } from "@/lib/utils";
+import { resolveStoreLogo } from "@/lib/utils";
 import { SERVICE_CATEGORIES } from "@/types";
 import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
@@ -39,12 +39,7 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
     select: { id: true, name: true, slug: true, address: true },
   });
 
-  const coupons = await prisma.coupon.findMany({
-    where: { businessId: business.id, status: "published", validUntil: { gt: new Date() } },
-    orderBy: { createdAt: "desc" },
-  });
-
-  // 门店页：含原价基础项 + 优惠/抽奖（listScope=all）
+  // 仅券产品/可购活动（不再展示可领取 Coupon）
   const storeOffers = await listJoinableActivities({
     limit: 40,
     listScope: "all",
@@ -55,12 +50,6 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
   const categoryLabel = lang === "zh"
     ? SERVICE_CATEGORIES.find((c) => c.value === business.businessCategory)?.label
     : business.businessCategory;
-
-  const typeKey: Record<string, string> = {
-    fixed_amount: "shop.type.fixed",
-    percentage: "shop.type.percent",
-    free_item: "shop.type.free",
-  };
 
   return (
     <div className="min-h-screen bg-muted/50">
@@ -229,96 +218,42 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
           ) : (
             <EmptyState
               icon="coupons"
-              title={t("shop.vouchersEmpty", lang)}
+              title={
+                lang === "en"
+                  ? "No offers for sale yet"
+                  : "暂无可购优惠"
+              }
+              description={
+                lang === "en"
+                  ? "When this brand lists voucher products, they will show here."
+                  : "商家上架券产品后会出现在这里，可直接购买。"
+              }
               className="py-8"
-            />
-          )}
-
-          <div className="flex items-center justify-between px-3 mb-3">
-            <h2 className="text-base font-semibold text-foreground">{t("shop.title", lang)}</h2>
-            <span className="text-xs text-muted-foreground nums">
-              {coupons.length}
-              {t("shop.countUnit", lang)}
-            </span>
-          </div>
-
-          {coupons.length > 0 ? (
-            <div className="space-y-2 px-3">
-              {coupons.map((c) => {
-                const daysLeft = daysUntil(c.validUntil);
-                const soldOut = c.remainingQuantity !== null && c.remainingQuantity <= 0;
-                const typeLabel = t(typeKey[c.type] || "shop.type.fixed", lang);
-                const displayValue =
-                  c.type === "percentage"
-                    ? `${(c.valueCents / 100).toFixed(0)}${t("shop.percentOff", lang)}`
-                    : c.type === "free_item"
-                      ? t("shop.free", lang)
-                      : `S$${(c.valueCents / 100).toFixed(0)}`;
-
-                return (
-                  <Link key={c.id} href={`/coupons/${c.id}`}>
-                    <Card className={`hover:border-primary/30 active:scale-[0.98] transition-transform border-l-4 border-l-brand ${soldOut ? "opacity-50" : ""}`}>
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="text-base font-bold text-brand nums">{displayValue}</p>
-                              <Badge variant="slate" size="sm">{typeLabel}</Badge>
-                            </div>
-                            <p className="text-sm font-medium text-foreground mt-1">{c.title}</p>
-                            {c.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{c.description}</p>}
-                          </div>
-                          <div className="text-right shrink-0 ml-3">
-                            <span className="text-xs text-muted-foreground nums">
-                              {soldOut ? t("shop.soldOut", lang) : `${c.pointsRequired}⭐`}
-                            </span>
-                            <p className="text-[10px] text-muted-foreground mt-1">
-                              {daysLeft > 0
-                                ? t("shop.daysLeft", lang, { days: daysLeft })
-                                : t("shop.soon", lang)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="mt-2 pt-2 border-t border-dashed border-border flex items-center gap-2">
-                          <span className="text-[10px] text-muted-foreground nums">
-                            {t("shop.left", lang)} {c.remainingQuantity ?? "∞"}{" "}
-                            {t("shop.countUnit", lang)}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">·</span>
-                          <span className="text-[10px] text-muted-foreground nums">
-                            {t("shop.claimed", lang)} {c.claimedCount}{" "}
-                            {t("shop.claimTimes", lang)}
-                          </span>
-                          {!soldOut && (
-                            <span className="ml-auto inline-block px-2 py-0.5 bg-primary text-primary-foreground text-[10px] rounded-full">
-                              {t("shop.claim", lang)}
-                            </span>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                );
-              })}
-            </div>
-          ) : (
-            <EmptyState
-              icon="coupons"
-              title={t("shop.noCoupons", lang)}
-              description={t("shop.checkLater", lang)}
-              className="py-12"
             />
           )}
         </div>
 
-        {!isLoggedIn && coupons.length > 0 && (
+        {!isLoggedIn && storeOffers.length > 0 && (
           <div className="mx-3 mt-4 p-4 bg-primary/5 rounded-xl border border-primary/10 text-center">
-            <p className="text-sm text-foreground/80">{t("shop.loginPrompt", lang)}</p>
-            <Link href={`/auth/login?redirect=/shop/${business.businessSlug}`} className="inline-block mt-2 px-6 py-2 bg-primary text-primary-foreground text-sm rounded-full active:scale-[0.97] transition-transform">{t("shop.login", lang)}</Link>
+            <p className="text-sm text-foreground/80">
+              {lang === "en"
+                ? "Log in to buy and keep balances in your wallet"
+                : "登录后购买，余额会保存在你的券包"}
+            </p>
+            <Link
+              href={`/auth/login?redirect=/shop/${business.businessSlug}`}
+              className="inline-block mt-2 px-6 py-2 bg-primary text-primary-foreground text-sm rounded-full active:scale-[0.97] transition-transform"
+            >
+              {t("shop.login", lang)}
+            </Link>
           </div>
         )}
 
-        <div className="text-center mt-6 pb-4"><p className="text-[10px] text-muted-foreground/70">{t("shop.poweredBy", lang)}</p></div>
+        <div className="text-center mt-6 pb-4">
+          <p className="text-[10px] text-muted-foreground/70">
+            {t("shop.poweredBy", lang)}
+          </p>
+        </div>
       </div>
     </div>
   );
