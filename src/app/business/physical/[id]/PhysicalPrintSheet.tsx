@@ -143,28 +143,31 @@ export function PhysicalPrintSheet({
       )}
 
       <p className="print:hidden text-xs font-medium text-muted-foreground mb-1">
-        {lang === "en" ? "Print sheet (A4 strips)" : "印刷票面（A4 条形）"}
+        {lang === "en" ? "Print sheet (horizontal strips)" : "印刷票面（横向条形）"}
       </p>
       <p className="print:hidden text-[11px] text-muted-foreground mb-3 leading-relaxed">
         {lang === "en"
-          ? "Two strip vouchers per row on A4. Use colour print · “Background graphics” on."
-          : "A4 一行两张条形券。请用彩色打印，并开启「背景图形 / 打印背景色」。"}
+          ? "Screen: 1 strip per row. Print A4: 2 per row. Turn on “Background graphics”."
+          : "屏幕一行一张；A4 打印一行两张。请开启「背景图形 / 打印背景色」。"}
       </p>
 
-      {/* A4 条形：屏上一列预览；打印两列 */}
+      {/*
+        屏幕始终 1 列（避免窄屏把横条挤竖）
+        仅 print 时 2 列；代金券强制经典浅色模版
+      */}
       <div
         className={cn(
-          "grid grid-cols-1 gap-3",
-          "sm:grid-cols-2 sm:gap-3",
-          "print:grid-cols-2 print:gap-x-3 print:gap-y-2.5",
-          "print:px-0"
+          "grid grid-cols-1 gap-3 max-w-3xl",
+          "print:max-w-none print:grid-cols-2 print:gap-x-3 print:gap-y-2"
         )}
         style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}
       >
         {tickets.map((t) => (
           <TicketVisualCard
             key={t.code}
-            templateId={visualTemplateId}
+            templateId={
+              type === "voucher" ? "store_classic" : visualTemplateId
+            }
             themeColor={resolvedTheme}
             type={type}
             title={title}
@@ -175,7 +178,7 @@ export function PhysicalPrintSheet({
             businessLogo={businessLogo}
             validLabel={validLabel}
             code={t.code}
-            qrSrc={`/api/physical/qr?code=${encodeURIComponent(t.code)}&size=160`}
+            qrSrc={`/api/physical/qr?code=${encodeURIComponent(t.code)}&size=140`}
             lang={lang}
             mode="print"
           />
