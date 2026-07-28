@@ -1,13 +1,14 @@
 "use client";
 
 import type { Ref } from "react";
-import { formatMoney } from "@/lib/utils";
+import { useEffect, useMemo, useState } from "react";
+import QRCode from "qrcode";
+import { formatMoney, cn } from "@/lib/utils";
 import {
   getVisualTemplate,
   resolveThemeHex,
   type VisualTemplateId,
 } from "@/lib/visual-templates";
-import { cn } from "@/lib/utils";
 
 export type TicketVisualProps = {
   templateId?: string | null;
@@ -24,37 +25,77 @@ export type TicketVisualProps = {
   qrSrc?: string;
   claimUrl?: string;
   lang: "zh" | "en";
-  /** 票面条款（正面小字，约两行） */
   terms?: string | null;
-  /** print = 宽幅条形；share = 1:1 分享 */
   mode?: "print" | "share";
   className?: string;
   cardRef?: Ref<HTMLDivElement>;
 };
 
-function defaultTerms(
-  type: string,
-  lang: "zh" | "en"
-): string {
+function defaultTerms(type: string, lang: "zh" | "en"): string {
   if (type === "ballot") {
     return lang === "en"
-      ? "Box ritual only · not spendable. Drop into the draw box after payment. Grand pool contribution is recorded online."
-      : "仅投抽奖箱，不抵消费。收款后将本票投入抽奖箱。大奖贡献以线上记录为准。";
+      ? "Box only · not spendable."
+      : "仅投抽奖箱，不抵消费。";
   }
   if (type === "draw") {
     return lang === "en"
-      ? "Exclusive draw ticket · this store only · one-time. Scan to bind your phone for prizes. Non-transferable after bind."
-      : "独享抽奖券 · 仅限本店 · 一次有效。扫码绑定手机参与开奖。绑定后不可转让。";
+      ? "Exclusive draw · this store · one-time."
+      : "独享抽奖 · 仅限本店 · 一次有效。";
   }
   return lang === "en"
-    ? "Store credit · this store only · one-time use. Scan QR to bind phone / register. Void after use or expiry. Subject to store rules."
-    : "本店代金抵用 · 仅限本店 · 一次用完。扫码绑定手机后使用。用完或过期作废。详细规则以门店公示为准。";
+    ? "This store only · one-time. Scan to bind."
+    : "仅限本店 · 一次用完。扫码绑定手机后使用。";
 }
 
-/**
- * print：宽幅横向代金券（顶栏+正文+底栏条款/QR），拉满宽度，不搞左中右三栏。
- * share：1:1 社媒卡。
- */
+function claimLink(code: string, claimUrl?: string | null): string {
+  if (claimUrl?.trim()) return claimUrl.trim();
+  if (typeof window === "undefined") return "";
+  return `${window.location.origin}/c/${encodeURIComponent(code)}`;
+}
+
+/** 本地生成 QR；同时保留 api 图作第二路 */
+function useQrSrc(
+  code: string,
+  claimUrl?: string | null,
+  apiQrSrc?: string | null,
+  size = 168
+): string {
+  const [dataUrl, setDataUrl] = useState("");
+
+  // 稳定的 API 兜底（公开接口）
+  const apiFallback = useMemo(() => {
+    if (apiQrSrc?.trim()) return apiQrSrc.trim();
+    if (!code) return "";
+    return `/api/physical/qr?code=${encodeURIComponent(code)}&size=${size}`;
+  }, [apiQrSrc, code, size]);
+
+  useEffect(() => {
+    let dead = false;
+    const target = claimLink(code, claimUrl);
+    if (!target) return;
+
+    QRCode.toDataURL(target, {
+      width: size,
+      margin: 1,
+      errorCorrectionLevel: "M",
+      color: { dark: "#0f172a", light: "#ffffff" },
+    })
+      .then((u) => {
+        if (!dead) setDataUrl(u);
+      })
+      .catch((e) => {
+        console.warn("local QR fail, use api", e);
+      });
+
+    return () => {
+      dead = true;
+    };
+  }, [code, claimUrl, size]);
+
+  // 优先 data URL，否则 API
+  return dataUrl || apiFallback;
+}
+
 export function TicketVisualCard({
   templateId,
   themeColor,
@@ -68,6 +109,7 @@ export function TicketVisualCard({
   validLabel,
   code,
   qrSrc,
+  claimUrl,
   lang,
   terms,
   mode = "print",
@@ -79,10 +121,11 @@ export function TicketVisualCard({
   const isDraw = type === "draw" || type === "ballot";
   const isBallot = type === "ballot";
   const isShare = mode === "share";
-  // 浅色经典 / 深色色块均尊重模版选择（含代金券）
   const isBold = tpl.surface === "dark";
   const face = `S$${formatMoney(valueCents)}`;
   const termsText = (terms && terms.trim()) || defaultTerms(type, lang);
+
+  const qr = useQrSrc(code, claimUrl, qrSrc, isShare ? 200 : 168);
 
   const kindLabel = isBallot
     ? lang === "en"
@@ -96,7 +139,6 @@ export function TicketVisualCard({
         ? "VOUCHER"
         : "代金券";
 
-  // ── Share 1:1 ────────────────────────────────────────────
   if (isShare) {
     return (
       <div
@@ -160,18 +202,10 @@ export function TicketVisualCard({
               isBold ? "text-white/75" : "text-slate-600"
             )}
           >
-            🏪 {storeName}
-          </p>
-          <p
-            className={cn(
-              "text-[11px] mt-2 leading-snug line-clamp-3",
-              isBold ? "text-white/65" : "text-slate-500"
-            )}
-          >
-            {termsText}
+            {storeName}
           </p>
           <div className="mt-auto pt-3 flex gap-3 items-end">
-            <QrImg qrSrc={qrSrc} className="w-28 h-28" bordered />
+            <QrPanel src={qr} px={112} />
             <div className="min-w-0 pb-1">
               <p
                 className={cn(
@@ -195,7 +229,7 @@ export function TicketVisualCard({
                   isBold ? "text-white/50" : "text-slate-500"
                 )}
               >
-                {lang === "en" ? "Valid until" : "有效期至"} {validLabel}
+                {lang === "en" ? "Valid" : "有效至"} {validLabel}
               </p>
             </div>
           </div>
@@ -204,181 +238,196 @@ export function TicketVisualCard({
     );
   }
 
-  // ── Print 宽幅条形 ───────────────────────────────────────
-  // 结构：顶色条 → 主内容全宽 → 底栏（条款占主要宽度 + QR 小块）
-  const ink = isBold ? "#ffffff" : "#111827";
-  const muted = isBold ? "rgba(255,255,255,0.78)" : "#4b5563";
-  const border = isBold ? "transparent" : isDraw ? "#7c3aed" : accent;
+  // ── 紧凑礼券条：左信息 / 右金额+QR（QR 用绝对尺寸，绝不被挤没）──
+  const ink = isBold ? "#ffffff" : "#0f172a";
+  const muted = isBold ? "rgba(255,255,255,0.75)" : "#64748b";
   const bg = isBold
-    ? `linear-gradient(105deg, ${accent} 0%, #1a1528 60%, #0f0e17 100%)`
+    ? `linear-gradient(100deg, ${accent} 0%, #1c1630 55%, #0f0e17 100%)`
     : isDraw
-      ? "linear-gradient(180deg, #faf5ff 0%, #ffffff 40%)"
-      : "linear-gradient(180deg, #fff9f2 0%, #ffffff 42%)";
+      ? "linear-gradient(90deg, #faf5ff 0%, #ffffff 55%)"
+      : "linear-gradient(90deg, #fff7ed 0%, #ffffff 55%)";
 
   return (
     <div
       ref={cardRef}
       className={cn(
-        "break-inside-avoid w-full overflow-hidden",
-        "rounded-xl shadow-sm print:shadow-none print:rounded-lg",
+        "break-inside-avoid w-full overflow-hidden rounded-lg",
+        "shadow-sm print:shadow-none print:rounded-md",
         className
       )}
       style={{
         WebkitPrintColorAdjust: "exact",
         printColorAdjust: "exact",
-        border: `2px solid ${border}`,
+        border: isBold ? "none" : `1.5px solid ${hexAlpha(accent, 0.35)}`,
         background: bg,
         color: ink,
       }}
     >
-      {/* 顶栏色带 — 满宽 */}
-      <div
-        className="h-1.5 w-full"
-        style={{
-          background: isBold
-            ? "linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24)"
-            : `linear-gradient(90deg, ${accent}, ${shadeHex(accent, 20)}, ${accent})`,
-        }}
-      />
+      <div className="flex w-full items-stretch">
+        {/* 左色条 */}
+        <div
+          className="w-1.5 shrink-0"
+          style={{
+            background: isBold
+              ? "linear-gradient(180deg,#fbbf24,#f59e0b)"
+              : `linear-gradient(180deg,${accent},${shadeHex(accent, -12)})`,
+          }}
+        />
 
-      {/* 主区：品牌 + 票种 + 面值 同一行拉满 */}
-      <div className="px-3.5 pt-2.5 pb-1.5 print:px-4 print:pt-3">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <BrandBlock
-            businessName={businessName}
-            businessLogo={businessLogo}
-            isBold={isBold}
-          />
-          <div className="flex-1 min-w-0" />
-          <span
-            className="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-extrabold tracking-wide"
-            style={{
-              background: isBold ? "rgba(255,255,255,0.18)" : hexAlpha(accent, 0.12),
-              color: isBold ? "#fff" : accent,
-              border: isBold ? "none" : `1px solid ${hexAlpha(accent, 0.35)}`,
-            }}
-          >
-            {kindLabel}
-          </span>
+        {/* 中：文案 */}
+        <div className="flex-1 min-w-0 px-2.5 py-2 space-y-0.5">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {businessLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={businessLogo}
+                alt=""
+                className="w-6 h-6 rounded object-contain bg-white shrink-0 border border-black/10"
+              />
+            ) : (
+              <div
+                className={cn(
+                  "w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold shrink-0",
+                  isBold ? "bg-white/15" : "bg-orange-100 text-orange-800"
+                )}
+              >
+                {(businessName || "W").slice(0, 1).toUpperCase()}
+              </div>
+            )}
+            <span className="text-[11px] font-bold truncate">
+              {businessName || "Brand"}
+            </span>
+            <span
+              className="shrink-0 rounded px-1 text-[8px] font-extrabold"
+              style={{
+                background: isBold
+                  ? "rgba(255,255,255,0.16)"
+                  : hexAlpha(accent, 0.12),
+                color: isBold ? "#fff" : accent,
+              }}
+            >
+              {kindLabel}
+            </span>
+          </div>
+
+          <p className="text-[13px] font-bold leading-tight line-clamp-1">
+            {title}
+          </p>
           <p
-            className="shrink-0 font-black nums leading-none text-[1.75rem] print:text-[2rem] tracking-tight pl-1"
-            style={{ color: isBold ? "#fff" : accent }}
+            className="text-[9px] leading-snug line-clamp-1"
+            style={{ color: muted }}
           >
-            {face}
+            {storeName}
+            {storeAddress ? ` · ${storeAddress}` : ""}
+          </p>
+          <p
+            className="text-[8px] leading-snug line-clamp-2"
+            style={{ color: muted }}
+          >
+            {termsText}
+          </p>
+          <p
+            className="text-[9px] font-semibold"
+            style={{ color: isBold ? "#fde68a" : "#b45309" }}
+          >
+            {lang === "en" ? "This store · one-time" : "仅限本店 · 一次用完"}
+            <span className="font-medium ml-1.5" style={{ color: muted }}>
+              {lang === "en" ? "Until" : "至"} {validLabel}
+            </span>
           </p>
         </div>
 
-        {/* 标题 — 满宽 */}
-        <p
-          className="mt-2 text-[15px] print:text-base font-bold leading-snug line-clamp-2"
-          style={{ color: ink }}
+        {/* 右：金额 + 二维码（固定宽度，独立白底） */}
+        <div
+          className="shrink-0 flex flex-col items-center justify-center gap-1 border-l border-dashed px-2 py-2"
+          style={{
+            width: 112,
+            minWidth: 112,
+            borderColor: isBold ? "rgba(255,255,255,0.25)" : "#e2e8f0",
+            background: isBold ? "rgba(0,0,0,0.28)" : "#ffffff",
+          }}
         >
-          {title}
-        </p>
-
-        {/* 门店 — 满宽一行 */}
-        <p
-          className="mt-1 text-[11px] print:text-xs leading-snug line-clamp-1"
-          style={{ color: muted }}
-          title={
-            storeAddress ? `${storeName} · ${storeAddress}` : storeName
-          }
-        >
-          <span className="font-semibold" style={{ color: ink }}>
-            {storeName}
-          </span>
-          {storeAddress ? (
-            <span>
-              {" · "}
-              {storeAddress}
-            </span>
-          ) : null}
-        </p>
-      </div>
-
-      {/* 底栏：条款（主宽） + QR（紧凑，不占半屏） */}
-      <div
-        className="mx-3 mb-3 print:mx-4 print:mb-3.5 rounded-lg overflow-hidden"
-        style={{
-          border: isBold
-            ? "1px solid rgba(255,255,255,0.2)"
-            : `1px solid ${hexAlpha(accent, 0.22)}`,
-          background: isBold ? "rgba(0,0,0,0.2)" : "#fffefb",
-        }}
-      >
-        <div className="flex items-stretch min-w-0">
-          {/* 条款区：吃掉绝大部分宽度 */}
-          <div className="flex-1 min-w-0 px-3 py-2 print:px-3.5 print:py-2.5">
-            <p
-              className="text-[9px] font-bold uppercase tracking-wide mb-0.5"
-              style={{ color: isBold ? "rgba(253,230,138,0.9)" : accent }}
-            >
-              {lang === "en" ? "Terms" : "使用条款"}
-            </p>
-            <p
-              className="text-[10px] print:text-[11px] leading-relaxed"
-              style={{
-                color: muted,
-                display: "-webkit-box",
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-              }}
-            >
-              {termsText}
-            </p>
-            <p
-              className="mt-1.5 text-[10px] font-bold"
-              style={{ color: isBold ? "#fcd34d" : "#b91c1c" }}
-            >
-              {lang === "en"
-                ? "This store only · one-time use"
-                : "仅限本店 · 一次用完"}
-              <span
-                className="font-medium ml-2"
-                style={{ color: muted }}
-              >
-                {lang === "en" ? "Valid" : "有效期"} {validLabel}
-              </span>
-            </p>
-          </div>
-
-          {/* QR 区：固定窄宽，不空荡 */}
           <div
-            className="shrink-0 flex items-center gap-2 px-2.5 py-2"
+            className="font-black tabular-nums leading-none tracking-tight"
             style={{
-              borderLeft: isBold
-                ? "1px dashed rgba(255,255,255,0.3)"
-                : "1px dashed #e5e7eb",
-              background: isBold ? "rgba(255,255,255,0.06)" : "#ffffff",
-              width: 132,
+              fontSize: 22,
+              color: isBold ? "#ffffff" : accent,
             }}
           >
-            <QrImg qrSrc={qrSrc} className="w-[58px] h-[58px]" bordered={!isBold} />
-            <div className="min-w-0 flex-1">
-              <p
-                className="text-[8px] font-medium uppercase tracking-wide"
-                style={{ color: muted }}
-              >
-                {lang === "en" ? "Code" : "券码"}
-              </p>
-              <p
-                className="font-mono text-[8px] font-bold leading-tight"
-                style={{
-                  color: ink,
-                  wordBreak: "break-all",
-                  lineHeight: 1.2,
-                }}
-              >
-                {code}
-              </p>
-              <p className="text-[8px] mt-0.5" style={{ color: muted }}>
-                {lang === "en" ? "Scan to bind" : "扫码绑定"}
-              </p>
-            </div>
+            {face}
+          </div>
+
+          {/* 强制 72×72 白底 + 图，避免被 flex 挤没 */}
+          <QrPanel src={qr} px={72} />
+
+          <div
+            className="font-mono text-[7px] font-bold text-center leading-tight w-full px-0.5"
+            style={{
+              color: ink,
+              wordBreak: "break-all",
+              lineHeight: 1.15,
+            }}
+          >
+            {code}
+          </div>
+          <div className="text-[7px]" style={{ color: muted }}>
+            {lang === "en" ? "Scan to bind" : "扫码绑定"}
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** 固定像素盒：无论外层 flex 如何，QR 区域始终占位 */
+function QrPanel({ src, px }: { src: string; px: number }) {
+  return (
+    <div
+      style={{
+        width: px,
+        height: px,
+        minWidth: px,
+        minHeight: px,
+        maxWidth: px,
+        maxHeight: px,
+        background: "#ffffff",
+        borderRadius: 6,
+        padding: 3,
+        boxSizing: "border-box",
+        flexShrink: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+        border: "1px solid #e2e8f0",
+      }}
+    >
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt="QR"
+          width={px - 6}
+          height={px - 6}
+          style={{
+            width: px - 6,
+            height: px - 6,
+            display: "block",
+            objectFit: "contain",
+            background: "#fff",
+          }}
+        />
+      ) : (
+        <span
+          style={{
+            fontSize: 10,
+            color: "#94a3b8",
+            fontWeight: 600,
+          }}
+        >
+          …
+        </span>
+      )}
     </div>
   );
 }
@@ -437,42 +486,6 @@ function BrandBlock({
           WeMembers
         </p>
       </div>
-    </div>
-  );
-}
-
-function QrImg({
-  qrSrc,
-  className,
-  bordered,
-}: {
-  qrSrc?: string;
-  className?: string;
-  bordered?: boolean;
-}) {
-  if (qrSrc) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={qrSrc}
-        alt="QR"
-        className={cn(
-          "rounded-md bg-white shrink-0 object-contain",
-          className,
-          bordered && "border border-slate-300"
-        )}
-      />
-    );
-  }
-  return (
-    <div
-      className={cn(
-        "rounded-md bg-white shrink-0 flex items-center justify-center text-slate-400 text-[10px]",
-        className,
-        bordered && "border border-slate-300"
-      )}
-    >
-      QR
     </div>
   );
 }

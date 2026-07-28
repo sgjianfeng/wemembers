@@ -1,9 +1,23 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { TicketVisualCard } from "@/components/physical/TicketVisualCard";
 import { getVisualTemplate } from "@/lib/visual-templates";
 import { cn } from "@/lib/utils";
+import {
+  PRINT_SIZE_PRESETS,
+  canShareFiles,
+  downloadFile,
+  estimateSplitPlan,
+  exportPrintPdf,
+  exportShareSquarePng,
+  getPreset,
+  mmToPx,
+  shareExportPdf,
+  suggestSplitParts,
+  type ExportImageItem,
+  type PrintSizePresetId,
+} from "@/lib/physical-print-export";
 
 type Ticket = { code: string; status: string; claimUrl: string };
 
@@ -41,8 +55,31 @@ export function PhysicalPrintSheet({
     ? new Date(validUntil).toLocaleDateString(lang === "en" ? "en-SG" : "zh-CN")
     : "—";
   const tpl = getVisualTemplate(visualTemplateId);
-  const [shareBusy, setShareBusy] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [progress, setProgress] = useState("");
+  const [exportHint, setExportHint] = useState("");
+  const [exportItems, setExportItems] = useState<ExportImageItem[]>([]);
+  const [pdfBundle, setPdfBundle] = useState<{
+    file: File;
+    previewUrl: string;
+  } | null>(null);
+  const [previewIdx, setPreviewIdx] = useState(0);
+  const [sizeId, setSizeId] = useState<PrintSizePresetId>("strip_180x48");
+  const [customW, setCustomW] = useState("180");
+  const [customH, setCustomH] = useState("48");
+  // 默认 150：分享/下载更稳；正式印刷可选 300
+  const [dpi, setDpi] = useState<150 | 300>(150);
+  const [exportMode, setExportMode] = useState<"one" | "each" | "sheet">(
+    "sheet"
+  );
+  /**
+   * 拼版：null = 自动按张数建议份数；数字 = 用户指定分成几份。
+   * PNG 高度随「每份几张」自动变，不截断整张券。
+   */
+  const [splitMode, setSplitMode] = useState<"auto" | "manual">("auto");
+  const [manualParts, setManualParts] = useState(1);
   const first = tickets[0];
+
   // 仅「浅色经典 + 旧默认蓝」才映射暖橙；用户选了色块/其它色原样尊重
   const themeKey = (themeColor || "").trim().toUpperCase();
   const isClassic =
@@ -57,11 +94,357 @@ export function PhysicalPrintSheet({
       : themeColor ||
         (type === "voucher" && isClassic ? "#E85D04" : themeColor || null);
 
-  const downloadSharePng = useCallback(async () => {
+  const size = useMemo(() => {
+    if (sizeId === "custom") {
+      const widthMm = Math.min(
+        320,
+        Math.max(40, parseFloat(customW) || 180)
+      );
+      const heightMm = Math.min(
+        200,
+        Math.max(25, parseFloat(customH) || 60)
+      );
+      return {
+        id: "custom" as const,
+        widthMm,
+        heightMm,
+        labelZh: `${widthMm}×${heightMm} mm`,
+        labelEn: `${widthMm}×${heightMm} mm`,
+        hintZh: "自定义",
+        hintEn: "Custom",
+      };
+    }
+    return getPreset(sizeId);
+  }, [sizeId, customW, customH]);
+
+  // 导出宽度锚定 mm，高度按屏幕票条的真实比例走 —— 量一次屏幕预览即可预告尺寸
+  const [stripAspect, setStripAspect] = useState<number | null>(null);
+  useEffect(() => {
+    const read = () => {
+      const el = document.querySelector<HTMLElement>("[data-physical-ticket]");
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) setStripAspect(r.height / r.width);
+    };
+    read();
+    // QR / logo 加载完版式才定型，稍后再量一次
+    const timer = window.setTimeout(read, 600);
+    window.addEventListener("resize", read);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("resize", read);
+    };
+  }, [tickets.length, visualTemplateId, description, title]);
+
+  const effectiveHeightMm = useMemo(
+    () =>
+      stripAspect
+        ? Math.round(size.widthMm * stripAspect * 10) / 10
+        : size.heightMm,
+    [stripAspect, size.widthMm, size.heightMm]
+  );
+
+  const pxPreview = useMemo(
+    () => ({
+      w: mmToPx(size.widthMm, dpi),
+      h: mmToPx(effectiveHeightMm, dpi),
+    }),
+    [size.widthMm, effectiveHeightMm, dpi]
+  );
+
+  const autoParts = useMemo(
+    () => suggestSplitParts(tickets.length),
+    [tickets.length]
+  );
+
+  const effectiveParts = useMemo(() => {
+    if (splitMode === "auto") return autoParts;
+    return Math.max(1, Math.min(tickets.length || 1, manualParts));
+  }, [splitMode, autoParts, manualParts, tickets.length]);
+
+  const splitPlan = useMemo(
+    () =>
+      estimateSplitPlan({
+        ticketCount: tickets.length,
+        parts: effectiveParts,
+        ticketHeightMm: effectiveHeightMm,
+        dpi,
+      }),
+    [tickets.length, effectiveParts, effectiveHeightMm, dpi]
+  );
+
+  useEffect(() => {
+    setManualParts(suggestSplitParts(tickets.length));
+  }, [tickets.length]);
+
+  const drawBase = useMemo(
+    () => ({
+      title,
+      type,
+      valueCents,
+      storeName,
+      storeAddress,
+      businessName: businessName || "Store",
+      businessLogo,
+      validLabel,
+      terms: description,
+      themeColor: resolvedTheme || tpl.defaultThemeHex || "#E85D04",
+      bold: tpl.surface === "dark",
+      lang,
+      templateId: visualTemplateId,
+    }),
+    [
+      title,
+      type,
+      valueCents,
+      storeName,
+      storeAddress,
+      businessName,
+      businessLogo,
+      validLabel,
+      description,
+      resolvedTheme,
+      tpl.defaultThemeHex,
+      tpl.surface,
+      lang,
+      visualTemplateId,
+    ]
+  );
+
+  const shareSupported =
+    typeof navigator !== "undefined" && canShareFiles();
+
+  // 释放旧预览 URL
+  useEffect(() => {
+    return () => {
+      for (const it of exportItems) {
+        try {
+          URL.revokeObjectURL(it.previewUrl);
+        } catch {
+          /* ignore */
+        }
+      }
+      if (pdfBundle) {
+        try {
+          URL.revokeObjectURL(pdfBundle.previewUrl);
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const clearExportPreview = useCallback(() => {
+    setExportItems((prev) => {
+      for (const it of prev) {
+        try {
+          URL.revokeObjectURL(it.previewUrl);
+        } catch {
+          /* ignore */
+        }
+      }
+      return [];
+    });
+    setPdfBundle((prev) => {
+      if (prev) {
+        try {
+          URL.revokeObjectURL(prev.previewUrl);
+        } catch {
+          /* ignore */
+        }
+      }
+      return null;
+    });
+  }, []);
+
+  const runPrintExport = useCallback(
+    async (
+      delivery: "share" | "download",
+      /** 试导出：只截前 N 张，确认版式后再全量 */
+      limit?: number
+    ) => {
+      if (!tickets.length) return;
+      const list =
+        limit && limit > 0 ? tickets.slice(0, limit) : tickets;
+      setExportBusy(true);
+      setProgress("");
+      setExportHint(
+        lang === "en"
+          ? "Capturing on-screen ticket HTML…"
+          : "正在截取屏幕券条 HTML…"
+      );
+      clearExportPreview();
+
+      // 滚到条形预览，确保节点在 DOM 且 QR 已绘好
+      try {
+        document
+          .querySelector("[data-physical-print-list]")
+          ?.scrollIntoView({ block: "nearest" });
+      } catch {
+        /* ignore */
+      }
+      await new Promise((r) => setTimeout(r, 200));
+
+      try {
+        const trialParts =
+          limit && limit > 0
+            ? Math.max(1, Math.min(list.length, Math.ceil(list.length / 6)))
+            : exportMode === "sheet"
+              ? effectiveParts
+              : list.length;
+
+        const result = await exportPrintPdf({
+          tickets: list,
+          base: drawBase,
+          widthMm: size.widthMm,
+          heightMm: size.heightMm,
+          dpi,
+          splitParts: trialParts,
+          filePrefix:
+            (title.slice(0, 20) || "ticket") +
+            (limit ? `-trial${limit}` : ""),
+          delivery,
+          shareTitle: title,
+          shareText:
+            lang === "en"
+              ? `${list.length} print tickets (PDF) · WeMembers`
+              : `${list.length} 张实体券 PDF · WeMembers`,
+          onProgress: (done, total) => {
+            setProgress(
+              lang === "en"
+                ? `Screenshot ${done}/${total}`
+                : `截图 ${done}/${total}`
+            );
+          },
+        });
+
+        setExportItems(result.items);
+        setPreviewIdx(0);
+        if (result.pdf) setPdfBundle(result.pdf);
+
+        const trialNote =
+          limit && list.length < tickets.length
+            ? lang === "en"
+              ? `Trial: first ${list.length} of ${tickets.length}. `
+              : `试导出：前 ${list.length}/${tickets.length} 张。 `
+            : "";
+
+        // 高度由票面版式比例决定（宽度锚定 mm），把真实尺寸报回来
+        const sizeNote = result.ticketSizeMm
+          ? lang === "en"
+            ? ` Each ticket ${result.ticketSizeMm.widthMm}×${result.ticketSizeMm.heightMm} mm.`
+            : ` 单张 ${result.ticketSizeMm.widthMm}×${result.ticketSizeMm.heightMm} mm。`
+          : "";
+
+        if (result.delivery === "shared") {
+          setExportHint(
+            trialNote +
+              (lang === "en"
+                ? `Shared multi-page PDF (${result.pages} pages).`
+                : `已分享多页 PDF（${result.pages} 页）。`) +
+              sizeNote
+          );
+        } else if (result.delivery === "cancelled") {
+          setExportHint(
+            trialNote +
+              (lang === "en"
+                ? "Share cancelled. Tap Save PDF below."
+                : "已取消分享。可点下方「保存 PDF」。")
+          );
+        } else if (result.delivery === "preview") {
+          if (result.errorKey === "share_unsupported") {
+            setExportHint(
+              trialNote +
+                (lang === "en"
+                  ? "Tap Save PDF — file goes to Downloads."
+                  : "请点「保存 PDF」→ 在「下载」找 .pdf。")
+            );
+          } else if (result.errorKey === "share_error") {
+            setExportHint(
+              trialNote +
+                (lang === "en"
+                  ? "Share failed. Save PDF then attach in WhatsApp."
+                  : "分享失败。请先「保存 PDF」再发 WhatsApp。")
+            );
+          } else {
+            setExportHint(
+              trialNote +
+                (lang === "en"
+                  ? `PDF ready · ${result.pages} page(s). Matches on-screen strip (HTML capture).`
+                  : `PDF 已生成 · ${result.pages} 页。版式与下方屏幕券条一致（HTML 截图）。`) +
+                sizeNote
+            );
+          }
+        } else {
+          setExportHint(
+            lang === "en"
+              ? "Export failed. Try “trial 6” or lower DPI."
+              : "导出失败。可先「试导出 6 张」或降低 DPI。"
+          );
+        }
+        setProgress("");
+      } catch (e) {
+        console.error(e);
+        setExportHint(lang === "en" ? "Export failed" : "导出失败，请重试");
+      }
+      setExportBusy(false);
+    },
+    [
+      tickets,
+      drawBase,
+      size,
+      dpi,
+      exportMode,
+      effectiveParts,
+      title,
+      lang,
+      clearExportPreview,
+    ]
+  );
+
+  const savePdf = useCallback(async () => {
+    if (!pdfBundle) return;
+    await downloadFile(pdfBundle.file);
+    setExportHint(
+      lang === "en"
+        ? `Saved “${pdfBundle.file.name}” → browser Downloads / Files app.`
+        : `已保存「${pdfBundle.file.name}」→ 请到浏览器「下载」或系统「文件」App 查看。`
+    );
+  }, [pdfBundle, lang]);
+
+  const sharePdfAgain = useCallback(async () => {
+    if (!pdfBundle) return;
+    const r = await shareExportPdf(pdfBundle, {
+      title: title,
+      text:
+        lang === "en"
+          ? "Print tickets PDF"
+          : "实体券印刷 PDF",
+    });
+    if (r === "shared") {
+      setExportHint(
+        lang === "en"
+          ? "Shared PDF — choose WhatsApp"
+          : "已打开分享 → 选 WhatsApp 发送 PDF"
+      );
+    } else if (r === "cancelled") {
+      setExportHint(lang === "en" ? "Cancelled" : "已取消");
+    } else {
+      setExportHint(
+        lang === "en"
+          ? "Share not available. Use Save PDF, then attach in WhatsApp."
+          : "无法系统分享。请「保存 PDF」后，在 WhatsApp 里用附件发送。"
+      );
+    }
+  }, [pdfBundle, title, lang]);
+
+  const runShareSquare = useCallback(async () => {
     if (!first) return;
-    setShareBusy(true);
+    setExportBusy(true);
+    setExportHint("");
     try {
-      await drawShareCanvas({
+      const r = await exportShareSquarePng({
         title,
         type,
         valueCents,
@@ -69,67 +452,381 @@ export function PhysicalPrintSheet({
         businessName: businessName || "Store",
         businessLogo,
         code: first.code,
-        claimUrl: first.claimUrl,
         validLabel,
         themeColor: resolvedTheme || tpl.defaultThemeHex || "#E85D04",
         bold: tpl.surface === "dark",
         lang,
+        delivery: "share",
       });
+      if (r === "shared") {
+        setExportHint(
+          lang === "en" ? "1:1 shared" : "1:1 方图已分享，可选 WhatsApp"
+        );
+      } else if (r === "cancelled") {
+        setExportHint(lang === "en" ? "Cancelled" : "已取消");
+      } else {
+        setExportHint(
+          lang === "en"
+            ? "Saved 1:1 to Downloads"
+            : "已下载 1:1 方图到「下载」文件夹"
+        );
+      }
     } catch (e) {
       console.error(e);
-      alert(lang === "en" ? "Export failed" : "导出失败，请重试");
+      setExportHint(lang === "en" ? "Export failed" : "导出失败");
     }
-    setShareBusy(false);
+    setExportBusy(false);
   }, [
-    businessLogo,
-    businessName,
     first,
-    lang,
-    storeName,
-    resolvedTheme,
     title,
-    tpl.surface,
     type,
-    validLabel,
     valueCents,
+    storeName,
+    businessName,
+    businessLogo,
+    validLabel,
+    resolvedTheme,
+    tpl.defaultThemeHex,
+    tpl.surface,
+    lang,
   ]);
+
+  const previewItem = exportItems[previewIdx] || null;
 
   return (
     <div className="px-4 mt-4">
-      <div className="print:hidden flex flex-wrap gap-2 mb-3 items-center">
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="inline-flex h-9 items-center rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground active:scale-[0.97] transition-transform"
-        >
-          {lang === "en" ? "Print / Save PDF" : "打印 / 存为 PDF"}
-        </button>
-        <button
-          type="button"
-          disabled={!first || shareBusy}
-          onClick={downloadSharePng}
-          className="inline-flex h-9 items-center rounded-full bg-foreground px-4 text-xs font-semibold text-background disabled:opacity-50 active:scale-[0.97] transition-transform"
-        >
-          {shareBusy
-            ? "…"
-            : lang === "en"
-              ? "Download 1:1 share PNG"
-              : "下载 1:1 分享图"}
-        </button>
-        <p className="text-[11px] text-muted-foreground">
-          {lang === "en" ? tpl.nameEn : tpl.nameZh}
-          {" · "}
-          {lang === "en"
-            ? "WA / IG / Xiaohongshu"
-            : "WhatsApp / IG / 小红书"}
-        </p>
+      {/* ── 导出控制（屏幕） ── */}
+      <div className="print:hidden space-y-3 mb-5">
+        <div className="rounded-2xl border border-border bg-card p-3.5 space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              {lang === "en" ? "Print export (PDF)" : "印刷导出（PDF）"}
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+              {lang === "en"
+                ? "We screenshot the on-screen strip HTML (same as preview below), pack full tickets into pages, then one multi-page PDF."
+                : "直接截取下方「屏幕条形预览」的 HTML 票面（所见即所得），再按完整券分页合成一个多页 PDF。"}
+            </p>
+          </div>
+
+          {/* 尺寸预设 */}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">
+              {lang === "en" ? "Ticket size" : "单张尺寸"}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {PRINT_SIZE_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setSizeId(p.id)}
+                  className={cn(
+                    "px-2.5 py-1.5 rounded-full text-[11px] font-semibold border transition-colors",
+                    sizeId === p.id
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground"
+                  )}
+                >
+                  {lang === "en" ? p.labelEn : p.labelZh}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setSizeId("custom")}
+                className={cn(
+                  "px-2.5 py-1.5 rounded-full text-[11px] font-semibold border transition-colors",
+                  sizeId === "custom"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground"
+                )}
+              >
+                {lang === "en" ? "Custom" : "自定义"}
+              </button>
+            </div>
+            {sizeId === "custom" && (
+              <div className="flex items-center gap-2 mt-2">
+                <input
+                  type="number"
+                  min={40}
+                  max={320}
+                  value={customW}
+                  onChange={(e) => setCustomW(e.target.value)}
+                  className="w-20 h-9 px-2 rounded-lg border border-input bg-background text-sm tabular-nums"
+                  aria-label="width mm"
+                />
+                <span className="text-xs text-muted-foreground">×</span>
+                <input
+                  type="number"
+                  min={25}
+                  max={200}
+                  value={customH}
+                  onChange={(e) => setCustomH(e.target.value)}
+                  className="w-20 h-9 px-2 rounded-lg border border-input bg-background text-sm tabular-nums"
+                  aria-label="height mm"
+                />
+                <span className="text-xs text-muted-foreground">mm</span>
+              </div>
+            )}
+            <p className="text-[10px] text-muted-foreground mt-1.5">
+              {lang === "en" ? size.hintEn : size.hintZh}
+              {" · "}
+              {pxPreview.w}×{pxPreview.h} px @ {dpi} DPI
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
+              {lang === "en"
+                ? `Width is the anchor: ${size.widthMm} mm. Height follows the strip layout ≈ ${effectiveHeightMm} mm (never stretched).`
+                : `以宽度为准：${size.widthMm} mm。高度按票面版式等比得出 ≈ ${effectiveHeightMm} mm，不会被拉伸变形。`}
+            </p>
+          </div>
+
+          {/* DPI */}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">
+              DPI
+            </p>
+            <div className="flex gap-1.5">
+              {(
+                [
+                  { d: 150 as const, zh: "150 · 屏幕/快印", en: "150 · draft" },
+                  { d: 300 as const, zh: "300 · 印刷推荐", en: "300 · print" },
+                ] as const
+              ).map((o) => (
+                <button
+                  key={o.d}
+                  type="button"
+                  onClick={() => setDpi(o.d)}
+                  className={cn(
+                    "px-2.5 py-1.5 rounded-full text-[11px] font-semibold border",
+                    dpi === o.d
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground"
+                  )}
+                >
+                  {lang === "en" ? o.en : o.zh}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* PDF 分页：按张数均分到多页 */}
+          {exportMode === "sheet" && (
+            <div className="rounded-xl border border-border/80 bg-muted/30 px-3 py-2.5 space-y-2">
+              <p className="text-xs font-medium text-foreground">
+                {lang === "en" ? "PDF pages" : "PDF 分成几页"}
+              </p>
+              <p className="text-[10px] text-muted-foreground leading-snug">
+                {lang === "en"
+                  ? "Even split by ticket count. Page breaks only between full tickets — never cut mid-ticket."
+                  : "按总张数均分到 PDF 各页。分页只发生在完整券之间，绝不会截断半张。"}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setSplitMode("auto")}
+                  className={cn(
+                    "px-2.5 py-1.5 rounded-full text-[11px] font-semibold border",
+                    splitMode === "auto"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground"
+                  )}
+                >
+                  {lang === "en"
+                    ? `Auto · ${autoParts}`
+                    : `自动 · ${autoParts} 份`}
+                </button>
+                {Array.from(
+                  new Set(
+                    [1, 2, 3, 4, 5, 6, 8, 10, tickets.length].filter(
+                      (n) => n >= 1 && n <= Math.max(1, tickets.length)
+                    )
+                  )
+                )
+                  .sort((a, b) => a - b)
+                  .map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => {
+                        setSplitMode("manual");
+                        setManualParts(n);
+                      }}
+                      className={cn(
+                        "px-2.5 py-1.5 rounded-full text-[11px] font-semibold border tabular-nums",
+                        splitMode === "manual" && manualParts === n
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground"
+                      )}
+                    >
+                      {n}
+                      {lang === "en" ? "" : " 份"}
+                    </button>
+                  ))}
+              </div>
+              {splitMode === "manual" && tickets.length > 10 && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={tickets.length}
+                    value={manualParts}
+                    onChange={(e) => {
+                      setSplitMode("manual");
+                      setManualParts(
+                        Math.max(
+                          1,
+                          Math.min(
+                            tickets.length,
+                            parseInt(e.target.value, 10) || 1
+                          )
+                        )
+                      );
+                    }}
+                    className="w-20 h-9 px-2 rounded-lg border border-input bg-background text-sm tabular-nums"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {lang === "en"
+                      ? `parts (1–${tickets.length})`
+                      : `份（1–${tickets.length}）`}
+                  </span>
+                </div>
+              )}
+              <p className="text-[11px] font-semibold text-primary tabular-nums leading-snug">
+                {lang === "en"
+                  ? `${tickets.length} tickets → ${splitPlan.parts} PDF page(s) · ~${splitPlan.minPerPart}${
+                      splitPlan.minPerPart !== splitPlan.maxPerPart
+                        ? `–${splitPlan.maxPerPart}`
+                        : ""
+                    } tickets/page`
+                  : `共 ${tickets.length} 张 → PDF ${splitPlan.parts} 页 · 每页约 ${
+                      splitPlan.minPerPart === splitPlan.maxPerPart
+                        ? `${splitPlan.maxPerPart}`
+                        : `${splitPlan.minPerPart}–${splitPlan.maxPerPart}`
+                    } 张完整券`}
+              </p>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2 pt-0.5">
+            <button
+              type="button"
+              disabled={!tickets.length || exportBusy}
+              onClick={() => runPrintExport("share")}
+              className="inline-flex h-11 w-full items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50 active:scale-[0.98] transition-transform"
+            >
+              {exportBusy
+                ? progress || "…"
+                : lang === "en"
+                  ? shareSupported
+                    ? "Share multi-page PDF · WhatsApp"
+                    : "Generate multi-page PDF"
+                  : shareSupported
+                    ? "分享多页 PDF · WhatsApp"
+                    : "生成多页 PDF"}
+            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={!tickets.length || exportBusy}
+                onClick={() => runPrintExport("download")}
+                className="inline-flex h-9 flex-1 items-center justify-center rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground disabled:opacity-50"
+              >
+                {lang === "en" ? "Generate PDF" : "生成 PDF"}
+              </button>
+              <button
+                type="button"
+                disabled={!tickets.length || exportBusy || tickets.length <= 6}
+                onClick={() => runPrintExport("download", 6)}
+                className="inline-flex h-9 flex-1 items-center justify-center rounded-full border border-primary/40 bg-primary/5 px-3 text-xs font-semibold text-primary disabled:opacity-50"
+              >
+                {lang === "en" ? "Trial 6" : "试导出 6 张"}
+              </button>
+              <button
+                type="button"
+                disabled={!first || exportBusy}
+                onClick={runShareSquare}
+                className="inline-flex h-9 flex-1 items-center justify-center rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground disabled:opacity-50"
+              >
+                {lang === "en" ? "1:1 image" : "1:1 方图"}
+              </button>
+            </div>
+            <p className="text-[10px] text-muted-foreground leading-snug">
+              {lang === "en"
+                ? "Tip: use “Trial 6” first to check QR & layout, then export all."
+                : "建议先「试导出 6 张」核对二维码与版式，确认后再生成全部。"}
+            </p>
+          </div>
+
+          {exportHint && (
+            <p className="text-[11px] leading-relaxed rounded-lg bg-muted/60 px-2.5 py-2 text-foreground">
+              {exportHint}
+            </p>
+          )}
+
+          {/* PDF 结果：单文件多页 */}
+          {pdfBundle && (
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-2.5 space-y-2">
+              <p className="text-xs font-semibold text-foreground">
+                {lang === "en" ? "PDF ready" : "PDF 已就绪"}
+                <span className="ml-1.5 font-normal text-muted-foreground">
+                  {pdfBundle.file.name}
+                </span>
+              </p>
+              <p className="text-[10px] text-muted-foreground leading-snug">
+                {lang === "en"
+                  ? "One file · multi-page · full tickets only on each page. Print shop can print as-is."
+                  : "一个文件 · 多页 · 每页只有完整券。打印店可直接印。"}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={sharePdfAgain}
+                  className="h-10 flex-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold"
+                >
+                  {lang === "en" ? "Share PDF" : "分享 PDF（WhatsApp）"}
+                </button>
+                <button
+                  type="button"
+                  onClick={savePdf}
+                  className="h-10 flex-1 rounded-full border border-border bg-card text-xs font-semibold"
+                >
+                  {lang === "en" ? "Save PDF" : "保存 PDF"}
+                </button>
+              </div>
+              <a
+                href={pdfBundle.previewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center text-[11px] font-semibold text-primary py-1"
+              >
+                {lang === "en" ? "Open PDF in new tab" : "新标签打开 PDF 预览"}
+              </a>
+            </div>
+          )}
+
+          {/* 首页缩略预览（可选） */}
+          {previewItem && (
+            <div className="rounded-xl border border-border bg-muted/30 p-2.5 space-y-2">
+              <p className="text-xs font-semibold text-foreground">
+                {lang === "en" ? "Page 1 preview" : "第 1 页预览"}
+              </p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewItem.previewUrl}
+                alt="page1"
+                className="w-full rounded-lg border border-border bg-white"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Share preview (visible) */}
+      {/* Share preview */}
       {first && (
         <div className="print:hidden mb-6">
           <p className="text-xs font-medium text-muted-foreground mb-2">
-            {lang === "en" ? "Share preview (1:1)" : "分享预览（1:1 · 用第一张码）"}
+            {lang === "en"
+              ? "Share preview (1:1 · first code)"
+              : "分享预览（1:1 · 第一张码）"}
           </p>
           <div className="max-w-[280px]">
             <TicketVisualCard
@@ -144,7 +841,7 @@ export function PhysicalPrintSheet({
               businessLogo={businessLogo}
               validLabel={validLabel}
               code={first.code}
-              qrSrc={`/api/physical/qr?code=${encodeURIComponent(first.code)}&size=200`}
+              claimUrl={first.claimUrl}
               lang={lang}
               terms={description}
               mode="share"
@@ -154,173 +851,49 @@ export function PhysicalPrintSheet({
       )}
 
       <p className="print:hidden text-xs font-medium text-muted-foreground mb-1">
-        {lang === "en" ? "Print sheet (wide strip)" : "印刷票面（宽幅条形）"}
+        {lang === "en"
+          ? "On-screen strip (export screenshots this HTML)"
+          : "屏幕条形预览（导出即截此 HTML）"}
       </p>
       <p className="print:hidden text-[11px] text-muted-foreground mb-3 leading-relaxed">
         {lang === "en"
-          ? "Full-width strip · terms on front (≈3 lines) · QR compact. Print: colour + “Background graphics”."
-          : "满宽条形 · 正面条款约三行 · QR 紧凑。打印请开彩色与「背景图形」。"}
+          ? `${tickets.length} codes · PDF is a screenshot of these strips, then multi-page without cutting tickets.`
+          : `共 ${tickets.length} 张。PDF = 截取下列券条 HTML，再按完整券分页，不会截断。`}
       </p>
 
-      {/* 宽幅：始终一行一张，拉满内容区宽度 */}
       <div
-        className={cn("flex flex-col gap-3 w-full max-w-2xl print:max-w-none print:gap-2.5")}
+        data-physical-print-list="1"
+        className={cn(
+          "flex flex-col gap-1.5 w-full max-w-2xl print:max-w-none print:gap-1"
+        )}
         style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}
       >
         {tickets.map((t) => (
-          <TicketVisualCard
+          <div
             key={t.code}
-            templateId={visualTemplateId}
-            themeColor={resolvedTheme}
-            type={type}
-            title={title}
-            valueCents={valueCents}
-            storeName={storeName}
-            storeAddress={storeAddress}
-            businessName={businessName}
-            businessLogo={businessLogo}
-            validLabel={validLabel}
-            code={t.code}
-            qrSrc={`/api/physical/qr?code=${encodeURIComponent(t.code)}&size=140`}
-            lang={lang}
-            terms={description}
-            mode="print"
-          />
+            data-physical-ticket={t.code}
+            className="w-full"
+          >
+            <TicketVisualCard
+              templateId={visualTemplateId}
+              themeColor={resolvedTheme}
+              type={type}
+              title={title}
+              valueCents={valueCents}
+              storeName={storeName}
+              storeAddress={storeAddress}
+              businessName={businessName}
+              businessLogo={businessLogo}
+              validLabel={validLabel}
+              code={t.code}
+              claimUrl={t.claimUrl}
+              lang={lang}
+              terms={description}
+              mode="print"
+            />
+          </div>
         ))}
       </div>
     </div>
   );
-}
-
-async function drawShareCanvas(opts: {
-  title: string;
-  type: string;
-  valueCents: number;
-  storeName: string;
-  businessName: string;
-  businessLogo?: string | null;
-  code: string;
-  claimUrl: string;
-  validLabel: string;
-  themeColor: string;
-  bold: boolean;
-  lang: "zh" | "en";
-}) {
-  const size = 1080;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-
-  if (opts.bold) {
-    const g = ctx.createLinearGradient(0, 0, size, size);
-    g.addColorStop(0, opts.themeColor);
-    g.addColorStop(1, "#0f0e17");
-    ctx.fillStyle = g;
-  } else {
-    ctx.fillStyle = "#ffffff";
-  }
-  ctx.fillRect(0, 0, size, size);
-
-  const fg = opts.bold ? "#ffffff" : "#0f172a";
-  const muted = opts.bold ? "rgba(255,255,255,0.7)" : "#64748b";
-
-  ctx.fillStyle = fg;
-  ctx.font = "bold 36px system-ui,sans-serif";
-  ctx.fillText(opts.businessName.slice(0, 28), 64, 100);
-
-  ctx.fillStyle = muted;
-  ctx.font = "24px system-ui,sans-serif";
-  ctx.fillText("WeMembers", 64, 140);
-
-  ctx.fillStyle = fg;
-  ctx.font = "bold 52px system-ui,sans-serif";
-  wrapText(ctx, opts.title, 64, 240, size - 128, 60);
-
-  if (opts.type === "voucher") {
-    ctx.fillStyle = opts.bold ? "#fff" : opts.themeColor;
-    ctx.font = "bold 96px system-ui,sans-serif";
-    ctx.fillText(`S$${(opts.valueCents / 100).toFixed(0)}`, 64, 420);
-  } else {
-    ctx.fillStyle = opts.bold ? "#fde68a" : "#7c3aed";
-    ctx.font = "bold 40px system-ui,sans-serif";
-    ctx.fillText(
-      opts.lang === "en" ? "Lucky draw ticket" : "抽奖券",
-      64,
-      400
-    );
-  }
-
-  ctx.fillStyle = muted;
-  ctx.font = "28px system-ui,sans-serif";
-  ctx.fillText(`🏪 ${opts.storeName}`.slice(0, 40), 64, 500);
-  ctx.fillStyle = opts.bold ? "#fbbf24" : "#dc2626";
-  ctx.font = "bold 26px system-ui,sans-serif";
-  ctx.fillText(
-    opts.lang === "en"
-      ? "This store only · one-time"
-      : "仅限本店 · 一次用完",
-    64,
-    550
-  );
-
-  ctx.fillStyle = muted;
-  ctx.font = "22px ui-monospace,monospace";
-  ctx.fillText(opts.code, 64, 980);
-  ctx.fillText(
-    `${opts.lang === "en" ? "Valid" : "有效期"} ${opts.validLabel}`,
-    64,
-    1020
-  );
-
-  // QR via image
-  try {
-    const qrUrl = `/api/physical/qr?code=${encodeURIComponent(opts.code)}&size=320`;
-    const img = await loadImage(qrUrl);
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(size - 64 - 280, size - 64 - 320, 300, 300);
-    ctx.drawImage(img, size - 64 - 260, size - 64 - 300, 260, 260);
-  } catch {
-    /* skip qr */
-  }
-
-  const a = document.createElement("a");
-  a.href = canvas.toDataURL("image/png");
-  a.download = `${opts.title.slice(0, 30)}-share.png`;
-  a.click();
-}
-
-function wrapText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  lineHeight: number
-) {
-  const chars = text.split("");
-  let line = "";
-  let yy = y;
-  for (const ch of chars) {
-    const test = line + ch;
-    if (ctx.measureText(test).width > maxWidth && line) {
-      ctx.fillText(line, x, yy);
-      line = ch;
-      yy += lineHeight;
-    } else {
-      line = test;
-    }
-  }
-  ctx.fillText(line, x, yy);
-}
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
 }
