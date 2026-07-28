@@ -39,10 +39,10 @@ export const VISUAL_TEMPLATES: VisualTemplateMeta[] = [
   {
     id: "store_classic",
     family: "store",
-    nameZh: "条形代金券",
-    nameEn: "Strip voucher",
-    taglineZh: "暖色条形 · A4 一行两张 · 像真券",
-    taglineEn: "Warm strip · 2 per A4 row · gift-voucher look",
+    nameZh: "宽幅代金券",
+    nameEn: "Wide voucher",
+    taglineZh: "满宽条形 · 条款+QR 底栏 · 像真券",
+    taglineEn: "Full-width strip · terms + QR footer · gift look",
     // 暖橙金更像消费券（蓝太偏平台感）
     defaultThemeHex: "#E85D04",
     surface: "light",

@@ -96,6 +96,7 @@ export default async function PhysicalBatchDetailPage({
         tickets={tickets}
         visualTemplateId={batch.visualTemplateId}
         themeColor={batch.themeColor}
+        description={batch.description}
       />
     </div>
   );

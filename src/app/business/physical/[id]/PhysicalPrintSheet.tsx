@@ -20,6 +20,7 @@ export function PhysicalPrintSheet({
   tickets,
   visualTemplateId,
   themeColor,
+  description,
 }: {
   lang: "zh" | "en";
   title: string;
@@ -33,6 +34,8 @@ export function PhysicalPrintSheet({
   tickets: Ticket[];
   visualTemplateId?: string | null;
   themeColor?: string | null;
+  /** 批次说明 → 票面条款小字 */
+  description?: string | null;
 }) {
   const validLabel = validUntil
     ? new Date(validUntil).toLocaleDateString(lang === "en" ? "en-SG" : "zh-CN")
@@ -136,6 +139,7 @@ export function PhysicalPrintSheet({
               code={first.code}
               qrSrc={`/api/physical/qr?code=${encodeURIComponent(first.code)}&size=200`}
               lang={lang}
+              terms={description}
               mode="share"
             />
           </div>
@@ -143,23 +147,17 @@ export function PhysicalPrintSheet({
       )}
 
       <p className="print:hidden text-xs font-medium text-muted-foreground mb-1">
-        {lang === "en" ? "Print sheet (horizontal strips)" : "印刷票面（横向条形）"}
+        {lang === "en" ? "Print sheet (wide strip)" : "印刷票面（宽幅条形）"}
       </p>
       <p className="print:hidden text-[11px] text-muted-foreground mb-3 leading-relaxed">
         {lang === "en"
-          ? "Screen: 1 strip per row. Print A4: 2 per row. Turn on “Background graphics”."
-          : "屏幕一行一张；A4 打印一行两张。请开启「背景图形 / 打印背景色」。"}
+          ? "Full-width strip · terms on front (≈3 lines) · QR compact. Print: colour + “Background graphics”."
+          : "满宽条形 · 正面条款约三行 · QR 紧凑。打印请开彩色与「背景图形」。"}
       </p>
 
-      {/*
-        屏幕始终 1 列（避免窄屏把横条挤竖）
-        仅 print 时 2 列；代金券强制经典浅色模版
-      */}
+      {/* 宽幅：始终一行一张，拉满内容区宽度 */}
       <div
-        className={cn(
-          "grid grid-cols-1 gap-3 max-w-3xl",
-          "print:max-w-none print:grid-cols-2 print:gap-x-3 print:gap-y-2"
-        )}
+        className={cn("flex flex-col gap-3 w-full max-w-2xl print:max-w-none print:gap-2.5")}
         style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}
       >
         {tickets.map((t) => (
@@ -180,6 +178,7 @@ export function PhysicalPrintSheet({
             code={t.code}
             qrSrc={`/api/physical/qr?code=${encodeURIComponent(t.code)}&size=140`}
             lang={lang}
+            terms={description}
             mode="print"
           />
         ))}
