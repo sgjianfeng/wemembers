@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent } from "@/components/ui/Card";
 import { useLang } from "@/components/i18n/LanguageProvider";
 import { VoucherTypeBadge } from "@/components/voucher/VoucherTypeBadge";
-import { ArrowLeft, ArrowRight, Copy, Check } from "lucide-react";
+import { ArrowLeft, Copy } from "lucide-react";
+import { parseRulesSnapshot } from "@/lib/templates";
+import { cn } from "@/lib/utils";
 
 type CampaignOpt = {
   id: string;
@@ -15,11 +17,77 @@ type CampaignOpt = {
   productKind?: string;
   status?: string;
   type?: string;
+  rulesSnapshot?: string | null;
+  discountPercent: number;
+  enabledTiers: number[];
+  packKind: string | null;
+  minSpendMultiplier: number;
+  /** 折扣是否由产品固定（不可在柜台改） */
+  discountLocked: boolean;
 };
+
 type StoreOpt = { id: string; name: string };
 
-const QUICK_VOUCHER = [10, 20, 50, 100];
-const QUICK_DRAW = [50, 100, 200];
+const FALLBACK_VOUCHER_TIERS = [10, 20, 50, 100];
+const FALLBACK_DRAW_TIERS = [50, 100];
+
+function mapCampaign(raw: Record<string, unknown>): CampaignOpt {
+  const snap = parseRulesSnapshot(
+    typeof raw.rulesSnapshot === "string" ? raw.rulesSnapshot : null
+  );
+  let enabledTiers: number[] = Array.isArray(snap?.enabledTiers)
+    ? (snap!.enabledTiers as number[]).filter(
+        (n) => Number.isFinite(n) && n > 0
+      )
+    : [];
+  if (!enabledTiers.length && typeof raw.voucherTiers === "string") {
+    try {
+      const tiers = JSON.parse(raw.voucherTiers) as { min?: number }[];
+      enabledTiers = tiers
+        .map((t) => Number(t.min))
+        .filter((n) => Number.isFinite(n) && n > 0)
+        .sort((a, b) => a - b);
+    } catch {
+      /* ignore */
+    }
+  }
+  const packKind =
+    snap && typeof (snap as { packKind?: string }).packKind === "string"
+      ? String((snap as { packKind?: string }).packKind)
+      : null;
+  const type = typeof raw.type === "string" ? raw.type : "";
+  const isDraw = type === "lucky_draw_v2" || type === "lucky_draw";
+  let discountPercent = Number(snap?.discountPercent) || 0;
+  // 9 折卡固定 10%；原价包固定 0；其它模版用 snapshot
+  if (packKind === "discount_10") discountPercent = 10;
+  else if (packKind === "face_open" || packKind === "face_threshold")
+    discountPercent = 0;
+  else if (isDraw) discountPercent = 0;
+
+  // 产品包自带折扣 → 柜台不可改，避免和线上 SKU 不一致
+  const discountLocked =
+    isDraw ||
+    packKind === "discount_10" ||
+    packKind === "face_open" ||
+    packKind === "face_threshold" ||
+    packKind === "exclusive_ballot";
+
+  return {
+    id: String(raw.id),
+    name: String(raw.name || ""),
+    productKind:
+      typeof raw.productKind === "string" ? raw.productKind : undefined,
+    status: typeof raw.status === "string" ? raw.status : undefined,
+    type,
+    rulesSnapshot:
+      typeof raw.rulesSnapshot === "string" ? raw.rulesSnapshot : null,
+    discountPercent,
+    enabledTiers,
+    packKind,
+    minSpendMultiplier: Number(snap?.minSpendMultiplier) || 0,
+    discountLocked,
+  };
+}
 
 export default function IssueSelfPage() {
   const { t, lang } = useLang();
@@ -29,8 +97,8 @@ export default function IssueSelfPage() {
   const [campaignId, setCampaignId] = useState("");
   const [storeId, setStoreId] = useState("");
   const [amountSgd, setAmountSgd] = useState("100");
-  /** 0 = 无折扣；10 = 付 90 得 100 */
-  const [discountPercent, setDiscountPercent] = useState(10);
+  /** 仅未锁定产品可改；锁定时以产品规则为准 */
+  const [discountPercent, setDiscountPercent] = useState(0);
   const [phone, setPhone] = useState("");
   const [cashConfirmed, setCashConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -54,22 +122,19 @@ export default function IssueSelfPage() {
     ]);
     if (cRes.ok) {
       const j = await cRes.json();
-      const list = (j.data || []).filter(
-        (c: CampaignOpt) =>
-          c.productKind === "self_use" &&
-          (c.status === "active" || c.status === "draft")
-      );
-      setCampaigns(
-        list.map((c: CampaignOpt & { type?: string }) => ({
-          id: c.id,
-          name: c.name,
-          productKind: c.productKind,
-          status: c.status,
-          type: c.type,
-        }))
-      );
-      if (list[0] && !campaignId) setCampaignId(list[0].id);
-      else if (list[0]) setCampaignId((id) => id || list[0].id);
+      const list = (j.data || [])
+        .filter(
+          (c: { productKind?: string; status?: string }) =>
+            c.productKind === "self_use" &&
+            (c.status === "active" || c.status === "draft")
+        )
+        .map((c: Record<string, unknown>) => mapCampaign(c));
+      setCampaigns(list);
+      if (list[0]) {
+        setCampaignId((id) =>
+          list.some((c: CampaignOpt) => c.id === id) ? id : list[0].id
+        );
+      }
     }
     if (sRes.ok) {
       const j = await sRes.json();
@@ -87,6 +152,48 @@ export default function IssueSelfPage() {
     void loadCampaignsAndStores();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const selectedCamp = useMemo(
+    () => campaigns.find((c) => c.id === campaignId) || null,
+    [campaigns, campaignId]
+  );
+  const isDrawCamp =
+    selectedCamp?.type === "lucky_draw_v2" ||
+    selectedCamp?.type === "lucky_draw";
+
+  const quickAmounts = useMemo(() => {
+    if (selectedCamp?.enabledTiers?.length) return selectedCamp.enabledTiers;
+    return isDrawCamp ? FALLBACK_DRAW_TIERS : FALLBACK_VOUCHER_TIERS;
+  }, [selectedCamp, isDrawCamp]);
+
+  // 切换活动：同步折扣与默认档
+  useEffect(() => {
+    if (!selectedCamp) return;
+    setDiscountPercent(selectedCamp.discountPercent);
+    setCashConfirmed(false);
+    setAmountSgd((prev) => {
+      const n = Number(prev);
+      if (selectedCamp.enabledTiers.length) {
+        if (selectedCamp.enabledTiers.includes(n)) return prev;
+        return String(selectedCamp.enabledTiers[0]);
+      }
+      const fallback = isDrawCamp ? FALLBACK_DRAW_TIERS : FALLBACK_VOUCHER_TIERS;
+      if (fallback.includes(n)) return prev;
+      return String(fallback[0]);
+    });
+  }, [selectedCamp?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const discApply = isDrawCamp
+    ? 0
+    : selectedCamp?.discountLocked
+      ? selectedCamp.discountPercent
+      : Math.min(90, Math.max(0, discountPercent));
+  const faceNum = Number(amountSgd) || 0;
+  const paidPreview = Math.round(faceNum * (100 - discApply)) / 100;
+  const minSpend =
+    selectedCamp && selectedCamp.minSpendMultiplier > 0 && faceNum > 0
+      ? faceNum * selectedCamp.minSpendMultiplier
+      : 0;
 
   async function bootstrapCampaign() {
     setBootstrapping(true);
@@ -111,7 +218,7 @@ export default function IssueSelfPage() {
           color: "#64748B",
           startDate: new Date().toISOString().slice(0, 10),
           endDate: end.toISOString().slice(0, 10),
-          discountPercent: 10, // template min 8%; cash issue still uses face=paid
+          discountPercent: 10,
           enabledTiers: [10, 20, 50, 100],
           shareSellingEnabled: false,
           partnerIds: [],
@@ -144,7 +251,18 @@ export default function IssueSelfPage() {
       setError(lang === "en" ? "Invalid amount" : "请输入有效金额");
       return;
     }
-    const disc = isDrawCamp ? 0 : Math.min(90, Math.max(0, discountPercent));
+    if (
+      selectedCamp?.enabledTiers?.length &&
+      !selectedCamp.enabledTiers.includes(amt)
+    ) {
+      setError(
+        lang === "en"
+          ? `Pick a product tier: ${selectedCamp.enabledTiers.map((t) => `S$${t}`).join(", ")}`
+          : `请选产品档位：${selectedCamp.enabledTiers.map((t) => `S$${t}`).join(" / ")}`
+      );
+      return;
+    }
+    const disc = discApply;
     setLoading(true);
     setError("");
     setResult(null);
@@ -182,16 +300,6 @@ export default function IssueSelfPage() {
     setLoading(false);
   }
 
-  const selectedCamp = campaigns.find((c) => c.id === campaignId);
-  const isDrawCamp =
-    selectedCamp?.type === "lucky_draw_v2" ||
-    selectedCamp?.type === "lucky_draw";
-  const quickAmounts = isDrawCamp ? QUICK_DRAW : QUICK_VOUCHER;
-  const faceNum = Number(amountSgd) || 0;
-  const discApply = isDrawCamp ? 0 : Math.min(90, Math.max(0, discountPercent));
-  const paidPreview =
-    Math.round(faceNum * (100 - discApply)) / 100;
-
   async function copyCode() {
     if (!result?.shortCode) return;
     try {
@@ -203,6 +311,31 @@ export default function IssueSelfPage() {
     }
   }
 
+  const packHint = (() => {
+    if (!selectedCamp) return null;
+    if (isDrawCamp) {
+      return lang === "en"
+        ? "Exclusive draw · customer pays face · 15% fee from business balance"
+        : "独享抽奖 · 顾客付面值 · 企业账户扣 15%（小奖+服务费+大奖）";
+    }
+    if (selectedCamp.packKind === "discount_10") {
+      return lang === "en"
+        ? "10% off card · pay 90% cash, customer gets 100% face (matches online SKU)"
+        : "9 折卡 · 收 90% 现金，顾客得 100% 面值（与线上 SKU 一致，不可改折扣）";
+    }
+    if (selectedCamp.packKind === "face_threshold") {
+      return lang === "en"
+        ? `Face voucher · min spend ≈ face × ${selectedCamp.minSpendMultiplier || 10}`
+        : `原价门槛代金 · 满约 券面×${selectedCamp.minSpendMultiplier || 10} 可用`;
+    }
+    if (selectedCamp.packKind === "face_open") {
+      return lang === "en"
+        ? "Face voucher · pay face, spend face · no extra discount at counter"
+        : "原价无门槛 · 付多少抵多少 · 柜台不再另打折";
+    }
+    return null;
+  })();
+
   return (
     <div className="pb-10">
       <div className="px-4 py-3 border-b border-border bg-card sticky top-0 z-10">
@@ -213,25 +346,28 @@ export default function IssueSelfPage() {
         >
           <ArrowLeft size={13} /> {lang === "en" ? "Back" : "返回"}
         </button>
-        <div className="flex items-center gap-2 mt-1">
-          <h1 className="text-lg font-semibold text-foreground">{t("issueSelf.title")}</h1>
-          <VoucherTypeBadge kind="self_use" size="sm" />
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <h1 className="text-lg font-semibold text-foreground">
+            {t("issueSelf.title")}
+          </h1>
+          <VoucherTypeBadge kind="self_use" size="sm" isDraw={isDrawCamp} />
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5">{t("issueSelf.subtitle")}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {t("issueSelf.subtitle")}
+        </p>
       </div>
 
       <div className="px-4 mt-4 space-y-4">
-        {/* Counter steps */}
         <div className="rounded-2xl bg-muted/50 border border-border px-3 py-2.5 text-[11px] text-muted-foreground leading-relaxed">
           {lang === "en" ? (
             <>
-              1) Take cash · 2) Issue voucher · 3) Give customer the{" "}
-              <strong>6-digit code</strong> · 4) Redeem at counter when they spend
+              1) Take cash · 2) Confirm amount below · 3) Issue · 4) Give{" "}
+              <strong>6-digit code</strong> · 5) Redeem with short code later
             </>
           ) : (
             <>
-              ① 收现金 → ② 点下方发券 → ③ 把 <strong>6 位短码</strong> 给顾客（或写在小票）→
-              ④ 消费时在「扫码核销」输入短码
+              ① 按下方「应收」收现金 → ② 勾选已收款 → ③ 发券 → ④ 把{" "}
+              <strong>6 位短码</strong> 给顾客 → ⑤ 消费时在「扫码核销」输入短码
             </>
           )}
         </div>
@@ -249,7 +385,9 @@ export default function IssueSelfPage() {
                 loading={bootstrapping}
                 onClick={() => void bootstrapCampaign()}
               >
-                {lang === "en" ? "Create self-use campaign" : "一键创建自用券活动"}
+                {lang === "en"
+                  ? "Create self-use campaign"
+                  : "一键创建自用券活动"}
               </Button>
               <button
                 type="button"
@@ -264,7 +402,9 @@ export default function IssueSelfPage() {
           <>
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                {lang === "en" ? "Campaign" : "活动"}
+                {lang === "en"
+                  ? "Activity / product line"
+                  : "活动（对齐线上产品）"}
               </label>
               <select
                 className="mt-1 w-full h-12 rounded-xl border border-border px-3 text-sm bg-card"
@@ -275,9 +415,19 @@ export default function IssueSelfPage() {
                   <option key={c.id} value={c.id}>
                     {c.name}
                     {c.status === "draft" ? " (draft)" : ""}
+                    {c.type === "lucky_draw_v2" || c.type === "lucky_draw"
+                      ? lang === "en"
+                        ? " · draw"
+                        : " · 抽奖"
+                      : ""}
                   </option>
                 ))}
               </select>
+              {packHint && (
+                <p className="mt-1.5 text-[11px] text-muted-foreground leading-relaxed">
+                  {packHint}
+                </p>
+              )}
             </div>
 
             <div>
@@ -299,7 +449,9 @@ export default function IssueSelfPage() {
 
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                {lang === "en" ? "Face value (spendable)" : "面值（可花）"}
+                {lang === "en"
+                  ? "Face tier (spendable)"
+                  : "面值档（可花 · 来自产品）"}
               </label>
               <div className="mt-1.5 flex flex-wrap gap-2">
                 {quickAmounts.map((a) => (
@@ -307,65 +459,119 @@ export default function IssueSelfPage() {
                     key={a}
                     type="button"
                     onClick={() => setAmountSgd(String(a))}
-                    className={`h-11 min-w-[4.5rem] px-3 rounded-full text-sm font-semibold tabular-nums border transition-colors ${
+                    className={cn(
+                      "h-11 min-w-[4.5rem] px-3 rounded-full text-sm font-semibold tabular-nums border transition-colors",
                       Number(amountSgd) === a
                         ? "bg-primary text-white border-primary"
                         : "bg-card text-foreground border-border"
-                    }`}
+                    )}
                   >
                     S${a}
                   </button>
                 ))}
               </div>
-              <Input
-                className="mt-2"
-                type="number"
-                min={1}
-                step={1}
-                value={amountSgd}
-                onChange={(e) => setAmountSgd(e.target.value)}
-              />
+              {selectedCamp?.enabledTiers?.length ? (
+                <p className="mt-1.5 text-[10px] text-muted-foreground">
+                  {lang === "en"
+                    ? "Tiers locked to product SKU (same as online)."
+                    : "档位与线上产品一致，不可随意改面值。"}
+                </p>
+              ) : (
+                <Input
+                  className="mt-2"
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={amountSgd}
+                  onChange={(e) => setAmountSgd(e.target.value)}
+                />
+              )}
             </div>
 
+            {/* 折扣：产品固定则只展示，不提供 0/10/20 乱改 */}
             {!isDrawCamp && (
               <div>
                 <label className="text-xs font-medium text-muted-foreground">
-                  {lang === "en" ? "Discount" : "折扣（自用代金）"}
+                  {lang === "en" ? "Cash vs face" : "实收 vs 可花"}
                 </label>
-                <div className="mt-1.5 flex flex-wrap gap-2">
-                  {[0, 10, 20].map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setDiscountPercent(d)}
-                      className={`h-10 px-3 rounded-full text-sm font-semibold border ${
-                        discountPercent === d
-                          ? "bg-foreground text-background border-foreground"
-                          : "bg-card text-foreground border-border"
-                      }`}
-                    >
-                      {d === 0
+                {selectedCamp?.discountLocked ? (
+                  <div className="mt-1.5 rounded-2xl border border-border bg-muted/40 px-3 py-2.5">
+                    <p className="text-sm font-semibold text-foreground">
+                      {discApply > 0
                         ? lang === "en"
-                          ? "No disc."
-                          : "无折扣"
-                        : `${d}%`}
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-3 rounded-2xl bg-muted/50 border border-border px-4 py-3">
+                          ? `${discApply}% off at sale`
+                          : `售价折扣 ${discApply}%（产品规则）`
+                        : lang === "en"
+                          ? "Pay face = spend face"
+                          : "原价 · 付多少抵多少"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                      {lang === "en"
+                        ? "Set by product pack — not editable at counter (keeps parity with online)."
+                        : "由券产品/活动规则决定，柜台不可另改，避免和线上不一致。"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-1.5 flex flex-wrap gap-2">
+                    {[0, 10, 20].map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setDiscountPercent(d)}
+                        className={cn(
+                          "h-10 px-3 rounded-full text-sm font-semibold border",
+                          discountPercent === d
+                            ? "bg-foreground text-background border-foreground"
+                            : "bg-card text-foreground border-border"
+                        )}
+                      >
+                        {d === 0
+                          ? lang === "en"
+                            ? "No disc."
+                            : "无折扣"
+                          : `${d}%`}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-3 rounded-2xl bg-primary/5 border border-primary/20 px-4 py-3">
                   <p className="text-xs text-muted-foreground">
-                    {lang === "en" ? "Customer pays" : "应收现金"}
+                    {lang === "en" ? "Collect cash now" : "应收现金"}
                   </p>
                   <p className="text-2xl font-bold tabular-nums text-foreground mt-0.5">
                     S${paidPreview.toFixed(2)}
                   </p>
-                  <p className="text-[11px] text-muted-foreground mt-1">
+                  <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
                     {lang === "en"
-                      ? `Pay S$${paidPreview.toFixed(0)} get S$${faceNum || 0} to spend`
-                      : `付 S$${paidPreview.toFixed(0)} 得 S$${faceNum || 0} 可花`}
+                      ? `Pay S$${paidPreview.toFixed(0)} · customer can spend S$${faceNum || 0}`
+                      : `收 S$${paidPreview.toFixed(0)} · 顾客可花 S$${faceNum || 0}`}
                     {discApply > 0 ? ` · −${discApply}%` : ""}
                   </p>
+                  {minSpend > 0 && (
+                    <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-1">
+                      {lang === "en"
+                        ? `Redeem min bill ≈ S$${minSpend.toFixed(0)}`
+                        : `核销门槛约满 S$${minSpend.toFixed(0)}`}
+                    </p>
+                  )}
                 </div>
+              </div>
+            )}
+
+            {isDrawCamp && (
+              <div className="rounded-2xl bg-brand/5 border border-brand/20 px-4 py-3">
+                <p className="text-xs text-muted-foreground">
+                  {lang === "en" ? "Collect cash now" : "应收现金（面值）"}
+                </p>
+                <p className="text-2xl font-bold tabular-nums text-foreground mt-0.5">
+                  S${faceNum.toFixed(2)}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                  {lang === "en"
+                    ? "Exclusive draw: business top-up covers 15% (instant + platform + grand)."
+                    : "独享：顾客付面值；企业自充扣 15%（小奖 3% + 平台 2% + 大奖 10%）。"}
+                </p>
               </div>
             )}
 
@@ -381,17 +587,17 @@ export default function IssueSelfPage() {
                 : "可选。不填手机也能用短码核销。"}
             </p>
 
-            <label className="flex items-start gap-3 rounded-2xl border border-border bg-card p-3 cursor-pointer">
+            <label className="flex items-start gap-3 rounded-2xl border-2 border-primary/25 bg-card p-3.5 cursor-pointer">
               <input
                 type="checkbox"
-                className="mt-0.5 h-5 w-5 rounded border-border"
+                className="mt-0.5 h-5 w-5 rounded border-border accent-primary"
                 checked={cashConfirmed}
                 onChange={(e) => setCashConfirmed(e.target.checked)}
               />
               <span className="text-sm text-foreground leading-snug">
                 {lang === "en"
-                  ? `I have received S$${paidPreview.toFixed(2)} cash (or store payment)`
-                  : `我已收到现金 S$${paidPreview.toFixed(2)}（或店内收款）`}
+                  ? `I have received S$${(isDrawCamp ? faceNum : paidPreview).toFixed(2)} cash (or store payment)`
+                  : `我已收到现金 S$${(isDrawCamp ? faceNum : paidPreview).toFixed(2)}（或店内收款）`}
               </span>
             </label>
 
@@ -414,7 +620,7 @@ export default function IssueSelfPage() {
 
         {result && (
           <Card className="border-green-200 bg-green-50 dark:bg-green-950/35 overflow-hidden">
-            <div className="h-1.5 bg-muted-foreground/40" />
+            <div className="h-1.5 bg-emerald-500/50" />
             <CardContent className="p-5 text-center space-y-3">
               <p className="text-sm font-medium text-green-800">
                 {t("issueSelf.ok")}
@@ -436,7 +642,9 @@ export default function IssueSelfPage() {
               {result.instantPrize && (
                 <div className="rounded-xl bg-white/80 border border-violet-100 px-3 py-2">
                   <p className="text-[10px] text-violet-600 font-medium">
-                    {lang === "en" ? "Instant prize (store pays)" : "即时小奖（本店兑付）"}
+                    {lang === "en"
+                      ? "Instant prize (store pays)"
+                      : "即时小奖（本店兑付）"}
                   </p>
                   <p className="text-lg font-semibold text-foreground mt-0.5">
                     {result.instantPrize.icon} {result.instantPrize.name}
@@ -447,7 +655,9 @@ export default function IssueSelfPage() {
                 </div>
               )}
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                {lang === "en" ? "Show this code to staff" : "核销短码（给顾客 / 写小票）"}
+                {lang === "en"
+                  ? "Show this code to staff"
+                  : "核销短码（给顾客 / 写小票）"}
               </p>
               <p className="text-4xl font-bold font-mono tracking-[0.25em] text-foreground tabular-nums">
                 {result.shortCode}
@@ -458,13 +668,18 @@ export default function IssueSelfPage() {
                   className="flex-1"
                   onClick={() => void copyCode()}
                 >
-                  {copied
-                    ? lang === "en"
-                      ? "Copied"
-                      : "已复制"
-                    : lang === "en"
-                      ? "Copy code"
-                      : "复制短码"}
+                  {copied ? (
+                    lang === "en" ? (
+                      "Copied"
+                    ) : (
+                      "已复制"
+                    )
+                  ) : (
+                    <>
+                      <Copy size={14} />
+                      {lang === "en" ? "Copy code" : "复制短码"}
+                    </>
+                  )}
                 </Button>
                 <Button
                   className="flex-1"
