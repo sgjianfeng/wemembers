@@ -43,12 +43,19 @@ export function PhysicalPrintSheet({
   const tpl = getVisualTemplate(visualTemplateId);
   const [shareBusy, setShareBusy] = useState(false);
   const first = tickets[0];
-  // 旧批次默认品牌蓝偏「平台感」；代金券打印改用暖橙，更像消费券
+  // 仅「浅色经典 + 旧默认蓝」才映射暖橙；用户选了色块/其它色原样尊重
   const themeKey = (themeColor || "").trim().toUpperCase();
+  const isClassic =
+    !visualTemplateId ||
+    visualTemplateId === "store_classic" ||
+    getVisualTemplate(visualTemplateId).surface === "light";
   const resolvedTheme =
-    type === "voucher" && (!themeKey || themeKey === "#1A6EFF")
+    type === "voucher" &&
+    isClassic &&
+    (!themeKey || themeKey === "#1A6EFF")
       ? "#E85D04"
-      : themeColor || (type === "voucher" ? "#E85D04" : null);
+      : themeColor ||
+        (type === "voucher" && isClassic ? "#E85D04" : themeColor || null);
 
   const downloadSharePng = useCallback(async () => {
     if (!first) return;
@@ -64,7 +71,7 @@ export function PhysicalPrintSheet({
         code: first.code,
         claimUrl: first.claimUrl,
         validLabel,
-        themeColor: resolvedTheme || "#E85D04",
+        themeColor: resolvedTheme || tpl.defaultThemeHex || "#E85D04",
         bold: tpl.surface === "dark",
         lang,
       });
@@ -163,9 +170,7 @@ export function PhysicalPrintSheet({
         {tickets.map((t) => (
           <TicketVisualCard
             key={t.code}
-            templateId={
-              type === "voucher" ? "store_classic" : visualTemplateId
-            }
+            templateId={visualTemplateId}
             themeColor={resolvedTheme}
             type={type}
             title={title}

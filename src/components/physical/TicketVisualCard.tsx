@@ -79,10 +79,8 @@ export function TicketVisualCard({
   const isDraw = type === "draw" || type === "ballot";
   const isBallot = type === "ballot";
   const isShare = mode === "share";
-  const isBold =
-    mode === "print"
-      ? type !== "voucher" && tpl.surface === "dark"
-      : tpl.surface === "dark";
+  // 浅色经典 / 深色色块均尊重模版选择（含代金券）
+  const isBold = tpl.surface === "dark";
   const face = `S$${formatMoney(valueCents)}`;
   const termsText = (terms && terms.trim()) || defaultTerms(type, lang);
 
