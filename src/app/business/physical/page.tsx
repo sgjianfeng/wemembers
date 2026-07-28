@@ -62,7 +62,11 @@ export default async function PhysicalBatchesPage() {
     }),
     prisma.user.findUnique({
       where: { id: session.userId },
-      select: { businessName: true, businessLogo: true },
+      select: {
+        displayName: true,
+        businessName: true,
+        businessLogo: true,
+      },
     }),
     prisma.campaign.findMany({
       where: {
@@ -219,7 +223,9 @@ export default async function PhysicalBatchesPage() {
             stores={stores}
             campaigns={campaigns}
             lang={lang}
-            businessName={biz?.businessName}
+            businessName={
+              biz?.displayName?.trim() || biz?.businessName
+            }
             businessLogo={biz?.businessLogo}
           />
         )}

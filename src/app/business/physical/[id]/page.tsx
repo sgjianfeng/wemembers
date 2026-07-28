@@ -28,7 +28,14 @@ export default async function PhysicalBatchDetailPage({
         orderBy: { createdAt: "asc" },
         select: { code: true, status: true },
       },
-      business: { select: { businessName: true, businessLogo: true } },
+      business: {
+        select: {
+          // 券面展示用品牌名（displayName），公司主体名仅作兜底
+          displayName: true,
+          businessName: true,
+          businessLogo: true,
+        },
+      },
     },
   });
   if (!batch) notFound();
@@ -161,7 +168,10 @@ export default async function PhysicalBatchDetailPage({
         valueCents={batch.valueCents}
         storeName={batch.store.name}
         storeAddress={batch.store.address}
-        businessName={batch.business.businessName}
+        businessName={
+          batch.business.displayName?.trim() ||
+          batch.business.businessName
+        }
         businessLogo={batch.business.businessLogo}
         validUntil={batch.validUntil?.toISOString() ?? null}
         tickets={tickets}
