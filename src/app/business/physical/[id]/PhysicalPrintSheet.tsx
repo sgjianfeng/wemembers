@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { TicketVisualCard } from "@/components/physical/TicketVisualCard";
 import { getVisualTemplate } from "@/lib/visual-templates";
+import { cn } from "@/lib/utils";
 
 type Ticket = { code: string; status: string; claimUrl: string };
 
@@ -39,6 +40,12 @@ export function PhysicalPrintSheet({
   const tpl = getVisualTemplate(visualTemplateId);
   const [shareBusy, setShareBusy] = useState(false);
   const first = tickets[0];
+  // 旧批次默认品牌蓝偏「平台感」；代金券打印改用暖橙，更像消费券
+  const themeKey = (themeColor || "").trim().toUpperCase();
+  const resolvedTheme =
+    type === "voucher" && (!themeKey || themeKey === "#1A6EFF")
+      ? "#E85D04"
+      : themeColor || (type === "voucher" ? "#E85D04" : null);
 
   const downloadSharePng = useCallback(async () => {
     if (!first) return;
@@ -54,7 +61,7 @@ export function PhysicalPrintSheet({
         code: first.code,
         claimUrl: first.claimUrl,
         validLabel,
-        themeColor: themeColor || "#1A6EFF",
+        themeColor: resolvedTheme || "#E85D04",
         bold: tpl.surface === "dark",
         lang,
       });
@@ -69,7 +76,7 @@ export function PhysicalPrintSheet({
     first,
     lang,
     storeName,
-    themeColor,
+    resolvedTheme,
     title,
     tpl.surface,
     type,
@@ -117,7 +124,7 @@ export function PhysicalPrintSheet({
           <div className="max-w-[280px]">
             <TicketVisualCard
               templateId={visualTemplateId}
-              themeColor={themeColor}
+              themeColor={resolvedTheme}
               type={type}
               title={title}
               valueCents={valueCents}
@@ -135,15 +142,30 @@ export function PhysicalPrintSheet({
         </div>
       )}
 
-      <p className="print:hidden text-xs font-medium text-muted-foreground mb-2">
-        {lang === "en" ? "Print sheet" : "印刷票面"}
+      <p className="print:hidden text-xs font-medium text-muted-foreground mb-1">
+        {lang === "en" ? "Print sheet (A4 strips)" : "印刷票面（A4 条形）"}
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 print:grid-cols-2 print:gap-2">
+      <p className="print:hidden text-[11px] text-muted-foreground mb-3 leading-relaxed">
+        {lang === "en"
+          ? "Two strip vouchers per row on A4. Use colour print · “Background graphics” on."
+          : "A4 一行两张条形券。请用彩色打印，并开启「背景图形 / 打印背景色」。"}
+      </p>
+
+      {/* A4 条形：屏上一列预览；打印两列 */}
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-3",
+          "sm:grid-cols-2 sm:gap-3",
+          "print:grid-cols-2 print:gap-x-3 print:gap-y-2.5",
+          "print:px-0"
+        )}
+        style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}
+      >
         {tickets.map((t) => (
           <TicketVisualCard
             key={t.code}
             templateId={visualTemplateId}
-            themeColor={themeColor}
+            themeColor={resolvedTheme}
             type={type}
             title={title}
             valueCents={valueCents}
@@ -153,7 +175,7 @@ export function PhysicalPrintSheet({
             businessLogo={businessLogo}
             validLabel={validLabel}
             code={t.code}
-            qrSrc={`/api/physical/qr?code=${encodeURIComponent(t.code)}&size=120`}
+            qrSrc={`/api/physical/qr?code=${encodeURIComponent(t.code)}&size=160`}
             lang={lang}
             mode="print"
           />

@@ -109,7 +109,7 @@ export function PhysicalBatchCreateForm({
   const [title, setTitle] = useState("");
   const [quantity, setQuantity] = useState("20");
   const [visualTemplateId, setVisualTemplateId] = useState("store_classic");
-  const [themeHex, setThemeHex] = useState("#1A6EFF");
+  const [themeHex, setThemeHex] = useState("#E85D04");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 

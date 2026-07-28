@@ -15,10 +15,10 @@ export interface ThemeSwatch {
 }
 
 export const THEME_SWATCHES: ThemeSwatch[] = [
+  { id: "orange", hex: "#E85D04", labelZh: "券橙（推荐）", labelEn: "Voucher orange" },
   { id: "blue", hex: "#1A6EFF", labelZh: "品牌蓝", labelEn: "Blue" },
-  { id: "orange", hex: "#FF6B35", labelZh: "活力橙", labelEn: "Orange" },
   { id: "violet", hex: "#7C3AED", labelZh: "抽奖紫", labelEn: "Violet" },
-  { id: "green", hex: "#16A34A", labelZh: "清新绿", labelEn: "Green" },
+  { id: "green", hex: "#15803D", labelZh: "深绿", labelEn: "Green" },
   { id: "dark", hex: "#1E1B2E", labelZh: "深色", labelEn: "Dark" },
 ];
 
@@ -39,11 +39,12 @@ export const VISUAL_TEMPLATES: VisualTemplateMeta[] = [
   {
     id: "store_classic",
     family: "store",
-    nameZh: "经典白卡",
-    nameEn: "Classic light",
-    taglineZh: "白底清晰 · 适合打印代金券",
-    taglineEn: "Clean white · best for print vouchers",
-    defaultThemeHex: "#1A6EFF",
+    nameZh: "条形代金券",
+    nameEn: "Strip voucher",
+    taglineZh: "暖色条形 · A4 一行两张 · 像真券",
+    taglineEn: "Warm strip · 2 per A4 row · gift-voucher look",
+    // 暖橙金更像消费券（蓝太偏平台感）
+    defaultThemeHex: "#E85D04",
     surface: "light",
   },
   {
