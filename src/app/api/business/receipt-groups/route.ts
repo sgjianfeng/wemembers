@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { resolveBusinessActor } from "@/lib/business-actor";
 
 // 4 个预设群（首次访问时懒创建）
 const PRESET_GROUPS = [
@@ -13,19 +14,20 @@ const PRESET_GROUPS = [
 // GET /api/business/receipt-groups — 列出本商家的群（无则懒创建预设）
 export async function GET() {
   const session = await getSession();
-  if (!session || session.role !== "business") {
+  const actor = await resolveBusinessActor(session);
+  if (!actor) {
     return NextResponse.json({ error: "无权操作" }, { status: 403 });
   }
 
   let groups = await prisma.receiptGroup.findMany({
-    where: { businessId: session.userId },
+    where: { businessId: actor.businessId },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   });
 
   if (groups.length === 0) {
     await prisma.receiptGroup.createMany({
       data: PRESET_GROUPS.map((g) => ({
-        businessId: session.userId,
+        businessId: actor.businessId,
         name: g.name,
         category: g.category,
         icon: g.icon,
@@ -35,19 +37,27 @@ export async function GET() {
       })),
     });
     groups = await prisma.receiptGroup.findMany({
-      where: { businessId: session.userId },
+      where: { businessId: actor.businessId },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    });
+  }
+
+  // 店员：只看 visibleRoles 含 staff 的群
+  if (actor.role === "staff") {
+    groups = groups.filter((g) => {
+      const roles = (g.visibleRoles || "business,staff").split(",");
+      return roles.map((r) => r.trim()).includes("staff");
     });
   }
 
   return NextResponse.json({ data: groups });
 }
 
-// POST /api/business/receipt-groups — 创建自定义群
+// POST /api/business/receipt-groups — 创建自定义群（仅企业主）
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session || session.role !== "business") {
-    return NextResponse.json({ error: "无权操作" }, { status: 403 });
+    return NextResponse.json({ error: "仅企业主可创建资料群" }, { status: 403 });
   }
 
   const { name, icon, storeId, visibleRoles } = await request.json();

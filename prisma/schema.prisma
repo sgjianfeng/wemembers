@@ -840,8 +840,14 @@ model Voucher {
   status                String   @default("active") // active / exhausted / expired / withdrawn
   // 冗余活动类型，核销时免 join；与 Campaign.productKind 一致
   productKind           String   @default("distribution") // self_use | distribution
-  // cash | stripe | physical | free — physical=实体纸售出/绑定
+  // cash | stripe | physical | free | supplier_debt | staff_welfare | marketing | other_no_pay
   paymentMethod         String?
+  /// 柜台发券原因：cash_sale | supplier_debt | staff_welfare | marketing | other_no_pay
+  issueReason           String?
+  /// 发券备注（抵欠单号、供应商名等；无支付时必填）
+  issueNote             String?
+  /// 操作人（企业主/店员 userId）
+  issuedById            String?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -860,6 +866,8 @@ model Voucher {
   @@index([sellerId])
   @@index([productKind, status])
   @@index([paymentMethod, createdAt])
+  @@index([issueReason, createdAt])
+  @@index([issuedById, createdAt])
 }
 
 model VoucherUsage {

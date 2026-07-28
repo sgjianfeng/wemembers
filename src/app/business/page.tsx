@@ -8,7 +8,24 @@ import { resolveStoreLogo, timeAgo } from "@/lib/utils";
 import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
 import { resolveStaffStore } from "@/lib/current-store";
-import { Store, Users, ShoppingCart, Sparkles, Wrench, Coins, MailOpen, Calendar, ScanLine, Banknote, QrCode, Trophy, Ticket } from "lucide-react";
+import {
+  Store,
+  Users,
+  ShoppingCart,
+  Sparkles,
+  Wrench,
+  Coins,
+  MailOpen,
+  Calendar,
+  ScanLine,
+  QrCode,
+  Trophy,
+  Ticket,
+  FolderOpen,
+  ChevronRight,
+  Puzzle,
+  type LucideIcon,
+} from "lucide-react";
 
 /**
  * /business
@@ -462,11 +479,65 @@ async function StaffStoreHome({
     select: { business: { select: { businessLogo: true } } },
   });
 
+  /** 本店工作台模块（类似企业「功能仓」，按店扩展） */
+  const coreModules: Array<{
+    id: string;
+    icon: LucideIcon;
+    title: string;
+    desc: string;
+    href: string;
+    primary?: boolean;
+  }> = [
+    {
+      id: "scan",
+      icon: ScanLine,
+      title: lang === "en" ? "Scan & redeem" : "扫码核销",
+      desc:
+        lang === "en"
+          ? "Online short code · paper tickets"
+          : "线上短码 · 实体纸票 · 本店履约",
+      href: "/business/scan",
+      primary: true,
+    },
+    {
+      id: "docs",
+      icon: FolderOpen,
+      title: lang === "en" ? "Store docs" : "资料仓",
+      desc:
+        lang === "en"
+          ? "Upload receipts · company can review"
+          : "上传票据/资料 · 企业主可查阅",
+      href: "/business/hub/docs",
+      primary: true,
+    },
+  ];
+
+  const toolModules = [
+    {
+      id: "qr",
+      icon: QrCode,
+      title: lang === "en" ? "Store QR" : "本店二维码",
+      desc:
+        lang === "en"
+          ? "Customer deals page"
+          : "顾客扫码进本店优惠页",
+      href: "/business/store",
+    },
+    {
+      id: "members",
+      icon: Users,
+      title: lang === "en" ? "Members" : "会员",
+      desc:
+        lang === "en" ? "Look up customers" : "查客户 / 会员",
+      href: "/business/members",
+    },
+  ];
+
   return (
     <div className="pb-4">
       <div className="bg-card border-b border-border px-4 py-3">
         <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-          {lang === "en" ? "Your store" : "本店工作台"}
+          {lang === "en" ? "Store desk" : "本店工作台"}
         </p>
         <div className="flex items-center gap-2.5 mt-1">
           <BrandAvatar
@@ -486,77 +557,135 @@ async function StaffStoreHome({
             )}
           </div>
         </div>
+        <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+          {lang === "en"
+            ? "Like company Hub — tools for this outlet. More modules can plug in later."
+            : "类似企业「功能仓」，放本店现场工具；以后新功能可往这里加。"}
+        </p>
       </div>
 
-      <div className="px-4 mt-4 grid grid-cols-2 gap-3">
-        <Card className="bg-muted/50 border-0">
-          <CardContent className="p-3">
-            <p className="text-2xl font-bold text-foreground">
-              {redeemsToday + paperToday}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {lang === "en" ? "Redeems today" : "今日核销合计"}
-            </p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
+      {/* 今日概览 */}
+      <div className="px-4 mt-4">
+        <Card className="bg-muted/40 border-border/80">
+          <CardContent className="p-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-2xl font-bold text-foreground tabular-nums">
+                {redeemsToday + paperToday}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {lang === "en" ? "Redeems today" : "今日核销合计"}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {lang === "en"
+                  ? `Online ${redeemsToday} · Paper ${paperToday}`
+                  : `线上 ${redeemsToday} · 实体 ${paperToday}`}
+              </p>
+            </div>
+            <Link
+              href="/business/scan"
+              className="shrink-0 h-10 px-4 rounded-full bg-primary text-primary-foreground text-sm font-semibold flex items-center gap-1.5 active:scale-[0.97]"
+            >
+              <ScanLine size={16} />
+              {lang === "en" ? "Redeem" : "去核销"}
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 核心模块（功能仓风格） */}
+      <div className="px-4 mt-5">
+        <p className="text-[11px] text-muted-foreground mb-2">
+          {lang === "en" ? "Core" : "核心"}
+        </p>
+        <div className="grid grid-cols-1 gap-2">
+          {coreModules.map((m) => {
+            const Icon = m.icon;
+            return (
+              <Link key={m.id} href={m.href}>
+                <Card className="hover:border-primary/40 border-primary/15 bg-primary/5 transition-colors active:scale-[0.98]">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <Icon
+                      size={26}
+                      className="text-primary shrink-0"
+                      strokeWidth={1.8}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-foreground">
+                        {m.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                        {m.desc}
+                      </p>
+                    </div>
+                    <ChevronRight size={16} className="text-primary shrink-0" />
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 本店工具 */}
+      <div className="px-4 mt-5">
+        <p className="text-[11px] text-muted-foreground mb-2">
+          {lang === "en" ? "Store tools" : "本店工具"}
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {toolModules.map((m) => {
+            const Icon = m.icon;
+            return (
+              <Link key={m.id} href={m.href}>
+                <Card className="hover:border-primary/30 transition-colors h-full active:scale-[0.98]">
+                  <CardContent className="p-3 flex flex-col gap-1.5 min-h-[96px]">
+                    <Icon
+                      size={22}
+                      className="text-muted-foreground"
+                      strokeWidth={1.8}
+                    />
+                    <p className="text-sm font-medium text-foreground">
+                      {m.title}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
+                      {m.desc}
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 预留扩展 */}
+      <div className="px-4 mt-5">
+        <p className="text-[11px] text-muted-foreground mb-2">
+          {lang === "en" ? "Coming to store desk" : "本店待扩展"}
+        </p>
+        <Card className="border-dashed border-border bg-muted/40">
+          <CardContent className="p-4 text-center">
+            <Puzzle
+              size={22}
+              className="mx-auto mb-1 text-muted-foreground"
+              strokeWidth={1.8}
+            />
+            <p className="text-sm font-medium text-foreground/80">
               {lang === "en"
-                ? `Online ${redeemsToday} · Paper ${paperToday}`
-                : `线上 ${redeemsToday} · 实体 ${paperToday}`}
+                ? "More store modules later"
+                : "以后可往这里加模块"}
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+              {lang === "en"
+                ? "e.g. cash issue (if allowed), refunds, check-in — company enables per store."
+                : "例如：现金发券（若授权）、退款、签到等，由企业按店开通。"}
             </p>
           </CardContent>
         </Card>
-        <Link href="/business/scan">
-          <Card className="bg-primary border-0 h-full">
-            <CardContent className="p-3 text-white">
-              <ScanLine size={20} />
-              <p className="text-sm font-semibold mt-2">
-                {lang === "en" ? "Scan & redeem" : "扫码核销"}
-              </p>
-              <p className="text-[10px] text-white/70 mt-0.5">
-                {lang === "en" ? "Voucher / paper tab" : "预付券 / 实体券 Tab"}
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/business/issue-self" className="col-span-2">
-          <Card className="border-border hover:border-border transition-colors">
-            <CardContent className="p-3 flex items-center gap-3">
-              <Banknote size={24} className="text-primary shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-foreground">
-                  {lang === "en" ? "Cash self-use voucher" : "现金发自用券"}
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  {lang === "en"
-                    ? "Collect cash → 6-digit code → redeem later"
-                    : "收现金 → 发 6 位短码 → 消费时核销"}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-      </div>
-
-      <div className="px-4 mt-4 grid grid-cols-2 gap-2">
-        <Link href="/business/store">
-          <Card className="hover:border-primary/30">
-            <CardContent className="p-3">
-              <QrCode size={20} className="text-foreground" />
-              <p className="text-sm font-semibold mt-1 text-foreground">
-                {lang === "en" ? "Store QR" : "本店二维码"}
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/business/members">
-          <Card className="hover:border-primary/30">
-            <CardContent className="p-3">
-              <Users size={20} className="text-foreground" />
-              <p className="text-sm font-semibold mt-1 text-foreground">
-                {lang === "en" ? "Members" : "会员"}
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
+        <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed px-0.5">
+          {lang === "en"
+            ? "Voucher issue (cash / debt offset) stays company-owner only."
+            : "发券（现金 / 供应商抵欠）仍仅企业主账号。"}
+        </p>
       </div>
 
       <div className="px-4 mt-5">

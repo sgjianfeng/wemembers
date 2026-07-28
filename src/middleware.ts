@@ -32,6 +32,9 @@ const STAFF_BLOCKED = [
   "/business/receipt",
   "/business/issue-self",
   "/business/earnings",
+  // 配置类：店员底栏无入口，直链也拦
+  "/business/products",
+  "/business/templates",
 ];
 
 export async function middleware(request: NextRequest) {
@@ -107,11 +110,19 @@ export async function middleware(request: NextRequest) {
       return denyPage();
     }
     // Staff 不能访问特定页面
-    if (
-      role === "staff" &&
-      STAFF_BLOCKED.some((r) => pathname === r || pathname.startsWith(r + "/"))
-    ) {
-      return NextResponse.redirect(new URL("/business", request.url));
+    // 例外：资料仓 /business/hub/docs 属于本店工作台能力，店员可进
+    if (role === "staff") {
+      const staffDocs =
+        pathname === "/business/hub/docs" ||
+        pathname.startsWith("/business/hub/docs/");
+      if (
+        !staffDocs &&
+        STAFF_BLOCKED.some(
+          (r) => pathname === r || pathname.startsWith(r + "/")
+        )
+      ) {
+        return NextResponse.redirect(new URL("/business", request.url));
+      }
     }
     return NextResponse.next();
   }

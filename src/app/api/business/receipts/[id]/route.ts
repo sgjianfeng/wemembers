@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { resolveBusinessActor } from "@/lib/business-actor";
 
 interface ItemInput {
   name: string;
@@ -15,16 +16,28 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
-  if (!session || session.role !== "business") {
+  const actor = await resolveBusinessActor(session);
+  if (!actor) {
     return NextResponse.json({ error: "无权操作" }, { status: 403 });
   }
 
   const { id } = await params;
   const existing = await prisma.receipt.findFirst({
-    where: { id, businessId: session.userId },
+    where: { id, businessId: actor.businessId },
   });
   if (!existing) {
     return NextResponse.json({ error: "票据不存在" }, { status: 404 });
+  }
+  // 店员只能改自己上传的
+  if (
+    actor.role === "staff" &&
+    existing.uploadedById &&
+    existing.uploadedById !== actor.userId
+  ) {
+    return NextResponse.json(
+      { error: "只能确认/修改自己上传的票据" },
+      { status: 403 }
+    );
   }
 
   const body = await request.json();
@@ -85,16 +98,25 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
-  if (!session || session.role !== "business") {
+  const actor = await resolveBusinessActor(session);
+  if (!actor) {
     return NextResponse.json({ error: "无权操作" }, { status: 403 });
   }
 
   const { id } = await params;
   const existing = await prisma.receipt.findFirst({
-    where: { id, businessId: session.userId },
+    where: { id, businessId: actor.businessId },
   });
   if (!existing) {
     return NextResponse.json({ error: "票据不存在" }, { status: 404 });
+  }
+  if (actor.role === "staff") {
+    if (existing.uploadedById !== actor.userId) {
+      return NextResponse.json(
+        { error: "只能删除自己上传的票据" },
+        { status: 403 }
+      );
+    }
   }
 
   await prisma.receipt.delete({ where: { id } }); // items 级联删除

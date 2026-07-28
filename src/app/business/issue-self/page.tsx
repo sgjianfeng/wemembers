@@ -10,6 +10,11 @@ import { VoucherTypeBadge } from "@/components/voucher/VoucherTypeBadge";
 import { ArrowLeft, Copy } from "lucide-react";
 import { parseRulesSnapshot } from "@/lib/templates";
 import { cn } from "@/lib/utils";
+import {
+  ISSUE_REASONS,
+  isNoPayReason,
+  type IssueReasonId,
+} from "@/lib/issue-self";
 
 type CampaignOpt = {
   id: string;
@@ -100,6 +105,8 @@ export default function IssueSelfPage() {
   /** 仅未锁定产品可改；锁定时以产品规则为准 */
   const [discountPercent, setDiscountPercent] = useState(0);
   const [phone, setPhone] = useState("");
+  const [issueReason, setIssueReason] = useState<IssueReasonId>("cash_sale");
+  const [issueNote, setIssueNote] = useState("");
   const [cashConfirmed, setCashConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bootstrapping, setBootstrapping] = useState(false);
@@ -111,9 +118,27 @@ export default function IssueSelfPage() {
     discountPercent?: number;
     campaignName?: string;
     isDraw?: boolean;
+    noPay?: boolean;
+    issueReason?: string;
+    issueNote?: string | null;
     instantPrize?: { name: string; icon: string; valueSgd: string } | null;
   } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [history, setHistory] = useState<
+    Array<{
+      id: string;
+      shortCode: string | null;
+      faceSgd: string;
+      paidSgd: string;
+      issueReasonZh: string;
+      issueReasonEn: string;
+      issueNote: string | null;
+      customerPhone: string | null;
+      campaignName: string | null;
+      createdAt: string;
+      noPay: boolean;
+    }>
+  >([]);
 
   async function loadCampaignsAndStores() {
     const [cRes, sRes] = await Promise.all([
@@ -148,8 +173,21 @@ export default function IssueSelfPage() {
     }
   }
 
+  async function loadHistory() {
+    try {
+      const res = await fetch("/api/voucher/issue-self?take=30");
+      if (res.ok) {
+        const j = await res.json();
+        setHistory(j.data || []);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
   useEffect(() => {
     void loadCampaignsAndStores();
+    void loadHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -160,6 +198,14 @@ export default function IssueSelfPage() {
   const isDrawCamp =
     selectedCamp?.type === "lucky_draw_v2" ||
     selectedCamp?.type === "lucky_draw";
+  const noPay = isNoPayReason(issueReason);
+
+  // 抽奖活动不能选无支付
+  useEffect(() => {
+    if (isDrawCamp && noPay) {
+      setIssueReason("cash_sale");
+    }
+  }, [isDrawCamp, noPay]);
 
   const quickAmounts = useMemo(() => {
     if (selectedCamp?.enabledTiers?.length) return selectedCamp.enabledTiers;
@@ -183,13 +229,16 @@ export default function IssueSelfPage() {
     });
   }, [selectedCamp?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const discApply = isDrawCamp
-    ? 0
-    : selectedCamp?.discountLocked
-      ? selectedCamp.discountPercent
-      : Math.min(90, Math.max(0, discountPercent));
+  const discApply =
+    isDrawCamp || noPay
+      ? 0
+      : selectedCamp?.discountLocked
+        ? selectedCamp.discountPercent
+        : Math.min(90, Math.max(0, discountPercent));
   const faceNum = Number(amountSgd) || 0;
-  const paidPreview = Math.round(faceNum * (100 - discApply)) / 100;
+  const paidPreview = noPay
+    ? 0
+    : Math.round(faceNum * (100 - discApply)) / 100;
   const minSpend =
     selectedCamp && selectedCamp.minSpendMultiplier > 0 && faceNum > 0
       ? faceNum * selectedCamp.minSpendMultiplier
@@ -238,7 +287,32 @@ export default function IssueSelfPage() {
   }
 
   async function submit() {
-    if (!cashConfirmed) {
+    if (noPay) {
+      if (issueNote.trim().length < 4) {
+        setError(
+          lang === "en"
+            ? "Note required (supplier / invoice / reason, min 4 chars)"
+            : "无支付必须填备注（供应商/欠款单号/原因，至少 4 字）"
+        );
+        return;
+      }
+      if (!phone.trim()) {
+        setError(
+          lang === "en"
+            ? "Phone required for no-pay issue (bind to account)"
+            : "无支付必须填对方手机号（发到账户）"
+        );
+        return;
+      }
+      if (!cashConfirmed) {
+        setError(
+          lang === "en"
+            ? "Confirm you authorize this no-pay issue"
+            : "请勾选确认：授权本次无支付发券"
+        );
+        return;
+      }
+    } else if (!cashConfirmed) {
       setError(
         lang === "en"
           ? "Confirm cash received first"
@@ -262,7 +336,7 @@ export default function IssueSelfPage() {
       );
       return;
     }
-    const disc = discApply;
+    const disc = noPay ? 0 : discApply;
     setLoading(true);
     setError("");
     setResult(null);
@@ -274,9 +348,12 @@ export default function IssueSelfPage() {
           campaignId,
           storeId,
           faceSgd: amt,
-          discountPercent: disc,
+          discountPercent: noPay ? undefined : disc,
+          paidSgd: noPay ? 0 : undefined,
+          issueReason,
+          issueNote: issueNote.trim() || undefined,
           customerPhone: phone.trim() || undefined,
-          paymentMethod: "cash",
+          paymentMethod: noPay ? issueReason : "cash",
         }),
       });
       const j = await res.json();
@@ -290,9 +367,14 @@ export default function IssueSelfPage() {
           discountPercent: j.data.discountPercent,
           campaignName: j.data.campaignName,
           isDraw: j.data.isDraw,
+          noPay: j.data.noPay,
+          issueReason: j.data.issueReason,
+          issueNote: j.data.issueNote,
           instantPrize: j.data.instantPrize || null,
         });
         setCashConfirmed(false);
+        setIssueNote("");
+        void loadHistory();
       }
     } catch {
       setError("网络错误");
@@ -360,14 +442,27 @@ export default function IssueSelfPage() {
       <div className="px-4 mt-4 space-y-4">
         <div className="rounded-2xl bg-muted/50 border border-border px-3 py-2.5 text-[11px] text-muted-foreground leading-relaxed">
           {lang === "en" ? (
+            noPay ? (
+              <>
+                <strong>No-pay issue</strong> (business only): pick reason → note
+                (invoice/supplier) → phone → face → authorize → issue. Staff cannot
+                do this.
+              </>
+            ) : (
+              <>
+                1) Collect cash · 2) Confirm below · 3) Issue · 4) Give{" "}
+                <strong>6-digit code</strong> or phone · 5) Redeem later
+              </>
+            )
+          ) : noPay ? (
             <>
-              1) Take cash · 2) Confirm amount below · 3) Issue · 4) Give{" "}
-              <strong>6-digit code</strong> · 5) Redeem with short code later
+              <strong>无支付发券</strong>（仅企业主）：选原因 → 填备注（供应商/欠款单号）→
+              必填手机 → 选面值 → 勾选授权 → 发券。店员账号无法操作。
             </>
           ) : (
             <>
-              ① 按下方「应收」收现金 → ② 勾选已收款 → ③ 发券 → ④ 把{" "}
-              <strong>6 位短码</strong> 给顾客 → ⑤ 消费时在「扫码核销」输入短码
+              ① 按「应收」收现金 → ② 勾选已收款 → ③ 发券 → ④ 短码或手机给顾客 → ⑤
+              核销输入短码
             </>
           )}
         </div>
@@ -447,6 +542,76 @@ export default function IssueSelfPage() {
               </select>
             </div>
 
+            {/* 发券原因：现金 vs 无支付 */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">
+                {lang === "en" ? "Issue reason" : "发券原因"}
+              </label>
+              <div className="mt-1.5 grid grid-cols-1 gap-2">
+                {ISSUE_REASONS.filter(
+                  (r) => !(isDrawCamp && !r.needsPay)
+                ).map((r) => {
+                  const active = issueReason === r.id;
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => {
+                        setIssueReason(r.id);
+                        setCashConfirmed(false);
+                      }}
+                      className={cn(
+                        "text-left rounded-xl border px-3 py-2.5 transition-all active:scale-[0.99]",
+                        active
+                          ? r.needsPay
+                            ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                            : "border-amber-500 bg-amber-50 dark:bg-amber-950/40 ring-1 ring-amber-500/30"
+                          : "border-border bg-card hover:border-muted-foreground/30"
+                      )}
+                    >
+                      <p className="text-sm font-semibold text-foreground">
+                        {lang === "en" ? r.en : r.zh}
+                        {!r.needsPay && (
+                          <span className="ml-1.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                            {lang === "en" ? "No pay · owner only" : "无支付 · 仅企业主"}
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {lang === "en" ? r.descEn : r.descZh}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {noPay && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  {lang === "en"
+                    ? "Note (required)"
+                    : "备注（必填 · 供应商/欠款单号/原因）"}
+                </label>
+                <textarea
+                  className="mt-1 w-full min-h-[72px] rounded-xl border border-amber-300/80 bg-card px-3 py-2 text-sm"
+                  value={issueNote}
+                  onChange={(e) => setIssueNote(e.target.value)}
+                  placeholder={
+                    lang === "en"
+                      ? "e.g. Supplier ABC · invoice #123 · offset S$500 of AP"
+                      : "例：供应商 ABC · 欠款单 #123 · 抵应付 S$500"
+                  }
+                  maxLength={500}
+                />
+                <p className="text-[10px] text-amber-800 dark:text-amber-300 mt-1">
+                  {lang === "en"
+                    ? "Record for audit. Without note, cannot issue."
+                    : "写入发券台账备查。无备注不能发。"}
+                </p>
+              </div>
+            )}
+
             <div>
               <label className="text-xs font-medium text-muted-foreground">
                 {lang === "en"
@@ -488,8 +653,8 @@ export default function IssueSelfPage() {
               )}
             </div>
 
-            {/* 折扣：产品固定则只展示，不提供 0/10/20 乱改 */}
-            {!isDrawCamp && (
+            {/* 折扣仅现金销售；无支付实收固定 0 */}
+            {!isDrawCamp && !noPay && (
               <div>
                 <label className="text-xs font-medium text-muted-foreground">
                   {lang === "en" ? "Cash vs face" : "实收 vs 可花"}
@@ -507,8 +672,8 @@ export default function IssueSelfPage() {
                     </p>
                     <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
                       {lang === "en"
-                        ? "Set by product pack — not editable at counter (keeps parity with online)."
-                        : "由券产品/活动规则决定，柜台不可另改，避免和线上不一致。"}
+                        ? "Set by product pack — not editable at counter."
+                        : "由券产品规则决定，柜台不可另改。"}
                     </p>
                   </div>
                 ) : (
@@ -534,60 +699,78 @@ export default function IssueSelfPage() {
                     ))}
                   </div>
                 )}
-
-                <div className="mt-3 rounded-2xl bg-primary/5 border border-primary/20 px-4 py-3">
-                  <p className="text-xs text-muted-foreground">
-                    {lang === "en" ? "Collect cash now" : "应收现金"}
-                  </p>
-                  <p className="text-2xl font-bold tabular-nums text-foreground mt-0.5">
-                    S${paidPreview.toFixed(2)}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
-                    {lang === "en"
-                      ? `Pay S$${paidPreview.toFixed(0)} · customer can spend S$${faceNum || 0}`
-                      : `收 S$${paidPreview.toFixed(0)} · 顾客可花 S$${faceNum || 0}`}
-                    {discApply > 0 ? ` · −${discApply}%` : ""}
-                  </p>
-                  {minSpend > 0 && (
-                    <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-1">
-                      {lang === "en"
-                        ? `Redeem min bill ≈ S$${minSpend.toFixed(0)}`
-                        : `核销门槛约满 S$${minSpend.toFixed(0)}`}
-                    </p>
-                  )}
-                </div>
               </div>
             )}
 
-            {isDrawCamp && (
-              <div className="rounded-2xl bg-brand/5 border border-brand/20 px-4 py-3">
-                <p className="text-xs text-muted-foreground">
-                  {lang === "en" ? "Collect cash now" : "应收现金（面值）"}
-                </p>
-                <p className="text-2xl font-bold tabular-nums text-foreground mt-0.5">
-                  S${faceNum.toFixed(2)}
-                </p>
-                <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+            <div
+              className={cn(
+                "rounded-2xl px-4 py-3 border",
+                noPay
+                  ? "bg-amber-50 dark:bg-amber-950/30 border-amber-300/60"
+                  : isDrawCamp
+                    ? "bg-brand/5 border-brand/20"
+                    : "bg-primary/5 border-primary/20"
+              )}
+            >
+              <p className="text-xs text-muted-foreground">
+                {noPay
+                  ? lang === "en"
+                    ? "Cash collected"
+                    : "实收现金（无支付）"
+                  : lang === "en"
+                    ? "Collect cash now"
+                    : "应收现金"}
+              </p>
+              <p className="text-2xl font-bold tabular-nums text-foreground mt-0.5">
+                S${(noPay ? 0 : isDrawCamp ? faceNum : paidPreview).toFixed(2)}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                {noPay
+                  ? lang === "en"
+                    ? `No cash · customer can spend S$${faceNum || 0} (debt/gift offset)`
+                    : `不收现金 · 对方可花 S$${faceNum || 0}（抵欠/赠送）`
+                  : lang === "en"
+                    ? `Pay S$${(isDrawCamp ? faceNum : paidPreview).toFixed(0)} · spend S$${faceNum || 0}`
+                    : `收 S$${(isDrawCamp ? faceNum : paidPreview).toFixed(0)} · 可花 S$${faceNum || 0}`}
+                {!noPay && discApply > 0 ? ` · −${discApply}%` : ""}
+              </p>
+              {minSpend > 0 && !noPay && (
+                <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-1">
                   {lang === "en"
-                    ? "Exclusive draw: business top-up covers 15% (instant + platform + grand)."
-                    : "独享：顾客付面值；企业自充扣 15%（小奖 3% + 平台 2% + 大奖 10%）。"}
+                    ? `Redeem min bill ≈ S$${minSpend.toFixed(0)}`
+                    : `核销门槛约满 S$${minSpend.toFixed(0)}`}
                 </p>
-              </div>
-            )}
+              )}
+            </div>
 
             <Input
-              label={t("issueSelf.phone")}
+              label={
+                noPay
+                  ? lang === "en"
+                    ? "Recipient phone (required)"
+                    : "对方手机（必填 · 发到账户）"
+                  : t("issueSelf.phone")
+              }
               placeholder={t("issueSelf.phonePh")}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
             />
             <p className="text-[10px] text-muted-foreground -mt-2">
-              {lang === "en"
-                ? "Optional. Without phone, customer uses the short code only."
-                : "可选。不填手机也能用短码核销。"}
+              {noPay
+                ? lang === "en"
+                  ? "Required. Same phone to log in and see balance."
+                  : "必填。对方用此手机登录后才能在余额里看到。"
+                : lang === "en"
+                  ? "Optional. Without phone, use short code only."
+                  : "可选。不填手机也能用短码核销。"}
             </p>
 
-            <label className="flex items-start gap-3 rounded-2xl border-2 border-primary/25 bg-card p-3.5 cursor-pointer">
+            <label
+              className={cn(
+                "flex items-start gap-3 rounded-2xl border-2 bg-card p-3.5 cursor-pointer",
+                noPay ? "border-amber-400/50" : "border-primary/25"
+              )}
+            >
               <input
                 type="checkbox"
                 className="mt-0.5 h-5 w-5 rounded border-border accent-primary"
@@ -595,9 +778,13 @@ export default function IssueSelfPage() {
                 onChange={(e) => setCashConfirmed(e.target.checked)}
               />
               <span className="text-sm text-foreground leading-snug">
-                {lang === "en"
-                  ? `I have received S$${(isDrawCamp ? faceNum : paidPreview).toFixed(2)} cash (or store payment)`
-                  : `我已收到现金 S$${(isDrawCamp ? faceNum : paidPreview).toFixed(2)}（或店内收款）`}
+                {noPay
+                  ? lang === "en"
+                    ? `I authorize no-pay issue of S$${faceNum.toFixed(2)} face (business owner only)`
+                    : `我确认授权无支付发券 · 面值 S$${faceNum.toFixed(2)}（仅企业主，将记入台账）`
+                  : lang === "en"
+                    ? `I have received S$${(isDrawCamp ? faceNum : paidPreview).toFixed(2)} cash (or store payment)`
+                    : `我已收到现金 S$${(isDrawCamp ? faceNum : paidPreview).toFixed(2)}（或店内收款）`}
               </span>
             </label>
 
@@ -618,27 +805,94 @@ export default function IssueSelfPage() {
           </p>
         )}
 
+        {/* 发券台账 */}
+        {history.length > 0 && (
+          <div className="pt-2">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <h3 className="text-sm font-semibold text-foreground">
+                {lang === "en" ? "Recent issues (audit)" : "最近发券（台账）"}
+              </h3>
+              <button
+                type="button"
+                className="text-[11px] text-primary font-medium"
+                onClick={() => void loadHistory()}
+              >
+                {lang === "en" ? "Refresh" : "刷新"}
+              </button>
+            </div>
+            <div className="space-y-2">
+              {history.slice(0, 15).map((h) => (
+                <div
+                  key={h.id}
+                  className={cn(
+                    "rounded-xl border px-3 py-2 text-[11px]",
+                    h.noPay
+                      ? "border-amber-200 bg-amber-50/80 dark:bg-amber-950/25"
+                      : "border-border bg-card"
+                  )}
+                >
+                  <div className="flex justify-between gap-2">
+                    <span className="font-semibold text-foreground">
+                      {lang === "en" ? h.issueReasonEn : h.issueReasonZh}
+                    </span>
+                    <span className="tabular-nums text-muted-foreground shrink-0">
+                      {new Date(h.createdAt).toLocaleString(
+                        lang === "en" ? "en-SG" : "zh-CN",
+                        { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }
+                      )}
+                    </span>
+                  </div>
+                  <p className="text-foreground mt-0.5 tabular-nums">
+                    {lang === "en" ? "Face" : "面值"} S${h.faceSgd}
+                    {" · "}
+                    {lang === "en" ? "Paid" : "实收"} S${h.paidSgd}
+                    {h.shortCode ? ` · ${h.shortCode}` : ""}
+                  </p>
+                  <p className="text-muted-foreground mt-0.5 truncate">
+                    {h.customerPhone || "—"}
+                    {h.campaignName ? ` · ${h.campaignName}` : ""}
+                  </p>
+                  {h.issueNote && (
+                    <p className="text-muted-foreground mt-0.5 line-clamp-2">
+                      {h.issueNote}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {result && (
           <Card className="border-green-200 bg-green-50 dark:bg-green-950/35 overflow-hidden">
             <div className="h-1.5 bg-emerald-500/50" />
             <CardContent className="p-5 text-center space-y-3">
               <p className="text-sm font-medium text-green-800">
                 {t("issueSelf.ok")}
-                {result.isDraw
+                {result.noPay
                   ? lang === "en"
-                    ? " · exclusive draw"
-                    : " · 独享抽奖"
-                  : ""}
+                    ? " · no-pay"
+                    : " · 无支付"
+                  : result.isDraw
+                    ? lang === "en"
+                      ? " · exclusive draw"
+                      : " · 独享抽奖"
+                    : ""}
               </p>
               <p className="text-xs text-muted-foreground">
                 {lang === "en" ? "Paid" : "实收"} S$
-                {result.paidSgd ?? result.balanceSgd}
+                {result.paidSgd ?? "0.00"}
                 {" · "}
                 {lang === "en" ? "Spendable" : "可花"} S${result.balanceSgd}
                 {result.discountPercent
                   ? ` · −${result.discountPercent}%`
                   : ""}
               </p>
+              {result.issueNote && (
+                <p className="text-[11px] text-muted-foreground bg-white/60 rounded-lg px-2 py-1.5">
+                  {lang === "en" ? "Note" : "备注"}：{result.issueNote}
+                </p>
+              )}
               {result.instantPrize && (
                 <div className="rounded-xl bg-white/80 border border-violet-100 px-3 py-2">
                   <p className="text-[10px] text-violet-600 font-medium">

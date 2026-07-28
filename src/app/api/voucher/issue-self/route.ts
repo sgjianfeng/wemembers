@@ -1,23 +1,146 @@
-// POST /api/voucher/issue-self
-// 自用 / 独享：现金（或店收）发券 — 钱已在店；抽奖独享可当场即时小奖（店兑）
+// POST /api/voucher/issue-self — 柜台发券（现金 / 无支付抵欠等）
+// GET  /api/voucher/issue-self — 最近发券记录（审计）
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { allocateShortCode } from "@/lib/voucher-short-code";
 import { isSelfUse } from "@/lib/product-kind";
 import { calculateTierWeight, resolveTier } from "@/lib/draw-v2";
+import {
+  isIssueReasonId,
+  isNoPayReason,
+  paymentMethodForReason,
+  reasonLabel,
+  type IssueReasonId,
+} from "@/lib/issue-self";
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getSession();
+    if (!session || session.role !== "business") {
+      return NextResponse.json({ error: "仅企业主可查看发券记录" }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const onlyNoPay = searchParams.get("noPay") === "1";
+    const take = Math.min(100, Math.max(1, Number(searchParams.get("take")) || 40));
+
+    const stores = await prisma.store.findMany({
+      where: { businessId: session.userId },
+      select: { id: true },
+    });
+    const storeIds = stores.map((s) => s.id);
+
+    const vouchers = await prisma.voucher.findMany({
+      where: {
+        productKind: "self_use",
+        OR: [
+          { storeId: { in: storeIds } },
+          {
+            campaign: { businessId: session.userId },
+          },
+        ],
+        ...(onlyNoPay
+          ? {
+              issueReason: {
+                in: [
+                  "supplier_debt",
+                  "staff_welfare",
+                  "marketing",
+                  "other_no_pay",
+                ],
+              },
+            }
+          : {
+              OR: [
+                { paymentMethod: { in: ["cash", "paynow_store"] } },
+                { issueReason: { not: null } },
+                { issuedById: { not: null } },
+              ],
+            }),
+      },
+      orderBy: { createdAt: "desc" },
+      take,
+      select: {
+        id: true,
+        shortCode: true,
+        amountCents: true,
+        paidCents: true,
+        balanceCents: true,
+        paymentMethod: true,
+        issueReason: true,
+        issueNote: true,
+        issuedById: true,
+        createdAt: true,
+        store: { select: { name: true } },
+        campaign: { select: { name: true, type: true } },
+        customer: {
+          select: { phone: true, displayName: true, email: true },
+        },
+      },
+    });
+
+    return NextResponse.json({
+      data: vouchers.map((v) => ({
+        id: v.id,
+        shortCode: v.shortCode,
+        faceSgd: (v.amountCents / 100).toFixed(2),
+        paidSgd: (v.paidCents / 100).toFixed(2),
+        balanceSgd: (v.balanceCents / 100).toFixed(2),
+        paymentMethod: v.paymentMethod,
+        issueReason: v.issueReason,
+        issueReasonZh: reasonLabel(v.issueReason, "zh"),
+        issueReasonEn: reasonLabel(v.issueReason, "en"),
+        issueNote: v.issueNote,
+        issuedById: v.issuedById,
+        storeName: v.store?.name || null,
+        campaignName: v.campaign?.name || null,
+        isDraw:
+          v.campaign?.type === "lucky_draw_v2" ||
+          v.campaign?.type === "lucky_draw",
+        customerPhone: v.customer?.phone || null,
+        customerName: v.customer?.displayName || null,
+        createdAt: v.createdAt.toISOString(),
+        noPay: isNoPayReason(v.issueReason) || v.paidCents === 0,
+      })),
+    });
+  } catch (e) {
+    console.error("issue-self GET", e);
+    return NextResponse.json({ error: "查询失败" }, { status: 500 });
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
-    if (!session || (session.role !== "business" && session.role !== "staff")) {
-      return NextResponse.json({ error: "未登录" }, { status: 401 });
+    // 发券（含现金）仅企业主；店员只做核销，避免乱发/抵欠
+    if (!session || session.role !== "business") {
+      return NextResponse.json(
+        {
+          error:
+            session?.role === "staff"
+              ? "店员不能发券，请使用企业主账号；店员请到「核销」扫码"
+              : "未登录",
+          code: session?.role === "staff" ? "BUSINESS_ONLY" : "UNAUTHORIZED",
+        },
+        { status: session ? 403 : 401 }
+      );
     }
 
     const body = await request.json();
     const campaignId =
       typeof body.campaignId === "string" ? body.campaignId.trim() : "";
-    // Face F = spendable balance; paid P = cash actually received (P ≤ F)
+
+    const reasonRaw =
+      typeof body.issueReason === "string" ? body.issueReason.trim() : "cash_sale";
+    const issueReason: IssueReasonId = isIssueReasonId(reasonRaw)
+      ? reasonRaw
+      : "cash_sale";
+    const noPay = isNoPayReason(issueReason);
+    const issueNote =
+      typeof body.issueNote === "string" ? body.issueNote.trim().slice(0, 500) : "";
+
+    // Face F = spendable; paid P ≤ F
     const faceSgd = Number(body.faceSgd ?? body.amountSgd);
     const faceCents = Math.round(
       body.faceCents != null
@@ -26,8 +149,11 @@ export async function POST(request: NextRequest) {
           ? Number(body.amountCents)
           : faceSgd * 100
     );
+
     let paidCents: number;
-    if (body.paidCents != null) {
+    if (noPay) {
+      paidCents = 0;
+    } else if (body.paidCents != null) {
       paidCents = Math.round(Number(body.paidCents));
     } else if (body.paidSgd != null) {
       paidCents = Math.round(Number(body.paidSgd) * 100);
@@ -35,22 +161,37 @@ export async function POST(request: NextRequest) {
       const d = Math.min(90, Math.max(0, Number(body.discountPercent)));
       paidCents = Math.round((faceCents * (100 - d)) / 100);
     } else {
-      paidCents = faceCents; // no discount
+      paidCents = faceCents;
     }
-    const paymentMethod =
-      typeof body.paymentMethod === "string" ? body.paymentMethod : "cash";
+
     const customerPhone =
       typeof body.customerPhone === "string"
         ? body.customerPhone.trim()
         : "";
     const customerIdBody =
       typeof body.customerId === "string" ? body.customerId.trim() : "";
-    const doInstantDraw = body.instantDraw !== false; // default true for draw
+    const doInstantDraw = body.instantDraw !== false;
 
-    let storeId =
+    const storeId =
       typeof body.storeId === "string" ? body.storeId.trim() : "";
-    if (session.role === "staff") {
-      storeId = session.storeId || "";
+    if (noPay) {
+      if (issueNote.length < 4) {
+        return NextResponse.json(
+          {
+            error:
+              "无支付发券必须填写备注（供应商名、欠款单号、原因等，至少 4 字）",
+          },
+          { status: 400 }
+        );
+      }
+      if (!customerPhone && !customerIdBody) {
+        return NextResponse.json(
+          {
+            error: "无支付发券必须填写对方手机号，以便挂到账户",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     if (!campaignId || !faceCents || faceCents < 100) {
@@ -59,7 +200,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (!Number.isFinite(paidCents) || paidCents < 1) {
+    if (!noPay && (!Number.isFinite(paidCents) || paidCents < 1)) {
       return NextResponse.json({ error: "实收金额无效" }, { status: 400 });
     }
     if (paidCents > faceCents) {
@@ -72,19 +213,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "请选择发售门店" }, { status: 400 });
     }
 
-    const businessId =
-      session.role === "business"
-        ? session.userId
-        : (
-            await prisma.store.findUnique({
-              where: { id: storeId },
-              select: { businessId: true },
-            })
-          )?.businessId;
-
-    if (!businessId) {
-      return NextResponse.json({ error: "门店无效" }, { status: 400 });
-    }
+    const businessId = session.userId;
 
     const store = await prisma.store.findFirst({
       where: { id: storeId, businessId },
@@ -120,6 +249,21 @@ export async function POST(request: NextRequest) {
     if (campaign.status === "ended" || campaign.status === "deleted") {
       return NextResponse.json({ error: "活动已结束" }, { status: 400 });
     }
+
+    const isDraw =
+      campaign.type === "lucky_draw_v2" || campaign.type === "lucky_draw";
+
+    // 无支付不支持抽奖（避免 15% 扣费与「没收到钱」混账）
+    if (noPay && isDraw) {
+      return NextResponse.json(
+        {
+          error:
+            "无支付发券仅支持自用代金，不支持独享抽奖。请选自用代金活动。",
+        },
+        { status: 400 }
+      );
+    }
+
     if (campaign.status === "draft") {
       await prisma.campaign.update({
         where: { id: campaign.id },
@@ -127,13 +271,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const isDraw =
-      campaign.type === "lucky_draw_v2" || campaign.type === "lucky_draw";
     const faceSgdResolved = faceCents / 100;
     const tierResolved = resolveTier(faceSgdResolved);
     const tier = (tierResolved?.tier || "medium") as "small" | "medium" | "large";
 
-    // Resolve customer
     let customerId = customerIdBody;
     if (!customerId && customerPhone) {
       const phone = customerPhone.replace(/\s/g, "");
@@ -154,6 +295,7 @@ export async function POST(request: NextRequest) {
       customerId = user.id;
     }
     if (!customerId) {
+      // 现金销售可不绑手机（短码）；无支付已强制手机
       const walkIn = await prisma.user.create({
         data: {
           role: "customer",
@@ -170,8 +312,7 @@ export async function POST(request: NextRequest) {
       : 0;
 
     const shortCode = await allocateShortCode();
-    const payMethod =
-      paymentMethod === "paynow_store" ? "paynow_store" : "cash";
+    const payMethod = paymentMethodForReason(issueReason);
 
     let voucher;
     let instantPrize: {
@@ -186,12 +327,13 @@ export async function POST(request: NextRequest) {
       const result = await prisma.$transaction(async (tx) => {
         let realPrize = true;
         let wFactor = 1;
-        // 独享现金：自充够付奖池→进池；否则只扣服务费2%→门店送小奖、弱权重
         if (isDraw) {
           const { applyExclusiveCashSaleFees } = await import(
             "@/lib/exclusive-fees"
           );
-          const { exclusiveConfigFromCampaign } = await import("@/lib/templates");
+          const { exclusiveConfigFromCampaign } = await import(
+            "@/lib/templates"
+          );
           const feeConfig = exclusiveConfigFromCampaign(campaign);
           try {
             const feeResult = await applyExclusiveCashSaleFees(tx, {
@@ -239,6 +381,9 @@ export async function POST(request: NextRequest) {
             shortCode,
             productKind: "self_use",
             paymentMethod: payMethod,
+            issueReason,
+            issueNote: issueNote || null,
+            issuedById: session.userId,
           },
         });
 
@@ -305,6 +450,16 @@ export async function POST(request: NextRequest) {
         ? Math.round(((faceCents - paidCents) / faceCents) * 1000) / 10
         : 0;
 
+    const successNote = noPay
+      ? `无支付发券（${reasonLabel(issueReason, "zh")}）已挂到对方账户 · 实收 S$0 · 可花 S$${(balanceAfterCents / 100).toFixed(2)}`
+      : isDraw
+        ? instantPrize
+          ? feeNote.includes("门店兑")
+            ? `独享已发出；小奖 ${instantPrize.name} 请门店兑付（未入余额）；可花 S$${(balanceAfterCents / 100).toFixed(2)}`
+            : `独享已发出；小奖 ${instantPrize.name} 已加入可花余额（现 S$${(balanceAfterCents / 100).toFixed(2)}）`
+          : "独享券已发出：顾客款在店；15% 已从企业账户计提"
+        : "自用券已发出：实收已在店，可花面值进余额；核销仅记履约";
+
     return NextResponse.json({
       data: {
         id: voucher.id,
@@ -319,15 +474,12 @@ export async function POST(request: NextRequest) {
         campaignName: campaign.name,
         storeName: store.name,
         paymentMethod: voucher.paymentMethod,
+        issueReason,
+        issueNote: issueNote || null,
+        noPay,
         instantPrize,
         feeNote: feeNote || undefined,
-        note: isDraw
-          ? instantPrize
-            ? feeNote.includes("门店兑")
-              ? `独享已发出；小奖 ${instantPrize.name} 请门店兑付（未入余额）；可花 S$${(balanceAfterCents / 100).toFixed(2)}`
-              : `独享已发出；小奖 ${instantPrize.name} 已加入可花余额（现 S$${(balanceAfterCents / 100).toFixed(2)}）`
-            : "独享券已发出：顾客款在店；15% 已从企业账户计提"
-          : "自用券已发出：实收已在店，可花面值进余额；核销仅记履约",
+        note: successNote,
       },
     });
   } catch (error) {

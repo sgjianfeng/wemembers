@@ -106,7 +106,7 @@ export default async function BusinessLayout({
   const staffTabs = [
     {
       icon: "overview" as const,
-      label: lang === "en" ? "Store" : "本店",
+      label: lang === "en" ? "Desk" : "工作台",
       href: "/business",
       exact: true,
     },
@@ -116,9 +116,9 @@ export default async function BusinessLayout({
       href: "/business/scan",
     },
     {
-      icon: "members" as const,
-      label: t("business.tabs.members", lang),
-      href: "/business/members",
+      icon: "hub" as const,
+      label: lang === "en" ? "Docs" : "资料",
+      href: "/business/hub/docs",
     },
     {
       icon: "store" as const,

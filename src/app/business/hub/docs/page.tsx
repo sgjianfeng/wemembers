@@ -12,25 +12,43 @@ import { ReceiptChat } from "@/app/business/receipt/ReceiptChat";
  */
 export default async function HubDocsPage() {
   const session = await getSession();
-  if (!session || session.role !== "business") redirect("/auth/login");
+  if (
+    !session ||
+    (session.role !== "business" && session.role !== "staff")
+  ) {
+    redirect("/auth/login");
+  }
 
   const c = await cookies();
   const lang = (c.get("gwm_lang")?.value === "en" ? "en" : "zh") as "zh" | "en";
+  const isStaff = session.role === "staff";
+  const backHref = isStaff ? "/business" : "/business/hub";
+  const backLabel = isStaff
+    ? lang === "en"
+      ? "Store desk"
+      : "本店工作台"
+    : lang === "en"
+      ? "Hub"
+      : "功能仓";
 
   return (
     <div className="pb-4">
       <div className="px-4 py-3 border-b border-border sticky top-0 bg-card z-10">
         <div className="flex items-center gap-2">
           <Link
-            href="/business/hub"
+            href={backHref}
             className="text-xs text-primary shrink-0 py-1 flex items-center gap-0.5 active:scale-[0.97] transition-transform"
           >
-            <ArrowLeft size={13} /> {lang === "en" ? "Hub" : "功能仓"}
+            <ArrowLeft size={13} /> {backLabel}
           </Link>
           <div className="min-w-0">
             <h1 className="text-lg font-semibold text-foreground">{t("hub.docs.title", lang)}</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {t("hub.docs.pageHint", lang)}
+              {isStaff
+                ? lang === "en"
+                  ? "Upload store receipts · company can review later"
+                  : "本店上传票据 · 企业主可统一查阅"
+                : t("hub.docs.pageHint", lang)}
             </p>
           </div>
         </div>

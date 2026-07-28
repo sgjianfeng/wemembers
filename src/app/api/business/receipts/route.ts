@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { putReceiptImage } from "@/services/storage";
 import { recognizeReceipt } from "@/services/ai/vision";
+import { resolveBusinessActor } from "@/lib/business-actor";
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10MB
 const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/gif"];
@@ -10,7 +11,8 @@ const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/g
 // GET /api/business/receipts?groupId=xxx — 该群时间线
 export async function GET(request: NextRequest) {
   const session = await getSession();
-  if (!session || session.role !== "business") {
+  const actor = await resolveBusinessActor(session);
+  if (!actor) {
     return NextResponse.json({ error: "无权操作" }, { status: 403 });
   }
 
@@ -21,14 +23,29 @@ export async function GET(request: NextRequest) {
 
   // 归属校验
   const group = await prisma.receiptGroup.findFirst({
-    where: { id: groupId, businessId: session.userId },
+    where: { id: groupId, businessId: actor.businessId },
   });
   if (!group) {
     return NextResponse.json({ error: "群不存在" }, { status: 404 });
   }
+  if (actor.role === "staff") {
+    const roles = (group.visibleRoles || "business,staff").split(",");
+    if (!roles.map((r) => r.trim()).includes("staff")) {
+      return NextResponse.json({ error: "无权查看该资料群" }, { status: 403 });
+    }
+  }
 
   const receipts = await prisma.receipt.findMany({
-    where: { groupId, businessId: session.userId },
+    where: {
+      groupId,
+      businessId: actor.businessId,
+      // 店员优先看本店上传（含历史无 store 的企业票据则仍可见同群）
+      ...(actor.role === "staff" && actor.storeId
+        ? {
+            OR: [{ storeId: actor.storeId }, { storeId: null }],
+          }
+        : {}),
+    },
     include: { items: true },
     orderBy: { createdAt: "asc" },
   });
@@ -39,7 +56,8 @@ export async function GET(request: NextRequest) {
 // POST /api/business/receipts — 上传票据（multipart：file + groupId），存云 + 同步识别
 export async function POST(request: NextRequest) {
   const session = await getSession();
-  if (!session || session.role !== "business") {
+  const actor = await resolveBusinessActor(session);
+  if (!actor) {
     return NextResponse.json({ error: "无权操作" }, { status: 403 });
   }
 
@@ -61,24 +79,30 @@ export async function POST(request: NextRequest) {
   }
 
   const group = await prisma.receiptGroup.findFirst({
-    where: { id: groupId, businessId: session.userId },
+    where: { id: groupId, businessId: actor.businessId },
   });
   if (!group) {
     return NextResponse.json({ error: "群不存在" }, { status: 404 });
   }
+  if (actor.role === "staff") {
+    const roles = (group.visibleRoles || "business,staff").split(",");
+    if (!roles.map((r) => r.trim()).includes("staff")) {
+      return NextResponse.json({ error: "无权上传到该资料群" }, { status: 403 });
+    }
+  }
 
   const bytes = Buffer.from(await file.arrayBuffer());
 
-  // 1) 存原图（云 / 本地降级）
-  const stored = await putReceiptImage(session.userId, bytes, file.type);
+  // 1) 存原图（云 / 本地降级）— 路径用企业 id
+  const stored = await putReceiptImage(actor.businessId, bytes, file.type);
 
-  // 2) 建记录（processing）
+  // 2) 建记录（processing）；店员上传打上本店 storeId
   const receipt = await prisma.receipt.create({
     data: {
       groupId,
-      businessId: session.userId,
-      storeId: group.storeId,
-      uploadedById: session.userId,
+      businessId: actor.businessId,
+      storeId: actor.storeId || group.storeId,
+      uploadedById: actor.userId,
       imageUrl: stored.url,
       mimeType: file.type,
       category: group.category === "custom" ? "unknown" : group.category,
