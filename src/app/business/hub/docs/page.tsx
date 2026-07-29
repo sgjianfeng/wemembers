@@ -28,8 +28,8 @@ export default async function HubDocsPage() {
       ? "Store desk"
       : "本店工作台"
     : lang === "en"
-      ? "Hub"
-      : "功能仓";
+      ? "Tools"
+      : "工具";
 
   return (
     <div className="pb-4">

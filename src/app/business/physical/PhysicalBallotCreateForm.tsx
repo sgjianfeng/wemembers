@@ -24,7 +24,7 @@ export type BallotCampaign = {
 };
 
 /**
- * 入箱票专用新建批次：功能仓独立入口，不混在实体印刷纸质类型里。
+ * 入箱票专用新建批次：工具页独立入口，不混在实体印刷纸质类型里。
  */
 export function PhysicalBallotCreateForm({
   stores,

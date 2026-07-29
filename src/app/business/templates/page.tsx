@@ -171,7 +171,7 @@ export default function BusinessTemplatesPage() {
       <div className="px-4 py-3 border-b border-border sticky top-0 bg-card z-10">
         <div className="flex items-center gap-3">
           <Link href="/business/hub" className="text-xs text-primary font-medium">
-            ← {lang === "en" ? "Hub" : "功能仓"}
+            ← {lang === "en" ? "Tools" : "工具"}
           </Link>
         </div>
         <h1 className="text-lg font-semibold mt-1">

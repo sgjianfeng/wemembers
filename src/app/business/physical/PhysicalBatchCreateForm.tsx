@@ -428,8 +428,8 @@ export function PhysicalBatchCreateForm({
             )}
             <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">
               {lang === "en"
-                ? "Paper type follows the product — no extra type step. Ballot (box-only) is under Hub → Ballot print."
-                : "纸质类型由产品决定，无需再选手动类型。入箱票请到功能仓「入箱票印刷」。"}
+                ? "Paper type follows the product — no extra type step. Ballot (box-only) is under Tools → Ballot print."
+                : "纸质类型由产品决定，无需再选手动类型。入箱票请到「更多 → 工具 → 入箱票印刷」。"}
             </p>
           </div>
 

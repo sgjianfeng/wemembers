@@ -165,12 +165,12 @@ export default function BusinessProductsPage() {
               {lang === "en" ? (
                 <>
                   <span className="text-foreground font-medium">Template</span> — fee/discount rules
-                  (Hub → My templates)
+                  (More → Tools → My templates)
                 </>
               ) : (
                 <>
                   <span className="text-foreground font-medium">模版</span>
-                  ：费率/折扣规则（功能仓 → 我的模版）
+                  ：费率/折扣规则（更多 → 工具 → 我的模版）
                 </>
               )}
             </li>

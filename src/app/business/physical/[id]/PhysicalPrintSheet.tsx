@@ -19,7 +19,59 @@ import {
   type PrintSizePresetId,
 } from "@/lib/physical-print-export";
 
-type Ticket = { code: string; status: string; claimUrl: string };
+type Ticket = {
+  code: string;
+  status: string;
+  claimUrl: string;
+  soldAt?: string | null;
+  claimedAt?: string | null;
+  redeemedAt?: string | null;
+  paidCents?: number;
+};
+
+function statusMeta(status: string, lang: "zh" | "en") {
+  const map: Record<
+    string,
+    { zh: string; en: string; cls: string }
+  > = {
+    printed: {
+      zh: "库存",
+      en: "Stock",
+      cls: "bg-emerald-50 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40",
+    },
+    sold: {
+      zh: "已售",
+      en: "Sold",
+      cls: "bg-sky-50 text-sky-800 border-sky-200/80 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800/40",
+    },
+    claimed: {
+      zh: "已绑",
+      en: "Bound",
+      cls: "bg-indigo-50 text-indigo-800 border-indigo-200/80 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/40",
+    },
+    redeemed: {
+      zh: "已核",
+      en: "Used",
+      cls: "bg-violet-50 text-violet-800 border-violet-200/80 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/40",
+    },
+    boxed: {
+      zh: "已投箱",
+      en: "Boxed",
+      cls: "bg-amber-50 text-amber-900 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/40",
+    },
+    void: {
+      zh: "作废",
+      en: "Void",
+      cls: "bg-muted text-muted-foreground border-border",
+    },
+  };
+  const m = map[status] || {
+    zh: status,
+    en: status,
+    cls: "bg-muted text-muted-foreground border-border",
+  };
+  return { label: lang === "en" ? m.en : m.zh, cls: m.cls };
+}
 
 export function PhysicalPrintSheet({
   lang,
@@ -504,8 +556,8 @@ export function PhysicalPrintSheet({
             </p>
             <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
               {lang === "en"
-                ? "We screenshot the on-screen strip HTML (same as preview below), pack full tickets into pages, then one multi-page PDF."
-                : "直接截取下方「屏幕条形预览」的 HTML 票面（所见即所得），再按完整券分页合成一个多页 PDF。"}
+                ? "PDF is built from the same strip layout as the preview (all codes). Below: one sample + a status list for stock / sold / used."
+                : "PDF 按预览同款条形票面导出（含全部券码）。下方：一张样张预览 + 列表看库存/售出/核销。"}
             </p>
           </div>
 
@@ -820,15 +872,18 @@ export function PhysicalPrintSheet({
         </div>
       </div>
 
-      {/* Share preview */}
+      {/* ── 主界面：一张预览 + 券码列表（库存/核销好扫） ── */}
       {first && (
-        <div className="print:hidden mb-6">
+        <div className="print:hidden mb-4">
           <p className="text-xs font-medium text-muted-foreground mb-2">
-            {lang === "en"
-              ? "Share preview (1:1 · first code)"
-              : "分享预览（1:1 · 第一张码）"}
+            {lang === "en" ? "Ticket preview" : "票面预览"}
+            <span className="font-normal text-muted-foreground/80">
+              {lang === "en"
+                ? " · sample layout (export uses all codes)"
+                : " · 版式样张（导出含全部券码）"}
+            </span>
           </p>
-          <div className="max-w-[280px]">
+          <div className="w-full max-w-2xl">
             <TicketVisualCard
               templateId={visualTemplateId}
               themeColor={resolvedTheme}
@@ -844,27 +899,90 @@ export function PhysicalPrintSheet({
               claimUrl={first.claimUrl}
               lang={lang}
               terms={description}
-              mode="share"
+              mode="print"
             />
           </div>
         </div>
       )}
 
-      <p className="print:hidden text-xs font-medium text-muted-foreground mb-1">
-        {lang === "en"
-          ? "On-screen strip (export screenshots this HTML)"
-          : "屏幕条形预览（导出即截此 HTML）"}
-      </p>
-      <p className="print:hidden text-[11px] text-muted-foreground mb-3 leading-relaxed">
-        {lang === "en"
-          ? `${tickets.length} codes · PDF is a screenshot of these strips, then multi-page without cutting tickets.`
-          : `共 ${tickets.length} 张。PDF = 截取下列券条 HTML，再按完整券分页，不会截断。`}
-      </p>
+      <div className="print:hidden mb-6">
+        <div className="flex items-baseline justify-between gap-2 mb-2">
+          <p className="text-xs font-semibold text-foreground">
+            {lang === "en" ? "Codes" : "券码列表"}
+            <span className="ml-1.5 font-normal text-muted-foreground tabular-nums">
+              {tickets.length}
+            </span>
+          </p>
+          <p className="text-[10px] text-muted-foreground">
+            {lang === "en"
+              ? "Stock / sold / bound / used"
+              : "库存 · 已售 · 已绑 · 已核"}
+          </p>
+        </div>
+        <div className="rounded-xl border border-border overflow-hidden bg-card">
+          <ul className="divide-y divide-border max-h-[min(28rem,55vh)] overflow-y-auto">
+            {tickets.map((t, i) => {
+              const st = statusMeta(t.status, lang);
+              return (
+                <li
+                  key={t.code}
+                  className="flex items-center gap-2 px-3 py-2 text-[12px] hover:bg-muted/40"
+                >
+                  <span className="w-7 shrink-0 text-[10px] text-muted-foreground tabular-nums">
+                    {i + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-[11px] font-semibold text-foreground truncate">
+                      {t.code}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                      {t.status === "sold" && t.paidCents != null && t.paidCents > 0
+                        ? lang === "en"
+                          ? `Paid S$${(t.paidCents / 100).toFixed(2)}`
+                          : `实收 S$${(t.paidCents / 100).toFixed(2)}`
+                        : t.status === "redeemed" && t.redeemedAt
+                          ? lang === "en"
+                            ? `Used ${new Date(t.redeemedAt).toLocaleDateString("en-SG")}`
+                            : `核销 ${new Date(t.redeemedAt).toLocaleDateString("zh-CN")}`
+                          : t.status === "claimed" && t.claimedAt
+                            ? lang === "en"
+                              ? `Bound ${new Date(t.claimedAt).toLocaleDateString("en-SG")}`
+                              : `绑定 ${new Date(t.claimedAt).toLocaleDateString("zh-CN")}`
+                            : t.status === "sold" && t.soldAt
+                              ? lang === "en"
+                                ? `Sold ${new Date(t.soldAt).toLocaleDateString("en-SG")}`
+                                : `售出 ${new Date(t.soldAt).toLocaleDateString("zh-CN")}`
+                              : lang === "en"
+                                ? "In stock"
+                                : "在库"}
+                    </p>
+                  </div>
+                  <span
+                    className={cn(
+                      "shrink-0 text-[10px] font-bold rounded-full border px-2 py-0.5",
+                      st.cls
+                    )}
+                  >
+                    {st.label}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
 
+      {/*
+        导出截图源：全部券条仍渲染在 DOM（屏外），
+        避免列表页渲染几百张可见票面拖慢滚动。
+      */}
       <div
         data-physical-print-list="1"
+        aria-hidden
         className={cn(
-          "flex flex-col gap-1.5 w-full max-w-2xl print:max-w-none print:gap-1"
+          "flex flex-col gap-1.5 w-full max-w-2xl",
+          // 屏外保留布局尺寸，供 export 量宽高 / 截图
+          "fixed left-[-10000px] top-0 pointer-events-none"
         )}
         style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}
       >
@@ -873,7 +991,36 @@ export function PhysicalPrintSheet({
             key={t.code}
             data-physical-ticket={t.code}
             className="w-full"
+            style={{ width: "min(42rem, 100vw)" }}
           >
+            <TicketVisualCard
+              templateId={visualTemplateId}
+              themeColor={resolvedTheme}
+              type={type}
+              title={title}
+              valueCents={valueCents}
+              storeName={storeName}
+              storeAddress={storeAddress}
+              businessName={businessName}
+              businessLogo={businessLogo}
+              validLabel={validLabel}
+              code={t.code}
+              claimUrl={t.claimUrl}
+              lang={lang}
+              terms={description}
+              mode="print"
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* 浏览器打印：仍输出全部券条 */}
+      <div
+        className="hidden print:flex print:flex-col print:gap-1 print:w-full"
+        style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}
+      >
+        {tickets.map((t) => (
+          <div key={`print-${t.code}`} className="w-full break-inside-avoid">
             <TicketVisualCard
               templateId={visualTemplateId}
               themeColor={resolvedTheme}

@@ -26,7 +26,14 @@ export default async function PhysicalBatchDetailPage({
       store: { select: { id: true, name: true, address: true } },
       tickets: {
         orderBy: { createdAt: "asc" },
-        select: { code: true, status: true },
+        select: {
+          code: true,
+          status: true,
+          soldAt: true,
+          claimedAt: true,
+          redeemedAt: true,
+          paidCents: true,
+        },
       },
       business: {
         select: {
@@ -45,9 +52,18 @@ export default async function PhysicalBatchDetailPage({
     code: t.code,
     status: t.status,
     claimUrl: `${origin}/c/${encodeURIComponent(t.code)}`,
+    soldAt: t.soldAt?.toISOString() ?? null,
+    claimedAt: t.claimedAt?.toISOString() ?? null,
+    redeemedAt: t.redeemedAt?.toISOString() ?? null,
+    paidCents: t.paidCents ?? 0,
   }));
 
   const stock = batch.tickets.filter((t) => t.status === "printed").length;
+  const sold = batch.tickets.filter((t) => t.status === "sold").length;
+  const claimed = batch.tickets.filter((t) => t.status === "claimed").length;
+  const redeemed = batch.tickets.filter((t) => t.status === "redeemed").length;
+  const voidTickets = batch.tickets.filter((t) => t.status === "void").length;
+  const boxed = batch.tickets.filter((t) => t.status === "boxed").length;
   const voided = batch.status === "void";
   const expired =
     !!batch.validUntil && batch.validUntil.getTime() < Date.now();
@@ -117,6 +133,56 @@ export default async function PhysicalBatchDetailPage({
               </span>
             </>
           )}
+        </p>
+        {/* 批次状态一览：库存 / 售出 / 绑定 / 核销 */}
+        <div className="mt-2 grid grid-cols-4 gap-1.5">
+          {(
+            [
+              {
+                k: "stock",
+                n: stock,
+                zh: "库存",
+                en: "Stock",
+                cls: "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
+              },
+              {
+                k: "sold",
+                n: sold + claimed + redeemed + boxed,
+                zh: "已出库",
+                en: "Out",
+                cls: "bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-300",
+              },
+              {
+                k: "redeemed",
+                n: redeemed,
+                zh: "已核销",
+                en: "Used",
+                cls: "bg-violet-50 text-violet-800 dark:bg-violet-950/40 dark:text-violet-300",
+              },
+              {
+                k: "void",
+                n: voidTickets,
+                zh: "作废",
+                en: "Void",
+                cls: "bg-muted text-muted-foreground",
+              },
+            ] as const
+          ).map((c) => (
+            <div
+              key={c.k}
+              className={`rounded-lg px-1.5 py-1.5 text-center ${c.cls}`}
+            >
+              <p className="text-sm font-bold tabular-nums leading-none">{c.n}</p>
+              <p className="text-[9px] font-medium mt-0.5 opacity-90">
+                {lang === "en" ? c.en : c.zh}
+              </p>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-1 nums">
+          {lang === "en"
+            ? `Sold ${sold} · Bound ${claimed}${boxed ? ` · Boxed ${boxed}` : ""}`
+            : `已售 ${sold} · 已绑 ${claimed}${boxed ? ` · 已投箱 ${boxed}` : ""}`}
         </p>
       </div>
 

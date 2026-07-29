@@ -17,8 +17,8 @@ import {
 } from "lucide-react";
 
 /**
- * 功能仓：资料仓 + 企业工具 + 未来定制模块
- * 默认至少有「资料仓」；其它为通用能力，后续可按企业配置显隐。
+ * 工具页（原「功能仓」）：资料 + 印刷/发券等辅助能力。
+ * 主路径在底栏（核销/活动/门店）；本页不占主栏，从「更多 → 工具」进入。
  */
 export default async function BusinessHubPage() {
   const session = await getSession();
@@ -44,32 +44,12 @@ export default async function BusinessHubPage() {
       primary: true,
     },
     {
-      id: "products",
-      icon: ClipboardList,
-      title: lang === "en" ? "Voucher products" : "券产品",
-      desc:
-        lang === "en"
-          ? "Create sellable lines from packs → activate. Activities pick products; stores join."
-          : "从默认包创建可售卖线 → 上架。活动勾选产品，门店参与活动。",
-      href: "/business/products",
-      primary: true,
-    },
-    {
-      id: "templates",
-      icon: ClipboardList,
-      title: lang === "en" ? "My templates" : "我的模版",
-      desc:
-        lang === "en"
-          ? "Fee/discount rules only (not sellable). After editing, create products from packs."
-          : "只改费率/折扣规则（不可直接售卖）。改完后在「券产品」用默认包创建。",
-      href: "/business/templates",
-    },
-    {
       id: "issue-self",
       icon: Banknote,
       title: t("hub.issueSelf.title", lang),
       desc: t("hub.issueSelf.desc", lang),
       href: "/business/issue-self",
+      primary: true,
     },
     {
       id: "physical",
@@ -90,6 +70,16 @@ export default async function BusinessHubPage() {
           ? "Box ritual only (not spendable) · exclusive 15% · 50/100"
           : "只投抽奖箱（不抵消费）· 关联独享15% · 档位50/100",
       href: "/business/physical/ballot",
+    },
+    {
+      id: "templates",
+      icon: ClipboardList,
+      title: lang === "en" ? "My templates" : "我的模版",
+      desc:
+        lang === "en"
+          ? "Fee/discount rules only (not sellable). After editing, create products from packs."
+          : "只改费率/折扣规则（不可直接售卖）。改完后在「券产品」用默认包创建。",
+      href: "/business/templates",
     },
     {
       id: "partners",

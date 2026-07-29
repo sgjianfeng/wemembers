@@ -296,13 +296,13 @@ export default async function BusinessDashboard() {
         <div className="grid grid-cols-2 gap-2">
           {[
             {
-              icon: Store,
-              label: lang === "en" ? "Stores" : "门店管理",
+              icon: ScanLine,
+              label: lang === "en" ? "Redeem" : "核销",
               desc:
                 lang === "en"
-                  ? "Outlets · staff · QR"
-                  : "门店 · 店员 · 二维码",
-              href: "/business/stores",
+                  ? "Scan · short code · paper"
+                  : "扫码 · 短码 · 实体票",
+              href: "/business/scan",
             },
             {
               icon: Calendar,
@@ -314,16 +314,19 @@ export default async function BusinessDashboard() {
               href: "/business/campaigns",
             },
             {
+              icon: Store,
+              label: lang === "en" ? "Stores" : "门店",
+              desc:
+                lang === "en"
+                  ? "Outlets · staff · QR"
+                  : "门店 · 店员 · 二维码",
+              href: "/business/stores",
+            },
+            {
               icon: Wrench,
               label: t("business.tabs.hub", lang),
               desc: t("hub.quickDesc", lang),
               href: "/business/hub",
-            },
-            {
-              icon: Coins,
-              label: t("business.overview.topup", lang),
-              desc: t("business.overview.topupDesc", lang),
-              href: "/business/tokens",
             },
           ].map((a) => {
             const IconComponent = a.icon;
@@ -479,7 +482,7 @@ async function StaffStoreHome({
     select: { business: { select: { businessLogo: true } } },
   });
 
-  /** 本店工作台模块（类似企业「功能仓」，按店扩展） */
+  /** 本店工作台核心模块（现场核销 + 资料） */
   const coreModules: Array<{
     id: string;
     icon: LucideIcon;
@@ -559,8 +562,8 @@ async function StaffStoreHome({
         </div>
         <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
           {lang === "en"
-            ? "Like company Hub — tools for this outlet. More modules can plug in later."
-            : "类似企业「功能仓」，放本店现场工具；以后新功能可往这里加。"}
+            ? "Today’s counter: redeem first, then docs and store tools."
+            : "本店现场：优先核销，资料与门店工具随用随点。"}
         </p>
       </div>
 
@@ -592,10 +595,10 @@ async function StaffStoreHome({
         </Card>
       </div>
 
-      {/* 核心模块（功能仓风格） */}
+      {/* 核心现场能力 */}
       <div className="px-4 mt-5">
         <p className="text-[11px] text-muted-foreground mb-2">
-          {lang === "en" ? "Core" : "核心"}
+          {lang === "en" ? "On site" : "现场"}
         </p>
         <div className="grid grid-cols-1 gap-2">
           {coreModules.map((m) => {

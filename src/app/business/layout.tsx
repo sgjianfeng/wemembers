@@ -36,11 +36,16 @@ export default async function BusinessLayout({
   const lang = (c.get("gwm_lang")?.value === "en" ? "en" : "zh") as "zh" | "en";
 
   /**
-   * 底栏：主路径 4 个 + 「更多」
-   * 主：概览 / 核销 / 活动 / 功能仓（日常运营 + 扩展入口）
-   * 更多：门店、会员、营销券、账户、经营看板、设置
-   * 工具类（资料仓/实体券/现金发券/合作）收进功能仓，抽奖并入活动
+   * 企业底栏：日常主路径 4 个 + 「更多」
+   * 主：概览 / 核销 / 活动 / 门店（现场运营）
+   * 更多：运营配置 · 工具 · 账户（工具页承接原「功能仓」能力，不占主栏）
+   *
+   * 店员底栏：工作台 / 核销 / 资料 / 本店（无「更多」，能力收敛）
    */
+  const moreOp = lang === "en" ? "Operate" : "运营";
+  const moreTools = lang === "en" ? "Tools" : "工具";
+  const moreAcct = lang === "en" ? "Account" : "账户";
+
   const businessPrimary = [
     {
       icon: "overview" as const,
@@ -55,20 +60,7 @@ export default async function BusinessLayout({
     },
     {
       icon: "campaigns" as const,
-      label: lang === "en" ? "Products" : "券产品",
-      href: "/business/products",
-    },
-    {
-      icon: "hub" as const,
-      label: t("business.tabs.hub", lang),
-      href: "/business/hub",
-    },
-  ];
-
-  const businessMore = [
-    {
-      icon: "campaigns" as const,
-      label: lang === "en" ? "Activities" : "活动",
+      label: t("business.tabs.campaigns", lang),
       href: "/business/campaigns",
     },
     {
@@ -76,30 +68,50 @@ export default async function BusinessLayout({
       label: t("business.tabs.stores", lang),
       href: "/business/stores",
     },
+  ];
+
+  const businessMore = [
+    {
+      icon: "gift" as const,
+      label: lang === "en" ? "Products" : "券产品",
+      href: "/business/products",
+      section: moreOp,
+    },
     {
       icon: "members" as const,
       label: t("business.tabs.members", lang),
       href: "/business/members",
+      section: moreOp,
     },
     {
       icon: "coupons" as const,
       label: t("business.tabs.coupons", lang),
       href: "/business/coupons",
+      section: moreOp,
+    },
+    {
+      icon: "hub" as const,
+      label: t("business.tabs.hub", lang),
+      href: "/business/hub",
+      section: moreTools,
     },
     {
       icon: "tokens" as const,
       label: t("business.tabs.wallet", lang),
       href: "/business/tokens",
+      section: moreAcct,
     },
     {
       icon: "earnings" as const,
       label: t("business.overview.earnings", lang),
       href: "/business/earnings",
+      section: moreAcct,
     },
     {
       icon: "settings" as const,
       label: t("business.tabs.settings", lang),
       href: "/business/settings",
+      section: moreAcct,
     },
   ];
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LayoutGrid, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { resolveIcon, type IconName } from "@/components/ui/icons";
@@ -14,6 +14,8 @@ export type BottomNavTab = {
   href: string;
   /** exact match only (e.g. /business overview) */
   exact?: boolean;
+  /** optional group label in the「更多」sheet (items with same section stay together) */
+  section?: string;
 };
 
 interface BottomNavProps {
@@ -42,6 +44,20 @@ export function BottomNav({
   const moreActive =
     moreItems.length > 0 &&
     moreItems.some((item) => isTabActive(pathname, item));
+
+  const moreSections = useMemo(() => {
+    const order: string[] = [];
+    const map = new Map<string, BottomNavTab[]>();
+    for (const item of moreItems) {
+      const key = item.section?.trim() || "";
+      if (!map.has(key)) {
+        order.push(key);
+        map.set(key, []);
+      }
+      map.get(key)!.push(item);
+    }
+    return order.map((key) => ({ section: key, items: map.get(key)! }));
+  }, [moreItems]);
 
   // Close sheet on navigation
   useEffect(() => {
@@ -155,32 +171,47 @@ export function BottomNav({
                 <X size={16} aria-hidden />
               </button>
             </div>
-            <div className="px-3 pb-3 grid grid-cols-3 gap-2 max-h-[50vh] overflow-y-auto">
-              {moreItems.map((item) => {
-                const active = isTabActive(pathname, item);
-                const Icon = resolveIcon(item.icon);
-                return (
-                  <button
-                    key={item.href}
-                    type="button"
-                    onClick={() => {
-                      setMoreOpen(false);
-                      router.push(item.href);
-                    }}
-                    className={cn(
-                      "flex flex-col items-center justify-center gap-1.5 rounded-2xl border p-3 min-h-[76px] transition-all active:scale-[0.97]",
-                      active
-                        ? "border-primary/40 bg-primary/10 text-primary"
-                        : "border-border bg-muted/50 text-foreground hover:border-muted-foreground/30"
-                    )}
-                  >
-                    <Icon size={24} strokeWidth={active ? 2.2 : 2} aria-hidden />
-                    <span className="text-[11px] font-medium text-center leading-tight">
-                      {item.label}
-                    </span>
-                  </button>
-                );
-              })}
+            <div className="px-3 pb-3 space-y-3 max-h-[55vh] overflow-y-auto">
+              {moreSections.map(({ section, items }) => (
+                <div key={section || "__default"}>
+                  {section ? (
+                    <p className="px-1 pb-1.5 text-[11px] font-medium text-muted-foreground">
+                      {section}
+                    </p>
+                  ) : null}
+                  <div className="grid grid-cols-3 gap-2">
+                    {items.map((item) => {
+                      const active = isTabActive(pathname, item);
+                      const Icon = resolveIcon(item.icon);
+                      return (
+                        <button
+                          key={item.href}
+                          type="button"
+                          onClick={() => {
+                            setMoreOpen(false);
+                            router.push(item.href);
+                          }}
+                          className={cn(
+                            "flex flex-col items-center justify-center gap-1.5 rounded-2xl border p-3 min-h-[76px] transition-all active:scale-[0.97]",
+                            active
+                              ? "border-primary/40 bg-primary/10 text-primary"
+                              : "border-border bg-muted/50 text-foreground hover:border-muted-foreground/30"
+                          )}
+                        >
+                          <Icon
+                            size={24}
+                            strokeWidth={active ? 2.2 : 2}
+                            aria-hidden
+                          />
+                          <span className="text-[11px] font-medium text-center leading-tight">
+                            {item.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
