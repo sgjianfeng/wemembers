@@ -22,7 +22,10 @@ if grep -q 'provider = "sqlite"' prisma/schema.prisma; then
   rm -f prisma/schema.prisma.bak
 fi
 
-if [ -f package-lock.json ]; then
+# 小内存机 npm ci 易 OOM(137)：已有 node_modules 时可 SKIP_NPM_CI=1 复用
+if [ "${SKIP_NPM_CI:-0}" = "1" ] && [ -d node_modules ]; then
+  echo "  SKIP_NPM_CI=1，复用已有 node_modules"
+elif [ -f package-lock.json ]; then
   echo "  npm ci..."
   npm ci --no-audit --no-fund
 else
