@@ -70,6 +70,9 @@ export default async function BusinessLayout({
     },
   ];
 
+  /**
+   * 运营：券产品（可售 V2）与营销券（积分领/送券）名称刻意分开，避免混为一谈。
+   */
   const businessMore = [
     {
       icon: "gift" as const,
@@ -78,15 +81,15 @@ export default async function BusinessLayout({
       section: moreOp,
     },
     {
-      icon: "members" as const,
-      label: t("business.tabs.members", lang),
-      href: "/business/members",
-      section: moreOp,
-    },
-    {
       icon: "coupons" as const,
       label: t("business.tabs.coupons", lang),
       href: "/business/coupons",
+      section: moreOp,
+    },
+    {
+      icon: "members" as const,
+      label: t("business.tabs.members", lang),
+      href: "/business/members",
       section: moreOp,
     },
     {

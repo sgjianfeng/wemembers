@@ -124,14 +124,22 @@ export default async function CompanyStorePage({
                 ? "You scanned this store’s code. Offers below are available here."
                 : "你已扫入本店。下方为在本店可用的活动，点进去购买即可。"}
             </p>
-            {!isLoggedIn && (
+            <div className="flex flex-wrap gap-2 mt-2">
               <Link
-                href={`/auth/login?redirect=${encodeURIComponent(path)}`}
-                className="inline-flex mt-2 h-8 items-center rounded-full bg-primary px-3 text-[11px] font-semibold text-primary-foreground active:scale-[0.97] transition-transform"
+                href={`/join?storeId=${encodeURIComponent(store.id)}`}
+                className="inline-flex h-8 items-center rounded-full bg-amber-500 px-3 text-[11px] font-semibold text-white active:scale-[0.97] transition-transform"
               >
-                {lang === "en" ? "Log in / Register" : "登录 / 注册"}
+                {lang === "en" ? "Pay bill · join draw" : "结账参加大奖"}
               </Link>
-            )}
+              {!isLoggedIn && (
+                <Link
+                  href={`/auth/login?redirect=${encodeURIComponent(path)}`}
+                  className="inline-flex h-8 items-center rounded-full bg-primary px-3 text-[11px] font-semibold text-primary-foreground active:scale-[0.97] transition-transform"
+                >
+                  {lang === "en" ? "Log in / Register" : "登录 / 注册"}
+                </Link>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center justify-between px-3 mb-1">

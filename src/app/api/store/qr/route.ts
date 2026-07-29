@@ -70,9 +70,26 @@ export async function GET(request: NextRequest) {
 
   const origin =
     process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
-  const targetUrl = store.business.businessSlug
-    ? `${origin}/shop/${store.business.businessSlug}/${store.slug}`
-    : `${origin}/store/${store.slug}`;
+  // path=join → 结账参加大奖；可选 bill= 本单金额（动态码）
+  const pathMode = (searchParams.get("path") || "shop").toLowerCase();
+  const billRaw = searchParams.get("bill") || searchParams.get("billSgd");
+  const billNum = billRaw != null ? parseFloat(billRaw) : NaN;
+  const billSgd =
+    Number.isFinite(billNum) && billNum > 0
+      ? Math.round(billNum * 100) / 100
+      : 0;
+
+  let targetUrl: string;
+  if (pathMode === "join") {
+    const q = new URLSearchParams();
+    q.set("storeId", store.id);
+    if (billSgd > 0) q.set("bill", String(billSgd));
+    targetUrl = `${origin}/join?${q.toString()}`;
+  } else {
+    targetUrl = store.business.businessSlug
+      ? `${origin}/shop/${store.business.businessSlug}/${store.slug}`
+      : `${origin}/store/${store.slug}`;
+  }
 
   const safeName = (store.name || "store")
     .replace(/[^\w\u4e00-\u9fff-]+/g, "-")

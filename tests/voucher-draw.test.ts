@@ -222,12 +222,12 @@ describe("Voucher Purchase Flow (Integration)", () => {
       expect(json.data.voucher.id).toBeDefined();
       expect(json.data.voucher.tier).toBe("medium"); // S$100
       expect(json.data.voucher.drawWeight).toBeGreaterThan(0);
-      expect(json.data.instantPrize).toBeDefined();
-      expect(json.data.instantPrize.name).toBeDefined();
-      expect(json.data.instantPrize.valueSgd).toBeDefined();
+      // 即时奖改为点转盘 claim-instant 后才写入
+      expect(json.data.instantPrizePending).toBe(true);
+      expect(json.data.instantPrize).toBeNull();
       expect(json.data.grandPoolEntry).toBe(true);
 
-      // Verify voucher was persisted
+      // Verify voucher was persisted (尚无 instant draw)
       const voucher = await testPrisma.voucher.findUnique({
         where: { id: json.data.voucher.id },
         include: { draws: true },
@@ -235,11 +235,28 @@ describe("Voucher Purchase Flow (Integration)", () => {
       expect(voucher).toBeTruthy();
       expect(voucher!.tier).toBe("medium");
       expect(voucher!.amountCents).toBe(10000);
+      expect(voucher!.draws.filter((d) => d.drawType === "instant").length).toBe(0);
 
-      // Verify draw record was created
-      expect(voucher!.draws.length).toBeGreaterThanOrEqual(1);
-      expect(voucher!.draws[0].drawType).toBe("instant");
-      expect(voucher!.draws[0].won).toBe(true);
+      const { POST: claimInstant } = await import(
+        "@/app/api/voucher/claim-instant/route"
+      );
+      const claimReq = mockRequest(
+        { voucherId: json.data.voucher.id },
+        { url: "http://localhost/api/voucher/claim-instant", method: "POST" }
+      );
+      const claimRes = await claimInstant(claimReq as any);
+      const claimJson = await claimRes.json();
+      expect(claimRes.status).toBe(200);
+      expect(claimJson.data.instantPrize).toBeDefined();
+      expect(claimJson.data.instantPrize.name).toBeDefined();
+
+      const after = await testPrisma.voucher.findUnique({
+        where: { id: json.data.voucher.id },
+        include: { draws: true },
+      });
+      expect(after!.draws.length).toBeGreaterThanOrEqual(1);
+      expect(after!.draws[0].drawType).toBe("instant");
+      expect(after!.draws[0].won).toBe(true);
 
       // Reset mock session
       setMockSession(null);
@@ -354,15 +371,28 @@ describe("Voucher Purchase Flow (Integration)", () => {
       const res = await POST(req as any);
       const json = await res.json();
       expect(res.status).toBe(200);
+      expect(json.data.instantPrizePending).toBe(true);
 
-      // Verify the draw record via database
+      const { POST: claimInstant } = await import(
+        "@/app/api/voucher/claim-instant/route"
+      );
+      const claimReq = mockRequest(
+        { voucherId: json.data.voucher.id },
+        { url: "http://localhost/api/voucher/claim-instant", method: "POST" }
+      );
+      const claimRes = await claimInstant(claimReq as any);
+      const claimJson = await claimRes.json();
+      expect(claimRes.status).toBe(200);
+      expect(claimJson.data.instantPrize).toBeDefined();
+
+      // Verify the draw record via database (after claim)
       const drawRecord = await testPrisma.voucherDraw.findFirst({
         where: { voucherId: json.data.voucher.id },
       });
       expect(drawRecord).toBeTruthy();
       expect(drawRecord!.drawType).toBe("instant");
       expect(drawRecord!.won).toBe(true);
-      expect(drawRecord!.prizeName).toBe(json.data.instantPrize.name);
+      expect(drawRecord!.prizeName).toBe(claimJson.data.instantPrize.name);
 
       setMockSession(null);
     });

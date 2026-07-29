@@ -348,7 +348,7 @@ const zh: Record<string, string> = {
 
   "business.tabs.overview": "概览",
   "business.tabs.members": "会员",
-  "business.tabs.coupons": "券管理",
+  "business.tabs.coupons": "营销券",
   "business.tabs.luckyDraw": "抽奖",
   "business.tabs.campaigns": "活动",
   "business.tabs.stores": "门店",
@@ -480,9 +480,9 @@ const zh: Record<string, string> = {
   "business.tier.config.saved": "✅ 保存成功",
   "business.tier.config.failed": "保存失败",
 
-  "business.coupons.title": "券管理",
+  "business.coupons.title": "营销券",
   "business.coupons.create": "+ 创建",
-  "business.coupons.noCoupons": "还没有代金券",
+  "business.coupons.noCoupons": "还没有营销券",
   "business.coupons.status.published": "进行中",
   "business.coupons.status.draft": "草稿",
   "business.coupons.status.paused": "已暂停",
@@ -1569,7 +1569,7 @@ const en: Record<string, string> = {
 
   "business.tabs.overview": "Overview",
   "business.tabs.members": "Members",
-  "business.tabs.coupons": "Vouchers",
+  "business.tabs.coupons": "Marketing",
   "business.tabs.luckyDraw": "Draw",
   "business.tabs.campaigns": "Campaigns",
   "business.tabs.stores": "Stores",
@@ -1701,9 +1701,9 @@ const en: Record<string, string> = {
   "business.tier.config.saved": "✅ Saved successfully",
   "business.tier.config.failed": "Save failed",
 
-  "business.coupons.title": "Voucher Management",
+  "business.coupons.title": "Marketing coupons",
   "business.coupons.create": "+ New",
-  "business.coupons.noCoupons": "No vouchers yet",
+  "business.coupons.noCoupons": "No marketing coupons yet",
   "business.coupons.status.published": "Active",
   "business.coupons.status.draft": "Draft",
   "business.coupons.status.paused": "Paused",

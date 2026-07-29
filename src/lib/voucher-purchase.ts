@@ -49,6 +49,8 @@ export interface FulfillVoucherResult {
     redeemReserveCents: number;
   };
   instantPrize: { name: string; icon: string; valueSgd: string } | null;
+  /** 抽奖购券后需顾客点转盘再 claim-instant */
+  instantPrizePending?: boolean;
   grandPoolEntry: boolean;
   alreadyFulfilled?: boolean;
 }
@@ -277,30 +279,14 @@ export async function fulfillVoucherPurchase(
   }
 
   let instantPrize: FulfillVoucherResult["instantPrize"] = null;
+  /** 即时小奖改为购后点转盘 claim-instant 再发，购券只记 pending */
+  let instantPrizePending = false;
 
   if (isDraw) {
-    // 重读池（独享已注入 3%）→ 抽小奖并加进可花余额（直观模式）
-    const campPool = await prisma.campaign.findUnique({
-      where: { id: campaign.id },
-      select: { instantPoolCents: true },
-    });
-    const { awardInstantPrizeToVoucher } = await import("@/lib/instant-prize");
-    const awarded = await awardInstantPrizeToVoucher(prisma, {
-      voucherId: voucher.id,
-      campaignId: campaign.id,
-      tier,
-      weightAtTime: weight,
-      instantPoolCents:
-        campPool?.instantPoolCents || campaign.instantPoolCents || 0,
-      recomputeWeight: true,
-    });
-    instantPrize = {
-      name: awarded.prize.name,
-      icon: awarded.prize.icon,
-      valueSgd: (awarded.prize.valueCents / 100).toFixed(2),
-    };
-    // 返回余额含小奖
-    balanceCents = awarded.balanceAfterCents;
+    // 独享已在付款注入池；小奖等用户点「赢余额」再抽（点了才 commit）
+    if (tier.instantPrizeCap > 0) {
+      instantPrizePending = true;
+    }
 
     await prisma.campaign.update({
       where: { id: campaign.id },
@@ -346,6 +332,7 @@ export async function fulfillVoucherPurchase(
       redeemReserveCents: split.paidCents,
     },
     instantPrize,
+    instantPrizePending,
     // 独享/共赢均可进大奖进度；独享已在付款注入 10%
     grandPoolEntry: isDraw,
   };
@@ -403,6 +390,7 @@ function formatExisting(existing: {
           valueSgd: ((draw.valueCents || 0) / 100).toFixed(2),
         }
       : null,
+    instantPrizePending: !draw && existing.drawWeight > 0,
     grandPoolEntry: existing.drawWeight > 0 || ["small", "medium", "large"].includes(existing.tier),
   };
 }

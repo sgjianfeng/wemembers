@@ -19,6 +19,7 @@ import { TopHeader } from "@/components/ui/TopHeader";
 import { VoucherTierSelector } from "@/components/customer/VoucherTierSelector";
 import { PoolDashboard } from "@/components/customer/PoolDashboard";
 import { InstantPrizePreview } from "@/components/customer/InstantPrizePreview";
+import { WinBalanceWheel } from "@/components/customer/WinBalanceWheel";
 import { useLang } from "@/components/i18n/LanguageProvider";
 import { resolveTier } from "@/lib/draw-v2";
 
@@ -114,6 +115,8 @@ function VoucherDrawInner() {
   const sellerId = searchParams.get("seller") || "";
   const paidFlag = searchParams.get("paid");
   const sessionIdParam = searchParams.get("session_id");
+  /** 结账 join 入口带来的推荐档 */
+  const amountFromJoin = Number(searchParams.get("amount") || 0);
 
   const refreshPool = useCallback(async () => {
     const poolRes = await fetch(`/api/campaign/pool-status?slug=${slug}`).then((r) =>
@@ -122,17 +125,23 @@ function VoucherDrawInner() {
     if (poolRes.data) {
       setCampaign(poolRes.data.campaign);
       setPoolStatus(poolRes.data);
-      // 默认选中活动开放的最小面额（避免代金 S$2/S$10 却默认 50）
+      // 默认选中活动开放的最小面额；join 入口可带 amount=推荐档
       const tiers: number[] = poolRes.data.rules?.enabledTiers || [];
       if (tiers.length > 0) {
-        setSelectedAmount((prev) =>
-          prev > 0 && tiers.includes(prev) ? prev : Math.min(...tiers)
-        );
+        setSelectedAmount((prev) => {
+          if (prev > 0 && tiers.includes(prev)) return prev;
+          if (amountFromJoin > 0 && tiers.includes(amountFromJoin)) {
+            return amountFromJoin;
+          }
+          return Math.min(...tiers);
+        });
       } else {
-        setSelectedAmount((prev) => (prev > 0 ? prev : 50));
+        setSelectedAmount((prev) =>
+          prev > 0 ? prev : amountFromJoin > 0 ? amountFromJoin : 50
+        );
       }
     }
-  }, [slug]);
+  }, [slug, amountFromJoin]);
 
   useEffect(() => {
     async function load() {
@@ -541,25 +550,12 @@ function VoucherDrawInner() {
               <p className="text-lg font-semibold text-green-700 dark:text-green-400 dark:text-emerald-300">
                 {result.instantPrize ? t("voucher.winCongrats") : t("voucher.buySuccess")}
               </p>
-              {result.instantPrize && (
-                <p className="text-xl font-bold text-green-700 dark:text-green-400">
-                  {result.instantPrize?.icon} {result.instantPrize?.name}
-                </p>
-              )}
 
               <div className="my-3 p-3 bg-card rounded-xl border border-green-100 dark:border-green-800/50">
                 <p className="text-[10px] text-muted-foreground">{t("voucher.success.balance")}</p>
                 <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
                   S${result.voucher?.balanceSgd}
                 </p>
-                {result.instantPrize && (
-                  <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1 font-medium">
-                    {result.instantPrize.icon} {result.instantPrize.name}
-                    {lang === "en"
-                      ? " · added to spendable balance"
-                      : " · 已加入可花余额"}
-                  </p>
-                )}
                 {result.voucher?.paidSgd != null && (
                   <p className="text-[11px] text-muted-foreground mt-1">
                     {t("voucher.paid")} S${result.voucher.paidSgd}
@@ -575,6 +571,91 @@ function VoucherDrawInner() {
                 )}
               </div>
 
+              {/* 点一下赢余额：购券后 commit 即时小奖 */}
+              {isDraw &&
+                result.voucher?.id &&
+                (result.instantPrizePending || result.instantPrize) && (
+                  <WinBalanceWheel
+                    lang={lang === "en" ? "en" : "zh"}
+                    prize={
+                      result.instantPrize
+                        ? {
+                            name: result.instantPrize.name,
+                            icon: result.instantPrize.icon,
+                            valueSgd: result.instantPrize.valueSgd,
+                          }
+                        : null
+                    }
+                    onClaim={
+                      result.instantPrize
+                        ? undefined
+                        : async () => {
+                            const res = await fetch("/api/voucher/claim-instant", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                voucherId: result.voucher.id,
+                              }),
+                            });
+                            const j = await res.json();
+                            if (!res.ok) {
+                              throw new Error(j.error || "claim failed");
+                            }
+                            const p = j.data?.instantPrize;
+                            if (!p) return null;
+                            setResult((prev: any) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    instantPrize: p,
+                                    instantPrizePending: false,
+                                    voucher: {
+                                      ...prev.voucher,
+                                      balanceSgd:
+                                        j.data.balanceSgd ?? prev.voucher?.balanceSgd,
+                                    },
+                                  }
+                                : prev
+                            );
+                            return {
+                              name: p.name,
+                              icon: p.icon,
+                              valueSgd: p.valueSgd,
+                            };
+                          }
+                    }
+                    onRevealed={(p) => {
+                      setResult((prev: any) =>
+                        prev
+                          ? {
+                              ...prev,
+                              instantPrize: {
+                                name: p.name,
+                                icon: p.icon,
+                                valueSgd: p.valueSgd,
+                              },
+                              instantPrizePending: false,
+                            }
+                          : prev
+                      );
+                    }}
+                  />
+                )}
+
+              {/* 随时可看大奖进度 */}
+              {isDraw && poolStatus?.pool && (
+                <div className="text-left">
+                  <p className="text-xs font-semibold text-foreground mb-2 text-center">
+                    {lang === "en" ? "Grand prizes" : "抽大奖 · 进度"}
+                  </p>
+                  <PoolDashboard
+                    countdowns={poolStatus.countdown || []}
+                    instantPoolSgd={poolStatus.pool?.instantPool?.sgd || "0"}
+                    dailyAvgVelocity={poolStatus.velocity?.dailyAvgCents || 0}
+                  />
+                </div>
+              )}
+
               <p className="text-[11px] text-muted-foreground">{t("voucher.success.showHint")}</p>
               {result.voucher?.id && !result.voucher?.shortCode && (
                 <p className="text-[10px] text-muted-foreground font-mono break-all">
@@ -587,12 +668,20 @@ function VoucherDrawInner() {
                   : t("voucher.networkAfterBuy")}
               </p>
 
-              <Link
-                href="/balance"
-                className="inline-block mt-2 px-5 py-2 bg-[#1A6EFF] text-white text-sm font-medium rounded-full"
-              >
-                {t("voucher.success.goBalance")}
-              </Link>
+              <div className="flex flex-wrap justify-center gap-2 mt-2">
+                <Link
+                  href="/wallet"
+                  className="inline-block px-5 py-2 bg-[#1A6EFF] text-white text-sm font-medium rounded-full"
+                >
+                  {lang === "en" ? "Show QR to redeem" : "出示核销码"}
+                </Link>
+                <Link
+                  href="/balance"
+                  className="inline-block px-5 py-2 border border-border bg-card text-foreground text-sm font-medium rounded-full"
+                >
+                  {t("voucher.success.goBalance")}
+                </Link>
+              </div>
 
               {result.grandPoolEntry ? (
                 <>

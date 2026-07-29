@@ -194,7 +194,10 @@ test.describe("Full business flow", () => {
     voucherId = j.data.voucher.id;
     expect(j.data.voucher.balanceSgd).toBe("50.00");
     expect(j.data.split.sellerCommissionCents).toBe(0); // not paid until redeem
-    expect(j.data.instantPrize).toBeTruthy();
+    // 即时奖改为购后 claim-instant
+    expect(
+      j.data.instantPrizePending === true || j.data.instantPrize
+    ).toBeTruthy();
 
     const v = await prisma.voucher.findUnique({ where: { id: voucherId } });
     expect(v?.sellerId).toBe(promId);

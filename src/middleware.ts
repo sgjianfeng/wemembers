@@ -11,6 +11,7 @@ const PUBLIC_STARTS = [
   "/voucher",
   "/activity", // multi-product activity landing
   "/draw", // legacy V1 draw links redirect to /voucher
+  "/join", // 结账参加大奖（扫固定门店码）
   "/p",
   "/seller",
   "/promoter",

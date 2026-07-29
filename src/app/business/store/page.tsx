@@ -6,6 +6,7 @@ import { resolveStoreLogo } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/Card";
 import { BrandAvatar } from "@/components/ui/BrandAvatar";
 import { StoreQrActions } from "@/app/business/stores/[id]/StoreQrActions";
+import { StaffJoinQrDesk } from "@/components/business/StaffJoinQrDesk";
 import Link from "next/link";
 
 export default async function StoreSettingsPage() {
@@ -35,6 +36,7 @@ export default async function StoreSettingsPage() {
   const storeUrl = store.business.businessSlug
     ? `${origin}/shop/${store.business.businessSlug}/${store.slug}`
     : `${origin}/store/${store.slug}`;
+  const joinUrl = `${origin}/join?storeId=${encodeURIComponent(store.id)}`;
 
   return (
     <div className="pb-4">
@@ -112,6 +114,28 @@ export default async function StoreSettingsPage() {
               lang={lang}
               variant="staff"
             />
+          </CardContent>
+        </Card>
+
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="p-4">
+            <h3 className="text-sm font-semibold text-foreground mb-1">
+              {lang === "en" ? "Grand prize join QR" : "结账大奖码"}
+            </h3>
+            <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+              {lang === "en"
+                ? "Optional bill → dynamic QR for the customer. Empty → same as printed static code."
+                : "可先填本单出动态码给顾客扫；不填则等同打印的固定码（顾客自填金额）。"}
+            </p>
+            <StaffJoinQrDesk
+              lang={lang === "en" ? "en" : "zh"}
+              storeId={store.id}
+              origin={origin}
+            />
+            <p className="text-[10px] text-muted-foreground mt-2 break-all font-mono opacity-70">
+              {lang === "en" ? "Static base: " : "固定底链："}
+              {joinUrl}
+            </p>
           </CardContent>
         </Card>
 

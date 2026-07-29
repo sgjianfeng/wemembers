@@ -339,9 +339,21 @@ async function run() {
     }, custToken);
     const j = await r.json();
     if (r.status !== 200) throw new Error(j.error || `Status ${r.status}`);
-    if (!j.data.instantPrize) throw new Error("No instant prize");
     if (!j.data.voucher) throw new Error("No voucher");
     if (!j.data.grandPoolEntry) throw new Error("Entry tier should enter grand pool");
+    if (!j.data.instantPrizePending && !j.data.instantPrize) {
+      throw new Error("Expected instant prize pending or awarded");
+    }
+    if (j.data.instantPrizePending) {
+      const cr = await post(
+        "/api/voucher/claim-instant",
+        { voucherId: j.data.voucher.id },
+        custToken
+      );
+      const cj = await cr.json();
+      if (cr.status !== 200) throw new Error(cj.error || "claim-instant failed");
+      if (!cj.data.instantPrize) throw new Error("No instant prize after claim");
+    }
   });
 
   await ok("Purchase voucher S$100 (main tier, grand pool 2×)", async () => {

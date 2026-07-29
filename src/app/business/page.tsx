@@ -522,8 +522,8 @@ async function StaffStoreHome({
       title: lang === "en" ? "Store QR" : "本店二维码",
       desc:
         lang === "en"
-          ? "Customer deals page"
-          : "顾客扫码进本店优惠页",
+          ? "Deals page + grand-prize join code"
+          : "优惠页 · 结账大奖码",
       href: "/business/store",
     },
     {
