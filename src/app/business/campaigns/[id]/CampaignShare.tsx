@@ -4,6 +4,10 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { useLang } from "@/components/i18n/LanguageProvider";
+import {
+  buildCampaignPosterCopy,
+  fillShareTemplate,
+} from "@/lib/campaign-poster-copy";
 
 interface Props {
   slug: string;
@@ -11,9 +15,22 @@ interface Props {
   sellerId?: string;
   /** 活动 id，用于跳转台卡/分发打印页 */
   campaignId?: string;
+  type?: string;
+  endDate?: string | Date | null;
+  rulesSnapshot?: string | null;
+  voucherTiers?: string | null;
 }
 
-export function CampaignShare({ slug, campaignName, sellerId, campaignId }: Props) {
+export function CampaignShare({
+  slug,
+  campaignName,
+  sellerId,
+  campaignId,
+  type,
+  endDate,
+  rulesSnapshot,
+  voucherTiers,
+}: Props) {
   const { t, lang } = useLang();
   const [copied, setCopied] = useState(false);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -31,7 +48,21 @@ export function CampaignShare({ slug, campaignName, sellerId, campaignId }: Prop
     return `/api/campaign/qr?${q.toString()}`;
   }, [slug, sellerId]);
 
-  const text = t("share.text", { name: campaignName, url: buyUrl });
+  const posterShare = useMemo(() => {
+    if (!type || !endDate) return null;
+    return buildCampaignPosterCopy({
+      type,
+      name: campaignName,
+      endDate,
+      rulesSnapshot,
+      voucherTiers,
+      lang: lang === "en" ? "en" : "zh",
+    });
+  }, [type, endDate, campaignName, rulesSnapshot, voucherTiers, lang]);
+
+  const text = posterShare
+    ? fillShareTemplate(posterShare.shareTemplates[0], buyUrl)
+    : t("share.text", { name: campaignName, url: buyUrl });
 
   async function copyLink() {
     try {
@@ -114,8 +145,8 @@ export function CampaignShare({ slug, campaignName, sellerId, campaignId }: Prop
             className="block w-full text-center rounded-full bg-primary text-primary-foreground text-xs font-semibold py-2.5 active:scale-[0.98] transition-transform"
           >
             {lang === "en"
-              ? "Print table tent / distributor cards"
-              : "打印餐桌台卡 / 分发版活动卡"}
+              ? "Print / PNG · sell points & distributors"
+              : "打印/PNG · 卖点台卡与分发版"}
           </a>
         ) : (
           <a
@@ -126,6 +157,11 @@ export function CampaignShare({ slug, campaignName, sellerId, campaignId }: Prop
           >
             {t("share.openPrint")}
           </a>
+        )}
+        {posterShare && (
+          <p className="text-[11px] text-center font-medium text-foreground/80">
+            {posterShare.benefitLine}
+          </p>
         )}
         <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
           {lang === "en"

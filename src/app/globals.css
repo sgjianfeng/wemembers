@@ -201,7 +201,7 @@
   }
 }
 
-/* A4 实体券打印：保留背景色 / 条形券配色 */
+/* A4 实体券 / 活动墙贴打印：保留背景色 */
 @media print {
   @page {
     size: A4;
@@ -219,5 +219,22 @@
   [data-bottom-nav],
   .print\:hidden {
     display: none !important;
+  }
+  /* 活动卡 A4 墙贴：尽量铺满一页（减边距后约 190×277mm 可用区） */
+  .campaign-print-a4-wrap {
+    display: flex !important;
+    justify-content: center !important;
+    width: 100% !important;
+  }
+  .campaign-a4-sheet {
+    width: 190mm !important;
+    max-width: 190mm !important;
+    min-height: 260mm !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  .campaign-a4-sheet img[alt="QR"] {
+    width: 70mm !important;
+    height: 70mm !important;
   }
 }

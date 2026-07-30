@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { TopHeader } from "@/components/ui/TopHeader";
 import Link from "next/link";
 import { useLang } from "@/components/i18n/LanguageProvider";
+import { SellerPosterActions } from "@/components/campaign/SellerPosterActions";
 import { Copy, Check, Link2 } from "lucide-react";
 
 interface SellerMe {
@@ -42,13 +43,18 @@ interface PromoCampaign {
   name: string;
   slug: string | null;
   type: string;
+  color?: string | null;
+  endDate?: string;
+  rulesSnapshot?: string | null;
+  voucherTiers?: string | null;
   businessName: string;
+  businessLogo?: string | null;
   isOwn: boolean;
   path: string;
 }
 
 export default function SellerPage() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [data, setData] = useState<SellerMe | null>(null);
   const [campaigns, setCampaigns] = useState<PromoCampaign[]>([]);
   const [error, setError] = useState("");
@@ -259,6 +265,25 @@ export default function SellerPage() {
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={qrUrl} alt="QR" className="w-40 h-40 rounded-lg border border-border" />
                         </div>
+                      )}
+                      {c.slug && c.endDate && (
+                        <SellerPosterActions
+                          campaign={{
+                            name: c.name,
+                            slug: c.slug,
+                            type: c.type,
+                            color: c.color,
+                            endDate: c.endDate,
+                            rulesSnapshot: c.rulesSnapshot,
+                            voucherTiers: c.voucherTiers,
+                            businessName: c.businessName,
+                            businessLogo: c.businessLogo,
+                          }}
+                          sellerId={data.userId}
+                          sellerLabel={data.displayName || undefined}
+                          lang={lang === "en" ? "en" : "zh"}
+                          origin={origin}
+                        />
                       )}
                     </div>
                   );

@@ -123,6 +123,20 @@ export default function PromoterPage() {
       </div>
 
       <div className="px-4 mt-4">
+        {/* 活动卖点海报：与卖家中心同一套引擎 */}
+        <a
+          href="/seller"
+          className="mb-4 block rounded-xl border border-green-200 dark:border-green-900 bg-green-50/80 dark:bg-green-950/30 p-3 active:scale-[0.99] transition-transform"
+        >
+          <p className="text-sm font-semibold text-foreground">活动推广素材（推荐）</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+            代金券/抽奖活动的卖点文案、社交 PNG、A4 墙贴 —— 与商家打印同一套，带你的分佣链接。
+          </p>
+          <p className="text-xs font-medium text-green-700 dark:text-green-400 mt-1.5">
+            打开卖家中心 →
+          </p>
+        </a>
+
         {/* 收益概览 */}
         <div className="bg-gradient-to-r from-green-500 to-emerald-400 rounded-xl p-5 text-white mb-4">
           <div className="flex justify-between">

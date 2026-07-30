@@ -201,6 +201,10 @@ export default async function CampaignDetailPage({
               campaignName={campaign.name}
               sellerId={session.userId}
               campaignId={campaign.id}
+              type={campaign.type}
+              endDate={campaign.endDate}
+              rulesSnapshot={campaign.rulesSnapshot}
+              voucherTiers={campaign.voucherTiers}
             />
           </div>
         )}

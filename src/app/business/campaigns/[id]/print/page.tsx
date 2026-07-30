@@ -33,6 +33,8 @@ export default async function CampaignPrintPage({
       color: true,
       status: true,
       endDate: true,
+      rulesSnapshot: true,
+      voucherTiers: true,
     },
   });
   if (!campaign) notFound();
@@ -81,8 +83,8 @@ export default async function CampaignPrintPage({
         </h1>
         <p className="text-xs text-muted-foreground mt-0.5">
           {lang === "en"
-            ? "Table tent / distributor cards · scan to buy or join draw"
-            : "餐桌台卡 / 分发版 · 扫码购券或参加抽奖（与实体券 PT- 不同）"}
+            ? "Sell points from campaign · tent / poster / social · distributor versions"
+            : "卖点自动生成 · 台卡/海报/社交图 · 分发版（与实体券 PT- 不同）"}
         </p>
       </div>
 
@@ -96,9 +98,10 @@ export default async function CampaignPrintPage({
         color={campaign.color}
         status={campaign.status}
         endDate={campaign.endDate.toISOString()}
+        rulesSnapshot={campaign.rulesSnapshot}
+        voucherTiers={campaign.voucherTiers}
         businessName={business?.businessName || null}
         businessLogo={business?.businessLogo || null}
-        businessUserId={session.userId}
         stores={stores}
       />
     </div>

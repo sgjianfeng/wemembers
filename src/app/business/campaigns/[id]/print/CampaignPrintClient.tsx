@@ -5,8 +5,28 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import {
+  buildCampaignPosterCopy,
+  fillShareTemplate,
+  type CampaignPosterCopy,
+} from "@/lib/campaign-poster-copy";
+import {
+  drawCampaignPosterPng,
+  posterFilename,
+  renderCampaignPosterDataUrl,
+  triggerBlobDownload,
+  zipCampaignPosterFiles,
+  type CampaignPosterLayoutId,
+} from "@/lib/campaign-poster-export";
+import {
+  THEME_SWATCHES,
+  VISUAL_TEMPLATES,
+  getVisualTemplate,
+  type ThemeColorId,
+  type VisualTemplateId,
+} from "@/lib/visual-templates";
 
-type LayoutId = "tent" | "poster" | "sticker";
+type LayoutId = CampaignPosterLayoutId;
 
 type Distributor = {
   userId: string;
@@ -26,9 +46,10 @@ export function CampaignPrintClient({
   color,
   status,
   endDate,
+  rulesSnapshot,
+  voucherTiers,
   businessName,
   businessLogo,
-  businessUserId,
   stores,
 }: {
   lang: "zh" | "en";
@@ -40,18 +61,31 @@ export function CampaignPrintClient({
   color: string | null;
   status: string;
   endDate: string;
+  rulesSnapshot: string | null;
+  voucherTiers: string | null;
   businessName: string | null;
   businessLogo: string | null;
-  businessUserId: string;
   stores: { id: string; name: string }[];
 }) {
   const [layout, setLayout] = useState<LayoutId>("tent");
+  const [templateId, setTemplateId] = useState<VisualTemplateId>(
+    type === "lucky_draw_v2" || type === "lucky_draw"
+      ? "store_bold"
+      : "store_classic"
+  );
+  const [themeId, setThemeId] = useState<ThemeColorId | "campaign" | "custom">(
+    color && /^#[0-9A-Fa-f]{6}$/.test(color) ? "campaign" : "orange"
+  );
+  const [customSubline, setCustomSubline] = useState("");
   const [distributors, setDistributors] = useState<Distributor[]>([]);
-  const [sellerId, setSellerId] = useState(""); // empty = store generic
+  const [sellerId, setSellerId] = useState("");
   const [phoneLookup, setPhoneLookup] = useState("");
   const [lookupBusy, setLookupBusy] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState("");
   const [err, setErr] = useState("");
+  const [copiedShare, setCopiedShare] = useState<number | null>(null);
 
   const origin =
     typeof window !== "undefined"
@@ -74,6 +108,42 @@ export function CampaignPrintClient({
     if (sellerId) q.set("seller", sellerId);
     return `/api/campaign/qr?${q.toString()}`;
   }, [slug, sellerId]);
+
+  const copy: CampaignPosterCopy = useMemo(
+    () =>
+      buildCampaignPosterCopy({
+        type,
+        name: campaignName,
+        endDate,
+        rulesSnapshot,
+        voucherTiers,
+        description,
+        lang,
+        customSubline: customSubline || null,
+      }),
+    [
+      type,
+      campaignName,
+      endDate,
+      rulesSnapshot,
+      voucherTiers,
+      description,
+      lang,
+      customSubline,
+    ]
+  );
+
+  const tplMeta = getVisualTemplate(templateId);
+  const accent = useMemo(() => {
+    if (themeId === "campaign" && color && /^#[0-9A-Fa-f]{6}$/.test(color)) {
+      return color;
+    }
+    if (themeId === "custom") return color || tplMeta.defaultThemeHex;
+    const sw = THEME_SWATCHES.find((s) => s.id === themeId);
+    return sw?.hex || tplMeta.defaultThemeHex;
+  }, [themeId, color, tplMeta.defaultThemeHex]);
+
+  const surface = tplMeta.surface;
 
   const selected = distributors.find((d) => d.userId === sellerId);
   const distLabel =
@@ -122,64 +192,159 @@ export function CampaignPrintClient({
     setLookupBusy(false);
   }
 
-  const isDraw = type === "lucky_draw_v2" || type === "lucky_draw";
-  const headline = isDraw
-    ? lang === "en"
-      ? "Scan to join lucky draw"
-      : "扫码参加抽奖"
-    : lang === "en"
-      ? "Scan to buy voucher"
-      : "扫码购买代金券";
-  const sub = isDraw
-    ? lang === "en"
-      ? "Buy voucher · win prizes · redeem in store"
-      : "购券抽奖 · 到店核销 · 赢取奖品"
-    : lang === "en"
-      ? "Exclusive voucher · redeem at this brand"
-      : "专属代金券 · 到店核销";
-
-  const layouts: { id: LayoutId; zh: string; en: string }[] = [
-    { id: "tent", zh: "餐桌台卡", en: "Table tent" },
-    { id: "poster", zh: "吧台海报", en: "Counter poster" },
-    { id: "sticker", zh: "方形贴纸", en: "Square sticker" },
+  const layouts: {
+    id: LayoutId;
+    zh: string;
+    en: string;
+    hintZh: string;
+    hintEn: string;
+  }[] = [
+    {
+      id: "tent",
+      zh: "餐桌台卡",
+      en: "Table tent",
+      hintZh: "竖版 · 吧台/桌面",
+      hintEn: "Portrait · counter",
+    },
+    {
+      id: "poster",
+      zh: "吧台海报",
+      en: "Counter poster",
+      hintZh: "大卖点 · 小展架",
+      hintEn: "Big offer · small stand",
+    },
+    {
+      id: "a4",
+      zh: "A4 墙贴",
+      en: "A4 wall",
+      hintZh: "打印店 / 门贴",
+      hintEn: "Print shop / door",
+    },
+    {
+      id: "sticker",
+      zh: "方形社交图",
+      en: "Square social",
+      hintZh: "1:1 · WA / IG",
+      hintEn: "1:1 · WA / IG",
+    },
   ];
 
-  const downloadBranded = useCallback(async () => {
-    setBusy(true);
-    try {
-      await drawCampaignCardPng({
+  const exportOpts = useCallback(
+    (sid: string, label: string) => {
+      const base = `${origin}/voucher/${encodeURIComponent(slug)}`;
+      const url = sid
+        ? `${base}?seller=${encodeURIComponent(sid)}`
+        : base;
+      const q = new URLSearchParams({
+        slug,
+        size: "640",
+        format: "png",
+      });
+      if (sid) q.set("seller", sid);
+      return {
         layout,
         campaignName,
         businessName: businessName || "Store",
         businessLogo,
-        buyUrl,
-        qrSrc,
-        headline,
-        sub,
-        distLabel,
-        isDist: Boolean(sellerId),
-        accent: color || "#1A6EFF",
+        buyUrl: url,
+        qrSrc: `/api/campaign/qr?${q.toString()}`,
+        copy,
+        distLabel: label,
+        isDist: Boolean(sid),
+        accent,
+        surface,
         lang,
-      });
+      };
+    },
+    [
+      accent,
+      businessLogo,
+      businessName,
+      campaignName,
+      copy,
+      lang,
+      layout,
+      origin,
+      slug,
+      surface,
+    ]
+  );
+
+  const downloadBranded = useCallback(async () => {
+    setBusy(true);
+    try {
+      await drawCampaignPosterPng(exportOpts(sellerId, distLabel));
     } catch (e) {
       console.error(e);
       alert(lang === "en" ? "Export failed" : "导出失败");
     }
     setBusy(false);
-  }, [
-    businessLogo,
-    businessName,
-    buyUrl,
-    campaignName,
-    color,
-    distLabel,
-    headline,
-    lang,
-    layout,
-    qrSrc,
-    sellerId,
-    sub,
-  ]);
+  }, [distLabel, exportOpts, lang, sellerId]);
+
+  const bulkDownloadDistributors = useCallback(async () => {
+    const personal = distributors.filter((d) => d.userId);
+    if (!personal.length) {
+      alert(
+        lang === "en"
+          ? "No personal distributors yet. Add by phone or assign staff."
+          : "暂无个人分发人。可用手机号添加，或先绑定店员。"
+      );
+      return;
+    }
+    setBulkBusy(true);
+    try {
+      const files: { filename: string; dataUrl: string }[] = [];
+      for (let i = 0; i < personal.length; i++) {
+        const d = personal[i];
+        setBulkProgress(
+          lang === "en"
+            ? `Rendering ${i + 1}/${personal.length}…`
+            : `生成 ${i + 1}/${personal.length}…`
+        );
+        const filename = posterFilename(
+          campaignName,
+          true,
+          layout,
+          d.label
+        );
+        const { dataUrl } = await renderCampaignPosterDataUrl(
+          exportOpts(d.userId, d.label),
+          filename
+        );
+        files.push({ filename, dataUrl });
+      }
+      setBulkProgress(lang === "en" ? "Packing ZIP…" : "打包 ZIP…");
+      const blob = await zipCampaignPosterFiles(files);
+      const zipBase = campaignName
+        .replace(/[^\w\u4e00-\u9fff-]+/g, "-")
+        .slice(0, 24);
+      triggerBlobDownload(
+        blob,
+        `${zipBase || "campaign"}-distributors-${layout}.zip`
+      );
+      setBulkProgress(
+        lang === "en"
+          ? `Done · ZIP ${personal.length} PNGs`
+          : `完成 · ZIP 含 ${personal.length} 张 PNG`
+      );
+    } catch (e) {
+      console.error(e);
+      alert(lang === "en" ? "Bulk export failed" : "批量导出失败");
+    }
+    setBulkBusy(false);
+    setTimeout(() => setBulkProgress(""), 4000);
+  }, [campaignName, distributors, exportOpts, lang, layout]);
+
+  async function copyShare(idx: number) {
+    const text = fillShareTemplate(copy.shareTemplates[idx] || "", buyUrl);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedShare(idx);
+      setTimeout(() => setCopiedShare(null), 2000);
+    } catch {
+      alert(text);
+    }
+  }
 
   return (
     <div className="px-4 mt-4 space-y-4">
@@ -211,6 +376,108 @@ export function CampaignPrintClient({
         >
           {lang === "en" ? "Print physical tickets →" : "去印实体券 →"}
         </Link>
+      </div>
+
+      {/* Auto sell-point preview strip */}
+      <div className="print:hidden rounded-xl border border-primary/20 bg-primary/5 p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">
+          {lang === "en" ? "Auto sell points (from campaign)" : "自动卖点（来自活动配置）"}
+        </p>
+        <p className="text-base font-bold text-foreground mt-1">{copy.benefitLine}</p>
+        <p className="text-sm font-semibold mt-0.5" style={{ color: accent }}>
+          {copy.headline}
+        </p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">{copy.sub}</p>
+        <p className="text-[10px] text-muted-foreground mt-1">{copy.untilLine}</p>
+      </div>
+
+      {/* Optional one-line override */}
+      <div className="print:hidden space-y-1.5">
+        <p className="text-xs font-medium text-muted-foreground">
+          {lang === "en"
+            ? "Custom subline (optional, max 80)"
+            : "自定义副标题（可选，最多 80 字）"}
+        </p>
+        <Input
+          value={customSubline}
+          onChange={(e) => setCustomSubline(e.target.value.slice(0, 80))}
+          placeholder={
+            lang === "en"
+              ? "Leave empty to use auto copy"
+              : "留空则使用自动文案"
+          }
+        />
+      </div>
+
+      {/* Visual template + theme */}
+      <div className="print:hidden space-y-2">
+        <p className="text-xs font-medium text-muted-foreground">
+          {lang === "en" ? "Visual template" : "视觉模版"}
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {VISUAL_TEMPLATES.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTemplateId(t.id)}
+              className={cn(
+                "rounded-xl border p-2.5 text-left active:scale-[0.98] transition-transform",
+                templateId === t.id
+                  ? "border-primary bg-primary/10"
+                  : "border-border"
+              )}
+            >
+              <p className="text-xs font-semibold">
+                {lang === "en" ? t.nameEn : t.nameZh}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {lang === "en" ? t.taglineEn : t.taglineZh}
+              </p>
+            </button>
+          ))}
+        </div>
+        <p className="text-xs font-medium text-muted-foreground pt-1">
+          {lang === "en" ? "Theme colour" : "主题色"}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {color && /^#[0-9A-Fa-f]{6}$/.test(color) && (
+            <button
+              type="button"
+              onClick={() => setThemeId("campaign")}
+              className={cn(
+                "h-8 px-2.5 rounded-full border text-[10px] font-semibold flex items-center gap-1.5",
+                themeId === "campaign"
+                  ? "border-foreground ring-2 ring-offset-1 ring-foreground/30"
+                  : "border-border"
+              )}
+            >
+              <span
+                className="w-3.5 h-3.5 rounded-full"
+                style={{ background: color }}
+              />
+              {lang === "en" ? "Campaign" : "活动色"}
+            </button>
+          )}
+          {THEME_SWATCHES.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setThemeId(s.id)}
+              className={cn(
+                "h-8 px-2.5 rounded-full border text-[10px] font-semibold flex items-center gap-1.5",
+                themeId === s.id
+                  ? "border-foreground ring-2 ring-offset-1 ring-foreground/30"
+                  : "border-border"
+              )}
+            >
+              <span
+                className="w-3.5 h-3.5 rounded-full"
+                style={{ background: s.hex }}
+              />
+              {lang === "en" ? s.labelEn : s.labelZh}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Distributor */}
@@ -256,7 +523,9 @@ export function CampaignPrintClient({
           </Button>
         </div>
         {err && <p className="text-xs text-red-500">{err}</p>}
-        <p className="text-[10px] text-muted-foreground font-mono break-all">{buyUrl}</p>
+        <p className="text-[10px] text-muted-foreground font-mono break-all">
+          {buyUrl}
+        </p>
       </div>
 
       {/* Layout */}
@@ -264,23 +533,35 @@ export function CampaignPrintClient({
         <p className="text-xs font-medium text-muted-foreground mb-2">
           {lang === "en" ? "Print layout" : "印刷版式"}
         </p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {layouts.map((L) => (
             <button
               key={L.id}
               type="button"
               onClick={() => setLayout(L.id)}
               className={cn(
-                "rounded-xl border p-2.5 text-xs font-semibold active:scale-[0.98] transition-transform",
+                "rounded-xl border p-2.5 text-left active:scale-[0.98] transition-transform",
                 layout === L.id
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border text-muted-foreground"
               )}
             >
-              {lang === "en" ? L.en : L.zh}
+              <p className="text-xs font-semibold">
+                {lang === "en" ? L.en : L.zh}
+              </p>
+              <p className="text-[10px] opacity-80 mt-0.5">
+                {lang === "en" ? L.hintEn : L.hintZh}
+              </p>
             </button>
           ))}
         </div>
+        {layout === "a4" && (
+          <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed">
+            {lang === "en"
+              ? "A4: use Print / Save PDF for print shops, or Download PNG (≈150dpi). Fills one A4 sheet."
+              : "A4：打印店建议「打印/存 PDF」或下载 PNG（约 150dpi）。一页一张墙贴。"}
+          </p>
+        )}
       </div>
 
       <div className="print:hidden flex flex-wrap gap-2">
@@ -297,7 +578,23 @@ export function CampaignPrintClient({
           onClick={downloadBranded}
           className="inline-flex h-9 items-center rounded-full bg-foreground px-4 text-xs font-semibold text-background disabled:opacity-50 active:scale-[0.97] transition-transform"
         >
-          {busy ? "…" : lang === "en" ? "Download PNG" : "下载品牌 PNG"}
+          {busy
+            ? "…"
+            : lang === "en"
+              ? "Download PNG"
+              : "下载品牌 PNG"}
+        </button>
+        <button
+          type="button"
+          disabled={bulkBusy}
+          onClick={bulkDownloadDistributors}
+          className="inline-flex h-9 items-center rounded-full border border-border px-4 text-xs font-semibold text-foreground disabled:opacity-50 active:scale-[0.97] transition-transform"
+        >
+          {bulkBusy
+            ? bulkProgress || "…"
+            : lang === "en"
+              ? "ZIP · all distributors"
+              : "ZIP · 全部分发人"}
         </button>
         <a
           href={buyUrl}
@@ -308,6 +605,46 @@ export function CampaignPrintClient({
           {lang === "en" ? "Open activity page" : "打开活动页"}
         </a>
       </div>
+      {bulkProgress && !bulkBusy && (
+        <p className="print:hidden text-[11px] text-emerald-700 dark:text-emerald-400">
+          {bulkProgress}
+        </p>
+      )}
+
+      {/* Share copy templates */}
+      <div className="print:hidden rounded-xl border border-border p-3 space-y-2">
+        <p className="text-xs font-semibold text-foreground">
+          {lang === "en" ? "Share copy templates" : "分享文案模板"}
+        </p>
+        <p className="text-[10px] text-muted-foreground">
+          {lang === "en"
+            ? "Copy → paste into WhatsApp / WeChat. Link uses current distributor version."
+            : "一键复制 → 粘贴到 WhatsApp / 微信。链接使用当前分发版本。"}
+        </p>
+        {copy.shareTemplates.map((tpl, i) => (
+          <div
+            key={i}
+            className="flex gap-2 items-start rounded-lg bg-muted/40 p-2"
+          >
+            <p className="flex-1 text-[11px] text-foreground/90 leading-relaxed">
+              {fillShareTemplate(tpl, buyUrl)}
+            </p>
+            <button
+              type="button"
+              onClick={() => copyShare(i)}
+              className="shrink-0 text-[10px] font-semibold text-primary px-2 py-1 rounded-full border border-primary/30"
+            >
+              {copiedShare === i
+                ? lang === "en"
+                  ? "Copied"
+                  : "已复制"
+                : lang === "en"
+                  ? "Copy"
+                  : "复制"}
+            </button>
+          </div>
+        ))}
+      </div>
 
       {status !== "active" && (
         <p className="print:hidden text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 rounded-lg p-2">
@@ -317,7 +654,12 @@ export function CampaignPrintClient({
         </p>
       )}
 
-      <div className="flex justify-center print:block">
+      <div
+        className={cn(
+          "flex justify-center",
+          layout === "a4" ? "print:block campaign-print-a4-wrap" : "print:block"
+        )}
+      >
         <CampaignCardSheet
           layout={layout}
           campaignName={campaignName}
@@ -325,12 +667,11 @@ export function CampaignPrintClient({
           businessLogo={businessLogo}
           buyUrl={buyUrl}
           qrSrc={qrSrc}
-          headline={headline}
-          sub={sub}
+          copy={copy}
           distLabel={distLabel}
           isDist={Boolean(sellerId)}
-          accent={color || "#1A6EFF"}
-          endDate={endDate}
+          accent={accent}
+          surface={surface}
           lang={lang}
         />
       </div>
@@ -342,6 +683,12 @@ export function CampaignPrintClient({
             : `你的门店：${stores.map((s) => s.name).join("、")}`}
         </p>
       )}
+
+      <p className="print:hidden text-[11px] text-muted-foreground text-center leading-relaxed pb-4">
+        {lang === "en"
+          ? "Print tip: colour preferred; keep QR unobstructed, ≥ 4cm wide."
+          : "打印建议：尽量彩色；二维码无遮挡，边长建议 ≥ 4cm。"}
+      </p>
     </div>
   );
 }
@@ -353,12 +700,11 @@ function CampaignCardSheet({
   businessLogo,
   buyUrl,
   qrSrc,
-  headline,
-  sub,
+  copy,
   distLabel,
   isDist,
   accent,
-  endDate,
+  surface,
   lang,
 }: {
   layout: LayoutId;
@@ -367,60 +713,100 @@ function CampaignCardSheet({
   businessLogo: string | null;
   buyUrl: string;
   qrSrc: string;
-  headline: string;
-  sub: string;
+  copy: CampaignPosterCopy;
   distLabel: string;
   isDist: boolean;
   accent: string;
-  endDate: string;
+  surface: "light" | "dark";
   lang: "zh" | "en";
 }) {
-  const valid = new Date(endDate).toLocaleDateString(
-    lang === "en" ? "en-SG" : "zh-CN"
-  );
+  const isDark = surface === "dark";
 
   if (layout === "sticker") {
     return (
-      <div className="w-full max-w-[320px] aspect-square rounded-3xl border-2 border-border bg-card p-5 flex flex-col items-center justify-between shadow-sm print:border-slate-400">
-        <div className="w-full flex items-center gap-2">
-          {businessLogo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={businessLogo}
-              alt=""
-              className="w-10 h-10 object-contain rounded-lg border"
-            />
-          ) : (
-            <span className="text-2xl">🎰</span>
-          )}
-          <div className="min-w-0">
-            <p className="text-sm font-bold truncate">{campaignName}</p>
-            <p className="text-[10px] text-muted-foreground truncate">
-              {businessName}
-            </p>
+      <div
+        className={cn(
+          "w-full max-w-[320px] aspect-square rounded-3xl border-2 overflow-hidden shadow-sm flex flex-col",
+          isDark ? "border-slate-700" : "border-border print:border-slate-400"
+        )}
+        style={{ background: isDark ? "#1E1B2E" : undefined }}
+      >
+        <div
+          className="px-4 pt-4 pb-3 text-white text-center"
+          style={{
+            background: `linear-gradient(145deg, ${accent} 0%, #1e293b 100%)`,
+          }}
+        >
+          <div className="flex items-center justify-center gap-2">
+            {businessLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={businessLogo}
+                alt=""
+                className="w-9 h-9 object-contain rounded-lg bg-card p-0.5"
+              />
+            ) : (
+              <span className="text-xl">🎰</span>
+            )}
+            <div className="min-w-0 text-left">
+              <p className="text-sm font-bold truncate">{campaignName}</p>
+              <p className="text-[10px] text-white/70 truncate">
+                {businessName}
+              </p>
+            </div>
           </div>
-        </div>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={qrSrc} alt="QR" className="w-40 h-40 rounded-xl border" />
-        <div className="text-center w-full">
-          <p className="text-sm font-bold" style={{ color: accent }}>
-            {headline}
-          </p>
           {isDist && (
-            <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 mt-1">
+            <p className="mt-1.5 text-[10px] font-semibold text-amber-200">
               {lang === "en" ? "Via" : "分发"} · {distLabel}
             </p>
           )}
+        </div>
+        <div
+          className={cn(
+            "flex-1 flex flex-col items-center justify-between p-4",
+            isDark ? "text-slate-100" : "bg-card"
+          )}
+        >
+          <p
+            className="text-sm font-bold text-center leading-snug"
+            style={{ color: accent }}
+          >
+            {copy.benefitLine}
+          </p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={qrSrc}
+            alt="QR"
+            className="w-36 h-36 rounded-xl border bg-white p-1"
+          />
+          <div className="text-center w-full">
+            <p className="text-sm font-bold">{copy.headline}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
+              {copy.sub}
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (layout === "poster") {
+  if (layout === "poster" || layout === "a4") {
+    const a4 = layout === "a4";
     return (
-      <div className="w-full max-w-[400px] rounded-2xl overflow-hidden border border-border shadow-sm bg-card print:border-slate-400">
+      <div
+        data-campaign-poster={layout}
+        className={cn(
+          "w-full rounded-2xl overflow-hidden border border-border shadow-sm bg-card print:border-slate-400 print:shadow-none",
+          a4
+            ? "max-w-[420px] campaign-a4-sheet print:rounded-none"
+            : "max-w-[400px]"
+        )}
+      >
         <div
-          className="px-6 pt-8 pb-6 text-white text-center"
+          className={cn(
+            "text-white text-center",
+            a4 ? "px-8 pt-10 pb-7" : "px-6 pt-7 pb-5"
+          )}
           style={{
             background: `linear-gradient(145deg, ${accent} 0%, #1e293b 100%)`,
           }}
@@ -430,14 +816,24 @@ function CampaignCardSheet({
             <img
               src={businessLogo}
               alt=""
-              className="w-16 h-16 object-contain rounded-2xl bg-card mx-auto p-1"
+              className={cn(
+                "object-contain rounded-2xl bg-card mx-auto p-1",
+                a4 ? "w-16 h-16" : "w-14 h-14"
+              )}
             />
           ) : (
-            <div className="w-16 h-16 rounded-2xl bg-white/20 mx-auto flex items-center justify-center text-3xl">
+            <div
+              className={cn(
+                "rounded-2xl bg-white/20 mx-auto flex items-center justify-center text-3xl",
+                a4 ? "w-16 h-16" : "w-14 h-14"
+              )}
+            >
               🎰
             </div>
           )}
-          <h1 className="text-xl font-bold mt-4">{campaignName}</h1>
+          <h1 className={cn("font-bold mt-3", a4 ? "text-2xl" : "text-xl")}>
+            {campaignName}
+          </h1>
           {businessName && (
             <p className="text-white/70 text-sm mt-1">{businessName}</p>
           )}
@@ -447,18 +843,32 @@ function CampaignCardSheet({
             </p>
           )}
         </div>
-        <div className="px-6 py-6 text-center">
-          <p className="text-lg font-bold text-foreground">{headline}</p>
-          <p className="text-xs text-muted-foreground mt-1">{sub}</p>
+        <div className={cn("text-center", a4 ? "px-8 py-7" : "px-6 py-5")}>
+          <p
+            className={cn("font-bold leading-snug", a4 ? "text-xl" : "text-lg")}
+            style={{ color: accent }}
+          >
+            {copy.benefitLine}
+          </p>
+          <p
+            className={cn(
+              "font-bold text-foreground mt-2",
+              a4 ? "text-lg" : "text-base"
+            )}
+          >
+            {copy.headline}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">{copy.sub}</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={qrSrc}
             alt="QR"
-            className="w-52 h-52 mx-auto mt-4 rounded-2xl border p-2 bg-card"
+            className={cn(
+              "mx-auto mt-4 rounded-2xl border p-2 bg-card",
+              a4 ? "w-60 h-60" : "w-52 h-52"
+            )}
           />
-          <p className="text-xs text-muted-foreground mt-3">
-            {lang === "en" ? "Until" : "活动至"} {valid}
-          </p>
+          <p className="text-xs text-muted-foreground mt-3">{copy.untilLine}</p>
           <p className="text-[9px] font-mono text-muted-foreground break-all mt-2">
             {buyUrl}
           </p>
@@ -472,9 +882,20 @@ function CampaignCardSheet({
 
   // tent
   return (
-    <div className="w-full max-w-[360px] rounded-2xl border border-border bg-card shadow-sm overflow-hidden print:border-slate-400">
+    <div
+      className={cn(
+        "w-full max-w-[360px] rounded-2xl border shadow-sm overflow-hidden print:border-slate-400",
+        isDark ? "border-slate-700" : "border-border bg-card"
+      )}
+      style={isDark ? { background: "#1E1B2E", color: "#F8FAFC" } : undefined}
+    >
       <div className="px-5 pt-5 pb-2 text-center">
-        <p className="text-[10px] font-semibold tracking-[0.2em] text-amber-700 dark:text-amber-400/90 uppercase">
+        <p
+          className={cn(
+            "text-[10px] font-semibold tracking-[0.2em] uppercase",
+            isDark ? "text-amber-300/90" : "text-amber-700 dark:text-amber-400/90"
+          )}
+        >
           WeMembers · {lang === "en" ? "Activity" : "活动"}
         </p>
         <div className="flex items-center justify-center gap-2 mt-3">
@@ -483,155 +904,72 @@ function CampaignCardSheet({
             <img
               src={businessLogo}
               alt=""
-              className="w-12 h-12 object-contain rounded-xl border"
+              className="w-12 h-12 object-contain rounded-xl border bg-white"
             />
           ) : null}
           <div className="text-left min-w-0">
-            <h1 className="text-lg font-bold text-foreground leading-tight">
-              {campaignName}
-            </h1>
+            <h1 className="text-lg font-bold leading-tight">{campaignName}</h1>
             {businessName && (
-              <p className="text-[11px] text-muted-foreground">{businessName}</p>
+              <p
+                className={cn(
+                  "text-[11px]",
+                  isDark ? "text-slate-400" : "text-muted-foreground"
+                )}
+              >
+                {businessName}
+              </p>
             )}
           </div>
         </div>
         {isDist && (
-          <p className="mt-2 text-[11px] font-semibold text-amber-800 bg-amber-50 dark:bg-amber-950/35 inline-block px-2 py-0.5 rounded-full">
+          <p className="mt-2 text-[11px] font-semibold text-amber-800 bg-amber-50 dark:bg-amber-950/35 dark:text-amber-200 inline-block px-2 py-0.5 rounded-full">
             {lang === "en" ? "Via" : "分发"} · {distLabel}
           </p>
         )}
+        <p
+          className="mt-3 text-base font-bold leading-snug"
+          style={{ color: isDark ? "#FDE68A" : accent }}
+        >
+          {copy.benefitLine}
+        </p>
       </div>
       <div className="px-5 py-3 flex justify-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={qrSrc}
           alt="QR"
-          className="w-52 h-52 rounded-2xl border p-2 bg-card"
+          className="w-52 h-52 rounded-2xl border p-2 bg-white"
         />
       </div>
       <div className="px-5 pb-5 text-center">
         <p className="text-base font-bold" style={{ color: accent }}>
-          {headline}
+          {copy.headline}
         </p>
-        <p className="text-[11px] text-muted-foreground mt-1">{sub}</p>
-        <p className="text-[10px] text-muted-foreground mt-2">
-          {lang === "en" ? "Until" : "活动至"} {valid}
+        <p
+          className={cn(
+            "text-[11px] mt-1",
+            isDark ? "text-slate-400" : "text-muted-foreground"
+          )}
+        >
+          {copy.sub}
         </p>
-        <p className="text-[9px] font-mono text-muted-foreground break-all mt-2">
+        <p
+          className={cn(
+            "text-[10px] mt-2",
+            isDark ? "text-slate-400" : "text-muted-foreground"
+          )}
+        >
+          {copy.untilLine}
+        </p>
+        <p
+          className={cn(
+            "text-[9px] font-mono break-all mt-2",
+            isDark ? "text-slate-500" : "text-muted-foreground"
+          )}
+        >
           {buyUrl}
         </p>
       </div>
     </div>
   );
-}
-
-async function drawCampaignCardPng(opts: {
-  layout: LayoutId;
-  campaignName: string;
-  businessName: string;
-  businessLogo: string | null;
-  buyUrl: string;
-  qrSrc: string;
-  headline: string;
-  sub: string;
-  distLabel: string;
-  isDist: boolean;
-  accent: string;
-  lang: "zh" | "en";
-}) {
-  const w = 1080;
-  const h = opts.layout === "sticker" ? 1080 : 1480;
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, w, h);
-
-  if (opts.layout === "poster") {
-    const g = ctx.createLinearGradient(0, 0, w, 400);
-    g.addColorStop(0, opts.accent);
-    g.addColorStop(1, "#1e293b");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, 400);
-    ctx.fillStyle = "#fff";
-    ctx.textAlign = "center";
-    ctx.font = "bold 52px system-ui,sans-serif";
-    ctx.fillText(opts.campaignName.slice(0, 22), w / 2, 180);
-    ctx.font = "28px system-ui,sans-serif";
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.fillText(opts.businessName.slice(0, 36), w / 2, 240);
-    if (opts.isDist) {
-      ctx.font = "bold 26px system-ui,sans-serif";
-      ctx.fillText(
-        `${opts.lang === "en" ? "Via" : "分发"} · ${opts.distLabel}`.slice(
-          0,
-          40
-        ),
-        w / 2,
-        300
-      );
-    }
-  } else {
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#b45309";
-    ctx.font = "bold 22px system-ui,sans-serif";
-    ctx.fillText("WEMEMBERS · ACTIVITY", w / 2, 80);
-    ctx.fillStyle = "#0f172a";
-    ctx.font = "bold 48px system-ui,sans-serif";
-    ctx.fillText(opts.campaignName.slice(0, 24), w / 2, 160);
-    ctx.fillStyle = "#64748b";
-    ctx.font = "26px system-ui,sans-serif";
-    ctx.fillText(opts.businessName.slice(0, 36), w / 2, 210);
-    if (opts.isDist) {
-      ctx.fillStyle = "#b45309";
-      ctx.font = "bold 28px system-ui,sans-serif";
-      ctx.fillText(
-        `${opts.lang === "en" ? "Via" : "分发"} · ${opts.distLabel}`.slice(
-          0,
-          36
-        ),
-        w / 2,
-        260
-      );
-    }
-  }
-
-  try {
-    const qr = await loadImage(opts.qrSrc);
-    const qrSize = 560;
-    const qx = (w - qrSize) / 2;
-    const qy = opts.layout === "poster" ? 460 : opts.layout === "sticker" ? 300 : 340;
-    ctx.fillStyle = "#f8fafc";
-    ctx.fillRect(qx - 12, qy - 12, qrSize + 24, qrSize + 24);
-    ctx.drawImage(qr, qx, qy, qrSize, qrSize);
-  } catch {
-    /* ignore */
-  }
-
-  const ty = opts.layout === "poster" ? 1120 : opts.layout === "sticker" ? 900 : 1000;
-  ctx.textAlign = "center";
-  ctx.fillStyle = opts.accent;
-  ctx.font = "bold 40px system-ui,sans-serif";
-  ctx.fillText(opts.headline.slice(0, 28), w / 2, ty);
-  ctx.fillStyle = "#64748b";
-  ctx.font = "26px system-ui,sans-serif";
-  ctx.fillText(opts.sub.slice(0, 42), w / 2, ty + 48);
-
-  const a = document.createElement("a");
-  a.href = canvas.toDataURL("image/png");
-  a.download = `${opts.campaignName.slice(0, 20)}-${opts.isDist ? "dist" : "store"}-${opts.layout}.png`;
-  a.click();
-}
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
 }
