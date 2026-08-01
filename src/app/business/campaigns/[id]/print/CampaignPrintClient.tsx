@@ -27,6 +27,7 @@ import {
   type ThemeColorId,
   type VisualTemplateId,
 } from "@/lib/visual-templates";
+import { SingaporeFlagBackdrop } from "@/components/campaign/SingaporeFlagBackdrop";
 
 type LayoutId = CampaignPosterLayoutId;
 
@@ -853,8 +854,6 @@ function CampaignCardSheet({
   festival?: boolean;
 }) {
   const isDark = surface === "dark" && !festival;
-  // 国庆预览：上红下白（国旗结构）；其它：主题渐变头
-  const festivalFlagBg = `linear-gradient(to bottom, ${accent} 0%, ${accent} 48%, #ffffff 48%, #ffffff 100%)`;
   const headerBg = `linear-gradient(145deg, ${accent} 0%, #1e293b 100%)`;
 
   if (layout === "sticker") {
@@ -862,7 +861,7 @@ function CampaignCardSheet({
       <div
         data-campaign-print-card
         className={cn(
-          "w-full max-w-[320px] aspect-square rounded-3xl border-2 overflow-hidden shadow-sm flex flex-col",
+          "w-full max-w-[320px] aspect-square rounded-3xl border-2 overflow-hidden shadow-sm flex flex-col relative",
           festival
             ? "border-red-800/30"
             : isDark
@@ -870,12 +869,18 @@ function CampaignCardSheet({
               : "border-border print:border-slate-400"
         )}
         style={{
-          background: festival ? festivalFlagBg : isDark ? "#1E1B2E" : undefined,
+          background: festival ? undefined : isDark ? "#1E1B2E" : undefined,
         }}
       >
+        {festival && (
+          <SingaporeFlagBackdrop
+            red={accent}
+            className="absolute inset-0 pointer-events-none"
+          />
+        )}
         <div
           className={cn(
-            "px-4 pt-4 pb-3 text-center relative overflow-hidden",
+            "px-4 pt-4 pb-3 text-center relative z-[1] overflow-hidden",
             festival ? "text-white flex-[0.95]" : "text-white"
           )}
           style={{
@@ -913,7 +918,7 @@ function CampaignCardSheet({
         </div>
         <div
           className={cn(
-            "flex-1 flex flex-col items-center justify-between p-4",
+            "flex-1 flex flex-col items-center justify-between p-4 relative z-[1]",
             festival ? "text-slate-900" : isDark ? "text-slate-100" : "bg-card"
           )}
         >
@@ -964,17 +969,22 @@ function CampaignCardSheet({
         data-campaign-poster={layout}
         data-campaign-print-card
         className={cn(
-          "w-full rounded-2xl overflow-hidden border shadow-sm print:border-slate-400 print:shadow-none",
+          "w-full rounded-2xl overflow-hidden border shadow-sm print:border-slate-400 print:shadow-none relative",
           festival ? "border-red-800/30" : "border-border bg-card",
           a4
             ? "max-w-[420px] campaign-a4-sheet print:rounded-none"
             : "max-w-[400px]"
         )}
-        style={festival ? { background: festivalFlagBg } : undefined}
       >
+        {festival && (
+          <SingaporeFlagBackdrop
+            red={accent}
+            className="absolute inset-0 pointer-events-none"
+          />
+        )}
         <div
           className={cn(
-            "text-center relative",
+            "text-center relative z-[1]",
             festival ? "text-white" : "text-white",
             a4 ? "px-8 pt-10 pb-7" : "px-6 pt-7 pb-5"
           )}
@@ -1019,7 +1029,12 @@ function CampaignCardSheet({
             </p>
           )}
         </div>
-        <div className={cn("text-center", a4 ? "px-8 py-7" : "px-6 py-5")}>
+        <div
+          className={cn(
+            "text-center relative z-[1]",
+            a4 ? "px-8 py-7" : "px-6 py-5"
+          )}
+        >
           {!festival && (
             <p
               className={cn("font-bold leading-snug", a4 ? "text-xl" : "text-lg")}
@@ -1091,12 +1106,12 @@ function CampaignCardSheet({
     );
   }
 
-  // tent — 国庆：上红下白国旗结构；其它浅底/深色块
+  // tent — 国庆：国旗背景 + 内容；其它浅底/深色块
   return (
     <div
       data-campaign-print-card
       className={cn(
-        "w-full max-w-[360px] rounded-2xl border shadow-sm overflow-hidden print:border-slate-400",
+        "w-full max-w-[360px] rounded-2xl border shadow-sm overflow-hidden print:border-slate-400 relative",
         festival
           ? "border-red-800/30"
           : isDark
@@ -1104,14 +1119,23 @@ function CampaignCardSheet({
             : "border-border bg-card"
       )}
       style={
-        festival
-          ? { background: festivalFlagBg }
-          : isDark
-            ? { background: "#1E1B2E", color: "#F8FAFC" }
-            : undefined
+        isDark && !festival
+          ? { background: "#1E1B2E", color: "#F8FAFC" }
+          : undefined
       }
     >
-      <div className={cn("px-5 pt-5 pb-3 text-center", festival && "text-white")}>
+      {festival && (
+        <SingaporeFlagBackdrop
+          red={accent}
+          className="absolute inset-0 pointer-events-none"
+        />
+      )}
+      <div
+        className={cn(
+          "px-5 pt-5 pb-3 text-center relative z-[1]",
+          festival && "text-white"
+        )}
+      >
         <p
           className={cn(
             "text-[10px] font-semibold tracking-[0.2em] uppercase",
@@ -1182,13 +1206,13 @@ function CampaignCardSheet({
           {copy.benefitLine}
         </p>
       </div>
-      <div className="px-5 py-3 flex justify-center bg-white/0">
+      <div className="px-5 py-3 flex justify-center relative z-[1]">
         <PosterQr
           src={qrSrc}
           className="w-52 h-52 rounded-2xl border border-red-100 p-2 bg-white shadow-md"
         />
       </div>
-      <div className="px-5 pb-5 text-center bg-transparent">
+      <div className="px-5 pb-5 text-center relative z-[1]">
         <p
           className="text-base font-bold"
           style={{ color: festival ? "#0f172a" : accent }}
