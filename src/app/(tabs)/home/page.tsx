@@ -45,8 +45,8 @@ export default async function CustomerHome() {
     listJoinableActivities({
       limit: 30,
       customerId: session.userId,
-      // 首页展示长期 + 大奖 + 国庆，不只 hot 抽奖
-      listScope: "all",
+      // 首页：国庆 + 大奖倒计时；长期券进店可见
+      listScope: "hot",
     }),
     prisma.voucher.findMany({
       where: { customerId: session.userId, status: "active" },

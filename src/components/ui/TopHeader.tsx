@@ -104,7 +104,7 @@ export function TopHeader({
     <div className="flex-1" />
   );
 
-  // ── Right: LanguageSwitcher + optional children ──
+  // ── Right: LanguageSwitcher + optional children（登录态等）──
   const rightSlot = isLanding ? (
     <div className="flex items-center gap-2 shrink-0">
       <ThemeSwitcher variant="light" />
@@ -115,6 +115,7 @@ export function TopHeader({
     <div className="flex items-center gap-1.5 shrink-0">
       <ThemeSwitcher variant={isTransparent ? "light" : "compact"} />
       <LanguageSwitcher variant={isTransparent ? "light" : "default"} />
+      {children}
     </div>
   );
 

@@ -6,11 +6,15 @@ import {
   quoteVoucherPaidCents,
   VoucherPurchaseError,
 } from "@/lib/voucher-purchase";
+import {
+  buildVoucherReturnUrl,
+  sanitizeCheckoutReturnQuery,
+} from "@/lib/activity-buy-context";
 
 /**
  * POST /api/voucher/checkout?slug=
  * Create Stripe Checkout Session for voucher purchase.
- * Body: { amountSgd, spendNowSgd?, sellerId? }
+ * Body: { amountSgd, spendNowSgd?, sellerId?, returnQuery? | 语境字段 }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -34,6 +38,16 @@ export async function POST(request: NextRequest) {
     const spendNowSgd = Number(body.spendNowSgd || 0);
     const sellerId =
       typeof body.sellerId === "string" && body.sellerId ? body.sellerId : "";
+
+    // 支付成功/取消后回到购券页时保留国庆/门店语境
+    const returnQuery =
+      typeof body.returnQuery === "string"
+        ? sanitizeCheckoutReturnQuery(new URLSearchParams(body.returnQuery))
+        : sanitizeCheckoutReturnQuery(
+            body.returnContext && typeof body.returnContext === "object"
+              ? (body.returnContext as Record<string, unknown>)
+              : null
+          );
 
     if (!amountSgd || amountSgd <= 0) {
       return NextResponse.json({ error: "请选择券面金额" }, { status: 400 });
@@ -143,8 +157,14 @@ export async function POST(request: NextRequest) {
         exclusiveFeePercent:
           campaign.productKind === "self_use" && isDrawCampaign ? "15" : "0",
       },
-      success_url: `${origin}/voucher/${encodeURIComponent(slug)}?paid=1&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/voucher/${encodeURIComponent(slug)}?paid=0`,
+      success_url: buildVoucherReturnUrl(origin, slug, {
+        paid: "1",
+        returnQuery,
+      }),
+      cancel_url: buildVoucherReturnUrl(origin, slug, {
+        paid: "0",
+        returnQuery,
+      }),
     });
 
     if (!checkoutSession.url) {

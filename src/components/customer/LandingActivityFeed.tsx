@@ -106,7 +106,9 @@ export function LandingActivityFeed({ isZh, isLoggedIn = false }: Props) {
               {isZh ? "热门活动" : "Hot activities"}
             </p>
             <h2 className="text-base font-extrabold text-foreground mt-0.5">
-              {isZh ? "按活动看 · 展开选券" : "By activity · pick a voucher"}
+              {isZh
+                ? "国庆满赠 · 大奖倒计时"
+                : "National Day · Grand countdown"}
             </h2>
           </div>
           <Link
@@ -186,11 +188,18 @@ function ActivityCard({
   const isNdp =
     a.type === "holiday" || /国庆|ndp|national/i.test(a.name || "");
   const isDraw = a.displayMode === "draw" && !isNdp;
-  const title = customerOfferTitle(a.name, {
-    kindTag: a.kindTag,
-    packKind: a.packKind,
-    lang,
-  });
+  /** Festive header (draw / NDP): solid base color so text never goes white-on-white */
+  const festive = isNdp || isDraw;
+  const title =
+    customerOfferTitle(a.name, {
+      kindTag: a.kindTag,
+      packKind: a.packKind,
+      lang,
+    }) ||
+    a.name ||
+    (isZh ? "活动" : "Activity");
+  const businessLabel =
+    a.businessName?.trim() || (isZh ? "商家活动" : "Merchant activity");
   const products = a.products.filter((p) => p.status === "active").slice(0, 4);
   const storeNames = a.stores
     .slice(0, 2)
@@ -202,27 +211,31 @@ function ActivityCard({
       className={cn(
         "rounded-2xl border bg-card shadow-sm overflow-hidden",
         isNdp
-          ? "border-rose-200 dark:border-rose-800/50"
+          ? "border-rose-300 dark:border-rose-800/50"
           : isDraw
-            ? "border-amber-200/80 dark:border-amber-800/50"
+            ? "border-amber-300 dark:border-amber-800/50"
             : "border-border"
       )}
     >
-      {/* 活动头 */}
+      {/* 活动头：实色底 + 渐变叠加，避免仅靠 gradient 时白字看不见 */}
       <Link
         href={a.href}
         className={cn(
           "block p-3.5 active:opacity-95 transition-opacity",
-          isNdp && "bg-gradient-to-br from-rose-600 to-red-700 text-white",
-          isDraw && !isNdp && "bg-gradient-to-br from-amber-600 to-orange-700 text-white"
+          isNdp &&
+            "bg-rose-600 bg-gradient-to-br from-rose-600 to-red-700 text-white",
+          isDraw &&
+            !isNdp &&
+            "bg-amber-600 bg-gradient-to-br from-amber-600 to-orange-700 text-white",
+          !festive && "bg-card text-foreground"
         )}
       >
         <div className="flex items-start gap-2.5">
           <span
             className={cn(
               "grid h-10 w-10 shrink-0 place-items-center rounded-xl",
-              isNdp || isDraw
-                ? "bg-white/15 text-white"
+              festive
+                ? "bg-white/20 text-white"
                 : "bg-primary/10 text-primary"
             )}
           >
@@ -239,8 +252,8 @@ function ActivityCard({
               <span
                 className={cn(
                   "rounded-full px-1.5 py-0.5 text-[9px] font-bold",
-                  isNdp || isDraw
-                    ? "bg-white/20 text-white"
+                  festive
+                    ? "bg-white/25 text-white"
                     : "bg-primary/10 text-primary"
                 )}
               >
@@ -253,10 +266,10 @@ function ActivityCard({
               {a.hot && (
                 <span
                   className={cn(
-                    "inline-flex items-center gap-0.5 text-[9px] font-bold",
-                    isNdp || isDraw
-                      ? "text-amber-200"
-                      : "text-amber-600 dark:text-amber-400"
+                    "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold",
+                    festive
+                      ? "bg-white text-amber-700"
+                      : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
                   )}
                 >
                   <Flame size={10} />
@@ -267,7 +280,7 @@ function ActivityCard({
             <h3
               className={cn(
                 "mt-1 text-[15px] font-bold leading-snug truncate",
-                isNdp || isDraw ? "text-white" : "text-foreground"
+                festive ? "text-white" : "text-foreground"
               )}
             >
               {title}
@@ -275,11 +288,11 @@ function ActivityCard({
             <p
               className={cn(
                 "text-[11px] truncate mt-0.5",
-                isNdp || isDraw ? "text-white/85" : "text-muted-foreground"
+                festive ? "text-white/90" : "text-muted-foreground"
               )}
             >
-              {a.businessName}
-              {isDraw && a.grandPoolSgd !== "0"
+              {businessLabel}
+              {isDraw && a.grandPoolSgd && a.grandPoolSgd !== "0"
                 ? ` · ${isZh ? "奖池" : "Pool"} S$${a.grandPoolSgd}`
                 : ""}
             </p>
@@ -288,14 +301,14 @@ function ActivityCard({
             size={18}
             className={cn(
               "shrink-0 mt-1",
-              isNdp || isDraw ? "text-white/70" : "text-muted-foreground"
+              festive ? "text-white/80" : "text-muted-foreground"
             )}
           />
         </div>
         <p
           className={cn(
             "mt-2 text-[12px] leading-snug",
-            isNdp || isDraw ? "text-white/90" : "text-foreground/80"
+            festive ? "text-white" : "text-foreground/80"
           )}
         >
           {offerBlurb(a, lang)}
@@ -304,7 +317,7 @@ function ActivityCard({
           <p
             className={cn(
               "mt-1.5 flex items-center gap-1 text-[11px]",
-              isNdp || isDraw ? "text-white/75" : "text-muted-foreground"
+              festive ? "text-white/85" : "text-muted-foreground"
             )}
           >
             <MapPin size={12} className="shrink-0" />
@@ -317,7 +330,7 @@ function ActivityCard({
       </Link>
 
       {/* 活动内热门券 / 产品 */}
-      <div className="px-3 pb-3 pt-2 border-t border-border/60 bg-card">
+      <div className="px-3 pb-3 pt-2 border-t border-border bg-card">
         <p className="text-[10px] font-semibold text-muted-foreground mb-1.5 px-0.5">
           {isZh ? "活动中的券" : "Vouchers in this activity"}
         </p>
@@ -333,7 +346,7 @@ function ActivityCard({
                 <li key={p.id}>
                   <Link
                     href={href}
-                    className="flex items-center gap-2 rounded-xl border border-border bg-muted/30 px-2.5 py-2 active:scale-[0.99] transition-transform"
+                    className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-2.5 py-2 active:scale-[0.99] transition-transform"
                   >
                     <span
                       className={cn(
@@ -378,18 +391,22 @@ function ActivityCard({
         ) : (
           <Link
             href={a.href}
-            className="flex items-center justify-between rounded-xl border border-dashed border-border px-3 py-2.5"
+            className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2.5"
           >
-            <span className="text-[12px] text-muted-foreground">
+            <span className="text-[12px] text-foreground/70 min-w-0">
               {isNdp
                 ? isZh
                   ? "满赠权益 · 扫码参加活动"
                   : "Spend-get perks · join activity"
-                : isZh
-                  ? "进入活动查看可买的券"
-                  : "Open activity for vouchers"}
+                : isDraw
+                  ? isZh
+                    ? "进入活动参与抽奖"
+                    : "Open activity to join draw"
+                  : isZh
+                    ? "进入活动查看可买的券"
+                    : "Open activity for vouchers"}
             </span>
-            <span className="text-[11px] font-semibold text-primary inline-flex items-center gap-0.5">
+            <span className="text-[11px] font-semibold text-primary inline-flex items-center gap-0.5 shrink-0">
               {offerCta(a, lang)}
               <ChevronRight size={14} />
             </span>

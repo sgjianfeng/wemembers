@@ -33,10 +33,28 @@ describe("default activities catalog", () => {
         rulesSnapshot: JSON.stringify({ packKind: "exclusive_ballot" }),
       })
     ).toBe("grand_countdown");
+    // 大奖活动 rules 里常挂 ndp 联动，不可误判为国庆
+    expect(
+      detectActivityCategory({
+        type: "lucky_draw_v2",
+        name: "大奖倒计时·品牌独享",
+        packKind: "exclusive_ballot",
+        rulesSnapshot: JSON.stringify({
+          packKind: "exclusive_ballot",
+          ndp: { enabled: true },
+        }),
+      })
+    ).toBe("grand_countdown");
     expect(
       detectActivityCategory({
         type: "voucher_sale",
         rulesSnapshot: JSON.stringify({ packKind: "face_open" }),
+      })
+    ).toBe("long_term");
+    expect(
+      detectActivityCategory({
+        type: "voucher_sale",
+        packKind: "discount_10",
       })
     ).toBe("long_term");
   });

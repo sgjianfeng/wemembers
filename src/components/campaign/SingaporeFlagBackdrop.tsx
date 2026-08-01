@@ -2,6 +2,72 @@
  * 新加坡国旗结构背景（上红下白 · 新月五星）
  * 几何绘制，不扭曲星月；国庆期宣传用，须庄重不倒置。
  */
+
+function starPath(cx: number, cy: number, r: number) {
+  const pts: string[] = [];
+  for (let i = 0; i < 5; i++) {
+    const a = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+    pts.push(`${cx + Math.cos(a) * r},${cy + Math.sin(a) * r}`);
+  }
+  return `M${pts.join("L")}Z`;
+}
+
+function crescentStarsGeometry(starCx: number, starCy: number, ring: number, starR: number) {
+  return Array.from({ length: 5 }, (_, i) => {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+    return {
+      cx: starCx + Math.cos(a) * ring,
+      cy: starCy + Math.sin(a) * ring,
+      d: starPath(
+        starCx + Math.cos(a) * ring,
+        starCy + Math.sin(a) * ring,
+        starR
+      ),
+    };
+  });
+}
+
+/**
+ * 仅星月（新月 + 五星），用于活动页 hero 右上角装饰。
+ * 放在国庆红底上：月牙由白圆 + 同色红圆挖空；不画国旗下半白。
+ * 默认固定像素，避免 width/height 100% 在 absolute 容器被撑成整屏。
+ */
+export function SingaporeCrescentStars({
+  red = "#CE1126",
+  className,
+  fill = "#FFFFFF",
+  size = 56,
+}: {
+  red?: string;
+  className?: string;
+  /** 星月填充色，默认白 */
+  fill?: string;
+  /** 正方形边长 px */
+  size?: number;
+}) {
+  // 构图：月在左、星环在右（与国旗一致，不倒置）
+  const stars = crescentStarsGeometry(68, 48, 16, 6.2);
+
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 100 100"
+      width={size}
+      height={size}
+      preserveAspectRatio="xMidYMid meet"
+      aria-hidden
+      focusable="false"
+    >
+      {/* 新月：白圆 − 红圆（红须与 hero 底同色） */}
+      <circle cx="34" cy="50" r="26" fill={fill} />
+      <circle cx="46" cy="48" r="21" fill={red} />
+      {stars.map((s, i) => (
+        <path key={i} d={s.d} fill={fill} />
+      ))}
+    </svg>
+  );
+}
+
 export function SingaporeFlagBackdrop({
   red = "#CE1126",
   className,
@@ -9,29 +75,7 @@ export function SingaporeFlagBackdrop({
   red?: string;
   className?: string;
 }) {
-  // 五星路径（viewBox 单位，中心 0,0）
-  const starPath = (cx: number, cy: number, r: number) => {
-    const pts: string[] = [];
-    for (let i = 0; i < 5; i++) {
-      const a = (i * 4 * Math.PI) / 5 - Math.PI / 2;
-      pts.push(
-        `${cx + Math.cos(a) * r},${cy + Math.sin(a) * r}`
-      );
-    }
-    return `M${pts.join("L")}Z`;
-  };
-
-  const starCx = 62;
-  const starCy = 50;
-  const ring = 18;
-  const starR = 7;
-  const stars = Array.from({ length: 5 }, (_, i) => {
-    const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
-    return {
-      cx: starCx + Math.cos(a) * ring,
-      cy: starCy + Math.sin(a) * ring,
-    };
-  });
+  const stars = crescentStarsGeometry(62, 50, 18, 7);
 
   return (
     <svg
@@ -53,15 +97,10 @@ export function SingaporeFlagBackdrop({
         viewBox="0 0 100 100"
         preserveAspectRatio="xMinYMid meet"
       >
-        {/* 新月：白圆 - 红圆 */}
         <circle cx="32" cy="50" r="28" fill="#FFFFFF" />
         <circle cx="44" cy="48" r="23" fill={red} />
         {stars.map((s, i) => (
-          <path
-            key={i}
-            d={starPath(s.cx, s.cy, starR)}
-            fill="#FFFFFF"
-          />
+          <path key={i} d={s.d} fill="#FFFFFF" />
         ))}
       </svg>
     </svg>

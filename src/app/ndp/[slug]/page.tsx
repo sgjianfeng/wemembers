@@ -10,6 +10,7 @@ import {
   paidVsGiftWeightMultiple,
   buildNdpTermsDatesView,
 } from "@/lib/ndp-promo";
+import { parseStoreIdsScope } from "@/lib/utils";
 import { NdpLandingClient } from "./NdpLandingClient";
 
 const SITE =
@@ -31,7 +32,9 @@ async function loadNdpCampaign(slug: string) {
     include: {
       business: {
         select: {
+          id: true,
           businessName: true,
+          displayName: true,
           businessLogo: true,
           businessSlug: true,
         },
@@ -63,7 +66,11 @@ export async function generateMetadata({
   const giftSgd = (
     (meta.giftCouponCents || NDP_GIFT_COUPON_CENTS) / 100
   ).toFixed(0);
-  const biz = campaign.business?.businessName || "WeMembers";
+  // OG：用品牌展示名，不用公司注册名
+  const biz =
+    campaign.business?.displayName ||
+    campaign.business?.businessName ||
+    "WeMembers";
   const title = `${campaign.name} · ${biz}`;
   const description = `满 S$${minSgd} 送 S$${giftSgd} 赠券 · 到店核销 · ${biz} · 国庆满赠活动`;
   const pageUrl = `${SITE}/ndp/${encodeURIComponent(campaign.slug || slug)}`;
@@ -198,6 +205,28 @@ export default async function NdpLandingPage({
     meta
   );
 
+  // 品牌展示名（displayName）+ 参与门店；不用 legal businessName
+  const brandName =
+    campaign.business?.displayName?.trim() ||
+    campaign.business?.businessName?.trim() ||
+    "";
+  let storeNames: string[] = [];
+  if (campaign.businessId) {
+    const scope = parseStoreIdsScope(campaign.storeIds);
+    const stores = await prisma.store.findMany({
+      where: {
+        businessId: campaign.businessId,
+        ...(scope.mode === "selected" && scope.ids.length > 0
+          ? { id: { in: scope.ids } }
+          : {}),
+      },
+      select: { name: true },
+      orderBy: { name: "asc" },
+      take: 6,
+    });
+    storeNames = stores.map((s) => s.name).filter(Boolean);
+  }
+
   // 已持有赠送券的最近一张有效至（展示用）
   let latestValidUntil: string | null = null;
   if (isCustomer && session) {
@@ -224,7 +253,8 @@ export default async function NdpLandingPage({
         name: campaign.name,
         description: campaign.description,
         slug: campaign.slug,
-        businessName: campaign.business?.businessName || "",
+        brandName,
+        storeNames,
         businessLogo: campaign.business?.businessLogo || null,
         startDate: campaign.startDate.toISOString(),
         endDate: campaign.endDate.toISOString(),

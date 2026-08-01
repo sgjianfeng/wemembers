@@ -12,6 +12,7 @@ import {
   Tag,
   Lock,
   PartyPopper,
+  MapPin,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -22,6 +23,10 @@ import { InstantPrizePreview } from "@/components/customer/InstantPrizePreview";
 import { WinBalanceWheel } from "@/components/customer/WinBalanceWheel";
 import { useLang } from "@/components/i18n/LanguageProvider";
 import { resolveTier } from "@/lib/draw-v2";
+import {
+  activityBuyBackHref,
+  parseActivityBuyContext,
+} from "@/lib/activity-buy-context";
 
 function TrustPill({ children }: { children: React.ReactNode }) {
   return (
@@ -117,6 +122,14 @@ function VoucherDrawInner() {
   const sessionIdParam = searchParams.get("session_id");
   /** 结账 join 入口带来的推荐档 */
   const amountFromJoin = Number(searchParams.get("amount") || 0);
+  /** 从国庆 / 门店货架进入：保持活动语境 */
+  const buyCtx = parseActivityBuyContext(searchParams);
+  const fromNdp = buyCtx.from === "ndp";
+  const fromStore = buyCtx.from === "store" || buyCtx.from === "shop";
+  const fromActivityShelf = fromNdp || fromStore;
+  const ndpMin = buyCtx.minSpendSgd && buyCtx.minSpendSgd > 0 ? buyCtx.minSpendSgd : 120;
+  const ndpGift = buyCtx.giftSgd && buyCtx.giftSgd > 0 ? buyCtx.giftSgd : 61;
+  const activityBackHref = activityBuyBackHref(buyCtx);
 
   const refreshPool = useCallback(async () => {
     const poolRes = await fetch(`/api/campaign/pool-status?slug=${slug}`).then((r) =>
@@ -218,6 +231,8 @@ function VoucherDrawInner() {
     setResult(null);
 
     try {
+      // 把当前页语境带给 Stripe 回跳（from=ndp / 门店等），取消/成功后不丢活动上下文
+      const returnQuery = searchParams.toString();
       const res = await fetch(`/api/voucher/checkout?slug=${encodeURIComponent(slug)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -225,6 +240,7 @@ function VoucherDrawInner() {
           amountSgd: selectedAmount,
           spendNowSgd: amt || 0,
           sellerId: sellerId || undefined,
+          returnQuery,
         }),
       });
       const d = await res.json();
@@ -319,26 +335,118 @@ function VoucherDrawInner() {
   const tier = resolveTier(selectedAmount);
   const paidCancelled = searchParams.get("paid") === "0";
 
+  const headerTitle = fromNdp
+    ? lang === "en"
+      ? "National Day buy"
+      : "国庆购券"
+    : fromStore
+      ? lang === "en"
+        ? "Store buy"
+        : "门店购券"
+      : undefined;
+
   return (
     <div
       className={`min-h-screen bg-gradient-to-b ${
-        isDraw
-          ? "from-brand via-accent-brand to-background"
-          : isSelfUse
-            ? "from-slate-600 via-muted to-background"
-            : "from-primary via-accent to-background"
+        fromNdp
+          ? "from-rose-700 via-rose-600 to-background"
+          : fromStore
+            ? isDraw
+              ? "from-amber-600 via-orange-500 to-background"
+              : "from-primary via-primary/80 to-background"
+            : isDraw
+              ? "from-brand via-accent-brand to-background"
+              : isSelfUse
+                ? "from-slate-600 via-muted to-background"
+                : "from-primary via-accent to-background"
       }`}
     >
-      <TopHeader variant="default" />
+      <TopHeader
+        variant="default"
+        title={headerTitle}
+        fallbackUrl={fromActivityShelf ? activityBackHref : "/"}
+        preferFallback={fromActivityShelf}
+      />
+
+      {/* 活动/门店语境条：购券页不「跳戏」 */}
+      {fromNdp && (
+        <div className="px-4 pt-2">
+          <Link
+            href={activityBackHref}
+            className="flex items-start gap-2.5 rounded-2xl border border-white/25 bg-white/12 backdrop-blur px-3 py-2.5 text-left text-white active:bg-white/18 transition-colors"
+          >
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15">
+              <PartyPopper size={18} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[10px] font-bold uppercase tracking-wide text-white/85">
+                {lang === "en" ? "National Day activity" : "国庆满赠活动"}
+              </span>
+              <span className="block text-[13px] font-semibold leading-snug mt-0.5">
+                {lang === "en"
+                  ? `Buy here → redeem in store · spend ≥ S$${ndpMin} gets S$${ndpGift}`
+                  : `在此购券 → 到店核销满 S$${ndpMin} 送 S$${ndpGift}`}
+              </span>
+              <span className="block text-[11px] text-white/80 mt-0.5">
+                {lang === "en"
+                  ? "Also joins grand prize countdown · tap to view activity"
+                  : "同时参加大奖倒计时 · 点此返回活动页"}
+              </span>
+            </span>
+          </Link>
+        </div>
+      )}
+
+      {fromStore && (
+        <div className="px-4 pt-2">
+          <Link
+            href={
+              buyCtx.activityId
+                ? `${activityBackHref}#activity-${buyCtx.activityId}`
+                : activityBackHref
+            }
+            className="flex items-start gap-2.5 rounded-2xl border border-white/25 bg-white/12 backdrop-blur px-3 py-2.5 text-left text-white active:bg-white/18 transition-colors"
+          >
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/15">
+              <MapPin size={18} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[10px] font-bold uppercase tracking-wide text-white/85">
+                {lang === "en" ? "From store shelf" : "来自门店货架"}
+              </span>
+              <span className="block text-[13px] font-semibold leading-snug mt-0.5 truncate">
+                {buyCtx.storeName ||
+                  buyCtx.brandName ||
+                  (lang === "en" ? "This store" : "本店")}
+                {buyCtx.activityName ? ` · ${buyCtx.activityName}` : ""}
+              </span>
+              <span className="block text-[11px] text-white/80 mt-0.5">
+                {lang === "en"
+                  ? "Still in this activity · tap to return to store offers"
+                  : "仍在本活动中 · 点此返回门店活动列表"}
+              </span>
+            </span>
+          </Link>
+        </div>
+      )}
+
       <div className="px-4 pt-4 pb-4 text-center text-white">
         <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-full mb-2 bg-white/20">
-          {isDraw
-            ? isSelfUse
-              ? t("productKind.self") + " · " + t("voucher.tag.draw")
-              : t("voucher.tag.draw")
-            : isSelfUse
-              ? t("productKind.self")
-              : t("voucher.tag.discount")}
+          {fromNdp
+            ? lang === "en"
+              ? "Activity purchase · Grand countdown"
+              : "活动购券 · 大奖倒计时"
+            : fromStore
+              ? lang === "en"
+                ? "Activity offer · buy here"
+                : "活动权益 · 在此购买"
+              : isDraw
+                ? isSelfUse
+                  ? t("productKind.self") + " · " + t("voucher.tag.draw")
+                  : t("voucher.tag.draw")
+                : isSelfUse
+                  ? t("productKind.self")
+                  : t("voucher.tag.discount")}
         </span>
         <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-white/15">
           {isDraw ? (
@@ -351,23 +459,61 @@ function VoucherDrawInner() {
         </div>
         <h1 className="text-2xl font-bold text-balance">{campaign.name}</h1>
         <p className="text-white/80 text-sm mt-1">
-          {isSelfUse && isDraw
+          {fromNdp
             ? lang === "en"
-              ? "Exclusive draw · pay first · 15% to prizes (no seller fee) · group redeem"
-              : "独享抽奖 · 先付款 · 15%进小奖/大奖/服务费（无卖券奖）· 集团可核"
-            : isSelfUse
-              ? t("voucher.selfUseSubtitle")
-              : isDraw
-                ? t("voucher.subtitle")
-                : t("voucher.discountSubtitle")}
+              ? "Pay for a voucher · use in store · join the prize countdown"
+              : "付款买券 · 到店使用 · 同步冲大奖倒计时"
+            : fromStore
+              ? lang === "en"
+                ? "Pay for this offer · redeem at the store you came from"
+                : "付款购买本权益 · 回刚才门店核销使用"
+              : isSelfUse && isDraw
+                ? lang === "en"
+                  ? "Exclusive draw · pay first · 15% to prizes (no seller fee) · group redeem"
+                  : "独享抽奖 · 先付款 · 15%进小奖/大奖/服务费（无卖券奖）· 集团可核"
+                : isSelfUse
+                  ? t("voucher.selfUseSubtitle")
+                  : isDraw
+                    ? t("voucher.subtitle")
+                    : t("voucher.discountSubtitle")}
         </p>
-        {discountPercent > 0 && (
+        {discountPercent > 0 && !fromActivityShelf && (
           <p className="text-white text-sm mt-2 font-semibold">
             {t("voucher.discountBanner", { pct: discountPercent })}
           </p>
         )}
         <div className="flex flex-wrap justify-center gap-1.5 mt-3">
-          {isSelfUse ? (
+          {fromNdp ? (
+            <>
+              <TrustPill>
+                {lang === "en"
+                  ? `Spend S$${ndpMin} → S$${ndpGift}`
+                  : `满 S$${ndpMin} 送 S$${ndpGift}`}
+              </TrustPill>
+              <TrustPill>{t("voucher.trust.pillPaynow")}</TrustPill>
+              <TrustPill>
+                {lang === "en" ? "Grand countdown" : "大奖倒计时"}
+              </TrustPill>
+              <TrustPill>
+                {lang === "en" ? "In-store redeem" : "到店核销"}
+              </TrustPill>
+            </>
+          ) : fromStore ? (
+            <>
+              {buyCtx.storeName && (
+                <TrustPill>{buyCtx.storeName}</TrustPill>
+              )}
+              <TrustPill>{t("voucher.trust.pillPaynow")}</TrustPill>
+              <TrustPill>
+                {lang === "en" ? "In-store redeem" : "到店核销"}
+              </TrustPill>
+              {isDraw && (
+                <TrustPill>
+                  {lang === "en" ? "Prize countdown" : "大奖倒计时"}
+                </TrustPill>
+              )}
+            </>
+          ) : isSelfUse ? (
             <>
               <TrustPill>{t("voucher.trust.pillGroupStores")}</TrustPill>
               <TrustPill>{t("voucher.trust.pillPaynow")}</TrustPill>
@@ -388,6 +534,48 @@ function VoucherDrawInner() {
       </div>
 
       <div className="px-4 -mt-2 pb-8 space-y-3">
+        {fromNdp && (
+          <Card className="border-rose-200 bg-rose-50/95 shadow-sm dark:border-rose-900/40 dark:bg-rose-950/40">
+            <CardContent className="p-3 text-[12px] leading-relaxed text-rose-950 dark:text-rose-100">
+              <p className="font-semibold">
+                {lang === "en"
+                  ? "Still in National Day flow"
+                  : "仍在国庆满赠流程中"}
+              </p>
+              <p className="mt-1 text-rose-900/85 dark:text-rose-100/85">
+                {lang === "en"
+                  ? `1) Buy this voucher · 2) Redeem in store · 3) When this bill ≥ S$${ndpMin}, get S$${ndpGift} gift for next visit · also joins the grand countdown below.`
+                  : `① 在本页买券 ② 到店核销消费 ③ 本单满 S$${ndpMin} 自动送 S$${ndpGift} 下次用 · 下方奖池是同步参加的大奖倒计时。`}
+              </p>
+              {/* 独享购券仍可点转盘抽即时小奖（赢余额），非必做 */}
+              {isExclusiveDraw && (
+                <p className="mt-2 rounded-lg bg-white/50 dark:bg-black/20 px-2.5 py-1.5 text-[11px] text-rose-900/90 dark:text-rose-100/90">
+                  {lang === "en"
+                    ? "Optional after pay: tap “Win balance” for a small prize. Not required — grand countdown still counts."
+                    : "付款后可选：点「赢余额」抽即时小奖（到店用）。不抽也没关系，大奖倒计时照样累计。"}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {fromStore && (
+          <Card className="border-primary/20 bg-primary/5 shadow-sm">
+            <CardContent className="p-3 text-[12px] leading-relaxed text-foreground">
+              <p className="font-semibold">
+                {lang === "en"
+                  ? "Still in store activity flow"
+                  : "仍在门店活动流程中"}
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                {lang === "en"
+                  ? `Buying “${campaign.name}” for ${buyCtx.storeName || "this store"}. After payment, open wallet and redeem in store.`
+                  : `正在为「${buyCtx.storeName || "本店"}」购买「${campaign.name}」。付款后在券包查看，到店核销即可。`}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {paidCancelled && !result && (
           <div className="p-3 bg-amber-50 dark:bg-amber-950/35 border border-amber-100 dark:border-amber-800/50 rounded-xl text-center text-xs text-amber-700 dark:text-amber-400">
             {t("voucher.payCancelled")}

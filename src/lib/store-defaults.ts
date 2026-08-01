@@ -63,10 +63,14 @@ export type DefaultPackKind =
   | "discount_10"
   | "exclusive_ballot";
 
-/** 门店基础项：不进首页热门，只在门店/店铺页买 */
+/**
+ * 门店基础 / 长期券：不进首页热门，只在门店/店铺页买。
+ * （原价代金、门槛券、9 折卡）
+ */
 export const BASE_CATALOG_PACKS: DefaultPackKind[] = [
   "face_open",
   "face_threshold",
+  "discount_10",
 ];
 
 export function isBaseCatalogPack(
@@ -74,7 +78,8 @@ export function isBaseCatalogPack(
 ): boolean {
   return (
     packKind === "face_open" ||
-    packKind === "face_threshold"
+    packKind === "face_threshold" ||
+    packKind === "discount_10"
   );
 }
 
@@ -142,7 +147,8 @@ export function buildDiscount10Snapshot(
     productKind: "self_use" as const,
     exclusiveFeeTotalPercent: null,
     packKind: "discount_10" as DefaultPackKind,
-    listScope: "hot" as const,
+    /** 长期券：首页不展示，进店可见 */
+    listScope: "store" as const,
     snapshottedAt: new Date().toISOString(),
   };
 }

@@ -16,6 +16,10 @@ import {
   parseRulesSnapshot,
 } from "@/lib/templates";
 import { isBaseCatalogPack } from "@/lib/store-defaults";
+import {
+  detectActivityCategory,
+  type DefaultActivityCategory,
+} from "@/lib/default-activities";
 
 /** 顾客可见活动类型：代金 / 抽奖 / 国庆等节日满赠 */
 const DRAW_TYPES = [
@@ -82,6 +86,11 @@ export type JoinableActivity = {
     | "draw";
   /** Customer UI branch: calm voucher card vs festive draw card */
   displayMode: OfferDisplayMode;
+  /**
+   * 商业三类：长期活动 / 大奖倒计时 / 国庆满赠
+   * （与 default-activities 槽位一致）
+   */
+  category: DefaultActivityCategory | "other";
   /** face_open / face_threshold = store base only */
   listScope: "hot" | "store";
   packKind: string | null;
@@ -695,6 +704,14 @@ export async function listJoinableActivities(
       packKind,
     });
 
+    const category = detectActivityCategory({
+      type: c.type,
+      name: c.name,
+      tags: c.tags,
+      rulesSnapshot: c.rulesSnapshot,
+      packKind,
+    });
+
     return {
       id: c.id,
       name: customerName,
@@ -729,20 +746,32 @@ export async function listJoinableActivities(
       myCount,
       kindTag: tag,
       displayMode: mode,
+      category,
       listScope,
       packKind,
       discountPercent,
     };
   });
 
-  // Homepage feed: hide 原价基础代金
+  // hot = 首页：排除门店长期券（listScope store / category long_term）
+  // all = 门店/发现：长期 + 国庆 + 大奖都可见
   let scoped =
     opts.listScope === "all"
       ? items
-      : items.filter((x) => x.listScope !== "store");
+      : items.filter(
+          (x) => x.listScope !== "store" && x.category !== "long_term"
+        );
 
-  // Sort by heat desc, then endDate asc
+  // 优先：国庆 → 大奖倒计时 → 其它，同类内按热度
+  const categoryRank: Record<JoinableActivity["category"], number> = {
+    ndp: 0,
+    grand_countdown: 1,
+    long_term: 2,
+    other: 3,
+  };
   scoped.sort((a, b) => {
+    const cr = categoryRank[a.category] - categoryRank[b.category];
+    if (cr !== 0) return cr;
     if (b.heat !== a.heat) return b.heat - a.heat;
     return new Date(a.endDate).getTime() - new Date(b.endDate).getTime();
   });

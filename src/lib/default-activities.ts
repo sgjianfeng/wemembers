@@ -93,41 +93,57 @@ export function categoryLabel(
   return map[cat][lang];
 }
 
+/**
+ * 三类商业心智（勿被 rules 里挂的 ndp 联动字段误判）。
+ * 优先级：国庆满赠 → 大奖倒计时 → 长期活动。
+ */
 export function detectActivityCategory(input: {
   type?: string | null;
   name?: string | null;
   tags?: string | null;
   rulesSnapshot?: string | null;
+  packKind?: string | null;
 }): DefaultActivityCategory | "other" {
+  const pack =
+    input.packKind || packKindInSnapshot(input.rulesSnapshot || null);
+  const tags = input.tags || "";
+  const name = input.name || "";
+
+  // 1) 国庆满赠：holiday / 名称 / 显式 tag（不要单靠 rules.ndp——大奖活动也会挂 ndp 联动）
   if (
     input.type === "holiday" ||
-    /国庆|ndp|national/i.test(input.name || "") ||
-    (input.tags && /ndp|国庆|national/i.test(input.tags)) ||
-    (input.rulesSnapshot && /"ndp"/.test(input.rulesSnapshot))
+    /国庆|ndp|national/i.test(name) ||
+    /ndp|国庆|national|slot:ndp/i.test(tags)
   ) {
     return "ndp";
   }
+
+  // 2) 大奖倒计时：独享购券 / 抽奖
   if (
+    pack === "exclusive_ballot" ||
     input.type === "lucky_draw_v2" ||
     input.type === "lucky_draw" ||
-    (input.tags && /exclusive_ballot|grand|draw/i.test(input.tags)) ||
-    (input.rulesSnapshot && /exclusive_ballot|prizePackId/.test(input.rulesSnapshot))
+    /exclusive_ballot|exclusive_draw/i.test(tags) ||
+    (input.rulesSnapshot &&
+      /exclusive_ballot|"kind"\s*:\s*"draw"/i.test(input.rulesSnapshot) &&
+      !/face_open|face_threshold|discount_10/.test(input.rulesSnapshot))
   ) {
-    // 独享/抽奖归大奖倒计时；若 rules 明确 face 则 long
-    if (input.rulesSnapshot?.includes("face_open") || input.rulesSnapshot?.includes("face_threshold")) {
-      return "long_term";
-    }
-    if (input.rulesSnapshot?.includes("exclusive_ballot") || input.type?.includes("lucky_draw")) {
-      return "grand_countdown";
-    }
+    return "grand_countdown";
   }
+
+  // 3) 长期活动：原价代金 / 门槛 / 9 折卡 / 其它 shelf voucher
   if (
+    pack === "face_open" ||
+    pack === "face_threshold" ||
+    pack === "discount_10" ||
     input.type === "voucher_sale" ||
-    (input.tags && /face_open|face_threshold|shelf|scope:store/i.test(input.tags)) ||
-    (input.rulesSnapshot && /face_open|face_threshold|discount_10/.test(input.rulesSnapshot))
+    /face_open|face_threshold|discount_10|shelf|scope:store/i.test(tags) ||
+    (input.rulesSnapshot &&
+      /face_open|face_threshold|discount_10/.test(input.rulesSnapshot))
   ) {
     return "long_term";
   }
+
   return "other";
 }
 

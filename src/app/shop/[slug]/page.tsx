@@ -11,54 +11,9 @@ import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  listJoinableActivities,
-  offerCta,
-  offerKindLabel,
-  offerBlurb,
-  type JoinableActivity,
-} from "@/lib/discover-activities";
-import { Building2, MapPin, Ticket, Trophy } from "lucide-react";
-
-function sortCompanyOffers(offers: JoinableActivity[]): JoinableActivity[] {
-  // 大奖/抽奖置顶 → 折扣优惠 → 原价基础
-  const rank = (o: JoinableActivity) => {
-    if (o.displayMode === "draw") return 0;
-    if (o.kindTag === "discount_card" || o.discountPercent > 0) return 1;
-    return 2;
-  };
-  return [...offers].sort((a, b) => {
-    const d = rank(a) - rank(b);
-    if (d !== 0) return d;
-    return b.heat - a.heat;
-  });
-}
-
-function storeNamesLine(o: JoinableActivity, lang: "zh" | "en"): string {
-  if (o.storeCount === 0) {
-    return lang === "en" ? "Stores TBA" : "门店待定";
-  }
-  if (o.storesAll) {
-    const names = o.stores
-      .slice(0, 2)
-      .map((s) => s.name)
-      .join(" · ");
-    if (o.storeCount <= 2) {
-      return names || (lang === "en" ? "All stores" : "全部门店");
-    }
-    return names
-      ? `${names}${lang === "en" ? ` +${o.storeCount - 2}` : ` 等${o.storeCount}家`}`
-      : lang === "en"
-        ? `${o.storeCount} stores`
-        : `${o.storeCount} 家门店`;
-  }
-  const names = o.stores
-    .slice(0, 2)
-    .map((s) => s.name)
-    .join(" · ");
-  if (o.storeCount <= 2) return names;
-  return `${names}${lang === "en" ? ` +${o.storeCount - 2}` : ` 等${o.storeCount}家`}`;
-}
+import { listJoinableActivities } from "@/lib/discover-activities";
+import { ShopActivityShelf } from "@/components/shop/ShopActivityShelf";
+import { Building2 } from "lucide-react";
 
 export default async function ShopPage({
   params,
@@ -74,6 +29,7 @@ export default async function ShopPage({
     select: {
       id: true,
       businessName: true,
+      displayName: true,
       businessLogo: true,
       businessCategory: true,
       businessSlug: true,
@@ -83,6 +39,9 @@ export default async function ShopPage({
 
   const session = await getSession();
   const isLoggedIn = !!session;
+  const brandName =
+    business.displayName?.trim() || business.businessName?.trim() || "";
+  const brandPath = `/shop/${business.businessSlug}`;
 
   const stores = await prisma.store.findMany({
     where: { businessId: business.id },
@@ -90,14 +49,12 @@ export default async function ShopPage({
     select: { id: true, name: true, slug: true, address: true },
   });
 
-  const storeOffers = sortCompanyOffers(
-    await listJoinableActivities({
-      limit: 40,
-      listScope: "all",
-      businessId: business.id,
-      customerId: session?.role === "customer" ? session.userId : null,
-    })
-  );
+  const storeOffers = await listJoinableActivities({
+    limit: 40,
+    listScope: "all",
+    businessId: business.id,
+    customerId: session?.role === "customer" ? session.userId : null,
+  });
 
   const categoryLabel =
     lang === "zh"
@@ -133,7 +90,7 @@ export default async function ShopPage({
               />
             )}
           </div>
-          <h1 className="text-xl font-bold mt-3">{business.businessName}</h1>
+          <h1 className="text-xl font-bold mt-3">{brandName}</h1>
           {categoryLabel && (
             <Badge
               variant="slate"
@@ -208,12 +165,12 @@ export default async function ShopPage({
           <div className="flex items-center justify-between px-3 mb-1">
             <div>
               <h2 className="text-base font-semibold text-foreground">
-                {lang === "en" ? "Brand activities" : "门店活动"}
+                {lang === "en" ? "Brand activities · offers" : "品牌活动 · 可购权益"}
               </h2>
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 {lang === "en"
-                  ? "Across outlets · draws first"
-                  : "全品牌活动 · 大奖优先展示"}
+                  ? "By activity · buy focuses the offer"
+                  : "按活动组织 · 点权益进入购券"}
               </p>
             </div>
             <span className="text-xs text-muted-foreground nums">
@@ -222,100 +179,15 @@ export default async function ShopPage({
           </div>
 
           {storeOffers.length > 0 ? (
-            <div className="space-y-2.5 px-3 mb-6 mt-3">
-              {storeOffers.map((offer) => {
-                const isDraw = offer.displayMode === "draw";
-                const storesLine = storeNamesLine(offer, lang);
-                return (
-                  <Link key={offer.id} href={offer.href}>
-                    <Card
-                      className={`hover:border-primary/30 active:scale-[0.98] transition-transform overflow-hidden ${
-                        isDraw
-                          ? "border-amber-300/80 dark:border-amber-700/50 shadow-sm ring-1 ring-amber-200/40 dark:ring-amber-800/30"
-                          : "border-border"
-                      }`}
-                    >
-                      {isDraw && (
-                        <div className="h-1 w-full bg-gradient-to-r from-amber-400 via-orange-500 to-red-500" />
-                      )}
-                      <CardContent
-                        className={`p-3 flex items-center justify-between gap-2 ${
-                          isDraw ? "bg-amber-50/40 dark:bg-amber-950/20" : ""
-                        }`}
-                      >
-                        <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                          <span
-                            className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${
-                              isDraw
-                                ? "bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm"
-                                : offer.kindTag === "discount_card"
-                                  ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600"
-                                  : "bg-primary/10 text-primary"
-                            }`}
-                          >
-                            {isDraw ? (
-                              <Trophy size={18} />
-                            ) : (
-                              <Ticket size={18} />
-                            )}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <Badge
-                                variant={isDraw ? "orange" : "slate"}
-                                size="sm"
-                              >
-                                {offerKindLabel(offer.kindTag, lang)}
-                              </Badge>
-                              {isDraw && (
-                                <span className="text-[9px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100/80 dark:bg-amber-900/40 px-1.5 py-0.5 rounded-full">
-                                  {lang === "en" ? "FEATURED" : "大奖"}
-                                </span>
-                              )}
-                              {offer.listScope === "store" && !isDraw && (
-                                <span className="text-[9px] text-muted-foreground">
-                                  {lang === "en" ? "Base" : "基础"}
-                                </span>
-                              )}
-                              {offer.discountPercent > 0 && !isDraw && (
-                                <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full">
-                                  −{offer.discountPercent}%
-                                </span>
-                              )}
-                            </div>
-                            <p
-                              className={`font-semibold text-foreground mt-1 truncate ${
-                                isDraw ? "text-[15px]" : "text-sm"
-                              }`}
-                            >
-                              {offer.name}
-                            </p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
-                              {offerBlurb(offer, lang)}
-                            </p>
-                            <p className="flex items-center gap-1 text-[11px] text-foreground/70 mt-1.5 font-medium">
-                              <MapPin
-                                size={12}
-                                className="shrink-0 text-primary/70"
-                              />
-                              <span className="truncate">{storesLine}</span>
-                            </p>
-                          </div>
-                        </div>
-                        <span
-                          className={`shrink-0 inline-block px-3 py-1.5 text-xs font-semibold rounded-full ${
-                            isDraw
-                              ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white"
-                              : "bg-primary text-primary-foreground"
-                          }`}
-                        >
-                          {offerCta(offer, lang)}
-                        </span>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                );
-              })}
+            <div className="px-3 mb-6 mt-3">
+              <ShopActivityShelf
+                lang={lang}
+                activities={storeOffers}
+                storePath={brandPath}
+                storeName={brandName}
+                brandName={brandName}
+                brandScope
+              />
             </div>
           ) : (
             <EmptyState
