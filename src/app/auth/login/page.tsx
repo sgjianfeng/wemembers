@@ -151,7 +151,14 @@ export default function LoginPage() {
 
   function goHome(role: string) {
     const redirect = safeRedirectPath(searchParams.get("redirect"));
-    router.push(redirect || roleHome(role));
+    const dest = redirect || roleHome(role);
+    // 硬跳转：避免 iOS 键盘放大后 soft navigate 视口仍缩放、布局错乱
+    if (typeof window !== "undefined") {
+      window.scrollTo(0, 0);
+      window.location.assign(dest);
+      return;
+    }
+    router.push(dest);
   }
 
   async function handlePasswordLogin() {
@@ -272,10 +279,10 @@ export default function LoginPage() {
   const inSetPasswordFlow = mode === "set-password-prompt" || mode === "set-password";
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-white to-white">
+    <div className="min-h-[100dvh] flex flex-col bg-gradient-to-b from-slate-50 via-white to-white overflow-x-hidden">
       <TopHeader variant="default" fallbackUrl="/" preferFallback />
 
-      <div className="flex-1 flex flex-col px-6 pt-5 pb-8 max-w-md mx-auto w-full">
+      <div className="flex-1 flex flex-col px-5 pt-4 pb-10 max-w-md mx-auto w-full min-w-0">
         {/* Brand */}
         <div className="text-center mb-5">
           <div className="mx-auto mb-3 flex justify-center">
@@ -329,8 +336,8 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Card */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        {/* Card：min-w-0 防止键盘弹起时横向撑破 */}
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-sm min-w-0 w-full">
           {/* 密码登录：客户 / 商家 */}
           {showPasswordForm && (
             <>
@@ -340,9 +347,10 @@ export default function LoginPage() {
                 type="text"
                 autoComplete="username"
                 inputMode="email"
+                enterKeyHint="next"
                 value={contact}
                 onChange={(e) => setContact(e.target.value)}
-                className="h-12 rounded-xl"
+                className="h-12 rounded-xl text-base"
               />
               <div className="mt-3">
                 <PasswordField

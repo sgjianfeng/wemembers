@@ -145,8 +145,9 @@ export default async function BusinessDashboard() {
   const balanceSgd = ((user.tokenAccount?.balance ?? 0) / 100).toFixed(2);
 
   return (
-    <div className="pb-4">
-      <div className="bg-card border-b border-border px-4 py-3 sticky top-0 z-20">
+    <div className="pb-6 overflow-x-hidden">
+      {/* 非 sticky：顶栏已在 layout，避免双 sticky + 半透明叠层发虚 */}
+      <div className="bg-card border-b border-border px-4 py-3">
         <div className="flex items-center justify-between gap-2">
           <Link
             href="/business/settings"
@@ -162,30 +163,22 @@ export default async function BusinessDashboard() {
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
                 {lang === "en" ? "Company" : "企业后台"}
               </p>
-              <p className="text-sm font-semibold text-foreground truncate group-active:opacity-70">
+              <p className="text-sm font-semibold text-foreground truncate">
                 {user.businessName || t("business.overview.myStore", lang)}
-                <span className="ml-1.5 text-[10px] font-medium text-primary">
-                  {lang === "en" ? "Settings" : "设置"}
-                </span>
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">
                 {lang === "en"
-                  ? `${stores.length} store(s) · manage outlets separately`
-                  : `${stores.length} 家门店 · 点「门店」进入具体店`}
+                  ? `${stores.length} store(s) · Settings`
+                  : `${stores.length} 家门店 · 点此设置`}
               </p>
-              {!user.businessLogo && (
-                <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
-                  {lang === "en"
-                    ? "Upload brand logo in Settings"
-                    : "设置中可上传品牌 Logo"}
-                </p>
-              )}
             </div>
           </Link>
           <Link href="/business/tokens" className="shrink-0">
-            <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/35 px-2.5 py-1 rounded-full border border-amber-100 dark:border-amber-800/50">
-              <Coins size={16} className="text-amber-600 dark:text-amber-400" />
-              <span className="text-sm font-semibold text-amber-700 dark:text-amber-400 nums">S${balanceSgd}</span>
+            <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/35 px-2.5 py-1.5 rounded-full border border-amber-100 dark:border-amber-800/50">
+              <Coins size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="text-sm font-semibold text-amber-700 dark:text-amber-400 nums">
+                S${balanceSgd}
+              </span>
             </div>
           </Link>
         </div>
@@ -216,7 +209,7 @@ export default async function BusinessDashboard() {
             ? "Company-wide numbers. Open a store for outlet-level work."
             : "以下为全公司汇总。进入具体门店做本店核销与店务。"}
         </p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           {[
             {
               icon: Store,
@@ -241,11 +234,18 @@ export default async function BusinessDashboard() {
           ].map((k) => {
             const IconComponent = k.icon;
             return (
-              <Card key={k.label} className="bg-muted/50 border-0">
+              <Card
+                key={k.label}
+                className="bg-card border border-border shadow-sm"
+              >
                 <CardContent className="p-3">
-                  <IconComponent size={20} className="text-muted-foreground" />
-                  <p className="text-2xl font-bold text-foreground mt-2">{k.value}</p>
-                  <p className="text-xs text-muted-foreground">{k.label}</p>
+                  <IconComponent size={18} className="text-primary/80" />
+                  <p className="text-2xl font-bold text-foreground mt-1.5 tabular-nums leading-none">
+                    {k.value}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-1.5 leading-tight">
+                    {k.label}
+                  </p>
                 </CardContent>
               </Card>
             );
@@ -294,6 +294,7 @@ export default async function BusinessDashboard() {
         <h3 className="text-sm font-semibold text-foreground mt-5 mb-2">
           {t("business.overview.quickActions", lang)}
         </h3>
+        {/* 主路径 4 格：其余进底栏「活动券 / 更多」 */}
         <div className="grid grid-cols-2 gap-2">
           {[
             {
@@ -306,31 +307,13 @@ export default async function BusinessDashboard() {
               href: "/business/scan",
             },
             {
-              icon: Calendar,
-              label: lang === "en" ? "Campaigns" : "活动",
-              desc:
-                lang === "en"
-                  ? `${activeCampaignCount} active`
-                  : `${activeCampaignCount} 个进行中`,
-              href: "/business/campaigns",
-            },
-            {
               icon: Gift,
               label: lang === "en" ? "Activity perks" : "活动券",
               desc:
                 lang === "en"
-                  ? "By activity · issue & redeem"
-                  : "按活动 · 发券核销",
+                  ? "By activity · NDP issue"
+                  : "按活动 · 国庆发券",
               href: "/business/offers",
-            },
-            {
-              icon: Gift,
-              label: lang === "en" ? "NDP gift" : "国庆满赠",
-              desc:
-                lang === "en"
-                  ? "S$120 → S$61 + draw"
-                  : "满120送61 + 抽奖签",
-              href: "/business/ndp-issue",
             },
             {
               icon: Store,
@@ -342,21 +325,31 @@ export default async function BusinessDashboard() {
               href: "/business/stores",
             },
             {
-              icon: Wrench,
-              label: t("business.tabs.hub", lang),
-              desc: t("hub.quickDesc", lang),
-              href: "/business/hub",
+              icon: Calendar,
+              label: lang === "en" ? "Campaigns" : "活动",
+              desc:
+                lang === "en"
+                  ? `${activeCampaignCount} active`
+                  : `${activeCampaignCount} 个进行中`,
+              href: "/business/campaigns",
             },
           ].map((a) => {
             const IconComponent = a.icon;
             return (
-              <Link key={a.href} href={a.href}>
-                <Card className="hover:border-primary/30 transition-colors">
-                  <CardContent className="p-3 flex items-center gap-3">
-                    <IconComponent size={24} className="text-muted-foreground" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">{a.label}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{a.desc}</p>
+              <Link key={a.href} href={a.href} className="min-w-0">
+                <Card className="h-full border border-border shadow-sm active:scale-[0.98] transition-transform">
+                  <CardContent className="p-3 flex items-center gap-2.5 min-w-0">
+                    <IconComponent
+                      size={22}
+                      className="text-primary shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {a.label}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {a.desc}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>

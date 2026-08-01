@@ -61,8 +61,10 @@ export function CodeInput({ length = 6, onComplete, error }: CodeInputProps) {
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
             className={cn(
-              "w-10 h-12 text-center text-lg font-semibold rounded-lg border border-border",
+              // text-base(16px) 防止 iOS 聚焦时整页放大
+              "w-10 h-12 text-center text-base font-semibold rounded-lg border border-border",
               "focus:outline-none focus:ring-2 focus:ring-[#1A6EFF] focus:border-transparent",
+              "min-w-0 shrink",
               error && "border-red-300"
             )}
           />

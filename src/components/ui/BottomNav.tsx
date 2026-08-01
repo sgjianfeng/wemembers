@@ -76,8 +76,8 @@ export function BottomNav({
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/90 backdrop-blur safe-area-pb">
-        <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-1">
+      <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-border bg-background safe-area-pb">
+        <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-1 w-full">
           {tabs.map((tab) => {
             const active = isTabActive(pathname, tab);
             const Icon = resolveIcon(tab.icon);

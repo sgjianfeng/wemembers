@@ -181,7 +181,8 @@ export default async function BusinessLayout({
 
   return (
     <>
-      <div className="sticky top-0 z-30 bg-background/90 backdrop-blur border-b border-border px-3 h-11 flex items-center justify-between gap-2">
+      {/* 实色顶栏：避免 backdrop-blur + 页内 sticky 双层叠导致内容发虚 */}
+      <div className="sticky top-0 z-30 bg-background border-b border-border px-3 h-11 flex items-center justify-between gap-2 safe-area-pt">
         <Link
           href={leftHref}
           className="min-w-0 flex items-center gap-2 max-w-[70%]"
@@ -203,7 +204,9 @@ export default async function BusinessLayout({
           <LanguageSwitcher />
         </div>
       </div>
-      <main className="pb-16 min-h-screen">{children}</main>
+      <main className="pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] min-h-[calc(100dvh-2.75rem)] overflow-x-hidden">
+        {children}
+      </main>
       {dbUser.role === "staff" ? (
         <BottomNav tabs={staffTabs} />
       ) : (

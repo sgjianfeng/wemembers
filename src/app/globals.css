@@ -4,6 +4,28 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* 移动端：防止横向溢出、键盘弹起后页面错位 */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
+}
+/* iOS 输入框字号 <16px 会整页放大；全局兜底 */
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-area-pt {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

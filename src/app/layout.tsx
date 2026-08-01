@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
@@ -28,6 +28,17 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
 };
 
+/** 移动端：避免键盘顶起后布局错乱；输入框保持 ≥16px 防 iOS 强制放大 */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
+};
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
   const langCookie = cookieStore.get("gwm_lang")?.value;
@@ -39,8 +50,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-screen bg-background text-foreground font-sans">
-        <div className="max-w-lg mx-auto min-h-screen relative bg-background">
+      <body className="min-h-screen min-h-[100dvh] bg-background text-foreground font-sans overflow-x-hidden">
+        <div className="max-w-lg mx-auto min-h-screen min-h-[100dvh] relative bg-background overflow-x-hidden">
           <LangWrapper initialLang={initialLang}>
             {children}
           </LangWrapper>
