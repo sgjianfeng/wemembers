@@ -1,0 +1,30 @@
+# One-shot glibc linux/amd64 build for PM2 on Ubuntu host (not Alpine/musl)
+FROM node:20-bookworm-slim AS base
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+
+FROM base AS deps
+COPY package.json package-lock.json* ./
+RUN npm ci --no-audit --no-fund
+
+FROM base AS builder
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/schema.prisma || true
+RUN npx prisma generate
+ENV DATABASE_URL="postgresql://postgres:placeholder@localhost:5432/postgres"
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+RUN npm run build
+
+FROM base AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
