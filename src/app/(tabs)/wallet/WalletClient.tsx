@@ -199,6 +199,7 @@ export function WalletClient({
                 claim={g.claims[0]}
                 tab={tab}
                 dateLocale={dateLocale}
+                zh={zh}
                 t={t}
               />
             );
@@ -247,6 +248,7 @@ export function WalletClient({
                       claim={claim}
                       tab={tab}
                       dateLocale={dateLocale}
+                      zh={zh}
                       t={t}
                       nested
                     />
@@ -279,12 +281,14 @@ function ClaimCard({
   claim,
   tab,
   dateLocale,
+  zh,
   t,
   nested,
 }: {
   claim: WalletClaim;
   tab: TabKey;
   dateLocale: string;
+  zh: boolean;
   t: (k: string) => string;
   nested?: boolean;
 }) {
@@ -327,10 +331,17 @@ function ClaimCard({
             <p className="text-lg font-bold text-foreground mt-0.5 tabular-nums">
               S${(claim.coupon.valueCents / 100).toFixed(0)}
             </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {zh
+                ? "有效至以本券为准（领取时已算好）"
+                : "Valid-until on this perk is final"}
+            </p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-muted-foreground">
-              {t("wallet.expires")}{" "}
+            <p className="text-[10px] font-medium text-muted-foreground">
+              {zh ? "有效至" : "Valid until"}
+            </p>
+            <p className="text-sm font-bold tabular-nums text-foreground">
               {new Date(claim.coupon.validUntil).toLocaleDateString(dateLocale)}
             </p>
             {isAvailable ? (

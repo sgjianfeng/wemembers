@@ -8,6 +8,7 @@ import {
   NDP_MIN_SPEND_CENTS,
   parseNdpMetaFromCampaign,
   paidVsGiftWeightMultiple,
+  buildNdpTermsDatesView,
 } from "@/lib/ndp-promo";
 import { NdpLandingClient } from "./NdpLandingClient";
 
@@ -102,6 +103,31 @@ export default async function NdpLandingPage({
   const buySlug = meta.buyVoucherSlug || campaign.slug || null;
   const buyPath = buySlug ? `/voucher/${buySlug}` : null;
   const multiple = paidVsGiftWeightMultiple(meta);
+  const termsView = buildNdpTermsDatesView(
+    {
+      startDate: campaign.startDate,
+      endDate: campaign.endDate,
+      description: campaign.description,
+    },
+    meta
+  );
+
+  // 已持有赠送券的最近一张有效至（展示用）
+  let latestValidUntil: string | null = null;
+  if (isCustomer && session) {
+    const latest = await prisma.customerCoupon.findFirst({
+      where: {
+        customerId: session.userId,
+        status: "available",
+        coupon: { campaignId: campaign.id },
+      },
+      orderBy: { claimedAt: "desc" },
+      select: { expiresAt: true, claimedAt: true },
+    });
+    if (latest?.expiresAt) {
+      latestValidUntil = latest.expiresAt.toISOString();
+    }
+  }
 
   return (
     <NdpLandingClient
@@ -122,7 +148,10 @@ export default async function NdpLandingPage({
         giftSgd: (meta.giftCouponCents || NDP_GIFT_COUPON_CENTS) / 100,
         validDays: meta.validDays,
         weightMultiple: multiple,
+        dualProtection: meta.dualProtection,
       }}
+      termsView={termsView}
+      latestValidUntil={latestValidUntil}
       buyPath={buyPath}
       isLoggedIn={isCustomer}
       customerPhone={customerPhone}

@@ -17,6 +17,11 @@ import {
 } from "@/lib/draw-v2";
 import { EXCLUSIVE_GIFT_WEIGHT_FACTOR } from "@/lib/exclusive-fees";
 import { allocateShortCode } from "@/lib/voucher-short-code";
+import {
+  computeNdpGiftExpiry,
+  buildTermsDatesView,
+  type TermsDatesView,
+} from "@/lib/validity";
 
 export const NDP_MIN_SPEND_CENTS = 12_000; // S$120
 export const NDP_GIFT_COUPON_CENTS = 6_100; // S$61
@@ -26,6 +31,8 @@ export const NDP_WEIGHT_REF_FACE_CENTS = 10_000;
 export const NDP_GIFT_WEIGHT_FACTOR = EXCLUSIVE_GIFT_WEIGHT_FACTOR; // 0.2
 export const NDP_COUPON_TITLE_ZH = "国庆赠送券 S$61";
 export const NDP_COUPON_TITLE_EN = "National Day Gift S$61";
+/** 国庆默认不双重保护：活动截止不缩短已领 30 天 */
+export const NDP_DUAL_PROTECTION_DEFAULT = false;
 
 type Tx = Prisma.TransactionClient;
 
@@ -35,6 +42,8 @@ export type NdpRules = {
   validDays: number;
   weightRefFaceCents: number;
   giftWeightFactor: number;
+  /** true = 核销也受活动截止限制（取较早） */
+  dualProtection: boolean;
 };
 
 export const DEFAULT_NDP_RULES: NdpRules = {
@@ -43,6 +52,7 @@ export const DEFAULT_NDP_RULES: NdpRules = {
   validDays: NDP_VALID_DAYS,
   weightRefFaceCents: NDP_WEIGHT_REF_FACE_CENTS,
   giftWeightFactor: NDP_GIFT_WEIGHT_FACTOR,
+  dualProtection: NDP_DUAL_PROTECTION_DEFAULT,
 };
 
 /** S$100 全余额持有时的购券权重（无核销） */
@@ -77,13 +87,73 @@ export function paidVsGiftWeightMultiple(
   return paid / gift;
 }
 
+/** @deprecated 使用 computeNdpGiftExpiry；保留简单加法兼容旧测试 */
 export function expiresAtFromIssued(
   issuedAt: Date,
   validDays: number = NDP_VALID_DAYS
 ): Date {
-  const d = new Date(issuedAt.getTime());
-  d.setDate(d.getDate() + validDays);
-  return d;
+  return computeNdpGiftExpiry({
+    obtainedAt: issuedAt,
+    validDays,
+    activityEnd: new Date(issuedAt.getTime() + 365 * 864e5),
+    dualProtection: false,
+  }).expiresAt;
+}
+
+/** 国庆发放时计算有效至（相对优先，默认无双重保护） */
+export function computeNdpExpiresAt(input: {
+  obtainedAt: Date;
+  validDays: number;
+  activityEnd: Date;
+  dualProtection?: boolean;
+}) {
+  return computeNdpGiftExpiry({
+    obtainedAt: input.obtainedAt,
+    validDays: input.validDays,
+    activityEnd: input.activityEnd,
+    dualProtection: input.dualProtection ?? NDP_DUAL_PROTECTION_DEFAULT,
+  });
+}
+
+/** 国庆落地页 / 活动券 四行日期与条款 */
+export function buildNdpTermsDatesView(campaign: {
+  startDate: Date;
+  endDate: Date;
+  description?: string | null;
+}, rules: NdpRules): TermsDatesView {
+  return buildTermsDatesView({
+    activityStart: campaign.startDate,
+    activityEnd: campaign.endDate,
+    entitlementValidDays: rules.validDays,
+    dualProtection: rules.dualProtection,
+    activityTermsZh: [
+      `活动期内消费满 S$${(rules.minSpendCents / 100).toFixed(0)} 可领赠送券`,
+      "购券路径可获更高权重大奖资格；现金可走前台凭票",
+      "活动结束后停止新领取",
+      ...(campaign.description ? [campaign.description] : []),
+    ],
+    activityTermsEn: [
+      `During activity, spend ≥ S$${(rules.minSpendCents / 100).toFixed(0)} to claim gift`,
+      "Buy voucher for higher draw weight; cash path via counter receipt",
+      "No new claims after activity end",
+    ],
+    entitlementTermsZh: [
+      `赠送券自领取起 ${rules.validDays} 天内有效（有效至以到账为准）`,
+      rules.dualProtection
+        ? "已开启双重保护：与活动截止取较早"
+        : "活动截止不缩短已领券的有效天数",
+      `面额 S$${(rules.giftCouponCents / 100).toFixed(0)} · 不可兑现 · 一次使用`,
+      "仅倒计时大奖 · 无即时小奖",
+    ],
+    entitlementTermsEn: [
+      `Gift coupon valid ${rules.validDays} days from claim (see valid-until on perk)`,
+      rules.dualProtection
+        ? "Dual protection on: earlier of relative days vs activity end"
+        : "Activity end does not shorten held gift validity",
+      `Face S$${(rules.giftCouponCents / 100).toFixed(0)} · non-cash · one-time`,
+      "Grand countdown only · no small prizes",
+    ],
+  });
 }
 
 export function buildReceiptFingerprint(input: {
@@ -189,6 +259,9 @@ export function parseNdpRulesFromSnapshot(
     if (typeof ndp.giftWeightFactor === "number" && ndp.giftWeightFactor > 0) {
       base.giftWeightFactor = ndp.giftWeightFactor;
     }
+    if (typeof ndp.dualProtection === "boolean") {
+      base.dualProtection = ndp.dualProtection;
+    }
   } catch {
     /* keep defaults */
   }
@@ -199,6 +272,7 @@ export function parseNdpRulesFromSnapshot(
 export function buildNdpRulesSnapshot(extra?: {
   buyVoucherSlug?: string | null;
   enabled?: boolean;
+  dualProtection?: boolean;
 }): string {
   return JSON.stringify({
     ndp: {
@@ -208,6 +282,8 @@ export function buildNdpRulesSnapshot(extra?: {
       validDays: NDP_VALID_DAYS,
       weightRefFaceCents: NDP_WEIGHT_REF_FACE_CENTS,
       giftWeightFactor: NDP_GIFT_WEIGHT_FACTOR,
+      dualProtection:
+        extra?.dualProtection ?? NDP_DUAL_PROTECTION_DEFAULT,
       buyVoucherSlug: extra?.buyVoucherSlug || null,
     },
   });
@@ -419,7 +495,13 @@ export async function issueNdpGrantDual(
   }
 
   const issuedAt = now;
-  const expiresAt = expiresAtFromIssued(issuedAt, rules.validDays);
+  const validity = computeNdpExpiresAt({
+    obtainedAt: issuedAt,
+    validDays: rules.validDays,
+    activityEnd: campaign.endDate,
+    dualProtection: rules.dualProtection,
+  });
+  const expiresAt = validity.expiresAt;
   // 模版 validUntil 至少覆盖本次发放 + 缓冲
   const templateUntil = new Date(expiresAt.getTime());
   templateUntil.setDate(templateUntil.getDate() + 365);
@@ -656,7 +738,13 @@ export async function issueNdpGiftCouponOnly(
     `id:${customer.id.slice(-8)}`;
 
   const issuedAt = now;
-  const expiresAt = expiresAtFromIssued(issuedAt, meta.validDays);
+  const validity = computeNdpExpiresAt({
+    obtainedAt: issuedAt,
+    validDays: meta.validDays,
+    activityEnd: campaign.endDate,
+    dualProtection: meta.dualProtection,
+  });
+  const expiresAt = validity.expiresAt;
   const templateUntil = new Date(expiresAt.getTime());
   templateUntil.setDate(templateUntil.getDate() + 365);
 

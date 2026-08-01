@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { TermsDatesBlock } from "@/components/activity/TermsDatesBlock";
+import type { TermsDatesView } from "@/lib/validity";
 
 type Props = {
   lang: "zh" | "en";
@@ -22,7 +24,10 @@ type Props = {
     giftSgd: number;
     validDays: number;
     weightMultiple: number;
+    dualProtection?: boolean;
   };
+  termsView: TermsDatesView;
+  latestValidUntil?: string | null;
   buyPath: string | null;
   isLoggedIn: boolean;
   customerPhone: string | null;
@@ -36,6 +41,8 @@ export function NdpLandingClient({
   from,
   campaign,
   rules,
+  termsView,
+  latestValidUntil,
   buyPath,
   isLoggedIn,
   customerPhone,
@@ -77,12 +84,33 @@ export function NdpLandingClient({
         </div>
         <p className="text-[11px] mt-3 opacity-85 leading-relaxed">
           {zh
-            ? `赠送券自领取起 ${rules.validDays} 天有效 · 仅倒计时大奖 · 无小奖`
-            : `Gift voucher valid ${rules.validDays} days · grand prize only · no small prizes`}
+            ? `赠送券自领取起 ${rules.validDays} 天有效（活动结束不缩短已领券）· 仅倒计时大奖 · 无小奖`
+            : `Gift valid ${rules.validDays}d from claim (activity end won't shorten held perks) · grand only · no small prizes`}
+        </p>
+        <p className="text-[10px] mt-1 opacity-75">
+          {zh
+            ? `活动至 ${new Date(campaign.endDate).toLocaleDateString("zh-CN")} · 此日期后不能再领取`
+            : `Activity until ${new Date(campaign.endDate).toLocaleDateString("en-SG")} · no new claims after`}
         </p>
       </div>
 
       <div className="px-4 -mt-3 space-y-3">
+        <TermsDatesBlock
+          view={termsView}
+          lang={lang}
+          validUntil={latestValidUntil}
+          validUntilHint={
+            latestValidUntil
+              ? zh
+                ? `自领取起 ${rules.validDays} 天 · 以本券有效至为准`
+                : `${rules.validDays} days from claim · this date is final`
+              : zh
+                ? `领取后有效至将按「自领取起 ${rules.validDays} 天」写入钱包`
+                : `After claim, wallet shows valid-until = claim + ${rules.validDays}d`
+          }
+          defaultOpen
+        />
+
         {/* Status if logged in */}
         {isLoggedIn && (
           <Card className="border-emerald-200 bg-emerald-50/80 shadow-sm">

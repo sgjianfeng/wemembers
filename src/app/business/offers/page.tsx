@@ -12,6 +12,7 @@ import {
 import {
   NDP_GIFT_COUPON_CENTS,
   parseNdpMetaFromCampaign,
+  buildNdpTermsDatesView,
 } from "@/lib/ndp-promo";
 
 /**
@@ -192,6 +193,33 @@ export default async function BusinessOffersPage() {
     const nProd = camp.catalogProducts.length;
     const issued = grantMap.get(camp.id) || 0;
 
+    const ndpBlurb =
+      meta.enabled || tone === "ndp"
+        ? zh
+          ? `满 S$${meta.minSpendCents / 100} 送 S$${meta.giftCouponCents / 100} · 领后 ${meta.validDays} 天有效（活动结束不缩短）`
+          : `Spend S$${meta.minSpendCents / 100} → S$${meta.giftCouponCents / 100} · ${meta.validDays}d from claim`
+        : null;
+
+    // 国庆：副文带有效期规则，方便店员对客
+    if (meta.enabled || tone === "ndp") {
+      const terms = buildNdpTermsDatesView(
+        {
+          startDate: camp.startDate,
+          endDate: camp.endDate,
+          description: camp.description,
+        },
+        meta
+      );
+      entitlements.push({
+        id: `terms-${camp.id}`,
+        kind: "gift_coupon",
+        tone: "default",
+        title: zh ? "日期与条款（对客口径）" : "Dates & terms (customer copy)",
+        primaryLabel: zh ? "展开活动见详情" : "See activity",
+        secondaryLabel: `${terms.redeemRuleZh}`,
+      });
+    }
+
     return {
       key: camp.id,
       campaignId: camp.id,
@@ -201,13 +229,10 @@ export default async function BusinessOffersPage() {
       status: camp.status,
       tone,
       blurb:
-        meta.enabled || tone === "ndp"
-          ? zh
-            ? `满 S$${meta.minSpendCents / 100} 送 S$${meta.giftCouponCents / 100} · 购券约 5 倍抽奖`
-            : `Spend S$${meta.minSpendCents / 100} → S$${meta.giftCouponCents / 100}`
-          : zh
-            ? "活动容器 · 展开看权益与操作"
-            : "Activity · expand perks & actions",
+        ndpBlurb ||
+        (zh
+          ? "活动容器 · 展开看权益与操作"
+          : "Activity · expand perks & actions"),
       href:
         session.role === "business"
           ? `/business/campaigns/${camp.id}`
