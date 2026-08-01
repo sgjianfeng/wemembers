@@ -134,8 +134,8 @@ export default async function CompanyStorePage({
               </h2>
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 {lang === "en"
-                  ? "National Day · Grand countdown · Evergreen"
-                  : "国庆满赠 · 大奖倒计时 · 长期活动"}
+                  ? "National Day · Grand countdown · Long-term"
+                  : "国庆满赠 · 大奖倒计时 · 长期券"}
               </p>
             </div>
             <span className="text-xs text-muted-foreground nums">

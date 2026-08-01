@@ -1,7 +1,7 @@
 /**
  * 企业默认活动目录（商业心智）
  *
- * 1. 长期活动 — 原价代金（无门槛 / 门槛）
+ * 1. 长期券 — 原价代金（无门槛 / 门槛）
  * 2. 大奖倒计时 — 独享购券抽奖（奖池倒计时）
  * 3. 国庆满赠 — 满 120 送 61 + 抽奖路径
  *
@@ -88,7 +88,7 @@ export function categoryLabel(
   lang: "zh" | "en"
 ): string {
   const map: Record<DefaultActivityCategory, { zh: string; en: string }> = {
-    long_term: { zh: "长期活动", en: "Evergreen" },
+    long_term: { zh: "长期券", en: "Long-term" },
     grand_countdown: { zh: "大奖倒计时", en: "Grand countdown" },
     ndp: { zh: "国庆满赠", en: "National Day" },
   };
@@ -97,7 +97,7 @@ export function categoryLabel(
 
 /**
  * 三类商业心智（勿被 rules 里挂的 ndp 联动字段误判）。
- * 优先级：国庆满赠 → 大奖倒计时 → 长期活动。
+ * 优先级：国庆满赠 → 大奖倒计时 → 长期券。
  */
 export function detectActivityCategory(input: {
   type?: string | null;
@@ -133,7 +133,7 @@ export function detectActivityCategory(input: {
     return "grand_countdown";
   }
 
-  // 3) 长期活动：原价代金 / 门槛 / 9 折卡 / 其它 shelf voucher
+  // 3) 长期券：原价代金 / 门槛 / 9 折卡 / 其它 shelf voucher
   if (
     pack === "face_open" ||
     pack === "face_threshold" ||

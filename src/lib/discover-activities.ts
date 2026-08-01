@@ -87,7 +87,7 @@ export type JoinableActivity = {
   /** Customer UI branch: calm voucher card vs festive draw card */
   displayMode: OfferDisplayMode;
   /**
-   * 商业三类：长期活动 / 大奖倒计时 / 国庆满赠
+   * 商业三类：长期券 / 大奖倒计时 / 国庆满赠
    * （与 default-activities 槽位一致）
    */
   category: DefaultActivityCategory | "other";

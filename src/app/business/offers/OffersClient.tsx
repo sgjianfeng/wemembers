@@ -22,8 +22,10 @@ function bundleCategory(
 ): "long_term" | "grand_countdown" | "ndp" | "other" {
   if (b.tone === "ndp") return "ndp";
   if (b.tone === "draw") return "grand_countdown";
-  if (b.tone === "voucher" || b.type === "voucher_sale") return "long_term";
-  return "other";
+  // 非国庆、非大奖的活动一律归长期券
+  if (b.tone === "voucher" || b.type === "voucher_sale" || b.tone === "default")
+    return "long_term";
+  return "long_term";
 }
 
 export function OffersClient({
@@ -57,7 +59,7 @@ export function OffersClient({
 
   const chips: { key: Filter; label: string }[] = [
     { key: "all", label: zh ? "全部" : "All" },
-    { key: "long_term", label: zh ? "长期活动" : "Evergreen" },
+    { key: "long_term", label: zh ? "长期券" : "Long-term" },
     { key: "grand_countdown", label: zh ? "大奖倒计时" : "Countdown" },
     { key: "ndp", label: zh ? "国庆满赠" : "National Day" },
     ...(showPrint
