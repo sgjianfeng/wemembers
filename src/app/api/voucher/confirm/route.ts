@@ -29,16 +29,32 @@ export async function POST(request: NextRequest) {
     }
 
     const checkout = await stripe.checkout.sessions.retrieve(sessionId);
-    if (checkout.payment_status !== "paid" && checkout.status !== "complete") {
-      return NextResponse.json({ error: "支付未完成" }, { status: 402 });
-    }
-
     const meta = checkout.metadata || {};
     if (meta.type !== "voucher_purchase") {
       return NextResponse.json({ error: "非购券订单" }, { status: 400 });
     }
-    if (meta.userId !== session.userId) {
+    if (meta.userId && meta.userId !== session.userId) {
       return NextResponse.json({ error: "订单不属于当前用户" }, { status: 403 });
+    }
+
+    // PayNow 等异步支付：顾客回跳时可能尚未 paid，让前端短轮询
+    const paid =
+      checkout.payment_status === "paid" ||
+      checkout.status === "complete";
+    if (!paid) {
+      return NextResponse.json(
+        {
+          error: "支付处理中",
+          code: "PAYMENT_PENDING",
+          payment_status: checkout.payment_status,
+          status: checkout.status,
+        },
+        { status: 202 }
+      );
+    }
+
+    if (!meta.campaignId || !meta.amountSgd) {
+      return NextResponse.json({ error: "订单元数据不完整" }, { status: 400 });
     }
 
     const data = await fulfillVoucherPurchase({

@@ -117,6 +117,7 @@ function VoucherDrawInner() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const [confirmAttempt, setConfirmAttempt] = useState(0);
   const sellerId = searchParams.get("seller") || "";
   const paidFlag = searchParams.get("paid");
   const sessionIdParam = searchParams.get("session_id");
@@ -164,40 +165,96 @@ function VoucherDrawInner() {
     load();
   }, [refreshPool]);
 
-  // 支付回跳确认：勿把 confirming 放进 deps（会 setState → 重跑 → cleanup cancel → 永远卡住）
+  // 支付回跳确认
+  // - PayNow 回跳时可能尚未 paid → 短轮询（202/402）
+  // - finally 始终 setConfirming(false)，避免 effect cleanup 把界面卡死
   useEffect(() => {
     if (paidFlag !== "1" || !sessionIdParam || result) return;
 
-    let alive = true;
+    let cancelled = false;
     setConfirming(true);
     setError("");
+
+    const sleep = (ms: number) =>
+      new Promise((r) => {
+        setTimeout(r, ms);
+      });
+
     (async () => {
+      const maxTries = 24; // ~36s，覆盖 PayNow 到账延迟
+      let lastErr = "";
       try {
-        const res = await fetch("/api/voucher/confirm", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId: sessionIdParam }),
-        });
-        const d = await res.json();
-        if (!alive) return;
-        if (res.ok) {
-          setResult(d.data);
-          await refreshPool();
-        } else {
-          setError(d.error || t("voucher.confirmPayFail"));
+        for (let i = 0; i < maxTries; i++) {
+          if (cancelled) break;
+          const res = await fetch("/api/voucher/confirm", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId: sessionIdParam }),
+            credentials: "same-origin",
+          });
+          const d = await res.json().catch(() => ({}));
+          if (cancelled) break;
+
+          if (res.ok && d.data) {
+            setResult(d.data);
+            // 先落确认态；奖池刷新失败不影响已购成功
+            setConfirming(false);
+            try {
+              await refreshPool();
+            } catch {
+              /* ignore */
+            }
+            return;
+          }
+
+          if (
+            res.status === 202 ||
+            res.status === 402 ||
+            d.code === "PAYMENT_PENDING"
+          ) {
+            lastErr = d.error || t("voucher.confirmPayFail");
+            await sleep(1500);
+            continue;
+          }
+
+          if (res.status === 401) {
+            lastErr =
+              t("voucher.confirmPayFail") +
+              (lang === "en"
+                ? " · please log in again"
+                : " · 请重新登录后再打开此页");
+            break;
+          }
+
+          lastErr = d.error || t("voucher.confirmPayFail");
+          break;
+        }
+        if (!cancelled && !result) {
+          setError(
+            lastErr ||
+              (lang === "en"
+                ? "Payment is taking longer than expected. Tap retry."
+                : "支付确认较慢，请点重试。若已扣款，稍后可在钱包查看。")
+          );
         }
       } catch {
-        if (alive) setError(t("voucher.confirmPayFail"));
+        if (!cancelled) {
+          setError(
+            lang === "en"
+              ? "Network error while confirming. Tap retry."
+              : "确认时网络异常，请点重试。若已扣款，请稍后打开钱包查看。"
+          );
+        }
       } finally {
-        if (alive) setConfirming(false);
+        setConfirming(false);
       }
     })();
 
     return () => {
-      alive = false;
+      cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paidFlag, sessionIdParam, result, refreshPool]);
+  }, [paidFlag, sessionIdParam, result, confirmAttempt]);
 
   async function handlePurchase() {
     if (!selectedAmount || selectedAmount <= 0) {
@@ -294,10 +351,25 @@ function VoucherDrawInner() {
     );
   }
 
-  if (loading || confirming) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-muted-foreground">
-        <p>{confirming ? t("voucher.confirming") : t("common.loading")}</p>
+        <p>{t("common.loading")}</p>
+      </div>
+    );
+  }
+  if (confirming) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+        <div className="h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin mb-4" />
+        <p className="text-sm font-medium text-foreground">
+          {t("voucher.confirming")}
+        </p>
+        <p className="text-xs text-muted-foreground mt-2 max-w-xs leading-relaxed">
+          {lang === "en"
+            ? "PayNow may take a few seconds to settle. Please keep this page open."
+            : "PayNow 到账可能需数秒，请勿关闭此页。若已扣款，确认后会自动显示购券结果。"}
+        </p>
       </div>
     );
   }
@@ -305,11 +377,22 @@ function VoucherDrawInner() {
     return (
       <div className="min-h-screen bg-background">
         <TopHeader variant="default" />
-        <div className="flex items-center justify-center py-32">
-          <div className="flex flex-col items-center text-center text-muted-foreground">
-            <Ticket size={30} className="mb-3" />
-            <p className="text-sm">{t("voucher.notFound")}</p>
-          </div>
+        <div className="flex flex-col items-center justify-center py-32 px-6 text-center">
+          <Ticket size={30} className="mb-3 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            {error || t("voucher.notFound")}
+          </p>
+          {paidFlag === "1" && sessionIdParam && (
+            <Button
+              className="mt-4 rounded-full"
+              onClick={() => {
+                setError("");
+                setConfirmAttempt((n) => n + 1);
+              }}
+            >
+              {lang === "en" ? "Retry confirm" : "重新确认支付"}
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -572,6 +655,35 @@ function VoucherDrawInner() {
                   ? `Buying “${campaign.name}” for ${buyCtx.storeName || "this store"}. After payment, open wallet and redeem in store.`
                   : `正在为「${buyCtx.storeName || "本店"}」购买「${campaign.name}」。付款后在券包查看，到店核销即可。`}
               </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {paidFlag === "1" && !result && error && (
+          <Card className="border-amber-200 bg-amber-50 shadow-sm dark:border-amber-800/50 dark:bg-amber-950/30">
+            <CardContent className="p-4 text-center">
+              <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
+                {lang === "en" ? "Payment confirm issue" : "支付确认遇到问题"}
+              </p>
+              <p className="text-xs text-amber-900/90 dark:text-amber-200/90 mt-1 leading-relaxed">
+                {error}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center mt-3">
+                <Button
+                  className="rounded-full"
+                  onClick={() => {
+                    setError("");
+                    setConfirmAttempt((n) => n + 1);
+                  }}
+                >
+                  {lang === "en" ? "Retry confirm" : "重新确认支付"}
+                </Button>
+                <Link href="/wallet">
+                  <Button variant="outline" className="rounded-full w-full">
+                    {lang === "en" ? "Open wallet" : "打开钱包查看"}
+                  </Button>
+                </Link>
+              </div>
             </CardContent>
           </Card>
         )}
