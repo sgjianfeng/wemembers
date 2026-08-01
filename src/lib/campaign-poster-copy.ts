@@ -254,9 +254,9 @@ export function buildCampaignPosterCopy(
     lang === "en"
       ? isNdp
         ? [
-            `${name}: spend S$${minSpend} get S$${giftAmt} gift. Scan: {url}`,
-            `National Day promo at our store — S$${minSpend} → S$${giftAmt}. Join: {url}`,
-            `Until ${untilShort} | ${name} gift coupon: {url}`,
+            `${name} — scan to join · redeem in store: {url}`,
+            `National Day: spend S$${minSpend} → gift S$${giftAmt}. Scan: {url}`,
+            `Until ${untilShort} · National Day gift promo: {url}`,
           ]
         : isDraw
         ? [
@@ -273,9 +273,10 @@ export function buildCampaignPosterCopy(
           ]
       : isNdp
         ? [
-            `【${name}】满${minSpend}送${giftAmt} 超值满赠，扫码参加：{url}`,
-            `${name} 国庆满赠 · 满 S$${minSpend} 送 S$${giftAmt}，到店核销：{url}`,
-            `活动至 ${untilShort}｜${name} 扫码领活动：{url}`,
+            // 名称已含「满120送61」时不再重复利益点
+            `【${name}】扫码参加 · 到店核销：{url}`,
+            `国庆满赠 · 满 S$${minSpend} 送 S$${giftAmt} 赠券，扫码：{url}`,
+            `活动至 ${untilShort}｜扫码领国庆活动：{url}`,
           ]
         : isDraw
         ? [

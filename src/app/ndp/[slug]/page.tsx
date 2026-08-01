@@ -2,7 +2,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
-import Link from "next/link";
+import type { Metadata } from "next";
 import {
   NDP_GIFT_COUPON_CENTS,
   NDP_MIN_SPEND_CENTS,
@@ -11,6 +11,94 @@ import {
   buildNdpTermsDatesView,
 } from "@/lib/ndp-promo";
 import { NdpLandingClient } from "./NdpLandingClient";
+
+const SITE =
+  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
+  "https://wemembers.store";
+
+function absUrl(pathOrUrl: string | null | undefined): string {
+  if (!pathOrUrl) return `${SITE}/icon-512.png`;
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+  return `${SITE}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
+}
+
+async function loadNdpCampaign(slug: string) {
+  return prisma.campaign.findFirst({
+    where: {
+      OR: [{ slug }, { id: slug }],
+      status: { in: ["active", "draft"] },
+    },
+    include: {
+      business: {
+        select: {
+          businessName: true,
+          businessLogo: true,
+          businessSlug: true,
+        },
+      },
+    },
+  });
+}
+
+/**
+ * WhatsApp / 微信链接预览：活动标题 + 满赠卖点 + 商家图
+ * （根 layout 默认是平台文案，必须在此覆盖）
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const campaign = await loadNdpCampaign(slug);
+  if (!campaign) {
+    return {
+      title: "活动不存在 · WeMembers",
+      description: "该国庆活动链接无效或已结束",
+    };
+  }
+
+  const meta = parseNdpMetaFromCampaign(campaign);
+  const minSgd = ((meta.minSpendCents || NDP_MIN_SPEND_CENTS) / 100).toFixed(0);
+  const giftSgd = (
+    (meta.giftCouponCents || NDP_GIFT_COUPON_CENTS) / 100
+  ).toFixed(0);
+  const biz = campaign.business?.businessName || "WeMembers";
+  const title = `${campaign.name} · ${biz}`;
+  const description = `满 S$${minSgd} 送 S$${giftSgd} 赠券 · 到店核销 · ${biz} · 国庆满赠活动`;
+  const pageUrl = `${SITE}/ndp/${encodeURIComponent(campaign.slug || slug)}`;
+  const image = absUrl(campaign.business?.businessLogo || "/icon-512.png");
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: pageUrl,
+      siteName: "WeMembers",
+      locale: "zh_SG",
+      type: "website",
+      images: [
+        {
+          url: image,
+          width: 512,
+          height: 512,
+          alt: biz,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image],
+    },
+    alternates: {
+      canonical: pageUrl,
+    },
+  };
+}
 
 /**
  * 国庆活动落地页（桌码 / 前台码同一页）
@@ -28,21 +116,7 @@ export default async function NdpLandingPage({
   const from =
     sp.from === "counter" ? "counter" : sp.from === "table" ? "table" : "table";
 
-  const campaign = await prisma.campaign.findFirst({
-    where: {
-      OR: [{ slug }, { id: slug }],
-      status: { in: ["active", "draft"] },
-    },
-    include: {
-      business: {
-        select: {
-          businessName: true,
-          businessLogo: true,
-          businessSlug: true,
-        },
-      },
-    },
-  });
+  const campaign = await loadNdpCampaign(slug);
   if (!campaign) notFound();
 
   const meta = parseNdpMetaFromCampaign(campaign);

@@ -234,7 +234,7 @@ select {
   }
 }
 
-/* A4 实体券 / 活动墙贴打印：保留背景色 */
+/* A4 实体券 / 活动墙贴打印：保留背景色（勿全局强制 color:#111，会冲掉国庆红底白字） */
 @media print {
   @page {
     size: A4;
@@ -243,7 +243,6 @@ select {
   html,
   body {
     background: #fff !important;
-    color: #111 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -252,6 +251,12 @@ select {
   [data-bottom-nav],
   .print\:hidden {
     display: none !important;
+  }
+  /* 活动广告卡：强制保留渐变/红底（Safari/Chrome PDF） */
+  [data-campaign-print-card],
+  [data-campaign-print-card] * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   /* 活动卡 A4 墙贴：尽量铺满一页（减边距后约 190×277mm 可用区） */
   .campaign-print-a4-wrap {

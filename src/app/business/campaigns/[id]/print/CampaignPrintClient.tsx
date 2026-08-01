@@ -306,6 +306,57 @@ export function CampaignPrintClient({
     setBusy(false);
   }, [distLabel, exportOpts, lang, sellerId]);
 
+  /**
+   * 打印/PDF：用 canvas 渲染品牌海报再打印（保证国庆红等背景色），
+   * 避免 DOM 打印被浏览器洗成灰白。弹窗被拦时回退 window.print()。
+   */
+  const printBranded = useCallback(async () => {
+    setBusy(true);
+    setErr("");
+    try {
+      const { dataUrl } = await renderCampaignPosterDataUrl(
+        exportOpts(sellerId, distLabel)
+      );
+      const w = window.open("", "_blank", "noopener,noreferrer");
+      if (!w) {
+        // 弹窗被拦：至少触发页面打印
+        window.print();
+        return;
+      }
+      const title = campaignName.replace(/[<>&"]/g, "");
+      w.document.open();
+      w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<title>${title}</title>
+<style>
+  @page { margin: 8mm; }
+  html, body { margin: 0; padding: 0; background: #fff; }
+  body { display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
+  img { max-width: 100%; width: 180mm; height: auto; display: block; }
+  @media print {
+    body { background: #fff; }
+    img { width: 100%; max-width: 190mm; }
+  }
+</style></head><body>
+<img id="p" src="${dataUrl}" alt="${title}"/>
+<script>
+  const img = document.getElementById('p');
+  function go() { setTimeout(function(){ window.focus(); window.print(); }, 120); }
+  if (img.complete) go(); else img.onload = go;
+</script>
+</body></html>`);
+      w.document.close();
+    } catch (e) {
+      console.error(e);
+      setErr(lang === "en" ? "Print failed" : "打印失败，请改用下载 PNG");
+      try {
+        window.print();
+      } catch {
+        /* ignore */
+      }
+    }
+    setBusy(false);
+  }, [campaignName, distLabel, exportOpts, lang, sellerId]);
+
   const bulkDownloadDistributors = useCallback(async () => {
     const personal = distributors.filter((d) => d.userId);
     if (!personal.length) {
@@ -598,10 +649,15 @@ export function CampaignPrintClient({
       <div className="print:hidden flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => window.print()}
-          className="inline-flex h-9 items-center rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground active:scale-[0.97] transition-transform"
+          disabled={busy}
+          onClick={printBranded}
+          className="inline-flex h-9 items-center rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground disabled:opacity-50 active:scale-[0.97] transition-transform"
         >
-          {lang === "en" ? "Print / Save PDF" : "打印 / 存为 PDF"}
+          {busy
+            ? "…"
+            : lang === "en"
+              ? "Print / Save PDF"
+              : "打印 / 存为 PDF"}
         </button>
         <button
           type="button"
@@ -796,6 +852,7 @@ function CampaignCardSheet({
   if (layout === "sticker") {
     return (
       <div
+        data-campaign-print-card
         className={cn(
           "w-full max-w-[320px] aspect-square rounded-3xl border-2 overflow-hidden shadow-sm flex flex-col",
           isDark ? "border-slate-700" : "border-border print:border-slate-400"
@@ -869,6 +926,7 @@ function CampaignCardSheet({
     return (
       <div
         data-campaign-poster={layout}
+        data-campaign-print-card
         className={cn(
           "w-full rounded-2xl overflow-hidden border border-border shadow-sm print:border-slate-400 print:shadow-none",
           festival ? "bg-[#1A0508] text-white" : "bg-card",
@@ -992,6 +1050,7 @@ function CampaignCardSheet({
   // tent
   return (
     <div
+      data-campaign-print-card
       className={cn(
         "w-full max-w-[360px] rounded-2xl border shadow-sm overflow-hidden print:border-slate-400",
         isDark ? "border-slate-700" : "border-border bg-card"
