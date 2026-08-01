@@ -4,7 +4,22 @@ import { useMemo, useState } from "react";
 import { ActivityEntitlementCard } from "@/components/activity/ActivityEntitlementCard";
 import type { ActivityBundle } from "@/lib/activity-entitlements";
 
-type Filter = "all" | "active" | "ndp" | "ended";
+type Filter =
+  | "all"
+  | "long_term"
+  | "grand_countdown"
+  | "ndp"
+  | "active"
+  | "ended";
+
+function bundleCategory(
+  b: ActivityBundle
+): "long_term" | "grand_countdown" | "ndp" | "other" {
+  if (b.tone === "ndp") return "ndp";
+  if (b.tone === "draw") return "grand_countdown";
+  if (b.tone === "voucher" || b.type === "voucher_sale") return "long_term";
+  return "other";
+}
 
 export function OffersClient({
   lang,
@@ -21,15 +36,20 @@ export function OffersClient({
       if (filter === "all") return true;
       if (filter === "active") return b.status === "active" || b.status === "draft";
       if (filter === "ended") return b.status === "ended";
-      if (filter === "ndp") return b.tone === "ndp";
+      if (filter === "ndp") return bundleCategory(b) === "ndp";
+      if (filter === "long_term") return bundleCategory(b) === "long_term";
+      if (filter === "grand_countdown")
+        return bundleCategory(b) === "grand_countdown";
       return true;
     });
   }, [bundles, filter]);
 
   const chips: { key: Filter; label: string }[] = [
     { key: "all", label: zh ? "全部" : "All" },
+    { key: "long_term", label: zh ? "长期活动" : "Evergreen" },
+    { key: "grand_countdown", label: zh ? "大奖倒计时" : "Countdown" },
+    { key: "ndp", label: zh ? "国庆满赠" : "National Day" },
     { key: "active", label: zh ? "进行中" : "Active" },
-    { key: "ndp", label: zh ? "国庆" : "NDP" },
     { key: "ended", label: zh ? "已结束" : "Ended" },
   ];
 

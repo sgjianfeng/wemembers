@@ -92,7 +92,12 @@ export default async function BusinessOffersPage() {
 
   const bundles: ActivityBundle[] = campaigns.map((camp) => {
     const meta = parseNdpMetaFromCampaign(camp);
-    const tone = activityToneFromType(camp.type, camp.name, camp.tags);
+    const tone = activityToneFromType(
+      camp.type,
+      camp.name,
+      camp.tags,
+      camp.rulesSnapshot
+    );
     const entitlements: EntitlementItem[] = [];
 
     for (const coupon of camp.coupons) {
@@ -244,16 +249,21 @@ export default async function BusinessOffersPage() {
       <div className="px-4 mt-3 rounded-2xl border border-border bg-muted/40 px-3 py-2.5 text-[11px] text-muted-foreground leading-relaxed">
         {zh ? (
           <>
-            与客户首页/钱包同一心智：
-            <strong className="text-foreground">活动 = 故事</strong>，
-            <strong className="text-foreground">权益 = 可操作的券</strong>
-            。国庆：购券核销自动发 61；现金走「凭票发券」。
+            默认三类：
+            <strong className="text-foreground">长期活动</strong>
+            （原价代金）·
+            <strong className="text-foreground">大奖倒计时</strong>
+            （购券抽奖）·
+            <strong className="text-foreground">国庆满赠</strong>
+            （满 120 送 61）。与客户首页/钱包同一心智：活动 → 权益。
           </>
         ) : (
           <>
-            Same model as customer home/wallet:{" "}
-            <strong className="text-foreground">activity</strong> holds{" "}
-            <strong className="text-foreground">entitlements</strong>.
+            Defaults:{" "}
+            <strong className="text-foreground">Evergreen</strong> ·{" "}
+            <strong className="text-foreground">Grand countdown</strong> ·{" "}
+            <strong className="text-foreground">National Day</strong>. Same
+            activity → entitlement model as customer home.
           </>
         )}
       </div>
@@ -264,7 +274,7 @@ export default async function BusinessOffersPage() {
             href="/business/ndp-issue"
             className="text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-600 text-white"
           >
-            {zh ? "国庆一键配置 / 发券" : "NDP setup / issue"}
+            {zh ? "一键开启默认活动" : "Enable default activities"}
           </Link>
           <Link
             href="/business/campaigns"

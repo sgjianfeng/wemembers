@@ -57,12 +57,18 @@ export type ActivityBundle = {
 export function activityToneFromType(
   type: string | null | undefined,
   name?: string | null,
-  tags?: string | null
+  tags?: string | null,
+  rulesSnapshot?: string | null
 ): ActivityTone {
   if (type === "holiday" || /国庆|ndp|national/i.test(name || "")) return "ndp";
-  if (tags && /ndp|国庆|national/i.test(tags)) return "ndp";
+  if (tags && /ndp|国庆|national|category:ndp/i.test(tags)) return "ndp";
+  if (rulesSnapshot && type === "holiday" && /"ndp"/.test(rulesSnapshot))
+    return "ndp";
   if (type === "lucky_draw" || type === "lucky_draw_v2") return "draw";
+  if (tags && /exclusive_ballot|category:grand/i.test(tags)) return "draw";
   if (type === "voucher_sale") return "voucher";
+  if (tags && /face_open|face_threshold|category:long/i.test(tags))
+    return "voucher";
   return "default";
 }
 

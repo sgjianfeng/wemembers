@@ -216,12 +216,12 @@ export default function NdpIssuePage() {
         <Card className="border-rose-200 bg-rose-50/50">
           <CardContent className="p-4 space-y-3">
             <p className="text-sm font-semibold text-foreground">
-              {zh ? "今日上线 · 一键配置" : "Launch · one-tap setup"}
+              {zh ? "默认活动 · 一键配置" : "Default activities · setup"}
             </p>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               {zh
-                ? "创建/刷新国庆活动、S$61 券模版，并生成桌码与前台码。购券活动若已存在会自动关联（核销≥120 自动发 61）。"
-                : "Create/refresh NDP campaign + S$61 template + table/counter QR. Links existing draw product for auto gift on redeem ≥120."}
+                ? "补齐三类：① 长期原价代金 ② 大奖倒计时购券 ③ 国庆满赠（桌码/前台码 + 核销≥120 自动发 61）。已有则跳过。"
+                : "Ensure three defaults: ① evergreen face credit ② grand countdown draw ③ National Day gift (QR + auto S$61 on redeem ≥120)."}
             </p>
             <Button
               type="button"
@@ -235,11 +235,11 @@ export default function NdpIssuePage() {
                   : "Setting up…"
                 : setupInfo
                   ? zh
-                    ? "刷新国庆配置"
-                    : "Refresh NDP setup"
+                    ? "刷新默认活动 / 国庆码"
+                    : "Refresh defaults / NDP QR"
                   : zh
-                    ? "一键开启国庆活动"
-                    : "Enable NDP campaign"}
+                    ? "一键开启默认活动"
+                    : "Enable default activities"}
             </Button>
             {setupInfo && (
               <div className="space-y-2 pt-1">
