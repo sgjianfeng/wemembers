@@ -4,7 +4,10 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { TermsDatesBlock } from "@/components/activity/TermsDatesBlock";
+import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
+import { SingaporeFlagBackdrop } from "@/components/campaign/SingaporeFlagBackdrop";
 import type { TermsDatesView } from "@/lib/validity";
+import { SG_NDP_RED } from "@/lib/visual-templates";
 
 type Props = {
   lang: "zh" | "en";
@@ -30,6 +33,9 @@ type Props = {
   latestValidUntil?: string | null;
   buyPath: string | null;
   isLoggedIn: boolean;
+  /** 当前 session 是企业/店员（非顾客） */
+  isBusinessSession?: boolean;
+  businessSessionLabel?: string | null;
   customerPhone: string | null;
   myGiftCount: number;
   myDrawWeight: number;
@@ -45,93 +51,136 @@ export function NdpLandingClient({
   latestValidUntil,
   buyPath,
   isLoggedIn,
+  isBusinessSession = false,
+  businessSessionLabel = null,
   customerPhone,
   myGiftCount,
   myDrawWeight,
   loginRedirect,
 }: Props) {
   const zh = lang === "zh";
+  const gift = rules.giftSgd.toFixed(0);
+  const minSpend = rules.minSpendSgd.toFixed(0);
   const mult = Math.max(5, Math.round(rules.weightMultiple * 10) / 10);
+  const endLabel = new Date(campaign.endDate).toLocaleDateString(
+    zh ? "zh-CN" : "en-SG",
+    { year: "numeric", month: "short", day: "numeric" }
+  );
+
+  const authQs = new URLSearchParams({
+    tab: "customer",
+    intent: "customer",
+    redirect: loginRedirect,
+  });
+  const loginHref = `/auth/login?${authQs.toString()}`;
+  const registerHref = `/auth/register?${authQs.toString()}`;
+  const logoutThenCustomer = `/api/auth/logout?next=${encodeURIComponent(loginHref)}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-rose-50 via-background to-background pb-16">
-      {/* Hero */}
-      <div className="px-4 pt-6 pb-5 bg-gradient-to-br from-rose-600 to-red-700 text-white">
-        <p className="text-[11px] font-medium opacity-90 uppercase tracking-wide">
-          {from === "table"
-            ? zh
-              ? "桌边扫码 · 先注册再结账"
-              : "Table QR · register first"
-            : zh
-              ? "前台扫码 · 结账领券"
-              : "Counter QR · claim at pay"}
-        </p>
-        <h1 className="text-2xl font-bold mt-1 leading-tight">{campaign.name}</h1>
-        <p className="text-sm opacity-90 mt-1">{campaign.businessName}</p>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <div className="rounded-2xl bg-white/15 backdrop-blur px-3 py-2.5">
-            <p className="text-[10px] opacity-80">{zh ? "满消费送" : "Spend & get"}</p>
-            <p className="text-xl font-bold tabular-nums">
-              S${rules.minSpendSgd.toFixed(0)} → S${rules.giftSgd.toFixed(0)}
+      {/* Hero · 国庆 / SG61 */}
+      <div className="relative overflow-hidden text-white">
+        <SingaporeFlagBackdrop
+          red={SG_NDP_RED}
+          className="absolute inset-0 min-h-full"
+        />
+        <div className="relative z-[1] px-4 pt-4 pb-6">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] font-semibold tracking-wide text-white/95">
+              {from === "table"
+                ? zh
+                  ? "桌边扫码 · 先注册再结账"
+                  : "Table · register first"
+                : zh
+                  ? "前台扫码 · 结账领券"
+                  : "Counter · claim at pay"}
             </p>
+            <LanguageSwitcher variant="light" />
           </div>
-          <div className="rounded-2xl bg-white/15 backdrop-blur px-3 py-2.5">
-            <p className="text-[10px] opacity-80">{zh ? "购券中奖机会" : "Buy = chance"}</p>
-            <p className="text-xl font-bold">
-              {zh ? `约 ${mult}×` : `~${mult}×`}
+
+          <div className="flex items-center gap-3 mt-4">
+            {campaign.businessLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={campaign.businessLogo}
+                alt=""
+                className="w-12 h-12 rounded-xl bg-white object-contain p-0.5 border border-white/40"
+              />
+            ) : null}
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/90">
+                SG{gift} · {zh ? "国庆满赠" : "National Day"}
+              </p>
+              <h1 className="text-2xl font-bold mt-0.5 leading-tight drop-shadow-sm">
+                {campaign.name}
+              </h1>
+              <p className="text-sm text-white/90 mt-0.5 truncate">
+                {campaign.businessName}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-2xl bg-white/15 backdrop-blur border border-white/25 px-4 py-3">
+            <p className="text-[11px] text-white/85">
+              {zh ? "本单满额即送" : "Spend & get"}
+            </p>
+            <p className="text-2xl font-bold tabular-nums mt-0.5">
+              S${minSpend} → S${gift}
+              <span className="ml-2 text-base font-semibold text-white/90">
+                SG{gift}
+              </span>
+            </p>
+            <p className="text-[11px] text-white/90 mt-1.5 leading-relaxed">
+              {zh
+                ? `赠券下次再用 · 领后 ${rules.validDays} 天有效 · 至 ${endLabel}`
+                : `Use next visit · ${rules.validDays}d from claim · until ${endLabel}`}
             </p>
           </div>
         </div>
-        <p className="text-[11px] mt-3 opacity-85 leading-relaxed">
-          {zh
-            ? `赠送券自领取起 ${rules.validDays} 天有效（活动结束不缩短已领券）· 仅倒计时大奖 · 无小奖`
-            : `Gift valid ${rules.validDays}d from claim (activity end won't shorten held perks) · grand only · no small prizes`}
-        </p>
-        <p className="text-[10px] mt-1 opacity-75">
-          {zh
-            ? `活动至 ${new Date(campaign.endDate).toLocaleDateString("zh-CN")} · 此日期后不能再领取`
-            : `Activity until ${new Date(campaign.endDate).toLocaleDateString("en-SG")} · no new claims after`}
-        </p>
       </div>
 
-      <div className="px-4 -mt-3 space-y-3">
-        <TermsDatesBlock
-          view={termsView}
-          lang={lang}
-          validUntil={latestValidUntil}
-          validUntilHint={
-            latestValidUntil
-              ? zh
-                ? `自领取起 ${rules.validDays} 天 · 以本券有效至为准`
-                : `${rules.validDays} days from claim · this date is final`
-              : zh
-                ? `领取后有效至将按「自领取起 ${rules.validDays} 天」写入钱包`
-                : `After claim, wallet shows valid-until = claim + ${rules.validDays}d`
-          }
-          defaultOpen
-        />
+      <div className="px-4 -mt-2 space-y-3 relative z-[1]">
+        {/* 企业 session 隔离提示 */}
+        {isBusinessSession && (
+          <Card className="border-amber-300 bg-amber-50 shadow-sm">
+            <CardContent className="p-4">
+              <p className="font-semibold text-amber-950">
+                {zh ? "当前是企业账号" : "Business account signed in"}
+              </p>
+              <p className="text-xs text-amber-900/90 mt-1 leading-relaxed">
+                {zh
+                  ? `${businessSessionLabel || "企业账号"}不能领取顾客赠券。请退出后，用顾客手机号登录。`
+                  : `${businessSessionLabel || "This account"} cannot claim customer gifts. Sign out and use a customer mobile number.`}
+              </p>
+              <div className="flex flex-col gap-2 mt-3">
+                <a href={logoutThenCustomer}>
+                  <Button className="w-full rounded-full h-11">
+                    {zh
+                      ? "退出企业 · 以顾客身份继续"
+                      : "Sign out · continue as customer"}
+                  </Button>
+                </a>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Status if logged in */}
+        {/* 顾客已登录状态 */}
         {isLoggedIn && (
-          <Card className="border-emerald-200 bg-emerald-50/80 shadow-sm">
+          <Card className="border-emerald-200 bg-emerald-50/90 shadow-sm">
             <CardContent className="p-3 text-sm">
               <p className="font-semibold text-emerald-900">
                 {zh ? "已登录" : "Signed in"}
                 {customerPhone ? ` · ${customerPhone}` : ""}
               </p>
-              <p className="text-xs text-emerald-800/80 mt-1">
+              <p className="text-xs text-emerald-800/85 mt-1">
                 {myGiftCount > 0
                   ? zh
-                    ? `钱包里有 ${myGiftCount} 张国庆赠送券`
-                    : `${myGiftCount} NDP gift coupon(s) in wallet`
+                    ? `钱包里有 ${myGiftCount} 张 S$${gift} 赠送券`
+                    : `${myGiftCount} × S$${gift} gift coupon(s) in wallet`
                   : zh
-                    ? "尚未获得 S$61 赠送券（结账达标后发放）"
-                    : "No S$61 gift yet (issued after qualifying checkout)"}
-                {myDrawWeight > 0
-                  ? zh
-                    ? ` · 已有大奖权重 ${myDrawWeight}`
-                    : ` · draw weight ${myDrawWeight}`
-                  : ""}
+                    ? `结账满 S$${minSpend} 后发放 S$${gift} 赠券`
+                    : `S$${gift} gift after spend ≥ S$${minSpend}`}
               </p>
               <Link
                 href="/wallet"
@@ -143,31 +192,32 @@ export function NdpLandingClient({
           </Card>
         )}
 
-        {!isLoggedIn && (
-          <Card className="border-amber-200 bg-amber-50">
+        {/* 主 CTA：注册（未登录且非企业 session） */}
+        {!isLoggedIn && !isBusinessSession && (
+          <Card className="border-[#1A6EFF]/30 shadow-md bg-card">
             <CardContent className="p-4">
-              <p className="font-semibold text-foreground">
-                {zh ? "第 1 步：注册 / 登录" : "Step 1: Register / Log in"}
+              <p className="text-[10px] font-bold text-[#1A6EFF] uppercase tracking-wide">
+                {zh ? "开始参加" : "Get started"}
               </p>
-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+              <h2 className="text-lg font-bold text-foreground mt-0.5">
+                {zh ? "用手机号注册 / 登录" : "Register or log in with mobile"}
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
                 {zh
-                  ? "用手机号完成验证，权益会记在您的账号。吃完到前台出示本页或手机号即可续办。"
-                  : "Verify mobile so rewards go to your account. Show this page or your number at the counter."}
+                  ? "权益记在您的账号。结账时出示手机号或本页即可领券。"
+                  : "Rewards go to your account. Show your number or this page at the counter."}
               </p>
               <div className="flex gap-2 mt-3">
-                <Link
-                  href={`/auth/register?redirect=${encodeURIComponent(loginRedirect)}`}
-                  className="flex-1"
-                >
-                  <Button className="w-full rounded-full h-11">
+                <Link href={registerHref} className="flex-1">
+                  <Button className="w-full rounded-full h-12 text-base font-semibold">
                     {zh ? "注册" : "Register"}
                   </Button>
                 </Link>
-                <Link
-                  href={`/auth/login?redirect=${encodeURIComponent(loginRedirect)}`}
-                  className="flex-1"
-                >
-                  <Button variant="outline" className="w-full rounded-full h-11">
+                <Link href={loginHref} className="flex-1">
+                  <Button
+                    variant="outline"
+                    className="w-full rounded-full h-12 text-base font-semibold"
+                  >
                     {zh ? "登录" : "Log in"}
                   </Button>
                 </Link>
@@ -176,83 +226,108 @@ export function NdpLandingClient({
           </Card>
         )}
 
-        {/* Path A: buy voucher */}
+        {/* 怎么玩：白话三步 */}
+        <Card className="shadow-sm">
+          <CardContent className="p-4">
+            <h3 className="text-sm font-bold text-foreground">
+              {zh ? "怎么参加" : "How to join"}
+            </h3>
+            <ol className="mt-2.5 space-y-2.5 text-sm text-foreground/90">
+              <li className="flex gap-2">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-rose-600 text-[11px] font-bold text-white">
+                  1
+                </span>
+                <span>
+                  {zh
+                    ? "注册 / 登录（用手机号）"
+                    : "Register or log in with mobile"}
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-rose-600 text-[11px] font-bold text-white">
+                  2
+                </span>
+                <span>
+                  {zh
+                    ? `到店消费满 S$${minSpend}（购券或现金都可以）`
+                    : `Spend S$${minSpend}+ in store (voucher or cash)`}
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-rose-600 text-[11px] font-bold text-white">
+                  3
+                </span>
+                <span>
+                  {zh
+                    ? `前台确认后，S$${gift} 进钱包 · 下次再用`
+                    : `Counter confirms → S$${gift} in wallet for next visit`}
+                </span>
+              </li>
+            </ol>
+          </CardContent>
+        </Card>
+
+        {/* 路径 A：购券 */}
         <Card className="border-l-4 border-l-[#1A6EFF] shadow-sm">
           <CardContent className="p-4 space-y-2">
             <p className="text-[10px] font-bold text-[#1A6EFF] uppercase tracking-wide">
-              {zh ? "路径 A · 推荐" : "Path A · Recommended"}
+              {zh ? "方式一 · 推荐" : "Option 1 · Recommended"}
             </p>
             <h2 className="text-base font-bold text-foreground">
-              {zh ? "购券冲大奖" : "Buy voucher · grand draw"}
+              {zh ? "先买预付券再消费" : "Buy a store voucher first"}
             </h2>
-            <ul className="text-xs text-muted-foreground space-y-1 leading-relaxed list-disc pl-4">
-              <li>
-                {zh
-                  ? `PayNow 购券 → 自动获得付费大奖资格（约 ${mult} 倍于赠送）`
-                  : `PayNow buy → paid grand entry (~${mult}× gift chance)`}
-              </li>
-              <li>
-                {zh
-                  ? `到前台出示券码核销；本单核销 ≥ S$${rules.minSpendSgd.toFixed(0)} 自动送 S$${rules.giftSgd.toFixed(0)}`
-                  : `Redeem at counter; bill redeem ≥ S$${rules.minSpendSgd.toFixed(0)} auto-issues S$${rules.giftSgd.toFixed(0)}`}
-              </li>
-              <li>{zh ? "无即时小奖，专注倒计时大奖" : "No small prizes — grand countdown only"}</li>
-            </ul>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {zh
+                ? `线上买券 → 到店核销。本单核销满 S$${minSpend} 自动送 S$${gift}。购券还可参加倒计时大奖（机会约是现金领券的 ${mult} 倍）。`
+                : `Buy online → redeem in store. Redeem ≥ S$${minSpend} auto-gifts S$${gift}. Voucher path also joins the grand countdown (~${mult}× the cash-claim chance).`}
+            </p>
             {buyPath ? (
               <Link
                 href={
                   isLoggedIn
                     ? buyPath
-                    : `/auth/login?redirect=${encodeURIComponent(buyPath)}`
+                    : isBusinessSession
+                      ? logoutThenCustomer
+                      : loginHref
                 }
               >
-                <Button className="w-full rounded-full h-12 mt-2 text-base font-semibold">
+                <Button className="w-full rounded-full h-12 mt-1 text-base font-semibold">
                   {zh ? "去购券" : "Buy voucher"}
                 </Button>
               </Link>
             ) : (
-              <p className="text-xs text-amber-700 bg-amber-50 rounded-xl p-2 mt-2">
+              <p className="text-xs text-amber-800 bg-amber-50 rounded-xl p-2.5 mt-1">
                 {zh
-                  ? "购券链接尚未配置。请企业在活动 rules 中设置 buyVoucherSlug，或到前台购券。"
-                  : "Buy link not configured. Set buyVoucherSlug on campaign or buy at counter."}
+                  ? "购券入口暂未配置，请到前台咨询购券。"
+                  : "Buy link not set up yet — ask the counter."}
               </p>
             )}
           </CardContent>
         </Card>
 
-        {/* Path B: counter cash */}
+        {/* 路径 B：现金 */}
         <Card className="border-l-4 border-l-rose-500 shadow-sm">
           <CardContent className="p-4 space-y-2">
             <p className="text-[10px] font-bold text-rose-600 uppercase tracking-wide">
-              {zh ? "路径 B" : "Path B"}
+              {zh ? "方式二" : "Option 2"}
             </p>
             <h2 className="text-base font-bold text-foreground">
-              {zh ? "前台结账 · 凭票领券" : "Pay at counter · claim gift"}
+              {zh ? "正常结账 · 前台领赠券" : "Pay as usual · claim at counter"}
             </h2>
-            <ul className="text-xs text-muted-foreground space-y-1 leading-relaxed list-disc pl-4">
-              <li>
-                {zh
-                  ? `正常付账后，出示本页或手机号`
-                  : "After paying, show this page or your mobile"}
-              </li>
-              <li>
-                {zh
-                  ? `店员确认小票 ≥ S$${rules.minSpendSgd.toFixed(0)} → 发 S$${rules.giftSgd.toFixed(0)} + 赠送大奖机会（权重较低）`
-                  : `Staff confirms receipt ≥ S$${rules.minSpendSgd.toFixed(0)} → S$${rules.giftSgd.toFixed(0)} + gift draw entry (lower weight)`}
-              </li>
-            </ul>
-            <div className="rounded-2xl bg-rose-50 border border-rose-100 p-3 mt-2">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {zh
+                ? `付账后出示本页或手机号。店员确认小票 ≥ S$${minSpend} 后，发放 S$${gift} 赠券到您钱包（下次到店使用）。`
+                : `After paying, show this page or your mobile. Staff confirms receipt ≥ S$${minSpend}, then S$${gift} lands in your wallet for next visit.`}
+            </p>
+            <div className="rounded-2xl bg-rose-50 border border-rose-100 p-3 mt-1">
               <p className="text-sm font-semibold text-rose-900">
-                {zh ? "请到前台办理" : "Please proceed to counter"}
-              </p>
-              <p className="text-[11px] text-rose-800/80 mt-1 leading-relaxed">
                 {from === "table"
                   ? zh
-                    ? "吃完带上手机到收银台。店员会绑定手机并确认金额后发券。"
-                    : "Bring your phone to the cashier after your meal."
+                    ? "吃完请到收银台办理"
+                    : "Please go to the cashier after your meal"
                   : zh
-                    ? "请让店员打开「国庆满赠发券」，录入手机与金额。"
-                    : "Ask staff to open NDP gift issue and enter your mobile + amount."}
+                    ? "请让店员为您办理发券"
+                    : "Ask staff to issue your gift"}
               </p>
               {isLoggedIn && customerPhone && (
                 <p className="mt-2 text-lg font-bold tabular-nums text-foreground tracking-wide">
@@ -263,32 +338,22 @@ export function NdpLandingClient({
           </CardContent>
         </Card>
 
-        {/* How it works */}
-        <Card className="border-slate-100">
-          <CardContent className="p-4">
-            <h3 className="text-sm font-semibold">
-              {zh ? "怎么玩（30 秒）" : "How it works"}
-            </h3>
-            <ol className="mt-2 space-y-2 text-xs text-muted-foreground">
-              <li>
-                <span className="font-semibold text-foreground">1. </span>
-                {zh ? "扫码注册（桌上或前台）" : "Scan & register (table or counter)"}
-              </li>
-              <li>
-                <span className="font-semibold text-foreground">2. </span>
-                {zh
-                  ? "选购券冲大奖，或前台付账后凭票领"
-                  : "Buy voucher for bigger chance, or pay cash & claim gift"}
-              </li>
-              <li>
-                <span className="font-semibold text-foreground">3. </span>
-                {zh
-                  ? "前台核销/确认后，S$61 进钱包；下次再来用"
-                  : "After counter confirm, S$61 lands in wallet for next visit"}
-              </li>
-            </ol>
-          </CardContent>
-        </Card>
+        {/* 详细规则：默认折叠 */}
+        <TermsDatesBlock
+          view={termsView}
+          lang={lang}
+          validUntil={latestValidUntil}
+          validUntilHint={
+            latestValidUntil
+              ? zh
+                ? `自领取起 ${rules.validDays} 天 · 以本券有效至为准`
+                : `${rules.validDays} days from claim · this date is final`
+              : zh
+                ? `领取后钱包显示：自领取起 ${rules.validDays} 天`
+                : `After claim, wallet shows claim + ${rules.validDays} days`
+          }
+          defaultOpen={false}
+        />
 
         {campaign.description && (
           <p className="text-[11px] text-muted-foreground px-1 leading-relaxed">
@@ -296,10 +361,10 @@ export function NdpLandingClient({
           </p>
         )}
 
-        <p className="text-[10px] text-center text-muted-foreground pt-2">
+        <p className="text-[10px] text-center text-muted-foreground pt-1 pb-2">
           {zh
             ? "细则以门店与系统记录为准 · WeMembers"
-            : "Terms subject to store & system records · WeMembers"}
+            : "Subject to store & system records · WeMembers"}
         </p>
       </div>
     </div>

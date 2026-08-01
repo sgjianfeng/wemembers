@@ -99,16 +99,67 @@ function PasswordField({
 
 export default function LoginPage() {
   const router = useRouter();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<IntentTab>("customer");
+  /** 已登录但非顾客（企业/店员）— 顾客活动回流时需先退出 */
+  const [blockingSession, setBlockingSession] = useState<{
+    role: string;
+    name?: string | null;
+  } | null>(null);
+  const [switching, setSwitching] = useState(false);
 
   useEffect(() => {
     const q = searchParams.get("tab");
     if (q === "customer" || q === "business" || q === "admin") {
       setTab(q);
+    } else if (searchParams.get("intent") === "customer") {
+      setTab("customer");
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (!res.ok) return;
+        const j = await res.json();
+        const u = j.data;
+        if (!u?.role || cancelled) return;
+        if (u.role === "customer") {
+          // 已是顾客：直接回 redirect
+          const redirect = safeRedirectPath(searchParams.get("redirect"));
+          window.location.assign(redirect || "/home");
+          return;
+        }
+        // 企业/店员/管理员占着 session，又从顾客活动进来 → 提示切换
+        const intent =
+          searchParams.get("tab") || searchParams.get("intent") || "customer";
+        const redirect = safeRedirectPath(searchParams.get("redirect"));
+        const customerFlow =
+          intent === "customer" ||
+          (redirect &&
+            (/^\/(ndp|voucher|join|activity|store|shop|coupons|wallet|home|redeem|balance|card)/.test(
+              redirect
+            ) ||
+              redirect.startsWith("/c/")));
+        if (customerFlow) {
+          setBlockingSession({
+            role: u.role,
+            name: u.businessName || u.displayName || u.phone || u.email,
+          });
+          setTab("customer");
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams]);
+
   // admin 默认验证码；客户/商家默认密码
   const [mode, setMode] = useState<Mode>("password");
   const [contact, setContact] = useState("");
@@ -123,6 +174,25 @@ export default function LoginPage() {
   const [pendingRole, setPendingRole] = useState<string>("customer");
   /** 本地非 live 时 API 返回的验证码，页面直接展示 */
   const [devCode, setDevCode] = useState<string | null>(null);
+
+  async function logoutForCustomer() {
+    setSwitching(true);
+    setError("");
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      setBlockingSession(null);
+      // 清 session 后留在登录页，继续顾客登录
+      const qs = new URLSearchParams();
+      qs.set("tab", "customer");
+      qs.set("intent", "customer");
+      const r = searchParams.get("redirect");
+      if (r) qs.set("redirect", r);
+      window.location.assign(`/auth/login?${qs.toString()}`);
+    } catch {
+      setError(lang === "en" ? "Logout failed" : "退出失败，请重试");
+      setSwitching(false);
+    }
+  }
 
   // 与后端一致：SG 手机规范为 +65…，避免登录查不到号
   const normalizedContact = (() => {
@@ -151,7 +221,21 @@ export default function LoginPage() {
 
   function goHome(role: string) {
     const redirect = safeRedirectPath(searchParams.get("redirect"));
-    const dest = redirect || roleHome(role);
+    // 企业/店员登录：不要带进顾客活动页当「已登录顾客」；回角色首页
+    // 顾客登录：优先回 redirect（NDP / 钱包等）
+    let dest = roleHome(role);
+    if (role === "customer" && redirect) {
+      dest = redirect;
+    } else if (
+      (role === "business" || role === "staff") &&
+      redirect &&
+      !/^\/(ndp|voucher|join|activity|wallet|home|redeem|balance|card)/.test(
+        redirect
+      ) &&
+      !redirect.startsWith("/c/")
+    ) {
+      dest = redirect;
+    }
     // 硬跳转：避免 iOS 键盘放大后 soft navigate 视口仍缩放、布局错乱
     if (typeof window !== "undefined") {
       window.scrollTo(0, 0);
@@ -304,7 +388,7 @@ export default function LoginPage() {
         </div>
 
         {/* Role tabs */}
-        {!inSetPasswordFlow && (
+        {!blockingSession && !inSetPasswordFlow && (
           <div
             className="mb-4 grid grid-cols-3 gap-1 rounded-2xl bg-muted p-1"
             role="tablist"
@@ -336,7 +420,42 @@ export default function LoginPage() {
           </div>
         )}
 
+        {blockingSession && (
+          <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3.5 text-sm">
+            <p className="font-semibold text-amber-950">
+              {lang === "en"
+                ? "Business account is signed in"
+                : "当前是企业 / 店员账号"}
+            </p>
+            <p className="text-xs text-amber-900/85 mt-1 leading-relaxed">
+              {lang === "en"
+                ? `${blockingSession.name || blockingSession.role} cannot claim customer rewards. Sign out, then log in with a customer mobile number.`
+                : `${blockingSession.name || blockingSession.role} 不能领取顾客活动权益。请先退出，再用顾客手机号登录。`}
+            </p>
+            <div className="flex flex-col gap-2 mt-3">
+              <Button
+                className="w-full rounded-full h-11"
+                loading={switching}
+                onClick={logoutForCustomer}
+              >
+                {lang === "en"
+                  ? "Sign out · continue as customer"
+                  : "退出企业账号 · 以顾客身份继续"}
+              </Button>
+              {safeRedirectPath(searchParams.get("redirect")) && (
+                <Link
+                  href={safeRedirectPath(searchParams.get("redirect"))!}
+                  className="text-center text-xs font-medium text-muted-foreground"
+                >
+                  {lang === "en" ? "Back to activity" : "返回活动页"}
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Card：min-w-0 防止键盘弹起时横向撑破 */}
+        {!blockingSession && (
         <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-sm min-w-0 w-full">
           {/* 密码登录：客户 / 商家 */}
           {showPasswordForm && (
@@ -592,12 +711,20 @@ export default function LoginPage() {
             </>
           )}
         </div>
+        )}
 
-        {!inSetPasswordFlow && (
+        {!blockingSession && !inSetPasswordFlow && (
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
               {t("auth.login.noAccount")}{" "}
-              <Link href="/auth/register" className="text-[#1A6EFF] font-medium">
+              <Link
+                href={`/auth/register?tab=customer&intent=customer${
+                  searchParams.get("redirect")
+                    ? `&redirect=${encodeURIComponent(searchParams.get("redirect")!)}`
+                    : ""
+                }`}
+                className="text-[#1A6EFF] font-medium"
+              >
                 {t("auth.login.register")}
               </Link>
             </p>

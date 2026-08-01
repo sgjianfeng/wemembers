@@ -127,9 +127,21 @@ export default async function NdpLandingPage({
 
   const session = await getSession();
   const isCustomer = session?.role === "customer";
+  const isBusinessSession =
+    session?.role === "business" || session?.role === "staff";
   let customerPhone: string | null = null;
   let myGiftCount = 0;
   let myDrawWeight = 0;
+  let businessSessionLabel: string | null = null;
+
+  if (isBusinessSession && session) {
+    const bu = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { businessName: true, displayName: true, phone: true },
+    });
+    businessSessionLabel =
+      bu?.businessName || bu?.displayName || bu?.phone || session.role;
+  }
 
   if (isCustomer && session) {
     const user = await prisma.user.findUnique({
@@ -228,10 +240,12 @@ export default async function NdpLandingPage({
       latestValidUntil={latestValidUntil}
       buyPath={buyPath}
       isLoggedIn={isCustomer}
+      isBusinessSession={isBusinessSession}
+      businessSessionLabel={businessSessionLabel}
       customerPhone={customerPhone}
       myGiftCount={myGiftCount}
       myDrawWeight={myDrawWeight}
-      loginRedirect={`/ndp/${encodeURIComponent(slug)}?from=${from}`}
+      loginRedirect={`/ndp/${encodeURIComponent(campaign.slug || slug)}?from=${from}`}
     />
   );
 }

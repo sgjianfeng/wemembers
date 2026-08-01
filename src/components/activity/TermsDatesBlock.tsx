@@ -29,7 +29,10 @@ export function TermsDatesBlock({
   className?: string;
 }) {
   const zh = lang !== "en";
-  const [open, setOpen] = useState(defaultOpen ?? !compact);
+  // compact 默认收起；显式 defaultOpen 优先
+  const [open, setOpen] = useState(
+    defaultOpen !== undefined ? defaultOpen : !compact
+  );
 
   const activityPeriod = zh ? view.activityPeriodZh : view.activityPeriodEn;
   const salePeriod = zh ? view.salePeriodZh : view.salePeriodEn;

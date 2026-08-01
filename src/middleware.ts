@@ -66,6 +66,33 @@ export async function middleware(request: NextRequest) {
   // 公开路由
   if (pathname === "/" || PUBLIC_STARTS.some((r) => pathname.startsWith(r))) {
     if (pathname.startsWith("/auth/") && payload) {
+      // 顾客活动回流：企业/店员已登录时仍允许打开登录页，以便「退出后以顾客身份继续」
+      // 否则点 NDP「登录」会被直接踢回 /business，redirect 被吃掉
+      const intent =
+        request.nextUrl.searchParams.get("tab") ||
+        request.nextUrl.searchParams.get("intent");
+      const redirectRaw = request.nextUrl.searchParams.get("redirect") || "";
+      const redirectPath = redirectRaw.split("?")[0] || "";
+      const customerActivity =
+        redirectPath.startsWith("/ndp") ||
+        redirectPath.startsWith("/voucher") ||
+        redirectPath.startsWith("/join") ||
+        redirectPath.startsWith("/activity") ||
+        redirectPath.startsWith("/store") ||
+        redirectPath.startsWith("/shop") ||
+        redirectPath.startsWith("/coupons") ||
+        redirectPath.startsWith("/c/") ||
+        redirectPath.startsWith("/wallet") ||
+        redirectPath.startsWith("/home") ||
+        redirectPath.startsWith("/redeem") ||
+        redirectPath.startsWith("/balance") ||
+        redirectPath.startsWith("/card");
+      const wantCustomer =
+        intent === "customer" || customerActivity;
+      if (wantCustomer && payload.role !== "customer") {
+        return NextResponse.next();
+      }
+
       const map: Record<string, string> = {
         admin: "/admin",
         business: "/business",
