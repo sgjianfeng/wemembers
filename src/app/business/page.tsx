@@ -522,6 +522,17 @@ async function StaffStoreHome({
       primary: true,
     },
     {
+      id: "offers",
+      icon: Gift,
+      title: lang === "en" ? "Activity perks" : "活动券",
+      desc:
+        lang === "en"
+          ? "By activity · issue / redeem"
+          : "按活动看权益 · 发券 / 核销",
+      href: "/business/offers",
+      primary: true,
+    },
+    {
       id: "ndp",
       icon: Gift,
       title: lang === "en" ? "NDP gift issue" : "国庆满赠发券",

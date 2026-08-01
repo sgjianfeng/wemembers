@@ -59,9 +59,9 @@ export default async function BusinessLayout({
       href: "/business/scan",
     },
     {
-      icon: "campaigns" as const,
-      label: t("business.tabs.campaigns", lang),
-      href: "/business/campaigns",
+      icon: "gift" as const,
+      label: lang === "en" ? "Offers" : "活动券",
+      href: "/business/offers",
     },
     {
       icon: "stores" as const,
@@ -71,9 +71,15 @@ export default async function BusinessLayout({
   ];
 
   /**
-   * 运营：券产品（可售 V2）与营销券（积分领/送券）名称刻意分开，避免混为一谈。
+   * 运营：活动管理 / 券产品 / 营销券分开；工具与账户进「更多」
    */
   const businessMore = [
+    {
+      icon: "campaigns" as const,
+      label: lang === "en" ? "Activities" : "活动管理",
+      href: "/business/campaigns",
+      section: moreOp,
+    },
     {
       icon: "gift" as const,
       label: lang === "en" ? "Products" : "券产品",
@@ -131,9 +137,9 @@ export default async function BusinessLayout({
       href: "/business/scan",
     },
     {
-      icon: "hub" as const,
-      label: lang === "en" ? "Docs" : "资料",
-      href: "/business/hub/docs",
+      icon: "gift" as const,
+      label: lang === "en" ? "Offers" : "活动券",
+      href: "/business/offers",
     },
     {
       icon: "store" as const,

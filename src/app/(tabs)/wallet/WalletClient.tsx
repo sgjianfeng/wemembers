@@ -165,8 +165,8 @@ export function WalletClient({
         <h1 className="text-lg font-semibold">{t("wallet.title")}</h1>
         <p className="text-[11px] text-muted-foreground mt-0.5">
           {zh
-            ? "按活动查看权益 · 国庆等活动可展开赠送券与抽奖资格"
-            : "Grouped by activity · expand gift coupon + draw entry"}
+            ? "与首页一致：活动分类 · 展开权益券（赠送 / 抽奖 / 使用）"
+            : "Same as home: by activity · expand gift / draw / use"}
         </p>
       </div>
       <div className="px-4 py-3 flex gap-1 bg-card border-b border-slate-50 overflow-x-auto">

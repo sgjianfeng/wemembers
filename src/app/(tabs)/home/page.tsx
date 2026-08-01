@@ -5,12 +5,18 @@ import { formatMoney } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { HomeActivitiesSection } from "@/components/customer/HomeActivitiesSection";
-import { HomeVouchersSection } from "@/components/customer/HomeVouchersSection";
+import { HomeActivityEntitlements } from "@/components/customer/HomeActivityEntitlements";
 import { HomeStoresSection } from "@/components/customer/HomeStoresSection";
 import { HomeHotStoresSection } from "@/components/customer/HomeHotStoresSection";
 import { listHotStores } from "@/lib/discover-stores";
-import { listJoinableActivities } from "@/lib/discover-activities";
+import {
+  listJoinableActivities,
+  offerBlurb,
+} from "@/lib/discover-activities";
+import {
+  buildCustomerActivityBundles,
+  buildDiscoverActivityBundles,
+} from "@/lib/activity-entitlements";
 
 export default async function CustomerHome() {
   const session = await getSession();
@@ -27,6 +33,7 @@ export default async function CustomerHome() {
     user,
     activities,
     myVouchers,
+    myCoupons,
     memberships,
     monthlySavings,
     hotStores,
@@ -64,6 +71,22 @@ export default async function CustomerHome() {
       },
       orderBy: { createdAt: "desc" },
     }),
+    prisma.customerCoupon.findMany({
+      where: {
+        customerId: session.userId,
+        status: "available",
+      },
+      include: {
+        coupon: {
+          include: {
+            business: { select: { businessName: true } },
+            campaign: { select: { id: true, name: true, type: true, slug: true } },
+          },
+        },
+      },
+      orderBy: { claimedAt: "desc" },
+      take: 40,
+    }),
     prisma.membership.findMany({
       where: { customerId: session.userId },
       include: {
@@ -88,11 +111,72 @@ export default async function CustomerHome() {
 
   if (!user) redirect("/api/auth/logout?next=/auth/login");
 
-  const myActivities = activities.filter((a) => a.joined);
-  const hotActivities = activities;
-
   const totalBalanceCents = myVouchers.reduce((s, v) => s + v.balanceCents, 0);
   const savedThisMonth = monthlySavings._sum.amountSaved || 0;
+
+  const langCode = lang === "en" ? "en" : "zh";
+
+  const mineBundles = buildCustomerActivityBundles({
+    lang: langCode,
+    claims: myCoupons.map((c) => {
+      const expires = c.expiresAt ?? c.coupon.validUntil;
+      return {
+        id: c.id,
+        status: c.status,
+        campaignId: c.coupon.campaignId || c.coupon.campaign?.id || null,
+        campaignName: c.coupon.campaign?.name || null,
+        campaignType: c.coupon.campaign?.type || null,
+        businessName: c.coupon.business?.businessName || null,
+        title: c.coupon.title,
+        valueCents: c.coupon.valueCents,
+        validUntil: expires.toISOString(),
+        href: `/redeem/${c.id}`,
+      };
+    }),
+    draws: myVouchers
+      .filter((v) => v.drawWeight > 0)
+      .map((v) => ({
+        id: v.id,
+        campaignId: v.campaignId,
+        campaignName: v.campaign?.name || null,
+        businessName: v.campaign?.business?.businessName || null,
+        drawWeight: v.drawWeight,
+        shortCode: v.shortCode,
+        isGiftEntry:
+          v.paidCents === 0 ||
+          v.paymentMethod === "free" ||
+          v.issueReason === "marketing",
+        balanceCents: v.balanceCents,
+        amountCents: v.amountCents,
+        href: "/balance",
+      })),
+    prepaid: myVouchers
+      .filter((v) => v.balanceCents > 0 && v.drawWeight <= 0)
+      .map((v) => ({
+        id: v.id,
+        campaignId: v.campaignId,
+        campaignName: v.campaign?.name || null,
+        businessName: v.campaign?.business?.businessName || null,
+        balanceCents: v.balanceCents,
+        amountCents: v.amountCents,
+        href: "/balance",
+      })),
+  });
+
+  // 热门活动广告：优先国庆/已 join，用同一卡片壳
+  const discoverBundles = buildDiscoverActivityBundles(
+    activities.map((a) => ({
+      id: a.id,
+      name: a.name,
+      businessName: a.businessName,
+      type: a.displayMode === "draw" ? "lucky_draw_v2" : "voucher_sale",
+      href: a.href,
+      blurb: offerBlurb(a, langCode),
+      joined: a.joined,
+      kindTag: a.kindTag,
+    })),
+    langCode
+  );
 
   const bizCampaignCounts = await prisma.campaign.groupBy({
     by: ["businessId"],
@@ -170,27 +254,12 @@ export default async function CustomerHome() {
       </div>
 
       <div className="px-4 mt-1 space-y-6">
-        <HomeActivitiesSection
-          myActivities={myActivities}
-          hotActivities={hotActivities}
+        {/* 统一心智：活动 + 权益；广告与持仓同一结构 */}
+        <HomeActivityEntitlements
+          lang={langCode}
+          mine={mineBundles}
+          discover={discoverBundles}
         />
-
-        {/* Wallet assets only — not a discover list */}
-        {myVouchers.length > 0 && (
-          <HomeVouchersSection
-            lang={lang}
-            totalBalanceCents={totalBalanceCents}
-            vouchers={myVouchers.map((v) => ({
-              id: v.id,
-              campaignName: v.campaign?.name || "—",
-              kind: v.campaign?.type === "lucky_draw_v2" ? "draw" : "discount",
-              balanceCents: v.balanceCents,
-              amountCents: v.amountCents,
-              storeName: v.store?.name || null,
-            }))}
-            savedThisMonth={savedThisMonth}
-          />
-        )}
 
         {storeItems.length > 0 && (
           <HomeStoresSection lang={lang} stores={storeItems} />
@@ -198,7 +267,6 @@ export default async function CustomerHome() {
 
         <HomeHotStoresSection lang={lang} stores={hotStores} />
 
-        {/* Coupons buried: only a quiet link into discover deep */}
         <p className="text-center text-[11px] text-muted-foreground pb-2">
           <Link
             href="/discover/coupons"
@@ -208,11 +276,17 @@ export default async function CustomerHome() {
               ? "Legacy free coupons (optional)"
               : "更多 · 免费优惠券（可选）"}
           </Link>
+          {savedThisMonth > 0 && (
+            <span className="block mt-1 text-muted-foreground/70">
+              {lang === "en"
+                ? `Saved S$${Number(savedThisMonth).toFixed(0)} this month`
+                : `本月已省 S$${Number(savedThisMonth).toFixed(0)}`}
+            </span>
+          )}
         </p>
 
-        {myActivities.length === 0 &&
-          hotActivities.length === 0 &&
-          myVouchers.length === 0 &&
+        {mineBundles.length === 0 &&
+          discoverBundles.length === 0 &&
           storeItems.length === 0 &&
           hotStores.length === 0 && (
             <div className="text-center py-6 px-4 rounded-2xl bg-muted/50 border border-border">
