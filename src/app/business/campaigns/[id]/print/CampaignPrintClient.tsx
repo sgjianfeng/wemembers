@@ -474,6 +474,11 @@ export function CampaignPrintClient({
           {copy.headline}
         </p>
         <p className="text-[11px] text-muted-foreground mt-0.5">{copy.sub}</p>
+        {copy.termsLine && (
+          <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">
+            {copy.termsLine}
+          </p>
+        )}
         <p className="text-[10px] text-muted-foreground mt-1">{copy.untilLine}</p>
       </div>
 
@@ -1201,6 +1206,11 @@ function CampaignCardSheet({
           >
             {festival ? copy.sub : copy.untilLine}
           </p>
+          {festival && copy.termsLine && (
+            <p className="text-[10px] text-slate-400 mt-1 leading-snug px-1">
+              {copy.termsLine}
+            </p>
+          )}
           {festival && (
             <p className="text-[11px] text-slate-500 mt-1">{copy.untilLine}</p>
           )}
@@ -1383,6 +1393,11 @@ function CampaignCardSheet({
         >
           {copy.sub}
         </p>
+        {festival && copy.termsLine && (
+          <p className="text-[10px] text-slate-400 mt-1 leading-snug px-1">
+            {copy.termsLine}
+          </p>
+        )}
         <p
           className={cn(
             "text-[10px] mt-2",
