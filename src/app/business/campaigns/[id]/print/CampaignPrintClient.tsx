@@ -844,9 +844,11 @@ function CampaignCardSheet({
   lang: "zh" | "en";
   festival?: boolean;
 }) {
-  const isDark = surface === "dark" || festival;
+  const isDark = surface === "dark" && !festival;
+  // 国庆：整卡红渐变；其它深色块才用黑紫
+  const festivalBg = `linear-gradient(165deg, ${accent} 0%, ${accent} 42%, #9B0A1A 78%, #6B0A12 100%)`;
   const headerBg = festival
-    ? `linear-gradient(145deg, ${accent} 0%, #9B0A1A 55%, #1A0508 100%)`
+    ? festivalBg
     : `linear-gradient(145deg, ${accent} 0%, #1e293b 100%)`;
 
   if (layout === "sticker") {
@@ -855,18 +857,24 @@ function CampaignCardSheet({
         data-campaign-print-card
         className={cn(
           "w-full max-w-[320px] aspect-square rounded-3xl border-2 overflow-hidden shadow-sm flex flex-col",
-          isDark ? "border-slate-700" : "border-border print:border-slate-400"
+          festival
+            ? "border-red-800/40"
+            : isDark
+              ? "border-slate-700"
+              : "border-border print:border-slate-400"
         )}
-        style={{ background: isDark ? (festival ? "#1A0508" : "#1E1B2E") : undefined }}
+        style={{
+          background: festival ? festivalBg : isDark ? "#1E1B2E" : undefined,
+        }}
       >
         <div
           className="px-4 pt-4 pb-3 text-white text-center relative overflow-hidden"
           style={{
-            background: headerBg,
+            background: festival ? "transparent" : headerBg,
           }}
         >
           {festival && (
-            <span className="absolute left-2 top-2 text-[10px] font-bold tracking-wider text-white/70">
+            <span className="absolute left-2 top-2 text-[10px] font-bold tracking-wider text-white/80">
               {lang === "en" ? "SG NDP" : "🇸🇬 国庆"}
             </span>
           )}
@@ -897,22 +905,29 @@ function CampaignCardSheet({
         <div
           className={cn(
             "flex-1 flex flex-col items-center justify-between p-4",
-            isDark ? "text-slate-100" : "bg-card"
+            festival ? "text-white" : isDark ? "text-slate-100" : "bg-card"
           )}
         >
           <p
             className="text-sm font-bold text-center leading-snug"
-            style={{ color: accent }}
+            style={{ color: festival ? "#fff" : accent }}
           >
             {copy.benefitLine}
           </p>
           <PosterQr
             src={qrSrc}
-            className="w-36 h-36 rounded-xl border bg-white p-1"
+            className="w-36 h-36 rounded-xl border bg-white p-1 shadow-sm"
           />
           <div className="text-center w-full">
-            <p className="text-sm font-bold">{copy.headline}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
+            <p className={cn("text-sm font-bold", festival && "text-white")}>
+              {copy.headline}
+            </p>
+            <p
+              className={cn(
+                "text-[10px] mt-0.5 line-clamp-2",
+                festival ? "text-white/80" : "text-muted-foreground"
+              )}
+            >
               {copy.sub}
             </p>
           </div>
@@ -928,12 +943,13 @@ function CampaignCardSheet({
         data-campaign-poster={layout}
         data-campaign-print-card
         className={cn(
-          "w-full rounded-2xl overflow-hidden border border-border shadow-sm print:border-slate-400 print:shadow-none",
-          festival ? "bg-[#1A0508] text-white" : "bg-card",
+          "w-full rounded-2xl overflow-hidden border shadow-sm print:border-slate-400 print:shadow-none",
+          festival ? "border-red-800/30 text-white" : "border-border bg-card",
           a4
             ? "max-w-[420px] campaign-a4-sheet print:rounded-none"
             : "max-w-[400px]"
         )}
+        style={festival ? { background: festivalBg } : undefined}
       >
         <div
           className={cn(
@@ -941,11 +957,11 @@ function CampaignCardSheet({
             a4 ? "px-8 pt-10 pb-7" : "px-6 pt-7 pb-5"
           )}
           style={{
-            background: headerBg,
+            background: festival ? "transparent" : headerBg,
           }}
         >
           {festival && (
-            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/80 mb-2">
+            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/90 mb-2">
               {lang === "en" ? "Singapore · National Day" : "新加坡 · 国庆满赠"}
             </p>
           )}
@@ -981,16 +997,10 @@ function CampaignCardSheet({
             </p>
           )}
         </div>
-        <div
-          className={cn(
-            "text-center",
-            a4 ? "px-8 py-7" : "px-6 py-5",
-            festival && "bg-[#1A0508]"
-          )}
-        >
+        <div className={cn("text-center", a4 ? "px-8 py-7" : "px-6 py-5")}>
           <p
             className={cn("font-bold leading-snug", a4 ? "text-xl" : "text-lg")}
-            style={{ color: festival ? "#FFE4E6" : accent }}
+            style={{ color: festival ? "#fff" : accent }}
           >
             {copy.benefitLine}
           </p>
@@ -1006,7 +1016,7 @@ function CampaignCardSheet({
           <p
             className={cn(
               "text-xs mt-1",
-              festival ? "text-rose-200/80" : "text-muted-foreground"
+              festival ? "text-white/80" : "text-muted-foreground"
             )}
           >
             {copy.sub}
@@ -1014,14 +1024,14 @@ function CampaignCardSheet({
           <PosterQr
             src={qrSrc}
             className={cn(
-              "mx-auto mt-4 rounded-2xl border p-2 bg-white",
+              "mx-auto mt-4 rounded-2xl border p-2 bg-white shadow-sm",
               a4 ? "w-60 h-60" : "w-52 h-52"
             )}
           />
           <p
             className={cn(
               "text-xs mt-3",
-              festival ? "text-rose-200/70" : "text-muted-foreground"
+              festival ? "text-white/75" : "text-muted-foreground"
             )}
           >
             {copy.untilLine}
@@ -1029,7 +1039,7 @@ function CampaignCardSheet({
           <p
             className={cn(
               "text-[9px] font-mono break-all mt-2",
-              festival ? "text-rose-200/50" : "text-muted-foreground"
+              festival ? "text-white/55" : "text-muted-foreground"
             )}
           >
             {buyUrl}
@@ -1037,7 +1047,7 @@ function CampaignCardSheet({
           <p
             className={cn(
               "text-[10px] mt-4 tracking-widest uppercase",
-              festival ? "text-rose-200/60" : "text-muted-foreground"
+              festival ? "text-white/60" : "text-muted-foreground"
             )}
           >
             WeMembers
@@ -1047,37 +1057,35 @@ function CampaignCardSheet({
     );
   }
 
-  // tent
+  // tent — 国庆整卡红底；其它浅底/深色块
   return (
     <div
       data-campaign-print-card
       className={cn(
         "w-full max-w-[360px] rounded-2xl border shadow-sm overflow-hidden print:border-slate-400",
-        isDark ? "border-slate-700" : "border-border bg-card"
+        festival
+          ? "border-red-800/40 text-white"
+          : isDark
+            ? "border-slate-700"
+            : "border-border bg-card"
       )}
       style={
-        isDark
-          ? {
-              background: festival ? "#1A0508" : "#1E1B2E",
-              color: "#F8FAFC",
-            }
-          : undefined
+        festival
+          ? { background: festivalBg, color: "#F8FAFC" }
+          : isDark
+            ? { background: "#1E1B2E", color: "#F8FAFC" }
+            : undefined
       }
     >
       {festival && (
-        <div
-          className="h-1.5 w-full"
-          style={{
-            background: `linear-gradient(90deg, ${accent}, #ffffff, ${accent})`,
-          }}
-        />
+        <div className="h-2 w-full bg-white" aria-hidden />
       )}
       <div className="px-5 pt-5 pb-2 text-center">
         <p
           className={cn(
             "text-[10px] font-semibold tracking-[0.2em] uppercase",
             festival
-              ? "text-rose-300"
+              ? "text-white/90"
               : isDark
                 ? "text-amber-300/90"
                 : "text-amber-700 dark:text-amber-400/90"
@@ -1107,7 +1115,11 @@ function CampaignCardSheet({
               <p
                 className={cn(
                   "text-[11px]",
-                  isDark ? "text-slate-400" : "text-muted-foreground"
+                  festival
+                    ? "text-white/80"
+                    : isDark
+                      ? "text-slate-400"
+                      : "text-muted-foreground"
                 )}
               >
                 {businessName}
@@ -1116,14 +1128,21 @@ function CampaignCardSheet({
           </div>
         </div>
         {isDist && (
-          <p className="mt-2 text-[11px] font-semibold text-amber-800 bg-amber-50 dark:bg-amber-950/35 dark:text-amber-200 inline-block px-2 py-0.5 rounded-full">
+          <p
+            className={cn(
+              "mt-2 text-[11px] font-semibold inline-block px-2 py-0.5 rounded-full",
+              festival
+                ? "text-amber-100 bg-white/15"
+                : "text-amber-800 bg-amber-50 dark:bg-amber-950/35 dark:text-amber-200"
+            )}
+          >
             {lang === "en" ? "Via" : "分发"} · {distLabel}
           </p>
         )}
         <p
           className="mt-3 text-base font-bold leading-snug"
           style={{
-            color: festival ? "#FFE4E6" : isDark ? "#FDE68A" : accent,
+            color: festival ? "#FFFFFF" : isDark ? "#FDE68A" : accent,
           }}
         >
           {copy.benefitLine}
@@ -1132,17 +1151,24 @@ function CampaignCardSheet({
       <div className="px-5 py-3 flex justify-center">
         <PosterQr
           src={qrSrc}
-          className="w-52 h-52 rounded-2xl border p-2 bg-white"
+          className="w-52 h-52 rounded-2xl border p-2 bg-white shadow-md"
         />
       </div>
       <div className="px-5 pb-5 text-center">
-        <p className="text-base font-bold" style={{ color: accent }}>
+        <p
+          className="text-base font-bold"
+          style={{ color: festival ? "#FFFFFF" : accent }}
+        >
           {copy.headline}
         </p>
         <p
           className={cn(
             "text-[11px] mt-1",
-            isDark ? "text-slate-400" : "text-muted-foreground"
+            festival
+              ? "text-white/80"
+              : isDark
+                ? "text-slate-400"
+                : "text-muted-foreground"
           )}
         >
           {copy.sub}
@@ -1150,7 +1176,11 @@ function CampaignCardSheet({
         <p
           className={cn(
             "text-[10px] mt-2",
-            isDark ? "text-slate-400" : "text-muted-foreground"
+            festival
+              ? "text-white/70"
+              : isDark
+                ? "text-slate-400"
+                : "text-muted-foreground"
           )}
         >
           {copy.untilLine}
@@ -1158,7 +1188,11 @@ function CampaignCardSheet({
         <p
           className={cn(
             "text-[9px] font-mono break-all mt-2",
-            isDark ? "text-slate-500" : "text-muted-foreground"
+            festival
+              ? "text-white/55"
+              : isDark
+                ? "text-slate-500"
+                : "text-muted-foreground"
           )}
         >
           {buyUrl}

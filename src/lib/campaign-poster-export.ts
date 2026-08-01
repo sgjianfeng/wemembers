@@ -199,39 +199,43 @@ export async function paintCampaignPosterCanvas(
   const isDark = opts.surface === "dark";
   const accent = opts.accent || "#1A6EFF";
   const festival = isNdpFestivalAccent(accent);
-  // 国庆：深红底 + 白字，更像新加坡国庆物料
-  const bg = festival ? "#1A0508" : isDark ? "#1E1B2E" : "#ffffff";
-  const fg = isDark || festival ? "#F8FAFC" : "#0f172a";
-  const muted = isDark || festival ? "#FCA5A5" : "#64748b";
   const isA4 = opts.layout === "a4";
   const isPosterLike = opts.layout === "poster" || isA4;
   // a4 略放大字号/二维码，贴墙可读
   const scale = isA4 ? 1.15 : 1;
 
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, w, h);
+  // 国庆：整卡红渐变（不再用大面积黑底）；其它：浅底 / 深色块
+  if (festival) {
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, accent);
+    g.addColorStop(0.45, accent);
+    g.addColorStop(0.75, SG_NDP_RED_DEEP);
+    g.addColorStop(1, "#6B0A12");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    // 顶部白条（旗意，非国旗复制）
+    ctx.fillStyle = "rgba(255,255,255,0.95)";
+    ctx.fillRect(0, 0, w, Math.round(18 * scale));
+    drawNdpMotif(ctx, w, Math.round(h * 0.55), scale);
+  } else {
+    const bg = isDark ? "#1E1B2E" : "#ffffff";
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  const fg = festival || isDark ? "#F8FAFC" : "#0f172a";
+  const muted = festival ? "rgba(255,255,255,0.78)" : isDark ? "#94A3B8" : "#64748b";
 
   const useGradientHeader =
-    isPosterLike || opts.layout === "sticker" || isDark || festival;
+    !festival && (isPosterLike || opts.layout === "sticker" || isDark);
 
   if (useGradientHeader) {
     const bandH = opts.layout === "sticker" ? 300 : isA4 ? 460 : 400;
     const g = ctx.createLinearGradient(0, 0, w, bandH);
-    if (festival) {
-      g.addColorStop(0, accent);
-      g.addColorStop(0.55, SG_NDP_RED_DEEP);
-      g.addColorStop(1, "#1A0508");
-    } else {
-      g.addColorStop(0, accent);
-      g.addColorStop(1, isDark ? "#0f172a" : "#1e293b");
-    }
+    g.addColorStop(0, accent);
+    g.addColorStop(1, isDark ? "#0f172a" : "#1e293b");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, bandH);
-
-    // 国庆装饰：新月 + 五星（简化抽象，印刷安全）
-    if (festival) {
-      drawNdpMotif(ctx, w, bandH, scale);
-    }
 
     try {
       if (opts.businessLogo) {
@@ -266,19 +270,52 @@ export async function paintCampaignPosterCanvas(
         40
       );
     }
+  } else if (festival) {
+    // 国庆整卡红：顶栏文案 + logo + 店名（不走黑底分区）
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.font = "bold 22px system-ui, -apple-system, sans-serif";
+    ctx.fillText(
+      opts.lang === "en" ? "WEMEMBERS · NATIONAL DAY" : "WEMEMBERS · 国庆",
+      w / 2,
+      72
+    );
+    try {
+      if (opts.businessLogo) {
+        const logo = await loadImage(opts.businessLogo);
+        const s = 88;
+        ctx.fillStyle = "rgba(255,255,255,0.95)";
+        roundRect(ctx, (w - s) / 2 - 8, 92, s + 16, s + 16, 20);
+        ctx.fill();
+        ctx.drawImage(logo, (w - s) / 2, 100, s, s);
+      }
+    } catch {
+      /* optional */
+    }
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 46px system-ui, -apple-system, sans-serif";
+    fillTextCenter(ctx, opts.campaignName, w / 2, 240, 24);
+    ctx.fillStyle = "rgba(255,255,255,0.88)";
+    ctx.font = "26px system-ui, -apple-system, sans-serif";
+    fillTextCenter(ctx, opts.businessName, w / 2, 290, 36);
+    if (opts.isDist) {
+      ctx.fillStyle = "#FDE68A";
+      ctx.font = "bold 26px system-ui, -apple-system, sans-serif";
+      fillTextCenter(
+        ctx,
+        `${opts.lang === "en" ? "Via" : "分发"} · ${opts.distLabel}`,
+        w / 2,
+        340,
+        36
+      );
+    }
   } else {
     // light tent
     ctx.textAlign = "center";
-    ctx.fillStyle = festival ? accent : "#b45309";
+    ctx.fillStyle = "#b45309";
     ctx.font = "bold 22px system-ui, -apple-system, sans-serif";
     ctx.fillText(
-      festival
-        ? opts.lang === "en"
-          ? "WEMEMBERS · NATIONAL DAY"
-          : "WEMEMBERS · 国庆"
-        : opts.lang === "en"
-          ? "WEMEMBERS · ACTIVITY"
-          : "WEMEMBERS · 活动",
+      opts.lang === "en" ? "WEMEMBERS · ACTIVITY" : "WEMEMBERS · 活动",
       w / 2,
       64
     );
@@ -312,17 +349,19 @@ export async function paintCampaignPosterCanvas(
     }
   }
 
-  const bodyFg = isPosterLike && !festival ? "#0f172a" : fg;
-  const bodyMuted =
-    isPosterLike && !festival ? "#64748b" : festival ? "#FECACA" : muted;
-  const benefitColor =
-    opts.layout === "sticker" && useGradientHeader
+  const bodyFg = festival ? "#ffffff" : isPosterLike ? "#0f172a" : fg;
+  const bodyMuted = festival
+    ? "rgba(255,255,255,0.8)"
+    : isPosterLike
+      ? "#64748b"
+      : muted;
+  const benefitColor = festival
+    ? "#FFFFFF"
+    : opts.layout === "sticker" && useGradientHeader
       ? "#ffffff"
-      : festival
-        ? "#FFE4E6"
-        : isDark && opts.layout === "tent"
-          ? "#FDE68A"
-          : accent;
+      : isDark && opts.layout === "tent"
+        ? "#FDE68A"
+        : accent;
 
   const qrSize =
     opts.layout === "sticker" ? 400 : isA4 ? 620 : 500;
