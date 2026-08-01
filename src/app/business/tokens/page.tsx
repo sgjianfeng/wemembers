@@ -75,30 +75,69 @@ export default async function TokenRechargePage({
     !!stripeAcct?.chargesEnabled &&
     !stripeAcct?.payoutsEnabled;
 
-  // 自用券：今日现金售出 + 待核销（不进可用/冻结）
+  // 自用券：今日售出 + 累计售出 + 待核销（店内收款，不进平台可提现）
   const dayStart = new Date();
   dayStart.setHours(0, 0, 0, 0);
-  const selfSoldToday = await prisma.voucher.aggregate({
-    where: {
-      productKind: "self_use",
-      paymentMethod: { in: ["cash", "paynow_store"] },
-      campaign: { businessId: session.userId },
-      createdAt: { gte: dayStart },
-    },
-    _sum: { paidCents: true },
-    _count: true,
-  });
-  const selfPending = await prisma.voucher.aggregate({
-    where: {
-      productKind: "self_use",
-      status: "active",
-      balanceCents: { gt: 0 },
-      campaign: { businessId: session.userId },
-    },
-    _sum: { balanceCents: true },
-  });
-  const selfSoldCents = selfSoldToday._sum.paidCents ?? 0;
+  const campBiz = { campaign: { businessId: session.userId } };
+  const [selfSoldToday, selfSoldAll, selfPending, distSoldAll] =
+    await Promise.all([
+      prisma.voucher.aggregate({
+        where: {
+          productKind: "self_use",
+          ...campBiz,
+          createdAt: { gte: dayStart },
+        },
+        _sum: { amountCents: true },
+        _count: true,
+      }),
+      prisma.voucher.aggregate({
+        where: { productKind: "self_use", ...campBiz },
+        _sum: { amountCents: true },
+        _count: true,
+      }),
+      prisma.voucher.aggregate({
+        where: {
+          productKind: "self_use",
+          status: "active",
+          balanceCents: { gt: 0 },
+          ...campBiz,
+        },
+        _sum: { balanceCents: true },
+      }),
+      prisma.voucher.aggregate({
+        where: {
+          productKind: "distribution",
+          ...campBiz,
+        },
+        _sum: { amountCents: true, sellerCommissionCents: true },
+        _count: true,
+      }),
+    ]);
+  const selfSoldCents = selfSoldToday._sum.amountCents ?? 0;
+  const selfSoldCount = selfSoldToday._count;
+  const selfSoldAllCents = selfSoldAll._sum.amountCents ?? 0;
+  const selfSoldAllCount = selfSoldAll._count;
   const selfPendingCents = selfPending._sum.balanceCents ?? 0;
+  const distSoldAllCents = distSoldAll._sum.amountCents ?? 0;
+  const distSoldAllCount = distSoldAll._count;
+  const distCommCents = distSoldAll._sum.sellerCommissionCents ?? 0;
+
+  // 累计入账里拆：真实业务入账 vs 平台赠送（避免把赠送额度当成「卖券收益」）
+  const totalEarnedAll = user?.tokenAccount?.totalEarned ?? 0;
+  const giftLedger = transactions
+    .filter(
+      (tx) =>
+        tx.type === "platform_gift" ||
+        tx.type === "platform_gift_adjust" ||
+        tx.type === "free_grant" ||
+        tx.type === "signup_bonus"
+    )
+    .reduce((s, tx) => s + tx.amount, 0);
+  // 有流水时用「总入账 − 赠送类」；无流水则 totalEarned 可能含初始 gift
+  const businessEarnedCents = Math.max(
+    0,
+    totalEarnedAll - Math.max(0, giftLedger)
+  );
 
   const consumeTypeLabels: Record<string, { zh: string; en: string; color: string }> = {
     purchase: { zh: "购买", en: "Purchase", color: "text-green-600" },
@@ -136,7 +175,14 @@ export default async function TokenRechargePage({
               <p className="text-xs text-white/60">
                 {lang === "en" ? "Withdrawable" : "可提现"}
               </p>
-              <p className="text-xl font-bold mt-1">S${(balance / 100).toFixed(2)}</p>
+              <p className="text-xl font-bold mt-1 tabular-nums">
+                S${(balance / 100).toFixed(2)}
+              </p>
+              <p className="text-[10px] text-white/70 mt-0.5 leading-snug">
+                {lang === "en"
+                  ? "Platform wallet cash · withdraw via Stripe"
+                  : "平台钱包现金 · 经 Stripe 提现"}
+              </p>
             </CardContent>
           </Card>
           <Card className="bg-emerald-50 dark:bg-emerald-950/35 border-emerald-100 dark:border-emerald-800/50">
@@ -144,31 +190,91 @@ export default async function TokenRechargePage({
               <p className="text-xs text-emerald-700 dark:text-emerald-400">
                 {lang === "en" ? "Platform credit (no withdraw)" : "平台额度（不可提）"}
               </p>
-              <p className="text-xl font-bold text-emerald-800 dark:text-emerald-300 mt-1">
+              <p className="text-xl font-bold text-emerald-800 dark:text-emerald-300 mt-1 tabular-nums">
                 S${(giftBalance / 100).toFixed(2)}
               </p>
-              <p className="text-[10px] text-emerald-600 dark:text-emerald-400/80 mt-0.5">
+              <p className="text-[10px] text-emerald-600 dark:text-emerald-400/80 mt-0.5 leading-snug">
                 {lang === "en"
-                  ? "Only covers exclusive platform fee (2%). Self-topup funds prize pool."
-                  : "仅可抵独享服务费 2%；自充才进奖池/抽小奖"}
+                  ? "Only covers exclusive platform fee (2%). Not sales income."
+                  : "仅可抵独享服务费 2% · 不是卖券收入"}
               </p>
             </CardContent>
           </Card>
           <Card className="bg-amber-50 dark:bg-amber-950/35 border-amber-100 dark:border-amber-800/50">
             <CardContent className="p-3">
-              <p className="text-xs text-amber-600 dark:text-amber-400">{t("business.tokens.frozen", lang)}</p>
-              <p className="text-xl font-bold text-amber-700 dark:text-amber-400 mt-1">S${(frozen / 100).toFixed(2)}</p>
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                {t("business.tokens.frozen", lang)}
+              </p>
+              <p className="text-xl font-bold text-amber-700 dark:text-amber-400 mt-1 tabular-nums">
+                S${(frozen / 100).toFixed(2)}
+              </p>
+              <p className="text-[10px] text-amber-700/80 dark:text-amber-400/80 mt-0.5 leading-snug">
+                {lang === "en"
+                  ? "T+1 hold · unlocks next day"
+                  : "T+1 冻结 · 次日解冻进可提现"}
+              </p>
             </CardContent>
           </Card>
           <Card className="bg-muted/50 border-0">
             <CardContent className="p-3">
-              <p className="text-xs text-muted-foreground">{t("business.tokens.earned", lang)}</p>
-              <p className="text-xl font-bold text-foreground mt-1">
-                S${((user?.tokenAccount?.totalEarned ?? 0) / 100).toFixed(0)}
+              <p className="text-xs text-muted-foreground">
+                {lang === "en" ? "Business income (ledger)" : "业务入账累计"}
+              </p>
+              <p className="text-xl font-bold text-foreground mt-1 tabular-nums">
+                S${(businessEarnedCents / 100).toFixed(2)}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">
+                {lang === "en"
+                  ? `Excludes gift credit · raw counter S$${(totalEarnedAll / 100).toFixed(2)}`
+                  : `不含平台赠送 · 原始计数器 S$${(totalEarnedAll / 100).toFixed(2)}`}
               </p>
             </CardContent>
           </Card>
         </div>
+
+        {/* 卖券一览：和钱包分开，避免「只看见一笔」 */}
+        <Card className="border-border">
+          <CardContent className="p-4 space-y-2">
+            <h3 className="text-sm font-semibold text-foreground">
+              {lang === "en" ? "Voucher sales (all time)" : "卖券记录（全部）"}
+            </h3>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              {lang === "en"
+                ? "Self-use cash stays in-store (not platform wallet). Distribution may settle commission after redeem."
+                : "自用/独享：钱在店里收，不进上方「可提现」。分发券：核销后才可能有佣金进钱包。"}
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl bg-muted/50 p-3">
+                <p className="text-[10px] text-muted-foreground">
+                  {lang === "en" ? "Self-use sold" : "自用/独享售出"}
+                </p>
+                <p className="text-lg font-bold tabular-nums mt-0.5">
+                  {selfSoldAllCount}{" "}
+                  <span className="text-sm font-semibold text-muted-foreground">
+                    · S${(selfSoldAllCents / 100).toFixed(2)}
+                  </span>
+                </p>
+              </div>
+              <div className="rounded-xl bg-muted/50 p-3">
+                <p className="text-[10px] text-muted-foreground">
+                  {lang === "en" ? "Distribution sold" : "分发售出"}
+                </p>
+                <p className="text-lg font-bold tabular-nums mt-0.5">
+                  {distSoldAllCount}{" "}
+                  <span className="text-sm font-semibold text-muted-foreground">
+                    · S${(distSoldAllCents / 100).toFixed(2)}
+                  </span>
+                </p>
+                {distCommCents > 0 && (
+                  <p className="text-[10px] text-green-700 mt-0.5">
+                    {lang === "en" ? "Comm." : "已计佣金"} S$
+                    {(distCommCents / 100).toFixed(2)}
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* 分发券结算（平台钱包） */}
         <Card>
@@ -205,10 +311,14 @@ export default async function TokenRechargePage({
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-xl bg-muted/50 p-3">
                 <p className="text-[10px] text-muted-foreground">
-                  {t("tokens.selfSold", lang)}
+                  {lang === "en" ? "Sold today" : "今日售出"}
                 </p>
                 <p className="text-xl font-bold text-foreground tabular-nums mt-0.5">
                   S${(selfSoldCents / 100).toFixed(2)}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {selfSoldCount}{" "}
+                  {lang === "en" ? "orders (incl. PayNow/Stripe)" : "笔（含线上付）"}
                 </p>
               </div>
               <div className="rounded-xl bg-muted/50 p-3">
