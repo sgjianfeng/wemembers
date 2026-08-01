@@ -433,7 +433,13 @@ export default function ScanClient({
     return (
       <div className="pb-4">
         <div className="px-4 py-3 border-b border-border">
-          <h1 className="text-lg font-semibold">{t("business.scan.title")}</h1>
+          <Link
+            href="/business"
+            className="inline-flex items-center text-xs font-medium text-primary"
+          >
+            ← {lang === "en" ? "Overview" : "概览"}
+          </Link>
+          <h1 className="text-lg font-semibold mt-1.5">{t("business.scan.title")}</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             {lang === "en"
               ? "Choose which store is redeeming"
@@ -496,10 +502,42 @@ export default function ScanClient({
     );
   }
 
+  const offersHref = storeId
+    ? `/business/offers?storeId=${encodeURIComponent(storeId)}`
+    : "/business/offers";
+
   return (
     <div className="pb-4">
-      <div className="px-4 py-3 border-b border-border">
-        <h1 className="text-lg font-semibold">{t("business.scan.title")}</h1>
+      <div className="px-4 py-3 border-b border-border sticky top-0 bg-card z-10">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== "undefined" && window.history.length > 1) {
+                  router.back();
+                } else {
+                  router.push(offersHref);
+                }
+              }}
+              className="shrink-0 text-xs font-medium text-primary"
+            >
+              ← {lang === "en" ? "Back" : "返回"}
+            </button>
+            <Link
+              href={offersHref}
+              className="shrink-0 text-xs font-medium text-muted-foreground"
+            >
+              {lang === "en" ? "Offers" : "活动券"}
+            </Link>
+          </div>
+          {storeName && (
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground truncate max-w-[45%]">
+              {storeName}
+            </span>
+          )}
+        </div>
+        <h1 className="text-lg font-semibold mt-1.5">{t("business.scan.title")}</h1>
         <p className="text-xs text-muted-foreground mt-0.5">
           {storeName
             ? lang === "en"
