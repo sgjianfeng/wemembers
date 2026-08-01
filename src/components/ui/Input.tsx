@@ -7,6 +7,11 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: string;
 }
 
+/**
+ * Safari-safe text field.
+ * Outer shell owns border/radius/focus; native input is borderless.
+ * Avoids Safari focus ring + password/autofill paint glitches that look like「变形」.
+ */
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, label, prefix, error, style, ...props }, ref) => {
     return (
@@ -16,28 +21,38 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {label}
           </label>
         )}
-        <div className="relative min-w-0 max-w-full">
+        <div
+          className={cn(
+            "flex h-11 w-full min-w-0 max-w-full items-stretch overflow-hidden rounded-lg",
+            "border border-input bg-background",
+            "transition-[border-color] duration-150",
+            "focus-within:border-primary",
+            error && "border-destructive focus-within:border-destructive",
+            // className 挂在 shell：可覆盖 h-12 / rounded-xl 等
+            className
+          )}
+        >
           {prefix && (
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+            <span className="flex shrink-0 items-center pl-3 text-sm text-muted-foreground">
               {prefix}
             </span>
           )}
           <input
             type={type}
-            // Safari 聚焦：强制 16px，避免整页缩放导致「变形」
-            style={{ fontSize: 16, lineHeight: "1.4", ...style }}
+            style={{
+              fontSize: 16,
+              lineHeight: "1.25",
+              fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+              ...style,
+            }}
             className={cn(
-              "block h-11 w-full min-w-0 max-w-full box-border appearance-none rounded-lg border border-input bg-background px-3 py-0",
+              "gwm-field min-w-0 flex-1 self-stretch border-0 bg-transparent px-3 py-0",
+              "appearance-none outline-none focus:outline-none focus:ring-0",
               "file:border-0 file:bg-transparent file:text-sm file:font-medium",
               "placeholder:text-muted-foreground",
-              // 不用 ring：Safari 圆角 + ring 易出现双边框/拉伸感
-              "outline-none focus:outline-none focus:ring-0 focus-visible:ring-0",
-              "focus:border-primary",
               "disabled:cursor-not-allowed disabled:opacity-50",
-              "transition-[border-color] duration-150",
-              prefix && "pl-10",
-              error && "border-destructive focus:border-destructive",
-              className
+              "shadow-none",
+              prefix && "pl-2"
             )}
             ref={ref}
             {...props}

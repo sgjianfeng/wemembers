@@ -60,10 +60,12 @@ export function CodeInput({ length = 6, onComplete, error }: CodeInputProps) {
             value={val}
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
+            style={{ fontSize: 16, lineHeight: "1.25" }}
             className={cn(
-              // text-base(16px) 防止 iOS 聚焦时整页放大
-              "w-10 h-12 text-center text-base font-semibold rounded-lg border border-border",
-              "focus:outline-none focus:ring-2 focus:ring-[#1A6EFF] focus:border-transparent",
+              // 16px 防 iOS 缩放；无 ring，仅边框色变化（Safari 圆角 ring 易「变形」）
+              "w-10 h-12 text-center font-semibold rounded-lg border border-border bg-background",
+              "appearance-none outline-none focus:outline-none focus:ring-0",
+              "focus:border-[#1A6EFF]",
               "min-w-0 shrink",
               error && "border-red-300"
             )}

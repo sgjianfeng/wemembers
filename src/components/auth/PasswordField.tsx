@@ -18,6 +18,11 @@ function EyeIcon({ open }: { open: boolean }) {
   );
 }
 
+/**
+ * Safari-safe password field.
+ * Border + focus live on the outer shell; the input has no radius/border.
+ * Eye toggle is flex sibling (no absolute + translateY).
+ */
 export function PasswordField({
   label,
   value,
@@ -44,9 +49,18 @@ export function PasswordField({
   hint?: string;
 }) {
   return (
-    <div className="w-full">
-      <label className="block text-sm font-medium text-foreground mb-1.5">{label}</label>
-      <div className="relative">
+    <div className="w-full min-w-0 max-w-full">
+      <label className="block text-sm font-medium text-foreground mb-1.5 break-words">
+        {label}
+      </label>
+      <div
+        className={cn(
+          "flex h-12 w-full min-w-0 max-w-full items-stretch overflow-hidden rounded-xl",
+          "border border-input bg-background",
+          "transition-[border-color] duration-150",
+          "focus-within:border-primary"
+        )}
+      >
         <input
           type={show ? "text" : "password"}
           autoComplete={autoComplete}
@@ -54,22 +68,32 @@ export function PasswordField({
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
+          // 16px 防止 iOS 聚焦整页缩放；系统字体避免密码圆点与文字高度跳变
+          style={{
+            fontSize: 16,
+            lineHeight: "1.25",
+            fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+          }}
           className={cn(
-            "flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 pr-11 text-base",
-            "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2",
-            "focus-visible:ring-ring focus-visible:ring-offset-1 transition-colors"
+            "gwm-field min-w-0 flex-1 self-stretch border-0 bg-transparent px-3 py-0",
+            "appearance-none outline-none focus:outline-none focus:ring-0",
+            "placeholder:text-muted-foreground",
+            "shadow-none"
           )}
         />
         <button
           type="button"
           onClick={onToggleShow}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-muted-foreground hover:text-muted-foreground"
+          className="flex shrink-0 items-center justify-center px-3 text-muted-foreground hover:text-foreground"
           aria-label={show ? hideLabel : showLabel}
+          tabIndex={-1}
         >
           <EyeIcon open={show} />
         </button>
       </div>
-      {hint && <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{hint}</p>}
+      {hint && (
+        <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{hint}</p>
+      )}
     </div>
   );
 }

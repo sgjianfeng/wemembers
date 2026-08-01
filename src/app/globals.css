@@ -22,18 +22,60 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="
 textarea,
 select {
   font-size: 16px !important;
-  line-height: 1.4 !important;
+  line-height: 1.25 !important;
   max-width: 100%;
   box-sizing: border-box;
   /* Safari 密码框默认内阴影/圆角叠加会显「变形」 */
-  -webkit-appearance: none;
-  appearance: none;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  border-radius: 0;
+  /* 去掉 iOS 内置上下内阴影（密码框尤其明显） */
+  background-clip: padding-box;
 }
-/* 关掉 iOS 聚焦时的系统高亮叠层 */
+/* 关掉 iOS 聚焦时的系统高亮叠层 / 默认 focus 环 */
 input:focus,
 textarea:focus,
 select:focus {
   -webkit-tap-highlight-color: transparent;
+  outline: none !important;
+  box-shadow: none !important;
+}
+/* Safari 钥匙/强密码装饰会挤占宽度，看起来像输入框被「挤扁」 */
+input::-webkit-credentials-auto-fill-button,
+input::-webkit-contacts-auto-fill-button,
+input::-webkit-strong-password-auto-fill-button,
+input::-webkit-caps-lock-indicator {
+  visibility: hidden;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  clip: rect(0, 0, 0, 0);
+}
+/* 自动填充黄底溢出圆角 → 裁切到外层 shell */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: inherit !important;
+  caret-color: auto;
+  /* 超长 transition 锁住 autofill 背景，避免黄底闪一下撑破圆角 */
+  transition: background-color 99999s ease-out;
+  box-shadow: 0 0 0 1000px var(--background, #fff) inset !important;
+  border: 0 !important;
+}
+/* 登录等表单字段：无自身边框，边框由外层 shell 负责 */
+.gwm-field {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  min-height: 0;
+  width: 100%;
 }
 /* 避免 fixed 底栏 + 键盘时 100vh 跳动 */
 @supports (height: 100dvh) {
