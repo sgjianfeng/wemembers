@@ -283,25 +283,15 @@ export default async function TokenRechargePage({
           </CardContent>
         </Card>
 
-        {/* 分发券结算（平台钱包） */}
-        <Card>
-          <CardContent className="p-4">
-            <h3 className="text-sm font-semibold text-foreground mb-1">
-              {t("tokens.distTitle", lang)}
-            </h3>
-            <p className="text-[11px] text-muted-foreground mb-3">
-              {t("business.tokens.stripeTitle", lang)}
-            </p>
-            <StripeStatusPanel
-              initial={{
-                hasAccount: Boolean(stripeAcct?.stripeAccountId),
-                chargesEnabled: Boolean(stripeAcct?.chargesEnabled),
-                payoutsEnabled: Boolean(stripeAcct?.payoutsEnabled),
-                detailsSubmitted: Boolean(stripeAcct?.detailsSubmitted),
-              }}
-            />
-          </CardContent>
-        </Card>
+        {/* 分发券结算（平台钱包）· 折叠卡 */}
+        <StripeStatusPanel
+          initial={{
+            hasAccount: Boolean(stripeAcct?.stripeAccountId),
+            chargesEnabled: Boolean(stripeAcct?.chargesEnabled),
+            payoutsEnabled: Boolean(stripeAcct?.payoutsEnabled),
+            detailsSubmitted: Boolean(stripeAcct?.detailsSubmitted),
+          }}
+        />
 
         {/* 自用券：已收款 / 待核销（不进平台可用） */}
         <Card className="border-border">
