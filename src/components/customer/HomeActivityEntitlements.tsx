@@ -93,12 +93,16 @@ export function HomeActivityEntitlements({
             </Link>
           </div>
           <div className="space-y-2.5">
-            {ads.slice(0, 6).map((b) => (
+            {ads.slice(0, 8).map((b) => (
               <ActivityEntitlementCard
                 key={b.key}
                 bundle={b}
                 lang={lang}
-                mode="ad"
+                mode={b.entitlements.length > 0 ? "customer" : "ad"}
+                defaultOpen={
+                  b.tone === "ndp" ||
+                  b.entitlements.length > 0 && b.entitlements.length <= 4
+                }
               />
             ))}
           </div>

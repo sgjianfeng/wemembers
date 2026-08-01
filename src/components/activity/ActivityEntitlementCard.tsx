@@ -32,7 +32,11 @@ export function ActivityEntitlementCard({
     defaultOpen ?? (multi || bundle.entitlements.length > 0)
   );
 
-  const isAd = mode === "ad" || (bundle.entitlements.length === 0 && bundle.href);
+  // 有权益行时一律用可展开活动卡（发现位也一样），避免首页看起来像旧版纯广告列表
+  const isAd =
+    mode === "ad" &&
+    bundle.entitlements.length === 0 &&
+    Boolean(bundle.href);
 
   if (isAd && mode !== "business") {
     return <ActivityAdCard bundle={bundle} lang={lang} />;

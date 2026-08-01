@@ -17,7 +17,16 @@ import {
 } from "@/lib/templates";
 import { isBaseCatalogPack } from "@/lib/store-defaults";
 
-const DRAW_TYPES = ["lucky_draw", "lucky_draw_v2", "voucher_sale"] as const;
+/** 顾客可见活动类型：代金 / 抽奖 / 国庆等节日满赠 */
+const DRAW_TYPES = [
+  "lucky_draw",
+  "lucky_draw_v2",
+  "voucher_sale",
+  "holiday",
+  "promotion",
+  "seasonal",
+  "event",
+] as const;
 
 export type ActivityProductBrief = {
   id: string;
@@ -221,10 +230,19 @@ export function customerOfferTitle(
 export function offerBlurb(
   a: Pick<
     JoinableActivity,
-    "kindTag" | "displayMode" | "description" | "discountPercent"
+    "kindTag" | "displayMode" | "description" | "discountPercent" | "type" | "name"
   >,
   lang: "zh" | "en"
 ): string {
+  if (
+    a.type === "holiday" ||
+    /国庆|ndp|national/i.test(a.name || "") ||
+    /国庆|ndp/i.test(a.description || "")
+  ) {
+    return lang === "en"
+      ? "Spend & get gift · grand draw chance"
+      : "满赠送券 · 大奖机会 · 桌码/前台可领";
+  }
   if (a.displayMode === "draw") {
     if (a.kindTag === "exclusive_draw") {
       return lang === "en"
@@ -318,8 +336,19 @@ function poolMeta(campaign: {
 function resolveHref(
   products: ActivityProductBrief[],
   activityId: string,
-  campaignSlug: string | null
+  campaignSlug: string | null,
+  campaignType?: string | null,
+  campaignName?: string | null,
+  tags?: string | null
 ): string {
+  // 国庆 / 节日满赠 → 统一落地页
+  if (
+    campaignType === "holiday" ||
+    /国庆|ndp|national/i.test(campaignName || "") ||
+    (tags && /ndp|国庆|national/i.test(tags))
+  ) {
+    return `/ndp/${campaignSlug || activityId}?from=table`;
+  }
   const active = products.filter((p) => p.status === "active");
   if (active.length === 1) {
     const p = active[0];
@@ -399,8 +428,13 @@ export async function listJoinableActivities(
       (x) => x.product.status === "active"
     );
     if (activeProds.length > 0) return true;
-    // legacy: no catalog yet but still a sellable campaign slug
-    return c.type === "lucky_draw" || Boolean(c.slug);
+    // legacy / 国庆满赠：无 catalog 也可凭 slug 或 holiday 展示
+    return (
+      c.type === "lucky_draw" ||
+      c.type === "holiday" ||
+      Boolean(c.slug) ||
+      (c.tags || "").includes("ndp")
+    );
   });
 
   if (candidates.length === 0) return [];
@@ -679,7 +713,10 @@ export async function listJoinableActivities(
       href: resolveHref(
         products.filter((p) => p.status === "active"),
         c.id,
-        c.slug
+        c.slug,
+        c.type,
+        c.name,
+        c.tags
       ),
       heat,
       hot: false,

@@ -295,7 +295,7 @@ export function buildCustomerActivityBundles(input: {
   });
 }
 
-/** 发现/广告位：可参与活动（无持仓时仍展示） */
+/** 发现/广告位：可参与活动（无持仓时仍展示）；可带产品线作「权益行」 */
 export function buildDiscoverActivityBundles(
   activities: Array<{
     id: string;
@@ -306,12 +306,70 @@ export function buildDiscoverActivityBundles(
     blurb?: string;
     joined?: boolean;
     kindTag?: string;
+    products?: Array<{
+      id: string;
+      name: string;
+      slug?: string | null;
+      type?: string | null;
+      buyPath?: string | null;
+    }>;
   }>,
   lang: "zh" | "en"
 ): ActivityBundle[] {
   const zh = lang === "zh";
   return activities.map((a) => {
     const tone = activityToneFromType(a.type || a.kindTag, a.name);
+    const entitlements: EntitlementItem[] = (a.products || []).map((p) => {
+      const isDraw =
+        (p.type || "").includes("lucky_draw") ||
+        tone === "draw" ||
+        tone === "ndp";
+      return {
+        id: p.id,
+        kind: isDraw ? "draw_entry" : "catalog",
+        tone: isDraw ? "draw" : "prepaid",
+        title: p.name,
+        primaryLabel: zh ? "可购买" : "Available",
+        secondaryLabel: isDraw
+          ? zh
+            ? "购券进大奖池"
+            : "Buy to enter pool"
+          : zh
+            ? "到店可花余额"
+            : "Spend in-store",
+        href: p.buyPath || (p.slug ? `/voucher/${p.slug}` : a.href),
+      };
+    });
+
+    // 国庆无产品线时补两行权益说明
+    if (tone === "ndp" && entitlements.length === 0) {
+      entitlements.push(
+        {
+          id: `${a.id}-gift`,
+          kind: "gift_coupon",
+          tone: "gift",
+          title: zh ? "国庆赠送券 S$61" : "NDP gift S$61",
+          primaryLabel: "S$61",
+          secondaryLabel: zh
+            ? "满120领取 · 自领起30天"
+            : "Spend 120 · 30d from claim",
+          href: a.href,
+        },
+        {
+          id: `${a.id}-draw`,
+          kind: "draw_entry",
+          tone: "draw",
+          title: zh ? "大奖抽奖机会" : "Grand draw chance",
+          primaryLabel: zh ? "1 次+" : "1+",
+          secondaryLabel: zh
+            ? "购券约 5 倍 · 赠送较弱"
+            : "Buy ~5× · gift weaker",
+          href: a.href,
+        }
+      );
+    }
+
+    const n = entitlements.length;
     return {
       key: `discover-${a.id}`,
       campaignId: a.id,
@@ -333,15 +391,19 @@ export function buildDiscoverActivityBundles(
               ? "到店代金"
               : "Store credit"),
       href: a.href,
-      entitlements: [],
+      entitlements,
       joined: Boolean(a.joined),
       summary: a.joined
         ? zh
-          ? "已参与"
-          : "Joined"
-        : zh
-          ? "可参与"
-          : "Join",
+          ? `已参与 · ${n} 项可看`
+          : `Joined · ${n} items`
+        : n > 0
+          ? zh
+            ? `${n} 项权益可参与`
+            : `${n} perks to join`
+          : zh
+            ? "可参与"
+            : "Join",
     };
   });
 }

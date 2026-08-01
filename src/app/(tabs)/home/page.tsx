@@ -43,9 +43,10 @@ export default async function CustomerHome() {
       select: { id: true, displayName: true, phone: true },
     }),
     listJoinableActivities({
-      limit: 20,
+      limit: 30,
       customerId: session.userId,
-      listScope: "hot",
+      // 首页展示长期 + 大奖 + 国庆，不只 hot 抽奖
+      listScope: "all",
     }),
     prisma.voucher.findMany({
       where: { customerId: session.userId, status: "active" },
@@ -163,17 +164,41 @@ export default async function CustomerHome() {
       })),
   });
 
-  // 热门活动广告：优先国庆/已 join，用同一卡片壳
+  // 活动目录：与持仓同一「活动 → 权益」结构（含产品线 / 国庆双权益说明）
+  const discoverSorted = [...activities].sort((a, b) => {
+    const score = (x: (typeof activities)[0]) => {
+      let s = 0;
+      if (x.type === "holiday" || /国庆|ndp/i.test(x.name)) s += 100;
+      if (x.displayMode === "draw") s += 50;
+      if (x.joined) s += 20;
+      if (x.hot) s += 10;
+      return s + x.heat;
+    };
+    return score(b) - score(a);
+  });
+
   const discoverBundles = buildDiscoverActivityBundles(
-    activities.map((a) => ({
+    discoverSorted.map((a) => ({
       id: a.id,
       name: a.name,
       businessName: a.businessName,
-      type: a.displayMode === "draw" ? "lucky_draw_v2" : "voucher_sale",
+      type:
+        a.type === "holiday"
+          ? "holiday"
+          : a.displayMode === "draw"
+            ? "lucky_draw_v2"
+            : a.type || "voucher_sale",
       href: a.href,
       blurb: offerBlurb(a, langCode),
       joined: a.joined,
       kindTag: a.kindTag,
+      products: (a.products || []).map((p) => ({
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        type: p.type,
+        buyPath: p.buyPath,
+      })),
     })),
     langCode
   );
