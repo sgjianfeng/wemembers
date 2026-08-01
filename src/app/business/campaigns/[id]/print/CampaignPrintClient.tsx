@@ -1368,22 +1368,47 @@ function CampaignCardSheet({
           </>
         )}
       </div>
-      <div className="px-5 py-3 flex justify-center relative z-[1] bg-card">
-        <PosterQr
-          src={qrSrc}
-          className="w-52 h-52 rounded-2xl border border-red-100 p-2 bg-white shadow-md"
-        />
-      </div>
-      <div className="px-5 pb-5 text-center relative z-[1]">
+      <div className="px-5 pt-3 pb-2 text-center relative z-[1] bg-card">
+        {festival && copy.hookLine && (
+          <p className="text-sm font-extrabold text-slate-900 leading-snug">
+            {copy.hookLine}
+          </p>
+        )}
         <p
-          className="text-base font-bold"
-          style={{ color: festival ? "#0f172a" : accent }}
+          className={cn(
+            "text-base font-bold",
+            festival ? "text-rose-700 mt-1.5" : ""
+          )}
+          style={festival ? undefined : { color: accent }}
         >
           {copy.headline}
         </p>
+        {festival && copy.hookPills && copy.hookPills.length > 0 && (
+          <div className="flex flex-wrap justify-center gap-1.5 mt-2">
+            {copy.hookPills.slice(0, 3).map((p) => (
+              <span
+                key={p}
+                className="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[10px] font-semibold text-rose-800"
+              >
+                {p}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="px-5 py-2 flex justify-center relative z-[1] bg-card">
+        <PosterQr
+          src={qrSrc}
+          className={cn(
+            "rounded-2xl border border-red-100 p-2 bg-white shadow-md",
+            festival ? "w-44 h-44" : "w-52 h-52"
+          )}
+        />
+      </div>
+      <div className="px-5 pb-5 text-center relative z-[1] bg-card">
         <p
           className={cn(
-            "text-[11px] mt-1",
+            "text-[11px] mt-0.5 leading-snug px-0.5",
             festival
               ? "text-slate-600"
               : isDark
@@ -1394,13 +1419,13 @@ function CampaignCardSheet({
           {copy.sub}
         </p>
         {festival && copy.termsLine && (
-          <p className="text-[10px] text-slate-400 mt-1 leading-snug px-1">
+          <p className="text-[10px] text-slate-500 mt-1.5 leading-snug px-1 font-medium">
             {copy.termsLine}
           </p>
         )}
         <p
           className={cn(
-            "text-[10px] mt-2",
+            "text-[10px] mt-1.5",
             festival
               ? "text-slate-500"
               : isDark

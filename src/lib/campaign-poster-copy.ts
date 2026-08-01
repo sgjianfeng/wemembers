@@ -200,10 +200,11 @@ export function buildCampaignPosterCopy(
       lang === "en"
         ? `S$${minSpend} → S$${giftAmt} · SG${giftAmt}`
         : `S$${minSpend} → S$${giftAmt} · SG${giftAmt}`;
+    // 台卡空间紧：副文案直接带关键条款，避免只改 termsLine 却被旧预览漏掉
     sub =
       lang === "en"
-        ? `S$${giftAmt} gift next visit · valid ${NDP_VALID_DAYS} days after claim`
-        : `S$${giftAmt} 赠券下次再用 · 领后${NDP_VALID_DAYS}天有效`;
+        ? `S$${giftAmt} next visit · ${NDP_VALID_DAYS}d after claim · no stacking · 1/table (≤4)`
+        : `S$${giftAmt} 下次再用 · 领后${NDP_VALID_DAYS}天 · 不可叠优惠 · 一桌一券(≤4人)`;
     // 钩子语：短、口语、抓眼球（非官方口号抄袭，原创促销向）
     hookLine =
       lang === "en"
@@ -213,10 +214,10 @@ export function buildCampaignPosterCopy(
       lang === "en"
         ? [
             "Scan at the table",
-            `S$${giftAmt} next visit`,
+            `Valid ${NDP_VALID_DAYS} days`,
             "1 table · ≤4 guests",
           ]
-        : ["桌边扫一扫", `下次再用 S$${giftAmt}`, "一桌一券·4人内"];
+        : ["桌边扫一扫", `领后${NDP_VALID_DAYS}天有效`, "一桌一券·4人内"];
     termsLine = ndpPosterTermsLine(lang);
   } else if (isDraw) {
     headline =
