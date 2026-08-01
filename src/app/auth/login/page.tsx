@@ -165,6 +165,7 @@ export default function LoginPage() {
   const [contact, setContact] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  // 客户 / 商家默认勾选「记住」，避免误关导致很快掉线
   const [rememberMe, setRememberMe] = useState(true);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -215,8 +216,8 @@ export default function LoginPage() {
     setError("");
     setPassword("");
     setMode(next === "admin" ? "code" : "password");
-    // 客户默认勾选长记住；商家默认不勾选（更偏安全）
-    setRememberMe(next === "customer");
+    // 客户 / 商家默认都勾选记住；仅管理员走短会话
+    setRememberMe(next !== "admin");
   }
 
   function goHome(role: string) {

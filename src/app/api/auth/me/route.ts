@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { clearSession, getSession } from "@/lib/auth";
+import { clearSession, maybeRefreshSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
-// GET /api/auth/me — 获取当前用户信息
+// GET /api/auth/me — 获取当前用户信息（并在临近过期时自动续期 Cookie）
 export async function GET() {
   try {
-    const session = await getSession();
+    // 活跃访问时续期，避免「勾了记住我却很快要重新登录」
+    const session = await maybeRefreshSession();
     if (!session) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
     }
