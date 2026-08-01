@@ -13,11 +13,22 @@ body {
   overflow-x: hidden;
   overscroll-behavior-y: none;
 }
-/* iOS 输入框字号 <16px 会整页放大；全局兜底 */
-input,
+/*
+ * iOS Safari：input/textarea/select 计算字号 <16px 时会强制页面缩放。
+ * 用 !important 压过 Tailwind text-sm / text-xs 等工具类。
+ */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
 textarea,
 select {
-  font-size: 16px;
+  font-size: 16px !important;
+  line-height: 1.4;
+  max-width: 100%;
+}
+/* 避免 fixed 底栏 + 键盘时 100vh 跳动 */
+@supports (height: 100dvh) {
+  .min-h-screen {
+    min-height: 100dvh;
+  }
 }
 .safe-area-pb {
   padding-bottom: env(safe-area-inset-bottom, 0px);

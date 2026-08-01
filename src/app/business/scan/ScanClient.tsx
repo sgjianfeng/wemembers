@@ -592,7 +592,7 @@ export default function ScanClient({
                 }
               }}
               onKeyDown={(e) => e.key === "Enter" && lookupVoucher()}
-              className="font-mono text-sm tracking-wider uppercase"
+              className="font-mono text-base tracking-wider uppercase"
               autoCapitalize="characters"
               autoCorrect="off"
             />
@@ -852,7 +852,7 @@ export default function ScanClient({
               value={physicalCode}
               onChange={(e) => setPhysicalCode(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === "Enter" && lookupPhysical()}
-              className="font-mono text-sm"
+              className="font-mono text-base"
             />
             <Button className="w-full" onClick={lookupPhysical} loading={physicalLoading}>
               {t("scan.lookup")}
