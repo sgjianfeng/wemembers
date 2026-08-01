@@ -10,6 +10,7 @@ import {
   type RulesSnapshot,
 } from "@/lib/templates";
 import { isFestivalNdpCampaign } from "@/lib/visual-templates";
+import { NDP_VALID_DAYS, ndpPosterTermsLine } from "@/lib/ndp-promo";
 
 export type CampaignPosterLang = "zh" | "en";
 
@@ -47,6 +48,11 @@ export type CampaignPosterCopy = {
   untilLine: string;
   /** 截止日短标签 */
   untilShort: string;
+  /**
+   * 海报底部精简条款（国庆等）：领后天数 / 不可叠优惠 / 一桌一券 等
+   * 非国庆为 null
+   */
+  termsLine?: string | null;
   discountPercent: number;
   tierAmountsSgd: number[];
   /** WhatsApp / 社交 3 条文案模板（含 {url} 占位） */
@@ -182,6 +188,7 @@ export function buildCampaignPosterCopy(
 
   let hookLine: string | null = null;
   let hookPills: string[] | null = null;
+  let termsLine: string | null = null;
 
   if (isNdp) {
     // 对齐顾客落地页 + 广告钩子（SG61 国庆意象）
@@ -195,8 +202,8 @@ export function buildCampaignPosterCopy(
         : `S$${minSpend} → S$${giftAmt} · SG${giftAmt}`;
     sub =
       lang === "en"
-        ? `S$${giftAmt} gift for next visit · valid after claim`
-        : `S$${giftAmt} 赠券下次再用 · 领后有效 · 活动期内`;
+        ? `S$${giftAmt} gift next visit · valid ${NDP_VALID_DAYS} days after claim`
+        : `S$${giftAmt} 赠券下次再用 · 领后${NDP_VALID_DAYS}天有效`;
     // 钩子语：短、口语、抓眼球（非官方口号抄袭，原创促销向）
     hookLine =
       lang === "en"
@@ -207,9 +214,10 @@ export function buildCampaignPosterCopy(
         ? [
             "Scan at the table",
             `S$${giftAmt} next visit`,
-            "No extra signup fee",
+            "1 table · ≤4 guests",
           ]
-        : ["桌边扫一扫", `下次再用 S$${giftAmt}`, "到店核销即可"];
+        : ["桌边扫一扫", `下次再用 S$${giftAmt}`, "一桌一券·4人内"];
+    termsLine = ndpPosterTermsLine(lang);
   } else if (isDraw) {
     headline =
       lang === "en" ? "Buy · instant prize · 100% win" : "买就抽 · 100% 有奖";
@@ -326,6 +334,7 @@ export function buildCampaignPosterCopy(
     tiersLine,
     untilLine,
     untilShort,
+    termsLine,
     discountPercent,
     tierAmountsSgd,
     shareTemplates,

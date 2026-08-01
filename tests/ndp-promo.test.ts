@@ -4,8 +4,11 @@
 import {
   buildReceiptFingerprint,
   buildNdpRulesSnapshot,
+  buildNdpTermsDatesView,
+  defaultNdpActivityEnd,
   expiresAtFromIssued,
   giftGrandDrawWeight,
+  ndpPosterTermsLine,
   paidHundredDrawWeight,
   paidVsGiftWeightMultiple,
   DEFAULT_NDP_RULES,
@@ -86,5 +89,30 @@ describe("ndp-promo weights", () => {
     expect(meta.enabled).toBe(true);
     expect(meta.buyVoucherSlug).toBe("meow-draw");
     expect(meta.minSpendCents).toBe(12000);
+  });
+
+  it("default activity end is 31 Aug SGT of current NDP year", () => {
+    const end = defaultNdpActivityEnd(new Date("2026-08-01T00:00:00.000Z"));
+    expect(end.toISOString()).toBe("2026-08-31T15:59:59.999Z");
+    // after Aug 31 → next year
+    const next = defaultNdpActivityEnd(new Date("2026-09-01T00:00:00.000Z"));
+    expect(next.toISOString()).toBe("2027-08-31T15:59:59.999Z");
+  });
+
+  it("terms cover 30 days, no stacking, 1/table, merchant rights", () => {
+    const view = buildNdpTermsDatesView(
+      {
+        startDate: new Date("2026-08-01T00:00:00.000Z"),
+        endDate: defaultNdpActivityEnd(new Date("2026-08-01T00:00:00.000Z")),
+      },
+      DEFAULT_NDP_RULES
+    );
+    const all = [...view.activityTermsZh, ...view.entitlementTermsZh].join(" ");
+    expect(all).toMatch(/30\s*天/);
+    expect(all).toMatch(/不可与其他优惠|不可叠/);
+    expect(all).toMatch(/一桌一券/);
+    expect(all).toMatch(/4\s*人/);
+    expect(all).toMatch(/保留|有权|解释权/);
+    expect(ndpPosterTermsLine("zh")).toMatch(/领后30天|一桌一券|有权调整/);
   });
 });

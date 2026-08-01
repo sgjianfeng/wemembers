@@ -12,6 +12,8 @@ import { prisma } from "@/lib/db";
 import { createVoucherProduct } from "@/lib/catalog";
 import {
   buildNdpRulesSnapshot,
+  defaultNdpActivityEnd,
+  defaultNdpActivityStart,
   ensureNdpGiftCoupon,
   NDP_GIFT_COUPON_CENTS,
   NDP_MIN_SPEND_CENTS,
@@ -74,9 +76,9 @@ export const DEFAULT_ACTIVITY_SLOTS: DefaultActivitySlot[] = [
     nameZh: "国庆满赠 · 满120送61",
     nameEn: "National Day · Spend 120 Get 61",
     descriptionZh:
-      "满 S$120 送 S$61 下次用；购券冲大奖约 5 倍；现金可凭票领赠送签",
+      "满 S$120 送 S$61 下次用；领后 30 天有效；不可叠优惠；一桌一券（4 人内）；活动至 8 月 31 日",
     descriptionEn:
-      "Spend S$120 get S$61 next visit; buy for ~5× draw; cash path gift entry",
+      "Spend S$120 get S$61 next visit; valid 30 days after claim; no stacking; 1/table (≤4); ends 31 Aug",
     customerPath: "ndp",
   },
 ];
@@ -347,10 +349,9 @@ export async function ensureDefaultActivities(
         }
       }
 
-      const start = new Date();
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(start);
-      end.setMonth(end.getMonth() + 2);
+      // 国庆窗口：8/1–8/31（新加坡），非 start+2 个月
+      const start = defaultNdpActivityStart();
+      const end = defaultNdpActivityEnd();
       const rulesSnapshot = buildNdpRulesSnapshot({
         buyVoucherSlug: grandCampaignSlug,
         enabled: true,
@@ -358,7 +359,7 @@ export async function ensureDefaultActivities(
       const name = lang === "en" ? slot.nameEn : slot.nameZh;
       const description =
         lang === "en" ? slot.descriptionEn : slot.descriptionZh;
-      const baseSlug = `ndp-${businessId.slice(-6)}-${new Date().getFullYear()}`;
+      const baseSlug = `ndp-${businessId.slice(-6)}-${end.getUTCFullYear()}`;
 
       if (ndp) {
         ndp = await prisma.campaign.update({
@@ -379,6 +380,7 @@ export async function ensureDefaultActivities(
             ]),
             rulesSnapshot,
             minSpendCents: NDP_MIN_SPEND_CENTS,
+            startDate: start,
             endDate: end,
             ...(ndp.slug ? {} : { slug: baseSlug }),
           },

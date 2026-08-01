@@ -508,14 +508,22 @@ export async function paintCampaignPosterCanvas(
     ctx.fillStyle = bodyMuted;
     ctx.font = `${Math.round(22 * scale)}px system-ui, -apple-system, sans-serif`;
     fillTextCenter(ctx, opts.copy.sub, w / 2, ty + Math.round(40 * scale), 42);
+    let untilY = ty + Math.round(78 * scale);
+    if (opts.copy.termsLine) {
+      ctx.fillStyle = isPosterLike ? "#94a3b8" : muted;
+      ctx.font = `${Math.round(16 * scale)}px system-ui, -apple-system, sans-serif`;
+      fillTextCenter(
+        ctx,
+        opts.copy.termsLine,
+        w / 2,
+        ty + Math.round(68 * scale),
+        52
+      );
+      untilY = ty + Math.round(98 * scale);
+    }
+    ctx.fillStyle = bodyMuted;
     ctx.font = `${Math.round(20 * scale)}px system-ui, -apple-system, sans-serif`;
-    fillTextCenter(
-      ctx,
-      opts.copy.untilLine,
-      w / 2,
-      ty + Math.round(78 * scale),
-      36
-    );
+    fillTextCenter(ctx, opts.copy.untilLine, w / 2, untilY, 36);
 
     if (opts.layout !== "sticker") {
       ctx.fillStyle = bodyMuted;
@@ -625,12 +633,19 @@ export async function paintCampaignPosterCanvas(
   }
   y = qrY + qrSize + Math.round((isA4 ? 36 : 28) * scale);
 
-  // 底部说明 + 有效期
+  // 底部说明 + 条款 + 有效期
   ctx.textAlign = "center";
   ctx.fillStyle = "#64748b";
   ctx.font = `${Math.round((isA4 ? 18 : 16) * scale)}px system-ui, -apple-system, sans-serif`;
   fillTextCenter(ctx, opts.copy.sub, w / 2, y, 42);
-  y += Math.round((isA4 ? 30 : 26) * scale);
+  y += Math.round((isA4 ? 28 : 24) * scale);
+  if (opts.copy.termsLine) {
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = `${Math.round((isA4 ? 15 : 13) * scale)}px system-ui, -apple-system, sans-serif`;
+    fillTextCenter(ctx, opts.copy.termsLine, w / 2, y, 52);
+    y += Math.round((isA4 ? 26 : 22) * scale);
+  }
+  ctx.fillStyle = "#64748b";
   ctx.font = `${Math.round((isA4 ? 17 : 15) * scale)}px system-ui, -apple-system, sans-serif`;
   fillTextCenter(ctx, opts.copy.untilLine, w / 2, y, 40);
 

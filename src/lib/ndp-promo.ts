@@ -34,6 +34,28 @@ export const NDP_COUPON_TITLE_EN = "National Day Gift S$61";
 /** 国庆默认不双重保护：活动截止不缩短已领 30 天 */
 export const NDP_DUAL_PROTECTION_DEFAULT = false;
 
+/**
+ * 国庆活动默认截止：当年 8 月 31 日 23:59:59（新加坡 UTC+8）。
+ * 若当前已过该日，则落到次年 8/31。
+ */
+export function defaultNdpActivityEnd(from: Date = new Date()): Date {
+  const y = from.getUTCFullYear();
+  // Aug 31 23:59:59.999 SGT = 15:59:59.999 UTC
+  let end = new Date(Date.UTC(y, 7, 31, 15, 59, 59, 999));
+  if (from.getTime() > end.getTime()) {
+    end = new Date(Date.UTC(y + 1, 7, 31, 15, 59, 59, 999));
+  }
+  return end;
+}
+
+/** 国庆活动默认开始：当年 8 月 1 日 00:00 SGT（已过则次年） */
+export function defaultNdpActivityStart(from: Date = new Date()): Date {
+  const end = defaultNdpActivityEnd(from);
+  const y = end.getUTCFullYear();
+  // Aug 1 00:00:00 SGT = Jul 31 16:00 UTC
+  return new Date(Date.UTC(y, 6, 31, 16, 0, 0, 0));
+}
+
 type Tx = Prisma.TransactionClient;
 
 export type NdpRules = {
@@ -121,39 +143,64 @@ export function buildNdpTermsDatesView(campaign: {
   endDate: Date;
   description?: string | null;
 }, rules: NdpRules): TermsDatesView {
+  const minSgd = (rules.minSpendCents / 100).toFixed(0);
+  const giftSgd = (rules.giftCouponCents / 100).toFixed(0);
   return buildTermsDatesView({
     activityStart: campaign.startDate,
     activityEnd: campaign.endDate,
     entitlementValidDays: rules.validDays,
     dualProtection: rules.dualProtection,
     activityTermsZh: [
-      `活动期内消费满 S$${(rules.minSpendCents / 100).toFixed(0)} 可领赠送券`,
+      `活动期内消费满 S$${minSgd} 可领赠送券 S$${giftSgd}`,
+      "一桌一券（4 人以内），每桌限领一份",
+      "不可与其他优惠、折扣或促销同时使用",
       "购券路径可获更高权重大奖资格；现金可走前台凭票",
-      "活动结束后停止新领取",
+      "活动结束后停止新领取；已领券按权益条款继续有效",
+      "本公司保留调整活动规则、暂停或终止活动之权利；解释权归本公司",
       ...(campaign.description ? [campaign.description] : []),
     ],
     activityTermsEn: [
-      `During activity, spend ≥ S$${(rules.minSpendCents / 100).toFixed(0)} to claim gift`,
+      `During activity, spend ≥ S$${minSgd} to claim S$${giftSgd} gift`,
+      "One voucher per table (up to 4 guests)",
+      "Cannot be combined with other offers, discounts, or promotions",
       "Buy voucher for higher draw weight; cash path via counter receipt",
-      "No new claims after activity end",
+      "No new claims after activity end; held gifts keep perk validity",
+      "Merchant may adjust, suspend, or end the promo; final interpretation reserved",
     ],
     entitlementTermsZh: [
-      `赠送券自领取起 ${rules.validDays} 天内有效（有效至以到账为准）`,
+      `领券后 ${rules.validDays} 天内有效（有效至以到账页为准）`,
       rules.dualProtection
         ? "已开启双重保护：与活动截止取较早"
         : "活动截止不缩短已领券的有效天数",
-      `面额 S$${(rules.giftCouponCents / 100).toFixed(0)} · 不可兑现 · 一次使用`,
+      `面额 S$${giftSgd} · 下次消费使用 · 不可兑现 · 一次核销`,
+      "不可与其他优惠叠加使用",
+      "一桌一券（4 人以内）",
       "仅倒计时大奖 · 无即时小奖",
+      "本公司有权在合理范围内调整使用规则",
     ],
     entitlementTermsEn: [
-      `Gift coupon valid ${rules.validDays} days from claim (see valid-until on perk)`,
+      `Valid ${rules.validDays} days from claim (see valid-until on perk)`,
       rules.dualProtection
         ? "Dual protection on: earlier of relative days vs activity end"
         : "Activity end does not shorten held gift validity",
-      `Face S$${(rules.giftCouponCents / 100).toFixed(0)} · non-cash · one-time`,
+      `Face S$${giftSgd} · next visit · non-cash · one-time redeem`,
+      "Cannot stack with other promotions",
+      "One voucher per table (≤4 guests)",
       "Grand countdown only · no small prizes",
+      "Merchant may reasonably adjust redeem rules",
     ],
   });
+}
+
+/** 海报底部精简条款（台卡空间有限） */
+export function ndpPosterTermsLine(
+  lang: "zh" | "en" = "zh",
+  rules: Pick<NdpRules, "validDays"> = DEFAULT_NDP_RULES
+): string {
+  if (lang === "en") {
+    return `Valid ${rules.validDays}d after claim · no stacking · 1/table (≤4) · subject to change`;
+  }
+  return `领后${rules.validDays}天有效 · 不可叠优惠 · 一桌一券(≤4人) · 本店有权调整`;
 }
 
 export function buildReceiptFingerprint(input: {
