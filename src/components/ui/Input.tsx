@@ -8,7 +8,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, label, prefix, error, ...props }, ref) => {
+  ({ className, type, label, prefix, error, style, ...props }, ref) => {
     return (
       <div className="w-full min-w-0 max-w-full">
         {label && (
@@ -24,18 +24,20 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           )}
           <input
             type={type}
+            // Safari 聚焦：强制 16px，避免整页缩放导致「变形」
+            style={{ fontSize: 16, lineHeight: "1.4", ...style }}
             className={cn(
-              "flex h-11 w-full min-w-0 max-w-full box-border rounded-lg border border-input bg-background px-3 py-2",
+              "block h-11 w-full min-w-0 max-w-full box-border appearance-none rounded-lg border border-input bg-background px-3 py-0",
               "file:border-0 file:bg-transparent file:text-sm file:font-medium",
               "placeholder:text-muted-foreground",
-              // ring 画在内侧，避免聚焦时外轮廓把卡片撑歪
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-              "disabled:cursor-not-allowed disabled:opacity-50 transition-colors",
+              // 不用 ring：Safari 圆角 + ring 易出现双边框/拉伸感
+              "outline-none focus:outline-none focus:ring-0 focus-visible:ring-0",
+              "focus:border-primary",
+              "disabled:cursor-not-allowed disabled:opacity-50",
+              "transition-[border-color] duration-150",
               prefix && "pl-10",
-              error && "border-destructive focus-visible:ring-destructive",
-              className,
-              // 必须放最后：调用方 text-sm 会触发 iOS 聚焦整页放大
-              "text-base leading-normal"
+              error && "border-destructive focus:border-destructive",
+              className
             )}
             ref={ref}
             {...props}

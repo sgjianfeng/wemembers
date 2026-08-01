@@ -80,14 +80,15 @@ function PasswordField({
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
+          // Safari：内联 16px 防止聚焦整页缩放；不用 ring（外侧光晕在圆角上会「变形」）
+          style={{ fontSize: 16, lineHeight: "1.4" }}
           className={cn(
-            // text-base + box-border：避免 iOS 聚焦缩放 / 边框把宽度撑破
-            "flex h-12 w-full min-w-0 max-w-full box-border rounded-xl border border-input bg-background",
-            "px-3 py-2 pr-11 text-base leading-normal",
+            "block h-12 w-full min-w-0 max-w-full box-border appearance-none rounded-xl",
+            "border border-input bg-background px-3 py-0 pr-11",
             "placeholder:text-muted-foreground",
-            // ring-inset、无 offset：聚焦时不外扩、不顶布局
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-            "transition-colors"
+            "outline-none focus:outline-none focus:ring-0 focus-visible:ring-0",
+            "focus:border-primary",
+            "transition-[border-color] duration-150"
           )}
         />
         <button
@@ -371,7 +372,7 @@ export default function LoginPage() {
   const inSetPasswordFlow = mode === "set-password-prompt" || mode === "set-password";
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-gradient-to-b from-slate-50 via-white to-white overflow-x-hidden overflow-y-auto">
+    <div className="min-h-[100dvh] flex flex-col bg-gradient-to-b from-slate-50 via-white to-white overflow-x-hidden overflow-y-auto touch-manipulation">
       <TopHeader variant="default" fallbackUrl="/" preferFallback />
 
       <div className="flex-1 flex flex-col px-5 pt-4 pb-10 max-w-md mx-auto w-full min-w-0 box-border">

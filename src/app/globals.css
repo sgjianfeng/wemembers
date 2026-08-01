@@ -4,10 +4,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* 移动端：防止横向溢出、键盘弹起后页面错位 */
+/* 移动端：防止横向溢出、键盘弹起后页面错位 / 双击缩放 */
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  touch-action: manipulation;
 }
 body {
   overflow-x: hidden;
@@ -21,10 +22,18 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="
 textarea,
 select {
   font-size: 16px !important;
-  line-height: 1.4;
+  line-height: 1.4 !important;
   max-width: 100%;
-  /* 防止聚焦 ring/边框把父级横向撑破 */
   box-sizing: border-box;
+  /* Safari 密码框默认内阴影/圆角叠加会显「变形」 */
+  -webkit-appearance: none;
+  appearance: none;
+}
+/* 关掉 iOS 聚焦时的系统高亮叠层 */
+input:focus,
+textarea:focus,
+select:focus {
+  -webkit-tap-highlight-color: transparent;
 }
 /* 避免 fixed 底栏 + 键盘时 100vh 跳动 */
 @supports (height: 100dvh) {

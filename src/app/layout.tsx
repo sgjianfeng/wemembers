@@ -28,10 +28,16 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
 };
 
-/** 移动端：避免键盘顶起后布局错乱；输入框保持 ≥16px 防 iOS 强制放大 */
+/**
+ * 移动端 viewport
+ * - maximumScale/userScalable：抑制 Safari 聚焦输入时整页缩放（登录框「变形」主因之一）
+ * - 输入框仍强制 ≥16px（globals.css）作双保险
+ */
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#fafafa" },
