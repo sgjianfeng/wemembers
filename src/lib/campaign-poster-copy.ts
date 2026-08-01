@@ -34,6 +34,13 @@ export type CampaignPosterCopy = {
   benefitLine: string;
   /** 副文案（动作说明） */
   sub: string;
+  /**
+   * 广告钩子语（国庆等）：更抓眼球，放在 QR 上方
+   * 例：本单满就送 · 下次再来吃
+   */
+  hookLine?: string | null;
+  /** 卖点小标签，最多 3 条 */
+  hookPills?: string[] | null;
   /** 档位一行，无则 null */
   tiersLine: string | null;
   /** 活动至 */
@@ -173,20 +180,36 @@ export function buildCampaignPosterCopy(
   const minSpend = spendGet ? Number(spendGet[1]) : 120;
   const giftAmt = spendGet ? Number(spendGet[2]) : 61;
 
+  let hookLine: string | null = null;
+  let hookPills: string[] | null = null;
+
   if (isNdp) {
-    // SG61：面额 61 对应 Singapore 61 年/国庆意象
+    // 对齐顾客落地页 + 广告钩子（SG61 国庆意象）
     headline =
       lang === "en"
-        ? "Scan · join SG National Day"
-        : "扫码参加 · 国庆满赠";
+        ? "Scan · claim your gift"
+        : "扫码领取 · 本单满赠";
     benefitLine =
       lang === "en"
-        ? `Spend S$${minSpend} → S$${giftAmt} · SG${giftAmt}`
-        : `满 S$${minSpend} 送 S$${giftAmt} · SG${giftAmt}`;
+        ? `S$${minSpend} → S$${giftAmt} · SG${giftAmt}`
+        : `S$${minSpend} → S$${giftAmt} · SG${giftAmt}`;
     sub =
       lang === "en"
-        ? `S$${giftAmt} gift next visit · valid from claim`
-        : `S$${giftAmt} 赠券下次用 · 领后有效 · 活动期内`;
+        ? `S$${giftAmt} gift for next visit · valid after claim`
+        : `S$${giftAmt} 赠券下次再用 · 领后有效 · 活动期内`;
+    // 钩子语：短、口语、抓眼球（非官方口号抄袭，原创促销向）
+    hookLine =
+      lang === "en"
+        ? `Celebrate SG${giftAmt} · Spend S$${minSpend}, get S$${giftAmt} back`
+        : `庆 SG${giftAmt} · 本单满 S$${minSpend} 就送 S$${giftAmt}`;
+    hookPills =
+      lang === "en"
+        ? [
+            "Scan at the table",
+            `S$${giftAmt} next visit`,
+            "No extra signup fee",
+          ]
+        : ["桌边扫一扫", `下次再用 S$${giftAmt}`, "到店核销即可"];
   } else if (isDraw) {
     headline =
       lang === "en" ? "Buy · instant prize · 100% win" : "买就抽 · 100% 有奖";
@@ -298,6 +321,8 @@ export function buildCampaignPosterCopy(
     headline,
     benefitLine,
     sub,
+    hookLine,
+    hookPills,
     tiersLine,
     untilLine,
     untilShort,

@@ -63,6 +63,7 @@ export default async function CampaignPrintPage({
     where: { id: session.userId },
     select: {
       businessName: true,
+      displayName: true,
       businessLogo: true,
       id: true,
     },
@@ -112,7 +113,11 @@ export default async function CampaignPrintPage({
         endDate={campaign.endDate.toISOString()}
         rulesSnapshot={campaign.rulesSnapshot}
         voucherTiers={campaign.voucherTiers}
-        businessName={business?.businessName || null}
+        businessName={
+          business?.displayName?.trim() ||
+          business?.businessName ||
+          null
+        }
         businessLogo={business?.businessLogo || null}
         stores={stores}
         tags={campaign.tags}

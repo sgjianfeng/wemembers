@@ -27,7 +27,10 @@ import {
   type ThemeColorId,
   type VisualTemplateId,
 } from "@/lib/visual-templates";
-import { SingaporeFlagBackdrop } from "@/components/campaign/SingaporeFlagBackdrop";
+import {
+  SingaporeCrescentStars,
+} from "@/components/campaign/SingaporeFlagBackdrop";
+import { SG_NDP_RED } from "@/lib/visual-templates";
 
 type LayoutId = CampaignPosterLayoutId;
 
@@ -869,47 +872,91 @@ function CampaignCardSheet({
               : "border-border print:border-slate-400"
         )}
         style={{
-          background: festival ? undefined : isDark ? "#1E1B2E" : undefined,
+          background: festival
+            ? accent || SG_NDP_RED
+            : isDark
+              ? "#1E1B2E"
+              : undefined,
         }}
       >
         {festival && (
-          <SingaporeFlagBackdrop
-            red={accent}
-            className="absolute inset-0 pointer-events-none"
-          />
+          <div
+            className="pointer-events-none absolute right-2 top-2 z-0 h-12 w-12 opacity-80"
+            aria-hidden
+          >
+            <SingaporeCrescentStars red={accent || SG_NDP_RED} size={48} />
+          </div>
         )}
         <div
           className={cn(
-            "px-4 pt-4 pb-3 text-center relative z-[1] overflow-hidden",
-            festival ? "text-white flex-[0.95]" : "text-white"
+            "px-4 pt-4 pb-3 relative z-[1] overflow-hidden",
+            festival ? "text-white flex-[1.05]" : "text-white text-center"
           )}
           style={{
             background: festival ? "transparent" : headerBg,
           }}
         >
-          {festival && (
-            <span className="absolute left-2 top-2 text-[10px] font-bold tracking-wider text-white/90">
-              {lang === "en" ? "SG NDP" : "SG · 国庆"}
-            </span>
-          )}
-          <div className="flex items-center justify-center gap-2">
-            {businessLogo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={businessLogo}
-                alt=""
-                className="w-9 h-9 object-contain rounded-lg bg-card p-0.5"
-              />
-            ) : (
-              <span className="text-xl">🎰</span>
-            )}
-            <div className="min-w-0 text-left">
-              <p className="text-sm font-bold truncate">{campaignName}</p>
-              <p className="text-[10px] text-white/70 truncate">
-                {businessName}
+          {festival ? (
+            <>
+              <p className="text-[10px] font-semibold text-white/95 pr-12">
+                {lang === "en"
+                  ? "Table · spend & get"
+                  : "桌边扫码 · 结账满额即送"}
               </p>
+              <div className="flex items-center gap-2 mt-2 pr-10">
+                {businessLogo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={businessLogo}
+                    alt=""
+                    className="w-10 h-10 object-cover rounded-xl bg-white"
+                  />
+                ) : (
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/20 text-lg">
+                    🎁
+                  </span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-white/90">
+                    SG61 · {lang === "en" ? "National Day" : "国庆满赠"}
+                  </p>
+                  <p className="text-sm font-bold truncate">
+                    {businessName || campaignName}
+                  </p>
+                  <p className="text-[10px] text-white/85 truncate">
+                    {campaignName}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-2 rounded-xl bg-white/15 border border-white/25 px-2.5 py-2">
+                <p className="text-base font-extrabold tabular-nums leading-none">
+                  {copy.benefitLine.replace(/ · SG\d+/i, "")}
+                  <span className="ml-1.5 text-xs font-bold text-white/90">
+                    SG61
+                  </span>
+                </p>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-center gap-2">
+              {businessLogo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={businessLogo}
+                  alt=""
+                  className="w-9 h-9 object-contain rounded-lg bg-card p-0.5"
+                />
+              ) : (
+                <span className="text-xl">🎰</span>
+              )}
+              <div className="min-w-0 text-left">
+                <p className="text-sm font-bold truncate">{campaignName}</p>
+                <p className="text-[10px] text-white/70 truncate">
+                  {businessName}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
           {isDist && (
             <p className="mt-1.5 text-[10px] font-semibold text-amber-200">
               {lang === "en" ? "Via" : "分发"} · {distLabel}
@@ -919,7 +966,7 @@ function CampaignCardSheet({
         <div
           className={cn(
             "flex-1 flex flex-col items-center justify-between p-4 relative z-[1]",
-            festival ? "text-slate-900" : isDark ? "text-slate-100" : "bg-card"
+            festival ? "bg-white text-slate-900" : isDark ? "text-slate-100" : "bg-card"
           )}
         >
           {!festival && (
@@ -930,24 +977,12 @@ function CampaignCardSheet({
               {copy.benefitLine}
             </p>
           )}
-          {festival && (
-            <p className="text-sm font-bold text-center leading-snug text-white -mt-1 mb-1 drop-shadow-sm">
-              {copy.benefitLine}
-            </p>
-          )}
           <PosterQr
             src={qrSrc}
             className="w-36 h-36 rounded-xl border bg-white p-1 shadow-sm"
           />
           <div className="text-center w-full">
-            <p
-              className={cn(
-                "text-sm font-bold",
-                festival ? "text-slate-900" : undefined
-              )}
-            >
-              {copy.headline}
-            </p>
+            <p className="text-sm font-bold">{copy.headline}</p>
             <p
               className={cn(
                 "text-[10px] mt-0.5 line-clamp-2",
@@ -969,59 +1004,124 @@ function CampaignCardSheet({
         data-campaign-poster={layout}
         data-campaign-print-card
         className={cn(
-          "w-full rounded-2xl overflow-hidden border shadow-sm print:border-slate-400 print:shadow-none relative",
-          festival ? "border-red-800/30" : "border-border bg-card",
+          "w-full rounded-2xl overflow-hidden border shadow-sm print:border-slate-400 print:shadow-none relative bg-card",
+          festival ? "border-red-800/30" : "border-border",
           a4
             ? "max-w-[420px] campaign-a4-sheet print:rounded-none"
             : "max-w-[400px]"
         )}
       >
-        {festival && (
-          <SingaporeFlagBackdrop
-            red={accent}
-            className="absolute inset-0 pointer-events-none"
-          />
-        )}
         <div
           className={cn(
-            "text-center relative z-[1]",
-            festival ? "text-white" : "text-white",
-            a4 ? "px-8 pt-10 pb-7" : "px-6 pt-7 pb-5"
+            "relative z-[1] text-white overflow-hidden",
+            a4 ? "px-6 pt-8 pb-5" : "px-5 pt-6 pb-4"
           )}
           style={{
-            background: festival ? "transparent" : headerBg,
+            background: festival ? accent || SG_NDP_RED : headerBg,
           }}
         >
           {festival && (
-            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/95 mb-2">
-              {lang === "en" ? "Singapore · National Day" : "新加坡 · 国庆满赠"}
-            </p>
-          )}
-          {businessLogo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={businessLogo}
-              alt=""
-              className={cn(
-                "object-contain rounded-2xl bg-card mx-auto p-1",
-                a4 ? "w-16 h-16" : "w-14 h-14"
-              )}
-            />
-          ) : (
             <div
-              className={cn(
-                "rounded-2xl bg-white/20 mx-auto flex items-center justify-center text-3xl",
-                a4 ? "w-16 h-16" : "w-14 h-14"
-              )}
+              className="pointer-events-none absolute right-3 top-3 h-14 w-14 opacity-80"
+              aria-hidden
             >
-              🎰
+              <SingaporeCrescentStars red={accent || SG_NDP_RED} size={56} />
             </div>
           )}
-          <h1 className={cn("font-bold mt-3", a4 ? "text-2xl" : "text-xl")}>
-            {campaignName}
-          </h1>
-          {businessName && (
-            <p className="text-white/70 text-sm mt-1">{businessName}</p>
+          {festival ? (
+            <>
+              <p className="text-[10px] font-semibold tracking-wide text-white/95 pr-14">
+                {lang === "en"
+                  ? "Table scan · spend & get"
+                  : "桌边扫码 · 结账满额即送"}
+              </p>
+              <div className="flex items-center gap-3 mt-3 pr-12">
+                {businessLogo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={businessLogo}
+                    alt=""
+                    className={cn(
+                      "object-cover rounded-2xl bg-white shrink-0",
+                      a4 ? "w-14 h-14" : "w-12 h-12"
+                    )}
+                  />
+                ) : (
+                  <div
+                    className={cn(
+                      "rounded-2xl bg-white/20 flex items-center justify-center text-2xl shrink-0",
+                      a4 ? "w-14 h-14" : "w-12 h-12"
+                    )}
+                  >
+                    🎁
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/90">
+                    SG61 · {lang === "en" ? "National Day" : "国庆满赠"}
+                  </p>
+                  <h1
+                    className={cn(
+                      "font-bold mt-0.5 leading-snug truncate",
+                      a4 ? "text-xl" : "text-lg"
+                    )}
+                  >
+                    {businessName || campaignName}
+                  </h1>
+                  <p className="text-xs text-white/85 truncate mt-0.5">
+                    {campaignName}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 rounded-2xl bg-white/15 border border-white/25 px-3.5 py-3">
+                <p className="text-[11px] text-white/90">{campaignName}</p>
+                <p
+                  className={cn(
+                    "font-extrabold tabular-nums mt-0.5",
+                    a4 ? "text-2xl" : "text-xl"
+                  )}
+                >
+                  {copy.benefitLine.replace(/ · SG\d+/i, "")}
+                  <span className="ml-2 text-sm font-bold text-white/90">
+                    SG61
+                  </span>
+                </p>
+                <p className="text-[11px] text-white/90 mt-1 leading-snug">
+                  {copy.sub}
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              {businessLogo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={businessLogo}
+                  alt=""
+                  className={cn(
+                    "object-contain rounded-2xl bg-card mx-auto p-1",
+                    a4 ? "w-16 h-16" : "w-14 h-14"
+                  )}
+                />
+              ) : (
+                <div
+                  className={cn(
+                    "rounded-2xl bg-white/20 mx-auto flex items-center justify-center text-3xl",
+                    a4 ? "w-16 h-16" : "w-14 h-14"
+                  )}
+                >
+                  🎰
+                </div>
+              )}
+              <h1 className={cn("font-bold mt-3 text-center", a4 ? "text-2xl" : "text-xl")}>
+                {campaignName}
+              </h1>
+              {businessName && (
+                <p className="text-white/70 text-sm mt-1 text-center">
+                  {businessName}
+                </p>
+              )}
+            </>
           )}
           {isDist && (
             <p className="mt-2 inline-block px-3 py-0.5 rounded-full bg-white/20 text-xs font-semibold">
@@ -1031,8 +1131,8 @@ function CampaignCardSheet({
         </div>
         <div
           className={cn(
-            "text-center relative z-[1]",
-            a4 ? "px-8 py-7" : "px-6 py-5"
+            "text-center relative z-[1] bg-card",
+            a4 ? "px-7 py-6" : "px-6 py-5"
           )}
         >
           {!festival && (
@@ -1043,38 +1143,54 @@ function CampaignCardSheet({
               {copy.benefitLine}
             </p>
           )}
-          {festival && (
+          {festival && copy.hookLine && (
             <p
               className={cn(
-                "font-bold leading-snug text-white",
+                "font-extrabold text-slate-900 leading-snug",
                 a4 ? "text-xl" : "text-lg"
               )}
             >
-              {copy.benefitLine}
+              {copy.hookLine}
             </p>
           )}
           <p
             className={cn(
-              "font-bold mt-2",
-              festival ? "text-slate-900" : "text-foreground",
-              a4 ? "text-lg" : "text-base"
+              "font-bold",
+              festival
+                ? "text-rose-700 mt-2"
+                : "text-foreground mt-2",
+              a4 ? "text-base" : "text-sm"
             )}
           >
             {copy.headline}
           </p>
-          <p
-            className={cn(
-              "text-xs mt-1",
-              festival ? "text-slate-600" : "text-muted-foreground"
-            )}
-          >
-            {copy.sub}
-          </p>
+          {festival && copy.hookPills && copy.hookPills.length > 0 ? (
+            <div className="flex flex-wrap justify-center gap-1.5 mt-3">
+              {copy.hookPills.slice(0, 3).map((p) => (
+                <span
+                  key={p}
+                  className="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-800"
+                >
+                  {p}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p
+              className={cn(
+                "text-xs mt-1",
+                festival ? "text-slate-600" : "text-muted-foreground"
+              )}
+            >
+              {copy.sub}
+            </p>
+          )}
           <PosterQr
             src={qrSrc}
             className={cn(
-              "mx-auto mt-4 rounded-2xl border p-2 bg-white shadow-sm",
-              a4 ? "w-60 h-60" : "w-52 h-52"
+              "mx-auto mt-4 rounded-2xl border border-rose-100 p-2 bg-white shadow-sm",
+              // A4 预览：中等 QR，不再占半屏
+              a4 ? "w-36 h-36" : festival ? "w-40 h-40" : "w-52 h-52"
             )}
           />
           <p
@@ -1083,8 +1199,11 @@ function CampaignCardSheet({
               festival ? "text-slate-500" : "text-muted-foreground"
             )}
           >
-            {copy.untilLine}
+            {festival ? copy.sub : copy.untilLine}
           </p>
+          {festival && (
+            <p className="text-[11px] text-slate-500 mt-1">{copy.untilLine}</p>
+          )}
           <p
             className={cn(
               "text-[9px] font-mono break-all mt-2",
@@ -1106,14 +1225,14 @@ function CampaignCardSheet({
     );
   }
 
-  // tent — 国庆：国旗背景 + 内容；其它浅底/深色块
+  // tent — 国庆：落地页同款（整块红 + 品牌 + 满赠卡 + 右上星月）
   return (
     <div
       data-campaign-print-card
       className={cn(
         "w-full max-w-[360px] rounded-2xl border shadow-sm overflow-hidden print:border-slate-400 relative",
         festival
-          ? "border-red-800/30"
+          ? "border-red-800/30 bg-card"
           : isDark
             ? "border-slate-700"
             : "border-border bg-card"
@@ -1124,89 +1243,122 @@ function CampaignCardSheet({
           : undefined
       }
     >
-      {festival && (
-        <SingaporeFlagBackdrop
-          red={accent}
-          className="absolute inset-0 pointer-events-none"
-        />
-      )}
       <div
         className={cn(
-          "px-5 pt-5 pb-3 text-center relative z-[1]",
-          festival && "text-white"
+          "px-5 pt-4 pb-4 relative z-[1] overflow-hidden",
+          festival ? "text-white" : "text-center"
         )}
+        style={
+          festival
+            ? { backgroundColor: accent || SG_NDP_RED }
+            : undefined
+        }
       >
-        <p
-          className={cn(
-            "text-[10px] font-semibold tracking-[0.2em] uppercase",
-            festival
-              ? "text-white/95"
-              : isDark
-                ? "text-amber-300/90"
-                : "text-amber-700 dark:text-amber-400/90"
-          )}
-        >
-          {festival
-            ? lang === "en"
-              ? "Singapore · National Day"
-              : "新加坡 · 国庆"
-            : `WeMembers · ${lang === "en" ? "Activity" : "活动"}`}
-        </p>
-        <div className="flex items-center justify-center gap-2 mt-3">
-          {businessLogo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={businessLogo}
-              alt=""
-              className="w-12 h-12 object-contain rounded-xl border bg-white"
-            />
-          ) : null}
-          <div className="text-left min-w-0">
-            <h1 className="text-lg font-bold leading-tight">{campaignName}</h1>
-            {businessName && (
-              <p
-                className={cn(
-                  "text-[11px]",
-                  festival
-                    ? "text-white/85"
-                    : isDark
-                      ? "text-slate-400"
-                      : "text-muted-foreground"
-                )}
-              >
-                {businessName}
-              </p>
-            )}
+        {festival && (
+          <div
+            className="pointer-events-none absolute right-2.5 top-2.5 h-14 w-14 opacity-80"
+            aria-hidden
+          >
+            <SingaporeCrescentStars red={accent || SG_NDP_RED} size={56} />
           </div>
-        </div>
-        {isDist && (
+        )}
+        {!festival && (
           <p
             className={cn(
-              "mt-2 text-[11px] font-semibold inline-block px-2 py-0.5 rounded-full",
-              festival
-                ? "text-amber-100 bg-white/15"
-                : "text-amber-800 bg-amber-50 dark:bg-amber-950/35 dark:text-amber-200"
+              "text-[10px] font-semibold tracking-[0.2em] uppercase",
+              isDark
+                ? "text-amber-300/90"
+                : "text-amber-700 dark:text-amber-400/90"
             )}
           >
-            {lang === "en" ? "Via" : "分发"} · {distLabel}
+            {`WeMembers · ${lang === "en" ? "Activity" : "活动"}`}
           </p>
         )}
-        <p
-          className="mt-3 text-base font-bold leading-snug rounded-full px-3 py-1.5 inline-block"
-          style={
-            festival
-              ? {
-                  color: "#fff",
-                  background: "rgba(255,255,255,0.18)",
-                  border: "1px solid rgba(255,255,255,0.45)",
-                }
-              : { color: isDark ? "#FDE68A" : accent }
-          }
-        >
-          {copy.benefitLine}
-        </p>
+        {festival ? (
+          <>
+            <p className="text-[11px] font-semibold text-white/95 pr-14">
+              {lang === "en"
+                ? "Table scan · spend & get"
+                : "桌边扫码 · 结账满额即送"}
+            </p>
+            <div className="flex items-center gap-3 mt-3 pr-12">
+              {businessLogo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={businessLogo}
+                  alt=""
+                  className="w-12 h-12 object-cover rounded-xl bg-white shrink-0"
+                />
+              ) : null}
+              <div className="text-left min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/90">
+                  SG61 · {lang === "en" ? "National Day" : "国庆满赠"}
+                </p>
+                <h1 className="text-lg font-bold leading-snug truncate">
+                  {businessName || campaignName}
+                </h1>
+                <p className="text-[12px] text-white/85 truncate">
+                  {campaignName}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 rounded-2xl bg-white/15 border border-white/25 px-3.5 py-3 text-left">
+              <p className="text-[11px] text-white/90">{campaignName}</p>
+              <p className="text-xl font-extrabold tabular-nums mt-0.5">
+                {copy.benefitLine.replace(/ · SG\d+/i, "")}
+                <span className="ml-2 text-sm font-bold text-white/90">
+                  SG61
+                </span>
+              </p>
+              <p className="text-[11px] text-white/90 mt-1 leading-snug">
+                {copy.sub}
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center justify-center gap-2 mt-3">
+              {businessLogo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={businessLogo}
+                  alt=""
+                  className="w-12 h-12 object-contain rounded-xl border bg-white"
+                />
+              ) : null}
+              <div className="text-left min-w-0">
+                <h1 className="text-lg font-bold leading-tight">
+                  {campaignName}
+                </h1>
+                {businessName && (
+                  <p
+                    className={cn(
+                      "text-[11px]",
+                      isDark
+                        ? "text-slate-400"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {businessName}
+                  </p>
+                )}
+              </div>
+            </div>
+            {isDist && (
+              <p className="mt-2 text-[11px] font-semibold inline-block px-2 py-0.5 rounded-full text-amber-800 bg-amber-50 dark:bg-amber-950/35 dark:text-amber-200">
+                {lang === "en" ? "Via" : "分发"} · {distLabel}
+              </p>
+            )}
+            <p
+              className="mt-3 text-base font-bold leading-snug rounded-full px-3 py-1.5 inline-block"
+              style={{ color: isDark ? "#FDE68A" : accent }}
+            >
+              {copy.benefitLine}
+            </p>
+          </>
+        )}
       </div>
-      <div className="px-5 py-3 flex justify-center relative z-[1]">
+      <div className="px-5 py-3 flex justify-center relative z-[1] bg-card">
         <PosterQr
           src={qrSrc}
           className="w-52 h-52 rounded-2xl border border-red-100 p-2 bg-white shadow-md"
