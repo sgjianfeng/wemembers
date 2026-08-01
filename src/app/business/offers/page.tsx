@@ -252,23 +252,17 @@ export default async function BusinessOffersPage({
       : "/business/scan";
 
     if (meta.enabled || tone === "ndp") {
-      // 活动专属：凭票发 61（发赠券无法塞进通用核销）
+      // 活动满赠：只进本活动操作台（购券扫码 / 收银凭票），不跳通用核销
       ops.push({
-        label: "活动操作台",
-        labelEn: "Activity desk",
+        label: "活动券核销",
+        labelEn: "Activity redeem",
         href: ndpDeskHref,
         primary: true,
       });
-      // 通用：核销已有的预付券（满额时后端仍可自动触发满赠）
-      ops.push({
-        label: "通用核销",
-        labelEn: "Generic scan",
-        href: scanHref,
-      });
     } else {
       ops.push({
-        label: "通用核销",
-        labelEn: "Scan",
+        label: "核销",
+        labelEn: "Redeem",
         href: scanHref,
         primary: true,
       });
@@ -414,36 +408,30 @@ export default async function BusinessOffersPage({
       <div className="px-4 mt-3 rounded-2xl border border-border bg-muted/40 px-3 py-2.5 text-[11px] text-muted-foreground leading-relaxed">
         {zh ? (
           <>
-            <strong className="text-foreground">通用券</strong>
-            （预付/实体）→ 点「扫码核销」；
-            <strong className="text-foreground">活动满赠</strong>
-            （如国庆发 61）→ 展开活动进「操作台」凭票发券。门店已锁定。
+            展开
+            <strong className="text-foreground">国庆满赠</strong>
+            → 点
+            <strong className="text-foreground">活动券核销</strong>
+            （本活动专用：购券扫码 / 收银凭票）。其它预付券请用底栏「核销」。
           </>
         ) : (
           <>
-            <strong className="text-foreground">Generic vouchers</strong> → Scan.{" "}
-            <strong className="text-foreground">Activity gifts</strong> (e.g. spend
-            &amp; get) → open that activity&apos;s desk. Store is locked.
+            Expand{" "}
+            <strong className="text-foreground">National Day</strong> →{" "}
+            <strong className="text-foreground">Activity redeem</strong>. Other
+            prepaid vouchers use bottom-nav Scan.
           </>
         )}
       </div>
 
       <div className="px-4 mt-3 flex flex-wrap gap-2">
-        {storeId && (
-          <>
-            <Link
-              href={`/business/scan?storeId=${encodeURIComponent(storeId)}`}
-              className="text-xs font-semibold px-3 py-1.5 rounded-full bg-primary text-primary-foreground"
-            >
-              {zh ? "通用核销" : "Generic scan"}
-            </Link>
-            <Link
-              href={ndpDeskHref}
-              className="text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-600 text-white"
-            >
-              {zh ? "活动满赠台" : "Gift desk"}
-            </Link>
-          </>
+        {storeId && ndpCamp && (
+          <Link
+            href={ndpDeskHref}
+            className="text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-600 text-white"
+          >
+            {zh ? "活动券核销（国庆）" : "Activity redeem"}
+          </Link>
         )}
         {session.role === "business" && (
           <>

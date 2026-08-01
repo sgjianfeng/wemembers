@@ -143,12 +143,12 @@ export function NdpDeskClient({
           </span>
         </div>
         <h1 className="text-lg font-semibold mt-1.5">
-          {zh ? "活动操作台 · 满赠发券" : "Activity desk · gift issue"}
+          {zh ? "活动券核销" : "Activity redeem"}
         </h1>
         <p className="text-xs text-muted-foreground mt-0.5">
           {zh
-            ? `本店已锁定 · 满 S$${minSgd} 送 S$${giftSgd}（活动规则）· 通用券请用「通用核销」`
-            : `Store locked · spend S$${minSgd} → S$${giftSgd} · generic vouchers use Scan`}
+            ? `本店已锁定 · 满 S$${minSgd} 送 S$${giftSgd} · 购券扫码或收银凭票`
+            : `Store locked · spend S$${minSgd} → S$${giftSgd} · scan or cash bill`}
         </p>
       </div>
 
@@ -203,16 +203,16 @@ export function NdpDeskClient({
                   </p>
                   <p className="text-sm font-semibold text-foreground mt-1">
                     {zh
-                      ? "走「通用核销」扫码即可"
-                      : "Use generic Scan desk"}
+                      ? "扫顾客预付券码（本活动核销）"
+                      : "Scan prepaid voucher (this activity)"}
                   </p>
                   <p className="mt-1.5 text-[11px] text-muted-foreground leading-relaxed">
                     {zh
-                      ? `核销满 S$${minSgd} 时，系统按活动规则自动发 S$${giftSgd}。核销台本身不绑国庆 UI。`
-                      : `Redeem ≥ S$${minSgd} may auto-issue S$${giftSgd} by campaign rules. Scan UI stays generic.`}
+                      ? `核销满 S$${minSgd} 时按活动规则自动发 S$${giftSgd}。从本操作台进入，门店已锁定。`
+                      : `Redeem ≥ S$${minSgd} auto-issues S$${giftSgd}. Entered from this desk with store locked.`}
                   </p>
                   <p className="mt-3 text-xs font-semibold text-[#1A6EFF]">
-                    {zh ? "打开通用核销 →" : "Open generic scan →"}
+                    {zh ? "去扫码核销 →" : "Scan to redeem →"}
                   </p>
                 </CardContent>
               </Card>
