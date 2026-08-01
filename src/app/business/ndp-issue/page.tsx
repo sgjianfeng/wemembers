@@ -374,181 +374,271 @@ export default function NdpIssuePage() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-[#E11D48]">
-          <CardContent className="p-4 space-y-3">
-            <p className="text-xs text-muted-foreground">
-              {zh
-                ? "路径 B：现金结账 · 不买预付券 · 绑手机 + 确认金额 → 发 61 + 赠送抽奖"
-                : "Path B: cash pay · no prepaid · bind phone + confirm amount → S$61 + gift draw"}
-            </p>
+        <Card className="border-l-4 border-l-[#E11D48] shadow-sm">
+          <CardContent className="p-4 space-y-4">
+            <div>
+              <p className="text-sm font-bold text-foreground">
+                {zh
+                  ? "前台操作：顾客现金买单后，发 S$" + giftSgd
+                  : "Counter: issue S$" + giftSgd + " after cash bill"}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                {zh
+                  ? "适用：顾客没有买预付券，只是正常结账。你看纸质/POS 小票，问顾客手机号，填下面两格即可。不用扫收据拍照。"
+                  : "For customers who did not buy a prepaid voucher. Read the paper/POS bill, ask for mobile, fill the two fields. No receipt photo needed."}
+              </p>
+            </div>
+
+            {/* 场景切换：凭小票 vs 管理层赠送 */}
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setChannel("receipt")}
-                className={`flex-1 py-2 rounded-full text-sm font-medium ${
+                className={`flex-1 py-2.5 rounded-full text-sm font-semibold ${
                   channel === "receipt"
-                    ? "bg-[#1A6EFF] text-white"
+                    ? "bg-[#E11D48] text-white"
                     : "bg-muted text-muted-foreground"
                 }`}
               >
-                {zh ? "凭单满赠" : "Receipt gift"}
+                {zh ? "① 凭小票发（日常）" : "① From receipt"}
               </button>
               <button
                 type="button"
                 onClick={() => setChannel("comp")}
-                className={`flex-1 py-2 rounded-full text-sm font-medium ${
+                className={`flex-1 py-2.5 rounded-full text-sm font-semibold ${
                   channel === "comp"
                     ? "bg-amber-600 text-white"
                     : "bg-muted text-muted-foreground"
                 }`}
               >
-                {zh ? "管理层赠送" : "Comp (owner)"}
+                {zh ? "② 管理层特批" : "② Comp"}
               </button>
             </div>
 
             {campaigns.length === 0 ? (
-              <p className="text-sm text-amber-700 bg-amber-50 rounded-xl p-3">
+              <p className="text-sm text-amber-800 bg-amber-50 rounded-xl p-3 leading-relaxed">
                 {zh
-                  ? "暂无国庆/holiday 活动。请先在「活动」创建 type=holiday 或名称含「国庆」的活动，并设置活动时间。"
-                  : "No holiday campaign. Create a holiday campaign named with 国庆/National Day first."}
+                  ? "还没有国庆活动。请先点上方「一键开启默认活动」，或到活动列表创建国庆满赠。"
+                  : "No NDP campaign yet. Tap setup above, or create a National Day campaign."}
               </p>
             ) : (
-              <label className="block text-sm">
-                <span className="text-muted-foreground text-xs">
-                  {zh ? "活动" : "Campaign"}
-                </span>
-                <select
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
-                  value={campaignId}
-                  onChange={(e) => setCampaignId(e.target.value)}
-                >
-                  {campaigns.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-
-            {stores.length > 0 && (
-              <label className="block text-sm">
-                <span className="text-muted-foreground text-xs">
-                  {zh ? "门店" : "Store"}
-                </span>
-                <select
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
-                  value={storeId}
-                  onChange={(e) => setStoreId(e.target.value)}
-                >
-                  {stores.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-
-            <label className="block text-sm">
-              <span className="text-muted-foreground text-xs">
-                {zh ? "顾客手机（必填 · 绑定）" : "Customer mobile (required)"}
-              </span>
-              <Input
-                className="mt-1"
-                inputMode="tel"
-                placeholder="91234567"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </label>
-
-            {channel === "receipt" && (
-              <label className="block text-sm">
-                <span className="text-muted-foreground text-xs">
-                  {zh
-                    ? `本单消费金额（须 ≥ S$${minSgd}）`
-                    : `Bill amount (min S$${minSgd})`}
-                </span>
-                <Input
-                  className="mt-1 text-xl font-semibold tabular-nums"
-                  inputMode="decimal"
-                  placeholder="128.00"
-                  value={amountSgd}
-                  onChange={(e) => setAmountSgd(e.target.value)}
-                />
-              </label>
-            )}
-
-            <label className="block text-sm">
-              <span className="text-muted-foreground text-xs">
-                {channel === "comp"
-                  ? zh
-                    ? "赠送原因（必填）"
-                    : "Comp reason"
-                  : zh
-                    ? "小票备注 / 单号后四位（防重复，可选）"
-                    : "Receipt note / last 4 (optional)"}
-              </span>
-              <Input
-                className="mt-1"
-                value={receiptNote}
-                onChange={(e) => setReceiptNote(e.target.value)}
-                placeholder={channel === "comp" ? (zh ? "VIP / 客诉" : "VIP") : "4821"}
-              />
-            </label>
-
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              {zh
-                ? "确认后立即绑定手机并发放：① 国庆赠送券 ② 大奖抽奖资格（无小奖）。有效期自发放起计算。"
-                : "On confirm: bind mobile and issue (1) gift coupon (2) grand draw entry (no small prize). Validity starts now."}
-            </p>
-
-            {err && (
-              <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">
-                {err}
-              </p>
-            )}
-            {msg && (
-              <p className="text-sm text-emerald-700 bg-emerald-50 rounded-xl px-3 py-2">
-                {msg}
-              </p>
-            )}
-            {lastResult && (
-              <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3 text-sm space-y-1">
-                <p className="font-semibold text-foreground">
-                  {zh ? "发放成功" : "Issued"}
-                </p>
-                <p className="tabular-nums text-muted-foreground">
-                  {zh ? "有效至" : "Expires"}{" "}
-                  {new Date(lastResult.expiresAt).toLocaleString(
-                    zh ? "zh-CN" : "en-SG"
+              <>
+                {/* 步骤 0：活动 / 门店（管理层先确认） */}
+                <div className="rounded-xl bg-muted/40 border border-border p-3 space-y-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                    {zh ? "准备（一般不用改）" : "Prep (usually leave as is)"}
+                  </p>
+                  <label className="block">
+                    <span className="text-xs font-medium text-foreground">
+                      {zh ? "用哪个国庆活动" : "Which NDP campaign"}
+                    </span>
+                    <select
+                      className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
+                      value={campaignId}
+                      onChange={(e) => setCampaignId(e.target.value)}
+                    >
+                      {campaigns.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {stores.length > 0 && (
+                    <label className="block">
+                      <span className="text-xs font-medium text-foreground">
+                        {zh ? "在哪家店发的" : "Which store"}
+                      </span>
+                      <select
+                        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
+                        value={storeId}
+                        onChange={(e) => setStoreId(e.target.value)}
+                      >
+                        {stores.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   )}
-                </p>
-                <p className="font-mono text-xs break-all">
-                  QR {lastResult.qrCode}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {zh ? "大奖权重" : "Draw weight"} {lastResult.drawWeight}{" "}
-                  · {zh ? "购券约为" : "Paid ≈"}{" "}
-                  {lastResult.multiple.toFixed(1)}×
-                </p>
-              </div>
-            )}
+                </div>
 
-            <Button
-              className="w-full rounded-full h-12 text-base"
-              disabled={loading || !campaignId || !phone}
-              onClick={submit}
-            >
-              {loading
-                ? zh
-                  ? "发放中…"
-                  : "Issuing…"
-                : zh
-                  ? `确认发放 S$${giftSgd} + 抽奖机会`
-                  : `Issue S$${giftSgd} + draw`}
-            </Button>
+                {/* 步骤 1：手机 */}
+                <div className="rounded-xl border border-[#1A6EFF]/30 bg-[#1A6EFF]/5 p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#1A6EFF] text-white text-xs font-bold">
+                      1
+                    </span>
+                    <p className="text-sm font-bold text-foreground">
+                      {zh ? "问顾客手机号" : "Ask for mobile number"}
+                    </p>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed pl-9">
+                    {zh
+                      ? "口头问「方便留个手机吗？用来收国庆赠券」。新加坡号 8 位即可，如 9123 4567。券会绑到这个号码的顾客账号（没有会自动按手机建号）。"
+                      : "Ask for an 8-digit SG mobile. The gift binds to that account."}
+                  </p>
+                  <Input
+                    className="mt-1 h-12 text-base"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder={zh ? "例如 91234567" : "e.g. 91234567"}
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </div>
+
+                {/* 步骤 2：小票金额 */}
+                {channel === "receipt" ? (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E11D48] text-white text-xs font-bold">
+                        2
+                      </span>
+                      <p className="text-sm font-bold text-foreground">
+                        {zh
+                          ? `看小票，填本单金额（须 ≥ S$${minSgd}）`
+                          : `Enter bill total (min S$${minSgd})`}
+                      </p>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed pl-9">
+                      {zh
+                        ? "拿顾客的纸质小票或 POS 屏，看「应付/实付」总额，原样填入。例如小票写 $128.50，就填 128.50。系统会检查是否满门槛，不够会提示。"
+                        : "Read the total payable on the paper/POS receipt. e.g. 128.50. System checks the minimum spend."}
+                    </p>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base font-semibold text-muted-foreground">
+                        S$
+                      </span>
+                      <Input
+                        className="h-14 pl-10 text-2xl font-bold tabular-nums"
+                        inputMode="decimal"
+                        placeholder="128.50"
+                        value={amountSgd}
+                        onChange={(e) => setAmountSgd(e.target.value)}
+                      />
+                    </div>
+                    <label className="block pl-0">
+                      <span className="text-[11px] text-muted-foreground">
+                        {zh
+                          ? "小票号后 4 位（可选，防同一张票发两次）"
+                          : "Last 4 of bill no. (optional, anti-duplicate)"}
+                      </span>
+                      <Input
+                        className="mt-1"
+                        value={receiptNote}
+                        onChange={(e) => setReceiptNote(e.target.value)}
+                        placeholder={zh ? "例如 4821" : "e.g. 4821"}
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-600 text-white text-xs font-bold">
+                        2
+                      </span>
+                      <p className="text-sm font-bold text-foreground">
+                        {zh ? "特批原因（必填）" : "Comp reason (required)"}
+                      </p>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed pl-9">
+                      {zh
+                        ? "仅企业主/管理层：未达门槛也要送时使用。写清楚原因备查。"
+                        : "Owner/manager only when bill is below threshold."}
+                    </p>
+                    <Input
+                      className="mt-1"
+                      value={receiptNote}
+                      onChange={(e) => setReceiptNote(e.target.value)}
+                      placeholder={zh ? "例如 VIP / 客诉补偿" : "e.g. VIP / complaint"}
+                    />
+                  </div>
+                )}
+
+                {/* 步骤 3：确认 */}
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-bold">
+                      3
+                    </span>
+                    <p className="text-sm font-bold text-foreground">
+                      {zh ? "核对后点按钮" : "Confirm and issue"}
+                    </p>
+                  </div>
+                  <ul className="text-[11px] text-muted-foreground leading-relaxed pl-9 space-y-0.5 list-disc">
+                    <li>
+                      {zh
+                        ? `发放内容：S$${giftSgd} 赠券（下次再用）+ 1 次大奖抽奖机会`
+                        : `Issues S$${giftSgd} gift + 1 grand draw entry`}
+                    </li>
+                    <li>
+                      {zh
+                        ? "顾客用该手机登录 WeMembers 钱包即可看到券"
+                        : "Customer sees it after login with that mobile"}
+                    </li>
+                    <li>
+                      {zh
+                        ? "有效期从现在起算（默认 30 天）"
+                        : "Validity starts now (default 30 days)"}
+                    </li>
+                  </ul>
+                </div>
+
+                {err && (
+                  <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">
+                    {err}
+                  </p>
+                )}
+                {msg && (
+                  <p className="text-sm text-emerald-700 bg-emerald-50 rounded-xl px-3 py-2">
+                    {msg}
+                  </p>
+                )}
+                {lastResult && (
+                  <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3 text-sm space-y-1">
+                    <p className="font-semibold text-foreground">
+                      {zh ? "发放成功" : "Issued"}
+                    </p>
+                    <p className="tabular-nums text-muted-foreground">
+                      {zh ? "有效至" : "Expires"}{" "}
+                      {new Date(lastResult.expiresAt).toLocaleString(
+                        zh ? "zh-CN" : "en-SG"
+                      )}
+                    </p>
+                    <p className="font-mono text-xs break-all">
+                      QR {lastResult.qrCode}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {zh ? "大奖权重" : "Draw weight"} {lastResult.drawWeight}{" "}
+                      · {zh ? "购券约为" : "Paid ≈"}{" "}
+                      {lastResult.multiple.toFixed(1)}×
+                    </p>
+                  </div>
+                )}
+
+                <Button
+                  className="w-full rounded-full h-12 text-base font-semibold"
+                  disabled={
+                    loading ||
+                    !campaignId ||
+                    !phone.trim() ||
+                    (channel === "receipt" && !amountSgd.trim()) ||
+                    (channel === "comp" && !receiptNote.trim())
+                  }
+                  onClick={submit}
+                >
+                  {loading
+                    ? zh
+                      ? "发放中…"
+                      : "Issuing…"
+                    : zh
+                      ? `确认发放 S$${giftSgd} 赠券`
+                      : `Issue S$${giftSgd} gift`}
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
 
