@@ -174,18 +174,19 @@ export function buildCampaignPosterCopy(
   const giftAmt = spendGet ? Number(spendGet[2]) : 61;
 
   if (isNdp) {
+    // SG61：面额 61 对应 Singapore 61 年/国庆意象
     headline =
       lang === "en"
-        ? "Scan · join National Day promo"
+        ? "Scan · join SG National Day"
         : "扫码参加 · 国庆满赠";
     benefitLine =
       lang === "en"
-        ? `Spend S$${minSpend} → gift S$${giftAmt}`
-        : `满 S$${minSpend} 送 S$${giftAmt}`;
+        ? `Spend S$${minSpend} → S$${giftAmt} · SG${giftAmt}`
+        : `满 S$${minSpend} 送 S$${giftAmt} · SG${giftAmt}`;
     sub =
       lang === "en"
-        ? "Gift coupon next visit · valid from claim · limited period"
-        : "到店满额领赠券 · 领后有效 · 活动期内";
+        ? `S$${giftAmt} gift next visit · valid from claim`
+        : `S$${giftAmt} 赠券下次用 · 领后有效 · 活动期内`;
   } else if (isDraw) {
     headline =
       lang === "en" ? "Buy · instant prize · 100% win" : "买就抽 · 100% 有奖";

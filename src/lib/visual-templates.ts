@@ -85,8 +85,8 @@ export const VISUAL_TEMPLATES: VisualTemplateMeta[] = [
     family: "store",
     nameZh: "国庆节日",
     nameEn: "National Day",
-    taglineZh: "整卡国庆红 · 顶白条 · 适合满赠台卡",
-    taglineEn: "Full NDP red · white top bar · table tent",
+    taglineZh: "上红下白国旗结构 · SG61 · 适合满赠台卡",
+    taglineEn: "Red/white flag layout · SG61 · table tent",
     defaultThemeHex: SG_NDP_RED,
     // light：避免走「醒目色块」黑底分支；国庆色由 accent 整卡渲染
     surface: "light",

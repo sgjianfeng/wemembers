@@ -5,10 +5,7 @@
 
 import JSZip from "jszip";
 import type { CampaignPosterCopy } from "@/lib/campaign-poster-copy";
-import {
-  isNdpFestivalAccent,
-  SG_NDP_RED_DEEP,
-} from "@/lib/visual-templates";
+import { isNdpFestivalAccent } from "@/lib/visual-templates";
 
 /** tent 台卡 · poster 吧台 · sticker 1:1 社交 · a4 墙贴/打印店 */
 export type CampaignPosterLayoutId = "tent" | "poster" | "sticker" | "a4";
@@ -100,42 +97,57 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** 国庆抽象星月（非国旗复制，仅节日氛围装饰） */
-function drawNdpMotif(
+/**
+ * 新加坡国旗结构背景（上红下白 · 新月五星在左上）
+ * 比例不拉伸变形；竖版台卡时红/白各约半幅，星月按标准相对位置绘制。
+ * 国庆期（约 7/1–9/30）商用国旗意象在规范上允许，须庄重：不倒置、不扭曲、不遮挡星月核心。
+ * 参考：National Symbols Regulations / NHB National Flag guidance
+ */
+function drawSingaporeFlagBackdrop(
   ctx: CanvasRenderingContext2D,
   w: number,
-  bandH: number,
-  scale: number
+  h: number,
+  redHex: string
 ) {
-  ctx.save();
-  ctx.globalAlpha = 0.22;
-  ctx.fillStyle = "#ffffff";
-  // 新月（两圆差集感：大白圆 + 略偏移暗圆，这里用描边新月）
-  const cx = w * 0.14;
-  const cy = bandH * 0.38;
-  const r = Math.round(48 * scale);
+  const redH = Math.round(h * 0.48);
+  // 上红
+  ctx.fillStyle = redHex;
+  ctx.fillRect(0, 0, w, redH);
+  // 下白
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, redH, w, h - redH);
+
+  // 星月区域：以红区左半为参考（接近国旗比例）
+  const fieldW = w;
+  const fieldH = redH;
+  const unit = Math.min(fieldW, fieldH);
+  // 新月中心
+  const moonCx = fieldW * 0.22;
+  const moonCy = fieldH * 0.5;
+  const moonR = unit * 0.16;
+  ctx.fillStyle = "#FFFFFF";
+  // 外圆
   ctx.beginPath();
-  ctx.arc(cx, cy, r, 0.35 * Math.PI, 1.55 * Math.PI, false);
-  ctx.arc(cx + r * 0.35, cy - r * 0.08, r * 0.78, 1.45 * Math.PI, 0.4 * Math.PI, true);
-  ctx.closePath();
+  ctx.arc(moonCx, moonCy, moonR, 0, Math.PI * 2);
   ctx.fill();
-  // 五角小星
-  const stars: [number, number, number][] = [
-    [w * 0.22, bandH * 0.22, 10 * scale],
-    [w * 0.28, bandH * 0.34, 8 * scale],
-    [w * 0.24, bandH * 0.48, 7 * scale],
-    [w * 0.18, bandH * 0.58, 6 * scale],
-    [w * 0.12, bandH * 0.5, 5 * scale],
-  ];
-  for (const [sx, sy, sr] of stars) {
-    drawStar(ctx, sx, sy, sr);
+  // 内圆挖空（红底）形成新月
+  ctx.fillStyle = redHex;
+  ctx.beginPath();
+  ctx.arc(moonCx + moonR * 0.38, moonCy - moonR * 0.06, moonR * 0.82, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 五星：新月右侧正五边形布局
+  ctx.fillStyle = "#FFFFFF";
+  const starCx = fieldW * 0.42;
+  const starCy = fieldH * 0.5;
+  const ring = unit * 0.1;
+  const starR = unit * 0.038;
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+    const sx = starCx + Math.cos(a) * ring;
+    const sy = starCy + Math.sin(a) * ring;
+    drawStar(ctx, sx, sy, starR);
   }
-  // 右侧淡星点
-  ctx.globalAlpha = 0.12;
-  for (let i = 0; i < 8; i++) {
-    drawStar(ctx, w * (0.72 + (i % 3) * 0.08), bandH * (0.2 + i * 0.08), 4 * scale);
-  }
-  ctx.restore();
 }
 
 function drawStar(
@@ -203,20 +215,11 @@ export async function paintCampaignPosterCanvas(
   const isPosterLike = opts.layout === "poster" || isA4;
   // a4 略放大字号/二维码，贴墙可读
   const scale = isA4 ? 1.15 : 1;
+  const redHex = festival ? accent : "#CE1126";
 
-  // 国庆：整卡红渐变（不再用大面积黑底）；其它：浅底 / 深色块
   if (festival) {
-    const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, accent);
-    g.addColorStop(0.45, accent);
-    g.addColorStop(0.75, SG_NDP_RED_DEEP);
-    g.addColorStop(1, "#6B0A12");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
-    // 顶部白条（旗意，非国旗复制）
-    ctx.fillStyle = "rgba(255,255,255,0.95)";
-    ctx.fillRect(0, 0, w, Math.round(18 * scale));
-    drawNdpMotif(ctx, w, Math.round(h * 0.55), scale);
+    // 国旗结构背景：上红下白 + 新月五星（不扭曲比例）
+    drawSingaporeFlagBackdrop(ctx, w, h, redHex);
   } else {
     const bg = isDark ? "#1E1B2E" : "#ffffff";
     ctx.fillStyle = bg;
@@ -224,7 +227,8 @@ export async function paintCampaignPosterCanvas(
   }
 
   const fg = festival || isDark ? "#F8FAFC" : "#0f172a";
-  const muted = festival ? "rgba(255,255,255,0.78)" : isDark ? "#94A3B8" : "#64748b";
+  const muted = festival ? "#475569" : isDark ? "#94A3B8" : "#64748b";
+  const redH = Math.round(h * 0.48);
 
   const useGradientHeader =
     !festival && (isPosterLike || opts.layout === "sticker" || isDark);
@@ -271,42 +275,64 @@ export async function paintCampaignPosterCanvas(
       );
     }
   } else if (festival) {
-    // 国庆整卡红：顶栏文案 + logo + 店名（不走黑底分区）
+    // 红区：店标 + 活动名 + SG61 利益点（避开左侧星月）
     ctx.textAlign = "center";
-    ctx.fillStyle = "rgba(255,255,255,0.9)";
-    ctx.font = "bold 22px system-ui, -apple-system, sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.95)";
+    ctx.font = `bold ${Math.round(18 * scale)}px system-ui, -apple-system, sans-serif`;
     ctx.fillText(
-      opts.lang === "en" ? "WEMEMBERS · NATIONAL DAY" : "WEMEMBERS · 国庆",
+      opts.lang === "en" ? "SINGAPORE · NATIONAL DAY" : "新加坡 · 国庆满赠",
       w / 2,
-      72
+      Math.round(36 * scale)
     );
     try {
       if (opts.businessLogo) {
         const logo = await loadImage(opts.businessLogo);
-        const s = 88;
-        ctx.fillStyle = "rgba(255,255,255,0.95)";
-        roundRect(ctx, (w - s) / 2 - 8, 92, s + 16, s + 16, 20);
+        const s = Math.round(72 * scale);
+        ctx.fillStyle = "rgba(255,255,255,0.98)";
+        roundRect(ctx, (w - s) / 2 - 6, Math.round(48 * scale), s + 12, s + 12, 16);
         ctx.fill();
-        ctx.drawImage(logo, (w - s) / 2, 100, s, s);
+        ctx.drawImage(logo, (w - s) / 2, Math.round(54 * scale), s, s);
       }
     } catch {
       /* optional */
     }
+    const titleY = Math.round(redH * 0.52);
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 46px system-ui, -apple-system, sans-serif";
-    fillTextCenter(ctx, opts.campaignName, w / 2, 240, 24);
-    ctx.fillStyle = "rgba(255,255,255,0.88)";
-    ctx.font = "26px system-ui, -apple-system, sans-serif";
-    fillTextCenter(ctx, opts.businessName, w / 2, 290, 36);
+    ctx.font = `bold ${Math.round(40 * scale)}px system-ui, -apple-system, sans-serif`;
+    fillTextCenter(ctx, opts.campaignName, w / 2, titleY, 22);
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.font = `${Math.round(22 * scale)}px system-ui, -apple-system, sans-serif`;
+    fillTextCenter(
+      ctx,
+      opts.businessName,
+      w / 2,
+      titleY + Math.round(40 * scale),
+      36
+    );
+    // SG61 卖点胶囊
+    const pill = opts.copy.benefitLine;
+    ctx.font = `bold ${Math.round(28 * scale)}px system-ui, -apple-system, sans-serif`;
+    const pillW = Math.min(w * 0.86, ctx.measureText(pill).width + 48);
+    const pillX = (w - pillW) / 2;
+    const pillY = redH - Math.round(70 * scale);
+    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    roundRect(ctx, pillX, pillY, pillW, Math.round(48 * scale), 24);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.65)";
+    ctx.lineWidth = 2;
+    roundRect(ctx, pillX, pillY, pillW, Math.round(48 * scale), 24);
+    ctx.stroke();
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillText(pill, w / 2, pillY + Math.round(32 * scale));
     if (opts.isDist) {
       ctx.fillStyle = "#FDE68A";
-      ctx.font = "bold 26px system-ui, -apple-system, sans-serif";
+      ctx.font = `bold ${Math.round(20 * scale)}px system-ui, sans-serif`;
       fillTextCenter(
         ctx,
         `${opts.lang === "en" ? "Via" : "分发"} · ${opts.distLabel}`,
         w / 2,
-        340,
-        36
+        redH - Math.round(18 * scale),
+        40
       );
     }
   } else {
@@ -349,70 +375,82 @@ export async function paintCampaignPosterCanvas(
     }
   }
 
-  const bodyFg = festival ? "#ffffff" : isPosterLike ? "#0f172a" : fg;
-  const bodyMuted = festival
-    ? "rgba(255,255,255,0.8)"
-    : isPosterLike
-      ? "#64748b"
-      : muted;
-  const benefitColor = festival
-    ? "#FFFFFF"
-    : opts.layout === "sticker" && useGradientHeader
-      ? "#ffffff"
-      : isDark && opts.layout === "tent"
-        ? "#FDE68A"
-        : accent;
-
-  const qrSize =
-    opts.layout === "sticker" ? 400 : isA4 ? 620 : 500;
-  const qrY =
-    opts.layout === "sticker"
+  // 国庆：二维码放在白区；其它布局保持原逻辑
+  const qrSize = festival
+    ? isA4
+      ? 520
+      : opts.layout === "sticker"
+        ? 360
+        : 440
+    : opts.layout === "sticker"
+      ? 400
+      : isA4
+        ? 620
+        : 500;
+  const qrY = festival
+    ? redH + Math.round(36 * scale)
+    : opts.layout === "sticker"
       ? 380
       : isA4
         ? 560
         : opts.layout === "poster"
           ? 520
-          : useGradientHeader
-            ? 420
-            : 420;
+          : 420;
 
-  ctx.textAlign = "center";
-  ctx.fillStyle = benefitColor;
-  ctx.font = `bold ${Math.round(38 * scale)}px system-ui, -apple-system, sans-serif`;
-  fillTextCenter(ctx, opts.copy.benefitLine, w / 2, qrY - Math.round(36 * scale), 34);
+  if (!festival) {
+    const benefitColor =
+      opts.layout === "sticker" && useGradientHeader
+        ? "#ffffff"
+        : isDark && opts.layout === "tent"
+          ? "#FDE68A"
+          : accent;
+    ctx.textAlign = "center";
+    ctx.fillStyle = benefitColor;
+    ctx.font = `bold ${Math.round(38 * scale)}px system-ui, -apple-system, sans-serif`;
+    fillTextCenter(ctx, opts.copy.benefitLine, w / 2, qrY - Math.round(36 * scale), 34);
+  }
 
   try {
     const qr = await loadImage(opts.qrSrc);
     const qx = (w - qrSize) / 2;
+    // 白区上的白底圆角卡，阴影感
     ctx.fillStyle = "#ffffff";
-    roundRect(ctx, qx - 14, qrY - 14, qrSize + 28, qrSize + 28, 24);
+    roundRect(ctx, qx - 16, qrY - 16, qrSize + 32, qrSize + 32, 28);
     ctx.fill();
+    if (festival) {
+      ctx.strokeStyle = "rgba(206,17,38,0.2)";
+      ctx.lineWidth = 3;
+      roundRect(ctx, qx - 16, qrY - 16, qrSize + 32, qrSize + 32, 28);
+      ctx.stroke();
+    }
     ctx.drawImage(qr, qx, qrY, qrSize, qrSize);
   } catch {
-    ctx.fillStyle = bodyMuted;
+    ctx.fillStyle = muted;
     ctx.font = "28px system-ui, sans-serif";
     ctx.fillText("QR", w / 2, qrY + qrSize / 2);
   }
 
-  const ty = qrY + qrSize + Math.round(56 * scale);
-  ctx.fillStyle = opts.layout === "sticker" ? (isDark ? fg : "#0f172a") : bodyFg;
-  ctx.font = `bold ${Math.round(36 * scale)}px system-ui, -apple-system, sans-serif`;
-  fillTextCenter(ctx, opts.copy.headline, w / 2, ty, 30);
-  ctx.fillStyle =
-    opts.layout === "sticker" ? (isDark ? muted : "#64748b") : bodyMuted;
-  ctx.font = `${Math.round(24 * scale)}px system-ui, -apple-system, sans-serif`;
-  fillTextCenter(ctx, opts.copy.sub, w / 2, ty + Math.round(44 * scale), 40);
+  const ty = qrY + qrSize + Math.round(48 * scale);
+  const bodyFg = festival ? "#0f172a" : isPosterLike ? "#0f172a" : fg;
+  const bodyMuted = festival ? "#64748b" : isPosterLike ? "#64748b" : muted;
+  ctx.textAlign = "center";
+  ctx.fillStyle = bodyFg;
+  ctx.font = `bold ${Math.round(34 * scale)}px system-ui, -apple-system, sans-serif`;
+  fillTextCenter(ctx, opts.copy.headline, w / 2, ty, 28);
+  ctx.fillStyle = bodyMuted;
   ctx.font = `${Math.round(22 * scale)}px system-ui, -apple-system, sans-serif`;
-  fillTextCenter(ctx, opts.copy.untilLine, w / 2, ty + Math.round(88 * scale), 36);
+  fillTextCenter(ctx, opts.copy.sub, w / 2, ty + Math.round(40 * scale), 42);
+  ctx.font = `${Math.round(20 * scale)}px system-ui, -apple-system, sans-serif`;
+  fillTextCenter(ctx, opts.copy.untilLine, w / 2, ty + Math.round(78 * scale), 36);
 
   if (opts.layout !== "sticker") {
     ctx.fillStyle = bodyMuted;
-    ctx.font = "16px ui-monospace, SFMono-Regular, monospace";
+    ctx.font = "15px ui-monospace, SFMono-Regular, monospace";
     const url =
       opts.buyUrl.length > 54
         ? `${opts.buyUrl.slice(0, 52)}…`
         : opts.buyUrl;
-    fillTextCenter(ctx, url, w / 2, h - (isA4 ? 56 : 40), 60);
+    fillTextCenter(ctx, url, w / 2, h - (isA4 ? 48 : 36), 60);
   }
 
   ctx.fillStyle = bodyMuted;

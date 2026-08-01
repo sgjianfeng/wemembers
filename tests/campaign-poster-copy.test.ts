@@ -130,6 +130,7 @@ describe("campaign-poster-copy", () => {
     });
     expect(copy.benefitLine).toMatch(/120/);
     expect(copy.benefitLine).toMatch(/61/);
+    expect(copy.benefitLine).toMatch(/SG61/);
     expect(copy.headline).toMatch(/国庆|扫码/);
     // 第一条不重复「满120送61」利益点
     expect(copy.shareTemplates[0]).toMatch(/扫码参加/);
