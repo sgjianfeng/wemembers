@@ -285,16 +285,23 @@ export default function ScanClient({
         const kind =
           json.data?.productKind === "self_use" ? "self_use" : "distribution";
         const draw = voucherInfo?.isDraw === true;
+        const ndp = json.data?.ndpGift;
+        const baseMsg =
+          kind === "self_use"
+            ? draw
+              ? t("scan.successExclusive")
+              : t("scan.successSelf")
+            : draw
+              ? t("scan.successCoWin")
+              : t("scan.successDist");
+        const ndpMsg = ndp?.issued
+          ? lang === "en"
+            ? ` · NDP gift S$${ndp.valueSgd} issued (valid until ${new Date(ndp.expiresAt).toLocaleDateString()})`
+            : ` · 已自动发放国庆 S$${ndp.valueSgd}（有效至 ${new Date(ndp.expiresAt).toLocaleDateString("zh-CN")}）`
+          : "";
         setVoucherResult({
           ok: true,
-          message:
-            kind === "self_use"
-              ? draw
-                ? t("scan.successExclusive")
-                : t("scan.successSelf")
-              : draw
-                ? t("scan.successCoWin")
-                : t("scan.successDist"),
+          message: baseMsg + ndpMsg,
           remaining: json.data?.voucher?.remainingBalanceSgd,
           income: json.data?.usage?.storeIncomeSgd,
           fee: json.data?.usage?.feeSgd,

@@ -10,6 +10,7 @@ const PUBLIC_STARTS = [
   "/for-business",
   "/voucher",
   "/activity", // multi-product activity landing
+  "/ndp", // 国庆活动落地（桌码/前台码）
   "/draw", // legacy V1 draw links redirect to /voucher
   "/join", // 结账参加大奖（扫固定门店码）
   "/p",

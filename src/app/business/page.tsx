@@ -24,6 +24,7 @@ import {
   FolderOpen,
   ChevronRight,
   Puzzle,
+  Gift,
   type LucideIcon,
 } from "lucide-react";
 
@@ -314,6 +315,24 @@ export default async function BusinessDashboard() {
               href: "/business/campaigns",
             },
             {
+              icon: Gift,
+              label: lang === "en" ? "Activity perks" : "活动券",
+              desc:
+                lang === "en"
+                  ? "By activity · issue & redeem"
+                  : "按活动 · 发券核销",
+              href: "/business/offers",
+            },
+            {
+              icon: Gift,
+              label: lang === "en" ? "NDP gift" : "国庆满赠",
+              desc:
+                lang === "en"
+                  ? "S$120 → S$61 + draw"
+                  : "满120送61 + 抽奖签",
+              href: "/business/ndp-issue",
+            },
+            {
               icon: Store,
               label: lang === "en" ? "Stores" : "门店",
               desc:
@@ -500,6 +519,17 @@ async function StaffStoreHome({
           ? "Online short code · paper tickets"
           : "线上短码 · 实体纸票 · 本店履约",
       href: "/business/scan",
+      primary: true,
+    },
+    {
+      id: "ndp",
+      icon: Gift,
+      title: lang === "en" ? "NDP gift issue" : "国庆满赠发券",
+      desc:
+        lang === "en"
+          ? "Spend ≥S$120 → S$61 + grand draw"
+          : "满120送61 + 大奖机会 · 绑手机发放",
+      href: "/business/ndp-issue",
       primary: true,
     },
     {

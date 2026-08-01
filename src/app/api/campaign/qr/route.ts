@@ -18,12 +18,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing slug" }, { status: 400 });
   }
 
+  const isNdp = searchParams.get("ndp") === "1";
   const campaign = await prisma.campaign.findFirst({
-    where: {
-      slug,
-      type: { in: ["lucky_draw_v2", "voucher_sale"] },
-    },
-    select: { id: true, businessId: true, status: true, name: true },
+    where: isNdp
+      ? { slug }
+      : {
+          slug,
+          type: { in: ["lucky_draw_v2", "voucher_sale"] },
+        },
+    select: { id: true, businessId: true, status: true, name: true, type: true },
   });
 
   if (!campaign) {
@@ -40,8 +43,14 @@ export async function GET(request: NextRequest) {
   const origin =
     process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
   const seller = searchParams.get("seller");
-  let url = `${origin}/voucher/${encodeURIComponent(slug)}`;
-  if (seller) url += `?seller=${encodeURIComponent(seller)}`;
+  const from = searchParams.get("from") === "counter" ? "counter" : "table";
+  let url: string;
+  if (isNdp || campaign.type === "holiday") {
+    url = `${origin}/ndp/${encodeURIComponent(slug)}?from=${from}`;
+  } else {
+    url = `${origin}/voucher/${encodeURIComponent(slug)}`;
+    if (seller) url += `?seller=${encodeURIComponent(seller)}`;
+  }
 
   const safeName = (campaign.name || "campaign")
     .replace(/[^\w\u4e00-\u9fff-]+/g, "-")

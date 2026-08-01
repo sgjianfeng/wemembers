@@ -11,23 +11,73 @@ export default async function WalletPage() {
     where: { customerId: session.userId },
     include: {
       coupon: {
-        include: { business: { select: { businessName: true } } },
+        include: {
+          business: { select: { businessName: true } },
+          campaign: { select: { id: true, name: true, type: true } },
+        },
       },
     },
     orderBy: { claimedAt: "desc" },
   });
 
-  const claims = myCoupons.map((c) => ({
-    id: c.id,
-    status: c.status,
-    qrCode: c.qrCode,
-    coupon: {
-      title: c.coupon.title,
-      valueCents: c.coupon.valueCents,
-      validUntil: c.coupon.validUntil.toISOString(),
-      businessName: c.coupon.business?.businessName || null,
+  // 大奖资格：零余额 / 营销 gift 路径或有 drawWeight 的券
+  const drawVouchers = await prisma.voucher.findMany({
+    where: {
+      customerId: session.userId,
+      status: "active",
+      drawWeight: { gt: 0 },
     },
+    include: {
+      campaign: {
+        select: {
+          id: true,
+          name: true,
+          business: { select: { businessName: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+
+  const claims = myCoupons.map((c) => {
+    const expires =
+      c.expiresAt ?? c.coupon.validUntil;
+    return {
+      id: c.id,
+      status:
+        c.status === "available" && expires < new Date()
+          ? "expired"
+          : c.status,
+      qrCode: c.qrCode,
+      coupon: {
+        title: c.coupon.title,
+        valueCents: c.coupon.valueCents,
+        validUntil: expires.toISOString(),
+        businessName: c.coupon.business?.businessName || null,
+        campaignId: c.coupon.campaignId || c.coupon.campaign?.id || null,
+        campaignName: c.coupon.campaign?.name || null,
+        campaignType: c.coupon.campaign?.type || null,
+      },
+    };
+  });
+
+  const drawEntries = drawVouchers.map((v) => ({
+    id: v.id,
+    campaignId: v.campaignId,
+    campaignName: v.campaign?.name || null,
+    businessName: v.campaign?.business?.businessName || null,
+    drawWeight: v.drawWeight,
+    shortCode: v.shortCode,
+    status: v.status,
+    createdAt: v.createdAt.toISOString(),
+    isGiftEntry:
+      v.paidCents === 0 ||
+      v.paymentMethod === "free" ||
+      v.issueReason === "marketing",
+    amountCents: v.amountCents,
+    balanceCents: v.balanceCents,
   }));
 
-  return <WalletClient claims={claims} />;
+  return <WalletClient claims={claims} drawEntries={drawEntries} />;
 }

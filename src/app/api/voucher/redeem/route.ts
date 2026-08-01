@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import { applyRedeemSplit } from "@/lib/apply-redeem-split";
 import { parseRulesSnapshot, legacyDrawSnapshot } from "@/lib/templates";
 import { isSelfUse, resolveProductKind } from "@/lib/product-kind";
+import { maybeIssueNdpOnVoucherRedeem } from "@/lib/ndp-promo";
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,8 +43,14 @@ export async function POST(request: NextRequest) {
             rulesSnapshot: true,
             productKind: true,
             storeIds: true,
+            tags: true,
+            name: true,
+            status: true,
+            startDate: true,
+            endDate: true,
           },
         },
+        customer: { select: { id: true, phone: true } },
       },
     });
 
@@ -214,6 +221,27 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      // 国庆：核销 ≥120 自动发 S$61（抽奖已在购券时获得）
+      let ndpGift: Awaited<ReturnType<typeof maybeIssueNdpOnVoucherRedeem>> =
+        null;
+      if (voucher.campaign && voucher.customerId) {
+        try {
+          ndpGift = await prisma.$transaction((tx) =>
+            maybeIssueNdpOnVoucherRedeem(tx, {
+              voucherCampaign: voucher.campaign!,
+              customerId: voucher.customerId,
+              customerPhone: voucher.customer?.phone,
+              storeId: redeemerStore!.id,
+              staffUserId: session.userId,
+              redeemAmountCents: amount,
+              usageId: usage.id,
+            })
+          );
+        } catch (e) {
+          console.error("ndp auto issue (self_use)", e);
+        }
+      }
+
       return NextResponse.json({
         data: {
           productKind: "self_use",
@@ -237,6 +265,15 @@ export async function POST(request: NextRequest) {
             frozenSgd: null,
             note: "自用券：售出时已收款，核销仅记门店履约，无平台入账",
           },
+          ndpGift: ndpGift
+            ? {
+                issued: true,
+                valueCents: ndpGift.valueCents,
+                valueSgd: (ndpGift.valueCents / 100).toFixed(0),
+                expiresAt: ndpGift.expiresAt,
+                qrCode: ndpGift.qrCode,
+              }
+            : null,
         },
       });
     }
@@ -321,6 +358,26 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    let ndpGift: Awaited<ReturnType<typeof maybeIssueNdpOnVoucherRedeem>> =
+      null;
+    if (voucher.campaign && voucher.customerId) {
+      try {
+        ndpGift = await prisma.$transaction((tx) =>
+          maybeIssueNdpOnVoucherRedeem(tx, {
+            voucherCampaign: voucher.campaign!,
+            customerId: voucher.customerId,
+            customerPhone: voucher.customer?.phone,
+            storeId: redeemerStore!.id,
+            staffUserId: session.userId,
+            redeemAmountCents: amount,
+            usageId: applied.usageId,
+          })
+        );
+      } catch (e) {
+        console.error("ndp auto issue (distribution)", e);
+      }
+    }
+
     const s = applied.split;
     return NextResponse.json({
       data: {
@@ -345,6 +402,15 @@ export async function POST(request: NextRequest) {
           frozenSgd: (applied.storeWallet.frozenAfter / 100).toFixed(2),
           note: "分发券：核销收入 T+1 解冻后可提现",
         },
+        ndpGift: ndpGift
+          ? {
+              issued: true,
+              valueCents: ndpGift.valueCents,
+              valueSgd: (ndpGift.valueCents / 100).toFixed(0),
+              expiresAt: ndpGift.expiresAt,
+              qrCode: ndpGift.qrCode,
+            }
+          : null,
       },
     });
   } catch (error) {

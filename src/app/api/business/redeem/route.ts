@@ -61,6 +61,16 @@ export async function POST(request: NextRequest) {
     if (!claim) return NextResponse.json({ error: "无效的核销码" }, { status: 404 });
     if (claim.status !== "available") return NextResponse.json({ error: `该券已${claim.status === "used" ? "使用" : "过期"}` }, { status: 400 });
 
+    // 单张券到期（国庆满赠等）优先于模版 validUntil
+    const claimExpiry = claim.expiresAt ?? claim.coupon.validUntil;
+    if (claimExpiry < new Date()) {
+      await prisma.customerCoupon.update({
+        where: { id: claim.id },
+        data: { status: "expired" },
+      });
+      return NextResponse.json({ error: "该券已过期" }, { status: 400 });
+    }
+
     // 适用门店限制（实体券绑定后的线上券：仅本店）
     if (!storeIdsAllows(claim.coupon.storeIds, storeId)) {
       return NextResponse.json(

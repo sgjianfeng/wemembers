@@ -78,6 +78,9 @@ model User {
   uploadedReceipts  Receipt[]          @relation("UploadedReceipts")
   physicalBatches   PhysicalBatch[]    @relation("BusinessPhysicalBatches")
   claimedPhysicalTickets PhysicalTicket[] @relation("PhysicalTicketCustomer")
+  promoGrantsAsCustomer PromoGrant[]   @relation("PromoGrantCustomer")
+  promoGrantsAsStaff    PromoGrant[]   @relation("PromoGrantStaff")
+  promoGrantsAsBusiness PromoGrant[]   @relation("PromoGrantBusiness")
 }
 
 // ──── 验证码 ────
@@ -142,6 +145,7 @@ model Store {
   physicalTickets PhysicalTicket[] @relation("PhysicalTicketPrintStore")
   physicalSold    PhysicalTicket[] @relation("PhysicalTicketSoldStore")
   physicalRedeemed PhysicalTicket[] @relation("PhysicalTicketRedeemStore")
+  promoGrants     PromoGrant[]
 
   @@unique([businessId, name])
 }
@@ -256,6 +260,8 @@ model CustomerCoupon {
   status       String   @default("available") // available | used | expired | gifted
   qrCode       String   @unique              // 唯一核销码
   claimedAt    DateTime @default(now())
+  /// 单张券到期（国庆满赠等：自发放/绑定日起 N 天）；null 则回退 coupon.validUntil
+  expiresAt    DateTime?
   usedAt       DateTime?
   giftFromId   String?                       // 谁赠送的
   giftMessage  String?
@@ -265,9 +271,11 @@ model CustomerCoupon {
   customer     User     @relation("CustomerClaims", fields: [customerId], references: [id])
   coupon       Coupon   @relation(fields: [couponId], references: [id])
   redemption   RedemptionLog?
+  promoGrant   PromoGrant?
 
   @@index([customerId, status])
   @@index([couponId, claimedAt])
+  @@index([expiresAt])
 }
 
 // ──── 核销记录 ────
@@ -792,6 +800,49 @@ model Campaign {
   vouchers        Voucher[]
   catalogProducts CampaignProduct[]
   mirrorOfProduct VoucherProduct? @relation("ProductMirrorCampaign")
+  promoGrants     PromoGrant[]
+}
+
+// ──── 活动满赠发放（国庆：满 120 → 61 代金 + 低权重大奖签）────
+// 绑定手机后发放；issuedAt = 绑定/发放时刻，S$61 自此时起 validDays 天
+
+model PromoGrant {
+  id                 String   @id @default(cuid())
+  campaignId         String
+  businessId         String
+  storeId            String?
+  staffUserId        String?
+  /// 绑定手机（本地号，无 +65 前缀）
+  phone              String
+  customerId         String?
+  /// receipt = 凭单满赠 | comp = 管理层无支付赠送
+  channel            String   @default("receipt")
+  receiptAmountCents Int      @default(0)
+  /// 防重复：店员备注/单号后四位等
+  receiptNote        String?
+  receiptFingerprint String?
+  status             String   @default("claimed") // pending | claimed | void
+  customerCouponId   String?  @unique
+  /// 零余额大奖资格 Voucher（gift 权重）
+  voucherId          String?  @unique
+  issuedAt           DateTime?
+  expiresAt          DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  campaign       Campaign        @relation(fields: [campaignId], references: [id])
+  business       User            @relation("PromoGrantBusiness", fields: [businessId], references: [id])
+  store          Store?          @relation(fields: [storeId], references: [id])
+  staff          User?           @relation("PromoGrantStaff", fields: [staffUserId], references: [id])
+  customer       User?           @relation("PromoGrantCustomer", fields: [customerId], references: [id])
+  customerCoupon CustomerCoupon? @relation(fields: [customerCouponId], references: [id])
+  voucher        Voucher?        @relation(fields: [voucherId], references: [id])
+
+  @@index([businessId, createdAt])
+  @@index([campaignId, phone])
+  @@index([phone, status])
+  @@index([receiptFingerprint])
+  @@index([storeId, createdAt])
 }
 
 // ──── 抽奖券号码 ────
@@ -859,6 +910,7 @@ model Voucher {
   draws         VoucherDraw[]
   /// 实体纸唯一关联（自用券打印版）
   physicalTicket PhysicalTicket?
+  promoGrant    PromoGrant?
 
   @@index([customerId, status])
   @@index([campaignId, createdAt])
