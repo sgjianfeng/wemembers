@@ -311,8 +311,8 @@ export default async function BusinessDashboard() {
               label: lang === "en" ? "Activity perks" : "活动券",
               desc:
                 lang === "en"
-                  ? "By activity · NDP issue"
-                  : "按活动 · 国庆发券",
+                  ? "Pick store → NDP / redeem"
+                  : "先选门店 · 国庆/核销",
               href: "/business/offers",
             },
             {
@@ -320,8 +320,8 @@ export default async function BusinessDashboard() {
               label: lang === "en" ? "Stores" : "门店",
               desc:
                 lang === "en"
-                  ? "Outlets · staff · QR"
-                  : "门店 · 店员 · 二维码",
+                  ? "Enter outlet · offers desk"
+                  : "进门店 · 本店活动券",
               href: "/business/stores",
             },
             {
@@ -520,20 +520,20 @@ async function StaffStoreHome({
       title: lang === "en" ? "Activity perks" : "活动券",
       desc:
         lang === "en"
-          ? "By activity · issue / redeem"
-          : "按活动看权益 · 发券 / 核销",
-      href: "/business/offers",
+          ? "This store · NDP desk / redeem"
+          : "本店活动 · 国庆操作台 / 核销",
+      href: `/business/offers?storeId=${encodeURIComponent(store.id)}`,
       primary: true,
     },
     {
       id: "ndp",
       icon: Gift,
-      title: lang === "en" ? "NDP gift issue" : "国庆满赠发券",
+      title: lang === "en" ? "NDP desk" : "国庆操作台",
       desc:
         lang === "en"
-          ? "Spend ≥S$120 → S$61 + grand draw"
-          : "满120送61 + 大奖机会 · 绑手机发放",
-      href: "/business/ndp-issue",
+          ? "Scan path · cash receipt · this store"
+          : "购券扫码 · 收银凭票 · 本店已锁定",
+      href: `/business/ndp-desk?storeId=${encodeURIComponent(store.id)}`,
       primary: true,
     },
     {

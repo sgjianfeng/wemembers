@@ -17,9 +17,14 @@ import {
 
 /**
  * 企业 / 门店「活动券」：活动分类 + 权益券 + 匹配操作
- * 与客户首页/钱包同一心智
+ * 门店优先：?storeId= 锁定本店（核销/发券不再二次选店）
+ * 企业主未带 storeId 时先选门店
  */
-export default async function BusinessOffersPage() {
+export default async function BusinessOffersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ storeId?: string }>;
+}) {
   const session = await getSession();
   if (!session || (session.role !== "business" && session.role !== "staff")) {
     redirect("/auth/login");
@@ -28,9 +33,12 @@ export default async function BusinessOffersPage() {
   const c = await cookies();
   const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
   const zh = lang === "zh";
+  const sp = await searchParams;
 
   let businessId = session.userId;
   let storeId: string | null = null;
+  let storeName: string | null = null;
+
   if (session.role === "staff") {
     if (!session.storeId) redirect("/business");
     const st = await prisma.store.findUnique({
@@ -40,6 +48,84 @@ export default async function BusinessOffersPage() {
     if (!st) redirect("/business");
     businessId = st.businessId;
     storeId = st.id;
+    storeName = st.name;
+  } else {
+    // 企业主：优先 query storeId
+    const qid = sp.storeId?.trim() || null;
+    if (qid) {
+      const st = await prisma.store.findFirst({
+        where: { id: qid, businessId: session.userId },
+        select: { id: true, name: true },
+      });
+      if (st) {
+        storeId = st.id;
+        storeName = st.name;
+      }
+    }
+  }
+
+  // 企业主未选门店：先选店再进活动券
+  if (session.role === "business" && !storeId) {
+    const stores = await prisma.store.findMany({
+      where: { businessId: session.userId },
+      select: { id: true, name: true, address: true },
+      orderBy: { createdAt: "asc" },
+    });
+    return (
+      <div className="pb-6">
+        <div className="px-4 py-3 border-b border-border">
+          <h1 className="text-lg font-semibold">
+            {zh ? "活动券" : "Activity perks"}
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {zh
+              ? "请先选择门店 · 核销与国庆发券都在本店完成"
+              : "Pick a store first · redeem & NDP issue stay on that outlet"}
+          </p>
+        </div>
+        <div className="px-4 mt-4 space-y-2">
+          {stores.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border p-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                {zh ? "还没有门店" : "No stores yet"}
+              </p>
+              <Link
+                href="/business/stores"
+                className="inline-block mt-3 text-sm font-semibold text-primary"
+              >
+                {zh ? "去添加门店 →" : "Add store →"}
+              </Link>
+            </div>
+          ) : (
+            stores.map((s) => (
+              <Link
+                key={s.id}
+                href={`/business/offers?storeId=${encodeURIComponent(s.id)}`}
+                className="block rounded-2xl border border-border bg-card p-4 active:scale-[0.99] transition-transform"
+              >
+                <p className="text-sm font-semibold text-foreground">{s.name}</p>
+                {s.address && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {s.address}
+                  </p>
+                )}
+                <p className="text-xs font-semibold text-primary mt-2">
+                  {zh ? "进入本店活动券 →" : "Open store offers →"}
+                </p>
+              </Link>
+            ))
+          )}
+        </div>
+        <div className="px-4 mt-4">
+          <Link
+            href="/business/campaigns"
+            className="text-xs font-medium text-muted-foreground"
+          >
+            {zh ? "仅配置活动（不选店）→ 活动管理" : "Config only → Campaigns"}
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   const campaigns = await prisma.campaign.findMany({
@@ -157,20 +243,35 @@ export default async function BusinessOffersPage() {
     }
 
     const ops: ActivityBundle["ops"] = [];
+    const deskQs = new URLSearchParams();
+    if (storeId) deskQs.set("storeId", storeId);
+    deskQs.set("campaignId", camp.id);
+    const ndpDeskHref = `/business/ndp-desk?${deskQs.toString()}`;
+    const scanHref = storeId
+      ? `/business/scan?storeId=${encodeURIComponent(storeId)}`
+      : "/business/scan";
+
     if (meta.enabled || tone === "ndp") {
+      // 国庆：进本店操作台（双路径），不进孤立的 ndp-issue
       ops.push({
-        label: "凭票发券",
-        labelEn: "Issue gift",
-        href: "/business/ndp-issue",
+        label: "国庆操作台",
+        labelEn: "NDP desk",
+        href: ndpDeskHref,
+        primary: true,
+      });
+      ops.push({
+        label: "扫码核销",
+        labelEn: "Scan",
+        href: scanHref,
+      });
+    } else {
+      ops.push({
+        label: "核销",
+        labelEn: "Redeem",
+        href: scanHref,
         primary: true,
       });
     }
-    ops.push({
-      label: "核销",
-      labelEn: "Redeem",
-      href: storeId ? `/business/scan?storeId=${storeId}` : "/business/scan",
-      primary: !meta.enabled,
-    });
     if (camp.slug) {
       ops.push({
         label: "顾客页",
@@ -271,86 +372,102 @@ export default async function BusinessOffersPage() {
   // 无活动时的引导
   const empty = bundles.length === 0;
 
+  const ndpCamp = campaigns.find((c) => {
+    const m = parseNdpMetaFromCampaign(c);
+    const tone = activityToneFromType(c.type, c.name, c.tags, c.rulesSnapshot);
+    return m.enabled || tone === "ndp";
+  });
+  const ndpDeskHref =
+    storeId && ndpCamp
+      ? `/business/ndp-desk?storeId=${encodeURIComponent(storeId)}&campaignId=${encodeURIComponent(ndpCamp.id)}`
+      : storeId
+        ? `/business/ndp-desk?storeId=${encodeURIComponent(storeId)}`
+        : "/business/ndp-desk";
+
   return (
     <div className="pb-6">
       <div className="px-4 py-3 border-b border-border">
         <h1 className="text-lg font-semibold">
           {zh ? "活动券" : "Activity perks"}
+          {storeName ? (
+            <span className="ml-2 text-sm font-medium text-primary">
+              · {storeName}
+            </span>
+          ) : null}
         </h1>
         <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
           {zh
-            ? "活动 × 券的组合 · 发券/核销 · 活动广告与实体券打印设计"
-            : "Activity × vouchers · issue / redeem · ad & physical print design"}
+            ? "本店活动 × 权益 · 国庆操作台 / 扫码核销（门店已锁定）"
+            : "This store · NDP desk / scan (store locked)"}
         </p>
+        {session.role === "business" && storeId && (
+          <Link
+            href="/business/offers"
+            className="inline-block mt-1 text-[11px] font-medium text-primary"
+          >
+            {zh ? "更换门店" : "Change store"}
+          </Link>
+        )}
       </div>
 
       <div className="px-4 mt-3 rounded-2xl border border-border bg-muted/40 px-3 py-2.5 text-[11px] text-muted-foreground leading-relaxed">
         {zh ? (
           <>
-            三层：
-            <strong className="text-foreground">券产品</strong>
-            （可售）·
-            <strong className="text-foreground">活动</strong>
-            （设置）· 本页
-            <strong className="text-foreground">活动券</strong>
-            （组合操作）。默认场次：长期 / 大奖倒计时 / 国庆满赠。
+            展开活动 → 点
+            <strong className="text-foreground">国庆操作台</strong>
+            （购券扫码 / 收银凭票）或
+            <strong className="text-foreground">扫码核销</strong>
+            。无需再选店。
           </>
         ) : (
           <>
-            Layers:{" "}
-            <strong className="text-foreground">Products</strong> ·{" "}
-            <strong className="text-foreground">Activity</strong> · this page{" "}
-            <strong className="text-foreground">Activity perks</strong>. Defaults:
-            Evergreen · Grand countdown · National Day.
+            Expand activity → <strong className="text-foreground">NDP desk</strong>{" "}
+            (scan or cash) or <strong className="text-foreground">Scan</strong>.
+            Store is already set.
           </>
         )}
       </div>
 
-      {session.role === "business" && (
-        <div className="px-4 mt-3 flex flex-wrap gap-2">
-          <Link
-            href="/business/ndp-issue"
-            className="text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-600 text-white"
-          >
-            {zh ? "一键开启默认活动" : "Enable default activities"}
-          </Link>
-          <Link
-            href="/business/campaigns"
-            className="text-xs font-semibold px-3 py-1.5 rounded-full border border-border bg-card"
-          >
-            {zh ? "活动管理" : "Manage campaigns"}
-          </Link>
-          <Link
-            href="/business/products"
-            className="text-xs font-semibold px-3 py-1.5 rounded-full border border-border bg-card"
-          >
-            {zh ? "券产品" : "Products"}
-          </Link>
-          <Link
-            href="/business/physical?from=offers"
-            className="text-xs font-semibold px-3 py-1.5 rounded-full border border-amber-600/40 bg-amber-500/10 text-amber-800 dark:text-amber-300"
-          >
-            {zh ? "实体印刷" : "Physical print"}
-          </Link>
-        </div>
-      )}
-
-      {session.role === "staff" && (
-        <div className="px-4 mt-3 flex flex-wrap gap-2">
-          <Link
-            href="/business/ndp-issue"
-            className="text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-600 text-white"
-          >
-            {zh ? "国庆凭票发券" : "NDP issue"}
-          </Link>
-          <Link
-            href={storeId ? `/business/scan?storeId=${storeId}` : "/business/scan"}
-            className="text-xs font-semibold px-3 py-1.5 rounded-full bg-primary text-primary-foreground"
-          >
-            {zh ? "扫码核销" : "Scan redeem"}
-          </Link>
-        </div>
-      )}
+      <div className="px-4 mt-3 flex flex-wrap gap-2">
+        {storeId && (
+          <>
+            <Link
+              href={ndpDeskHref}
+              className="text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-600 text-white"
+            >
+              {zh ? "国庆操作台" : "NDP desk"}
+            </Link>
+            <Link
+              href={`/business/scan?storeId=${encodeURIComponent(storeId)}`}
+              className="text-xs font-semibold px-3 py-1.5 rounded-full bg-primary text-primary-foreground"
+            >
+              {zh ? "扫码核销" : "Scan"}
+            </Link>
+          </>
+        )}
+        {session.role === "business" && (
+          <>
+            <Link
+              href="/business/ndp-issue"
+              className="text-xs font-semibold px-3 py-1.5 rounded-full border border-border bg-card"
+            >
+              {zh ? "配置默认活动" : "Setup defaults"}
+            </Link>
+            <Link
+              href="/business/campaigns"
+              className="text-xs font-semibold px-3 py-1.5 rounded-full border border-border bg-card"
+            >
+              {zh ? "活动管理" : "Campaigns"}
+            </Link>
+            <Link
+              href="/business/physical?from=offers"
+              className="text-xs font-semibold px-3 py-1.5 rounded-full border border-amber-600/40 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+            >
+              {zh ? "实体印刷" : "Physical"}
+            </Link>
+          </>
+        )}
+      </div>
 
       <div className="px-4 mt-4">
         {empty ? (
@@ -363,7 +480,15 @@ export default async function BusinessOffersPage() {
                 href="/business/ndp-issue"
                 className="inline-block mt-3 text-sm font-semibold text-primary"
               >
-                {zh ? "一键开启国庆活动 →" : "Enable NDP →"}
+                {zh ? "配置默认活动（含国庆）→" : "Setup default activities →"}
+              </Link>
+            )}
+            {session.role === "staff" && storeId && (
+              <Link
+                href={`/business/ndp-desk?storeId=${encodeURIComponent(storeId)}`}
+                className="inline-block mt-3 text-sm font-semibold text-primary"
+              >
+                {zh ? "国庆操作台 →" : "NDP desk →"}
               </Link>
             )}
           </div>

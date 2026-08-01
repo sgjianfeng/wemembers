@@ -153,12 +153,42 @@ export default async function BusinessStoreDetailPage({
       </div>
 
       <div className="px-4 mt-4 grid grid-cols-2 gap-2">
+        <Link
+          href={`/business/offers?storeId=${encodeURIComponent(store.id)}`}
+          className="col-span-2"
+        >
+          <Card className="bg-rose-600 border-0">
+            <CardContent className="p-3 text-white">
+              <p className="text-lg">🎁</p>
+              <p className="text-sm font-semibold mt-1">
+                {lang === "en" ? "This store · Activity perks" : "本店活动券"}
+              </p>
+              <p className="text-[10px] text-white/85 mt-0.5">
+                {lang === "en"
+                  ? "NDP desk · scan redeem · store locked"
+                  : "国庆操作台 · 扫码核销 · 门店已锁定"}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
         <Link href={`/business/scan?storeId=${store.id}`}>
           <Card className="bg-primary border-0">
             <CardContent className="p-3 text-white">
               <p className="text-lg">📷</p>
               <p className="text-sm font-semibold mt-1">
                 {lang === "en" ? "Redeem here" : "本店核销"}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link
+          href={`/business/ndp-desk?storeId=${encodeURIComponent(store.id)}`}
+        >
+          <Card className="border-rose-200 bg-rose-50 dark:bg-rose-950/30">
+            <CardContent className="p-3">
+              <p className="text-lg">🇸🇬</p>
+              <p className="text-sm font-semibold mt-1 text-foreground">
+                {lang === "en" ? "NDP desk" : "国庆操作台"}
               </p>
             </CardContent>
           </Card>
