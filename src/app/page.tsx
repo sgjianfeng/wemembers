@@ -1,9 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Ticket, Store, Trophy } from "lucide-react";
 import { useLang } from "@/components/i18n/LanguageProvider";
 import { TopHeader } from "@/components/ui/TopHeader";
+import { LandingActivityFeed } from "@/components/customer/LandingActivityFeed";
 
 const content = {
   zh: {
@@ -227,18 +227,18 @@ export default function HomePage() {
 
           <h1 className="text-3xl font-extrabold tracking-tight mb-1.5 leading-tight">
             <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
-              {isZh ? "🎰 买券抽大奖" : "🎰 Buy & Win Big"}
+              {isZh ? "发现热门活动" : "Discover activities"}
             </span>
           </h1>
           <p className="text-sm font-semibold text-white/90 mb-1">
             {isZh
-              ? "100% 中奖 · 即时到账 · 倒计时赢大奖"
-              : "100% Win · Instant Cash · Countdown Grand Prize"}
+              ? "满赠 · 代金 · 抽奖 · 按活动选券"
+              : "Gifts · vouchers · draws · by activity"}
           </p>
           <p className="text-xs text-white/50 mb-5 leading-snug">
             {isZh
-              ? "买券抽一次即时奖，余额到店花；核销进大奖池，看倒计时开奖"
-              : "Buy → instant win + spendable balance · redeems fund the countdown pool"}
+              ? "搜索活动或门店，展开活动卡看看有哪些券可以买、可以领"
+              : "Search activities or stores · open a card to pick vouchers"}
           </p>
 
           {isCustomer ? (
@@ -275,7 +275,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      <ConsumerView isZh={isZh} lang={lang} isLoggedIn={!!isCustomer} />
+      {/* 热门活动卡 + 搜索（活动 + 活动内券） */}
+      <div className="relative -mt-4">
+        <LandingActivityFeed isZh={isZh} isLoggedIn={!!isCustomer} />
+      </div>
 
       {/* ── Footer：消费者站底部商家入口 ── */}
       <footer className="px-5 pb-10 pt-4 text-center border-t border-border">
@@ -291,343 +294,3 @@ export default function HomePage() {
   );
 }
 
-// ──── Consumer View Component ────
-
-type LandingActivity = {
-  id: string;
-  name: string;
-  businessName: string;
-  href: string;
-  hot: boolean;
-  storeCount: number;
-  stores: { name: string }[];
-  products: { name: string }[];
-  grandPoolSgd: string;
-  kindTag: string;
-  displayMode?: "voucher" | "draw";
-  endDate: string;
-};
-
-function ConsumerView({
-  isZh,
-  lang,
-  isLoggedIn = false,
-}: {
-  isZh: boolean;
-  lang: string;
-  isLoggedIn?: boolean;
-}) {
-  const [activities, setActivities] = useState<LandingActivity[]>([]);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    async function load() {
-      const res = await fetch("/api/campaign/active-activities")
-        .then((r) => r.json())
-        .catch(() => ({ data: [] }));
-      setActivities((res.data || []).slice(0, 8));
-      setLoaded(true);
-    }
-    load();
-  }, []);
-
-  const featured = activities.find((a) => a.grandPoolSgd !== "0") || activities[0] || null;
-
-  return (
-    <>
-      {/* ══════ Section 1 — Scenario Demo（更清晰的三步） ══════ */}
-      <section className="relative -mt-5 px-4 pb-4">
-        <div className="max-w-sm mx-auto">
-          <div className="bg-card rounded-2xl shadow-md border border-amber-100 dark:border-amber-800/50/80 overflow-hidden">
-            <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1.5 flex items-center justify-center">
-              <span className="text-white text-[11px] font-bold tracking-wide">
-                {isZh ? "💡 三步看懂怎么玩" : "💡 How it works in 3 steps"}
-              </span>
-            </div>
-            <div className="p-3 space-y-2.5">
-              {/* Numbered steps — clearer than 3 equal boxes */}
-              <ol className="space-y-2">
-                <li className="flex items-start gap-2.5">
-                  <span className="shrink-0 w-5 h-5 rounded-full bg-slate-800 text-white text-[10px] font-bold flex items-center justify-center mt-0.5">
-                    1
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-foreground">
-                      {isZh ? "PayNow 买预付券" : "PayNow buy prepaid voucher"}
-                      <span className="ml-1.5 text-muted-foreground font-bold">S$100</span>
-                    </p>
-                    <p className="text-[10px] text-muted-foreground leading-snug">
-                      {isZh
-                        ? "入账余额 = 实付金额，可跨店花，用不完可提现"
-                        : "Balance = amount paid · network spend · withdrawable"}
-                    </p>
-                  </div>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <span className="shrink-0 w-5 h-5 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center mt-0.5">
-                    2
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-foreground">
-                      {isZh ? "100% 抽即时小奖" : "100% instant small prize"}
-                      <span className="ml-1.5 text-emerald-600 dark:text-emerald-400 font-bold">🎉 +S$10</span>
-                    </p>
-                    <p className="text-[10px] text-muted-foreground leading-snug">
-                      {isZh
-                        ? "购券当场开奖，必中小奖（示例）"
-                        : "Draw right after purchase — guaranteed small win (example)"}
-                    </p>
-                  </div>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <span className="shrink-0 w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center mt-0.5">
-                    3
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-foreground">
-                      {isZh ? "到店花余额 · 冲大奖池" : "Spend in-store · fund grand pool"}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground leading-snug">
-                      {isZh
-                        ? "核销金额约 20% 进奖池；核销越多，大奖权重越高"
-                        : "~20% of each redeem funds prizes; more spend → higher weight"}
-                    </p>
-                  </div>
-                </li>
-              </ol>
-
-              {/* Mini money strip */}
-              <div className="flex items-center justify-between gap-1 rounded-xl bg-muted/50 border border-border px-2.5 py-2 text-center">
-                <div className="flex-1">
-                  <p className="text-[9px] text-muted-foreground">{isZh ? "你付" : "You pay"}</p>
-                  <p className="text-sm font-extrabold text-foreground">S$100</p>
-                </div>
-                <span className="text-muted-foreground text-xs">→</span>
-                <div className="flex-1">
-                  <p className="text-[9px] text-muted-foreground">{isZh ? "余额可花" : "Balance"}</p>
-                  <p className="text-sm font-extrabold text-blue-600 dark:text-blue-400">S$100</p>
-                </div>
-                <span className="text-muted-foreground text-xs">+</span>
-                <div className="flex-1">
-                  <p className="text-[9px] text-muted-foreground">{isZh ? "即时奖" : "Instant"}</p>
-                  <p className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">S$10</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════ Section 2 — Hot offers (voucher vs draw language) ══════ */}
-      <section className="px-5 pb-6">
-        <div className="max-w-sm mx-auto">
-          <div className="flex items-end justify-between mb-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-amber-600 dark:text-amber-400 font-bold mb-1 flex items-center gap-1.5">
-                <span className="text-lg">🔥</span>
-                {isZh ? "热门优惠" : "POPULAR OFFERS"}
-              </p>
-              <h2 className="text-base font-extrabold text-foreground">
-                {isZh ? "代金可买 · 抽奖可玩" : "Credit to buy · draws to join"}
-              </h2>
-            </div>
-            <a
-              href="/auth/login?redirect=/discover/draws"
-              className="text-[11px] text-amber-600 font-semibold hover:text-amber-700 dark:text-amber-400 transition-colors"
-            >
-              {isZh ? "更多 →" : "More →"}
-            </a>
-          </div>
-
-          {!loaded ? (
-            <p className="text-xs text-muted-foreground py-6 text-center">…</p>
-          ) : activities.length === 0 ? (
-            <div className="rounded-2xl border border-border bg-card p-5 text-center">
-              <p className="text-sm text-muted-foreground">
-                {isZh ? "暂无优惠" : "No offers yet"}
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                {isZh
-                  ? "门店上架代金券或抽奖后会出现在这里"
-                  : "Vouchers and prize draws will show here"}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              {activities.map((a) => {
-                const isDraw =
-                  a.displayMode === "draw" ||
-                  a.kindTag === "exclusive_draw" ||
-                  a.kindTag === "co_win_draw" ||
-                  a.kindTag === "draw";
-                const stores = a.stores
-                  ?.slice(0, 2)
-                  .map((s) => s.name)
-                  .join(" · ");
-                const kindZh =
-                  a.kindTag === "exclusive_draw"
-                    ? "抽大奖"
-                    : a.kindTag === "co_win_draw"
-                      ? "联合抽奖"
-                      : a.kindTag === "draw"
-                        ? "幸运抽奖"
-                        : a.kindTag === "distribution"
-                          ? "通用代金"
-                          : "到店代金";
-                const kindEn =
-                  a.kindTag === "exclusive_draw"
-                    ? "Prize draw"
-                    : a.kindTag === "co_win_draw"
-                      ? "Shared draw"
-                      : a.kindTag === "draw"
-                        ? "Lucky draw"
-                        : a.kindTag === "distribution"
-                          ? "Network credit"
-                          : "Store credit";
-                const blurb = isDraw
-                  ? isZh
-                    ? a.kindTag === "exclusive_draw"
-                      ? "购买后可抽 · 冲大奖 · 品牌独享"
-                      : "购买后可抽 · 冲大奖"
-                    : a.kindTag === "exclusive_draw"
-                      ? "Buy · draw · brand exclusive"
-                      : "Buy · enter prize draw"
-                  : isZh
-                    ? "付多少抵多少 · 到店花"
-                    : "Pay face · spend in store";
-                const cta = isDraw
-                  ? isZh
-                    ? "去抽奖"
-                    : "Enter"
-                  : isZh
-                    ? "去购买"
-                    : "Buy";
-                return (
-                  <a
-                    key={a.id}
-                    href={a.href}
-                    className={`block rounded-2xl border p-3.5 shadow-sm active:scale-[0.99] transition-all ${
-                      isDraw
-                        ? "border-amber-200/80 dark:border-amber-800/50 bg-card hover:border-amber-400/50"
-                        : "border-primary/20 bg-card hover:border-primary/40"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <span
-                        className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${
-                          isDraw
-                            ? "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400"
-                            : "bg-primary/10 text-primary"
-                        }`}
-                      >
-                        {isDraw ? <Trophy size={18} /> : <Ticket size={18} />}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span
-                            className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
-                              isDraw
-                                ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
-                                : "bg-primary/10 text-primary"
-                            }`}
-                          >
-                            {isZh ? kindZh : kindEn}
-                          </span>
-                          {a.hot && (
-                            <span className="shrink-0 text-[9px] font-bold text-amber-600 dark:text-amber-400">
-                              {isZh ? "热" : "HOT"}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm font-bold text-foreground truncate mt-1">
-                          {a.name}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                          {a.businessName}
-                          {isDraw && a.grandPoolSgd !== "0"
-                            ? ` · ${isZh ? "奖池" : "Pool"} S$${a.grandPoolSgd}`
-                            : ""}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground/90 mt-1 truncate">
-                          {blurb}
-                          {stores
-                            ? ` · ${stores}${
-                                a.storeCount > 2
-                                  ? isZh
-                                    ? ` 等${a.storeCount}家`
-                                    : ` +${a.storeCount - 2}`
-                                  : ""
-                              }`
-                            : ""}
-                        </p>
-                      </div>
-                      <span className="shrink-0 text-[11px] font-semibold text-primary self-center">
-                        {cta}
-                      </span>
-                    </div>
-                  </a>
-                );
-              })}
-            </div>
-          )}
-
-          {featured &&
-            featured.grandPoolSgd !== "0" &&
-            (featured.displayMode === "draw" ||
-              featured.kindTag === "exclusive_draw") && (
-            <p className="mt-3 text-center text-[10px] text-muted-foreground nums">
-              {isZh ? "焦点奖池 · " : "Featured pool · "}
-              {featured.name} · S${featured.grandPoolSgd}
-            </p>
-          )}
-
-          <div className="mt-5 text-center">
-            {isLoggedIn ? (
-              <>
-                <a
-                  href="/home"
-                  className="inline-flex items-center justify-center gap-2 px-10 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-200 hover:from-amber-600 hover:to-orange-600 transition-all active:scale-[0.98]"
-                >
-                  {isZh ? "进入我的首页" : "Go to my home"}
-                </a>
-                <p className="text-[10px] text-muted-foreground mt-2">
-                  {isZh
-                    ? "已登录 · 去首页看优惠与余额"
-                    : "Signed in · open home for offers & balance"}
-                </p>
-              </>
-            ) : (
-              <>
-                <a
-                  href="/auth/register?role=customer"
-                  className="inline-flex items-center justify-center gap-2 px-10 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-full font-bold text-sm shadow-lg shadow-orange-200 hover:from-amber-600 hover:to-orange-600 transition-all active:scale-[0.98]"
-                >
-                  {isZh ? "免费注册 · 买券或抽奖" : "Sign up · buy or draw"}
-                </a>
-                <p className="text-[10px] text-muted-foreground mt-2">
-                  {isZh
-                    ? "选优惠 → 购买 → 到店使用"
-                    : "Pick offer → buy → redeem in-store"}
-                </p>
-              </>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════ For Business Entry ══════ */}
-      <section className="px-5 pb-14 max-w-sm mx-auto">
-        <button
-          onClick={() => {
-            const el = document.querySelector('[data-role-switch="business"]');
-            if (el instanceof HTMLElement) el.click();
-          }}
-          className="w-full py-3 bg-muted/50 rounded-xl text-xs text-muted-foreground hover:bg-muted transition-colors flex items-center justify-center gap-2"
-        >
-          <Store size={16} />
-          {isZh ? "我是商家，查看营销工具" : "I'm a business, view marketing tools"}
-        </button>
-      </section>
-    </>
-  );
-}

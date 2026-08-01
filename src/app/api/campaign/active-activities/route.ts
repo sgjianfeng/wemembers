@@ -10,9 +10,10 @@ export async function GET() {
     const customerId =
       session?.role === "customer" ? session.userId : null;
     const data = await listJoinableActivities({
-      limit: 20,
+      limit: 40,
       customerId,
-      listScope: "hot",
+      // 首页活动卡：热门 + 国庆/长期等可参加活动
+      listScope: "all",
     });
     return NextResponse.json({ data });
   } catch (error) {
