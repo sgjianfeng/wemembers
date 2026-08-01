@@ -122,22 +122,29 @@ export default async function TokenRechargePage({
   const distSoldAllCount = distSoldAll._count;
   const distCommCents = distSoldAll._sum.sellerCommissionCents ?? 0;
 
-  // 累计入账里拆：真实业务入账 vs 平台赠送（避免把赠送额度当成「卖券收益」）
+  // 业务入账：只计真实收入流水（不含平台赠送额度）
+  // totalEarned 计数器历史上把赠送也加进去了，不能直接当「卖券收益」
   const totalEarnedAll = user?.tokenAccount?.totalEarned ?? 0;
-  const giftLedger = transactions
-    .filter(
-      (tx) =>
-        tx.type === "platform_gift" ||
-        tx.type === "platform_gift_adjust" ||
-        tx.type === "free_grant" ||
-        tx.type === "signup_bonus"
-    )
-    .reduce((s, tx) => s + tx.amount, 0);
-  // 有流水时用「总入账 − 赠送类」；无流水则 totalEarned 可能含初始 gift
-  const businessEarnedCents = Math.max(
-    0,
-    totalEarnedAll - Math.max(0, giftLedger)
-  );
+  const accountId = user?.tokenAccount?.id;
+  const pureIncomeAgg = accountId
+    ? await prisma.tokenTransaction.aggregate({
+        where: {
+          accountId,
+          amount: { gt: 0 },
+          type: {
+            in: [
+              "voucher_redeem_income",
+              "voucher_spend_income",
+              "seller_commission",
+              "settlement_earn",
+              "platform_fee",
+            ],
+          },
+        },
+        _sum: { amount: true },
+      })
+    : { _sum: { amount: null as number | null } };
+  const businessEarnedCents = pureIncomeAgg._sum.amount ?? 0;
 
   const consumeTypeLabels: Record<string, { zh: string; en: string; color: string }> = {
     purchase: { zh: "购买", en: "Purchase", color: "text-green-600" },
