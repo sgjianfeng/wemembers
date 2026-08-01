@@ -68,9 +68,11 @@ function PasswordField({
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }) {
   return (
-    <div className="w-full">
-      <label className="block text-sm font-medium text-foreground mb-1.5">{label}</label>
-      <div className="relative">
+    <div className="w-full min-w-0 max-w-full">
+      <label className="block text-sm font-medium text-foreground mb-1.5">
+        {label}
+      </label>
+      <div className="relative min-w-0 max-w-full">
         <input
           type={show ? "text" : "password"}
           autoComplete={autoComplete}
@@ -79,16 +81,21 @@ function PasswordField({
           onKeyDown={onKeyDown}
           placeholder={placeholder}
           className={cn(
-            "flex h-12 w-full rounded-xl border border-input bg-background px-3 py-2 pr-11 text-base",
-            "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2",
-            "focus-visible:ring-ring focus-visible:ring-offset-1 transition-colors"
+            // text-base + box-border：避免 iOS 聚焦缩放 / 边框把宽度撑破
+            "flex h-12 w-full min-w-0 max-w-full box-border rounded-xl border border-input bg-background",
+            "px-3 py-2 pr-11 text-base leading-normal",
+            "placeholder:text-muted-foreground",
+            // ring-inset、无 offset：聚焦时不外扩、不顶布局
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+            "transition-colors"
           )}
         />
         <button
           type="button"
           onClick={onToggleShow}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-muted-foreground hover:text-muted-foreground"
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-muted-foreground hover:text-foreground"
           aria-label={show ? hideLabel : showLabel}
+          tabIndex={-1}
         >
           <EyeIcon open={show} />
         </button>
@@ -364,10 +371,10 @@ export default function LoginPage() {
   const inSetPasswordFlow = mode === "set-password-prompt" || mode === "set-password";
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-gradient-to-b from-slate-50 via-white to-white overflow-x-hidden">
+    <div className="min-h-[100dvh] flex flex-col bg-gradient-to-b from-slate-50 via-white to-white overflow-x-hidden overflow-y-auto">
       <TopHeader variant="default" fallbackUrl="/" preferFallback />
 
-      <div className="flex-1 flex flex-col px-5 pt-4 pb-10 max-w-md mx-auto w-full min-w-0">
+      <div className="flex-1 flex flex-col px-5 pt-4 pb-10 max-w-md mx-auto w-full min-w-0 box-border">
         {/* Brand */}
         <div className="text-center mb-5">
           <div className="mx-auto mb-3 flex justify-center">

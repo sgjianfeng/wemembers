@@ -23,6 +23,8 @@ select {
   font-size: 16px !important;
   line-height: 1.4;
   max-width: 100%;
+  /* 防止聚焦 ring/边框把父级横向撑破 */
+  box-sizing: border-box;
 }
 /* 避免 fixed 底栏 + 键盘时 100vh 跳动 */
 @supports (height: 100dvh) {
