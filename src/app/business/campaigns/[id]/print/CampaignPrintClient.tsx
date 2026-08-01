@@ -1029,14 +1029,15 @@ function CampaignCardSheet({
           a4
             ? "max-w-[420px] campaign-a4-sheet print:rounded-none"
             : vhd
-              ? "max-w-[320px] aspect-[9/16]"
+              ? // 预览不锁死 9:16 高度，避免条款/截止被裁切；导出 PNG 仍是 1080×1920
+                "max-w-[340px]"
               : "max-w-[400px]"
         )}
       >
         <div
           className={cn(
             "relative z-[1] text-white overflow-hidden",
-            a4 || vhd ? "px-6 pt-8 pb-5" : "px-5 pt-6 pb-4"
+            a4 || vhd ? "px-5 pt-6 pb-4" : "px-5 pt-6 pb-4"
           )}
           style={{
             background: festival ? accent || SG_NDP_RED : headerBg,
@@ -1044,35 +1045,35 @@ function CampaignCardSheet({
         >
           {festival && (
             <div
-              className="pointer-events-none absolute right-3 top-3 h-14 w-14 opacity-80"
+              className="pointer-events-none absolute right-2.5 top-2.5 h-11 w-11 opacity-80"
               aria-hidden
             >
-              <SingaporeCrescentStars red={accent || SG_NDP_RED} size={56} />
+              <SingaporeCrescentStars red={accent || SG_NDP_RED} size={44} />
             </div>
           )}
           {festival ? (
             <>
-              <p className="text-[10px] font-semibold tracking-wide text-white/95 pr-14">
+              <p className="text-[10px] font-semibold tracking-wide text-white/95 pr-12">
                 {lang === "en"
                   ? "Table scan · spend & get"
                   : "桌边扫码 · 结账满额即送"}
               </p>
-              <div className="flex items-center gap-3 mt-3 pr-12">
+              <div className="flex items-start gap-2.5 mt-3 pr-10">
                 {businessLogo ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={businessLogo}
                     alt=""
                     className={cn(
-                      "object-cover rounded-2xl bg-white shrink-0",
-                      a4 || vhd ? "w-14 h-14" : "w-12 h-12"
+                      "object-cover rounded-xl bg-white shrink-0",
+                      a4 || vhd ? "w-12 h-12" : "w-12 h-12"
                     )}
                   />
                 ) : (
                   <div
                     className={cn(
-                      "rounded-2xl bg-white/20 flex items-center justify-center text-2xl shrink-0",
-                      a4 || vhd ? "w-14 h-14" : "w-12 h-12"
+                      "rounded-xl bg-white/20 flex items-center justify-center text-xl shrink-0",
+                      "w-12 h-12"
                     )}
                   >
                     🎁
@@ -1084,13 +1085,14 @@ function CampaignCardSheet({
                   </p>
                   <h1
                     className={cn(
-                      "font-bold mt-0.5 leading-snug truncate",
-                      a4 || vhd ? "text-xl" : "text-lg"
+                      "font-bold mt-0.5 leading-snug break-words",
+                      // 不用 truncate：中英品牌名过长时换行，避免「Meow BBQ …」
+                      a4 || vhd ? "text-base" : "text-lg"
                     )}
                   >
                     {businessName || campaignName}
                   </h1>
-                  <p className="text-xs text-white/85 truncate mt-0.5">
+                  <p className="text-[11px] text-white/85 mt-0.5 leading-snug line-clamp-2">
                     {campaignName}
                   </p>
                 </div>
@@ -1154,12 +1156,12 @@ function CampaignCardSheet({
         <div
           className={cn(
             "text-center relative z-[1] bg-card",
-            a4 ? "px-7 py-6" : "px-6 py-5"
+            a4 || vhd ? "px-5 py-4" : "px-6 py-5"
           )}
         >
           {!festival && (
             <p
-              className={cn("font-bold leading-snug", a4 ? "text-xl" : "text-lg")}
+              className={cn("font-bold leading-snug", a4 || vhd ? "text-xl" : "text-lg")}
               style={{ color: accent }}
             >
               {copy.benefitLine}
@@ -1168,8 +1170,8 @@ function CampaignCardSheet({
           {festival && copy.hookLine && (
             <p
               className={cn(
-                "font-extrabold text-slate-900 leading-snug",
-                a4 ? "text-xl" : "text-lg"
+                "font-extrabold text-slate-900 leading-snug px-1",
+                vhd ? "text-base" : a4 ? "text-xl" : "text-lg"
               )}
             >
               {copy.hookLine}
@@ -1181,13 +1183,13 @@ function CampaignCardSheet({
               festival
                 ? "text-rose-700 mt-2"
                 : "text-foreground mt-2",
-              a4 ? "text-base" : "text-sm"
+              a4 || vhd ? "text-sm" : "text-sm"
             )}
           >
             {copy.headline}
           </p>
           {festival && copy.hookPills && copy.hookPills.length > 0 ? (
-            <div className="flex flex-wrap justify-center gap-1.5 mt-3">
+            <div className="flex flex-wrap justify-center gap-1.5 mt-2.5">
               {copy.hookPills.slice(0, 3).map((p) => (
                 <span
                   key={p}
@@ -1210,10 +1212,9 @@ function CampaignCardSheet({
           <PosterQr
             src={qrSrc}
             className={cn(
-              "mx-auto mt-4 rounded-2xl border border-rose-100 p-2 bg-white shadow-sm",
-              // A4/竖招贴预览：中等 QR；竖版可稍大
+              "mx-auto mt-3 rounded-2xl border border-rose-100 p-2 bg-white shadow-sm",
               vhd
-                ? "w-40 h-40"
+                ? "w-36 h-36"
                 : a4
                   ? "w-36 h-36"
                   : festival
@@ -1223,14 +1224,14 @@ function CampaignCardSheet({
           />
           <p
             className={cn(
-              "text-xs mt-3",
-              festival ? "text-slate-500" : "text-muted-foreground"
+              "text-[11px] mt-2.5 leading-snug px-1",
+              festival ? "text-slate-600" : "text-muted-foreground"
             )}
           >
             {festival ? copy.sub : copy.untilLine}
           </p>
           {festival && copy.termsLine && (
-            <p className="text-[10px] text-slate-400 mt-1 leading-snug px-1">
+            <p className="text-[10px] text-slate-500 mt-1 leading-snug px-1 font-medium">
               {copy.termsLine}
             </p>
           )}

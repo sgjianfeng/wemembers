@@ -213,6 +213,21 @@ function fillTextCenter(
   ctx.fillText(t, x, y);
 }
 
+/** 按像素宽度裁切（中英文混排比按字数更准） */
+function fitTextToWidth(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number
+): string {
+  if (!text) return "";
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let t = text;
+  while (t.length > 1 && ctx.measureText(`${t}…`).width > maxWidth) {
+    t = t.slice(0, -1);
+  }
+  return t.length < text.length ? `${t}…` : t;
+}
+
 /** 绘制到 canvas（调用方负责 dispose） */
 export async function paintCampaignPosterCanvas(
   opts: DrawCampaignPosterPngOpts
@@ -335,7 +350,11 @@ export async function paintCampaignPosterCanvas(
       /* optional */
     }
     const textX = pad + logoS + Math.round(20 * scale);
-    const textMaxW = w - textX - pad - Math.round(80 * scale);
+    // 预留给右上角星月，按像素裁切避免「Meow BBQ …」误伤中文品牌
+    const textMaxW = Math.max(
+      120,
+      w - textX - pad - Math.round(isVhd ? 100 : 90) * scale
+    );
     ctx.fillStyle = "rgba(255,255,255,0.9)";
     ctx.font = `bold ${Math.round(14 * scale)}px system-ui, -apple-system, sans-serif`;
     ctx.fillText(
@@ -344,23 +363,18 @@ export async function paintCampaignPosterCanvas(
       rowY + Math.round(22 * scale)
     );
     ctx.fillStyle = "#ffffff";
-    ctx.font = `bold ${Math.round(34 * scale)}px system-ui, -apple-system, sans-serif`;
+    // 品牌略小、按宽度适配，完整显示「Meow BBQ 猫抓烤肉」一类中英混排
+    const brandFs = Math.round((isVhd ? 28 : 30) * scale);
+    ctx.font = `bold ${brandFs}px system-ui, -apple-system, sans-serif`;
     const brand =
       opts.businessName?.trim() ||
       (opts.lang === "en" ? "Store" : "门店");
-    // 品牌名优先（与落地页 displayName 一致；导出侧传入 displayName）
-    const brandLine =
-      brand.length > 22 ? `${brand.slice(0, 21)}…` : brand;
-    ctx.fillText(brandLine, textX, rowY + Math.round(58 * scale));
+    const brandLine = fitTextToWidth(ctx, brand, textMaxW);
+    ctx.fillText(brandLine, textX, rowY + Math.round(56 * scale));
     ctx.fillStyle = "rgba(255,255,255,0.88)";
-    ctx.font = `${Math.round(18 * scale)}px system-ui, -apple-system, sans-serif`;
-    // 第二行：活动短名（门店/活动）
-    const campShort =
-      opts.campaignName.length > 28
-        ? `${opts.campaignName.slice(0, 27)}…`
-        : opts.campaignName;
-    ctx.fillText(campShort, textX, rowY + Math.round(86 * scale));
-    void textMaxW;
+    ctx.font = `${Math.round(16 * scale)}px system-ui, -apple-system, sans-serif`;
+    const campShort = fitTextToWidth(ctx, opts.campaignName, textMaxW);
+    ctx.fillText(campShort, textX, rowY + Math.round(84 * scale));
 
     // 满赠数字卡
     const cardX = pad;

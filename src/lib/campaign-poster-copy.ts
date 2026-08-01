@@ -206,10 +206,11 @@ export function buildCampaignPosterCopy(
         ? `S$${giftAmt} next visit · ${NDP_VALID_DAYS}d after claim · no stacking · 1/table (≤4)`
         : `S$${giftAmt} 下次再用 · 领后${NDP_VALID_DAYS}天 · 不可叠优惠 · 一桌一券(≤4人)`;
     // 钩子语：短、口语、抓眼球（非官方口号抄袭，原创促销向）
+    // 稍短，避免竖版中间换行只剩「S$61」单独一行
     hookLine =
       lang === "en"
-        ? `Celebrate SG${giftAmt} · Spend S$${minSpend}, get S$${giftAmt} back`
-        : `庆 SG${giftAmt} · 本单满 S$${minSpend} 就送 S$${giftAmt}`;
+        ? `SG${giftAmt} · Spend S$${minSpend} get S$${giftAmt}`
+        : `本单满 S$${minSpend} 送 S$${giftAmt} · 庆 SG${giftAmt}`;
     hookPills =
       lang === "en"
         ? [
