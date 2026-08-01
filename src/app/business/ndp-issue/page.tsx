@@ -212,6 +212,77 @@ export default function NdpIssuePage() {
       </div>
 
       <div className="px-4 py-4 space-y-4">
+        {/* 双路径流程说明 */}
+        <Card className="border-border bg-card">
+          <CardContent className="p-4 space-y-3">
+            <p className="text-sm font-semibold text-foreground">
+              {zh ? "国庆满赠 · 两种发放路径" : "NDP gift · two issue paths"}
+            </p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              {zh
+                ? "共同点：顾客最终都拿到「S$61 赠券（下次用）」；区别在钱怎么付、店员点哪里。"
+                : "Both paths end with an S$61 next-visit gift. Differs by how the customer paid."}
+            </p>
+            <div className="space-y-2.5">
+              <div className="rounded-xl border border-[#1A6EFF]/25 bg-[#1A6EFF]/5 p-3">
+                <p className="text-[11px] font-bold text-[#1A6EFF]">
+                  {zh ? "路径 A · 购券后扫码核销（自动发 61）" : "Path A · Buy voucher then scan redeem"}
+                </p>
+                <ol className="mt-1.5 space-y-1 text-[11px] text-foreground/90 leading-relaxed list-decimal pl-4">
+                  <li>
+                    {zh
+                      ? "顾客扫桌码/前台码 → 选「购预付券」→ Stripe 付款"
+                      : "Customer scans table/counter QR → buy prepaid voucher"}
+                  </li>
+                  <li>
+                    {zh
+                      ? "到店消费时，店员打开「扫码核销」扫顾客券码"
+                      : "At redeem, staff open Scan & redeem the voucher code"}
+                  </li>
+                  <li>
+                    {zh
+                      ? `核销金额 ≥ S$${minSgd} 时，系统自动发 S$${giftSgd} 到顾客钱包（无需本页）`
+                      : `If redeem ≥ S$${minSgd}, system auto-issues S$${giftSgd} (no need this page)`}
+                  </li>
+                </ol>
+                <Link
+                  href="/business/scan"
+                  className="mt-2 inline-flex text-xs font-semibold text-[#1A6EFF]"
+                >
+                  {zh ? "打开扫码核销 →" : "Open scan desk →"}
+                </Link>
+              </div>
+              <div className="rounded-xl border border-rose-200 bg-rose-50/60 p-3">
+                <p className="text-[11px] font-bold text-rose-700">
+                  {zh ? "路径 B · 现金结账 · 凭票发券（本页）" : "Path B · Cash receipt issue (this page)"}
+                </p>
+                <ol className="mt-1.5 space-y-1 text-[11px] text-foreground/90 leading-relaxed list-decimal pl-4">
+                  <li>
+                    {zh
+                      ? "顾客正常买单（不买预付券），结账金额 ≥ 门槛"
+                      : "Customer pays cash/card as usual, bill ≥ threshold"}
+                  </li>
+                  <li>
+                    {zh
+                      ? "店员在本页：填手机号 + 小票金额（可看小票/收据）"
+                      : "Staff on this page: phone + receipt amount"}
+                  </li>
+                  <li>
+                    {zh
+                      ? `确认后发放 S$${giftSgd} 赠券 + 低权重大奖签（抽奖机会约为购券的 1/5）`
+                      : `Issue S$${giftSgd} gift + low-weight grand draw (~1/5 of buy path)`}
+                  </li>
+                </ol>
+                <p className="mt-2 text-[10px] text-rose-800/80 leading-snug">
+                  {zh
+                    ? "下方表单即路径 B。路径 A 不会在本页出现——在「扫码核销」完成。"
+                    : "Form below = Path B. Path A happens only on Scan & redeem."}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Launch setup */}
         <Card className="border-rose-200 bg-rose-50/50">
           <CardContent className="p-4 space-y-3">
