@@ -82,7 +82,7 @@ export function TermsDatesBlock({
         onClick={() => setOpen((v) => !v)}
       >
         <span className="text-xs font-semibold text-foreground">
-          {zh ? "活动期 · 售卖期 · 核销规则" : "Dates & redeem rules"}
+          {zh ? "详细规则（点击展开）" : "Full rules (tap to expand)"}
         </span>
         {open ? (
           <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
