@@ -76,17 +76,28 @@ export function PhysicalBatchCreateForm({
   lang,
   businessName,
   businessLogo,
+  initialCampaignId,
+  defaultOpen = false,
 }: {
   stores: { id: string; name: string }[];
   campaigns?: PrintableCampaign[];
   lang: "zh" | "en";
   businessName?: string | null;
   businessLogo?: string | null;
+  /** 从活动券深链预选活动 */
+  initialCampaignId?: string | null;
+  defaultOpen?: boolean;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const prefCampaign =
+    (initialCampaignId &&
+      campaigns.some((c) => c.id === initialCampaignId) &&
+      initialCampaignId) ||
+    campaigns[0]?.id ||
+    "";
+  const [open, setOpen] = useState(defaultOpen || Boolean(initialCampaignId));
   const [storeId, setStoreId] = useState(stores[0]?.id || "");
-  const [campaignId, setCampaignId] = useState(campaigns[0]?.id || "");
+  const [campaignId, setCampaignId] = useState(prefCampaign);
   const selectedCampaign = useMemo(
     () => campaigns.find((c) => c.id === campaignId) || null,
     [campaigns, campaignId]

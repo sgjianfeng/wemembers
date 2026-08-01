@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -19,6 +19,9 @@ const types: { value: CouponType; icon: string; label: string; desc: string }[] 
 
 export default function CreateCouponPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromParam = searchParams.get("from") || "";
+  const campaignFromUrl = searchParams.get("campaignId") || "";
   const [step, setStep] = useState<Step>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -54,9 +57,12 @@ export default function CreateCouponPage() {
   const [giftPoints, setGiftPoints] = useState(50);
   const [giftLotteryPrizes, setGiftLotteryPrizes] = useState([{ name: "免单", icon: "🎉", weight: 5 }, { name: "小礼品", icon: "🎁", weight: 20 }, { name: "5元券", icon: "🎫", weight: 30 }, { name: "50积分", icon: "⭐", weight: 45 }]);
 
-  // 所属活动
-  const [campaignId, setCampaignId] = useState("");
+  // 所属活动（URL 预填：从活动页「添加券」进入）
+  const [campaignId, setCampaignId] = useState(campaignFromUrl);
   const [campaigns, setCampaigns] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    if (campaignFromUrl) setCampaignId(campaignFromUrl);
+  }, [campaignFromUrl]);
   useEffect(() => {
     fetch("/api/business/campaigns?status=active")
       .then(r => r.json()).then(d => setCampaigns(d.data || []));
@@ -107,7 +113,17 @@ export default function CreateCouponPage() {
     setLoading(false);
 
     if (res.ok) {
-      router.push(`/business/coupons/${data.data.id}`);
+      const newId = data.data?.id;
+      if (campaignId && (fromParam === "campaign" || campaignFromUrl)) {
+        // 从活动添加 → 回活动详情（统一列表）
+        router.push(`/business/campaigns/${campaignId}`);
+      } else if (newId) {
+        router.push(
+          `/business/coupons/${newId}?from=${campaignId ? "campaign" : "coupons"}${campaignId ? `&campaignId=${campaignId}` : ""}`
+        );
+      } else {
+        router.push("/business/coupons");
+      }
     } else {
       setError(data.error || "创建失败");
     }
@@ -117,7 +133,22 @@ export default function CreateCouponPage() {
     <div className="pb-4 min-h-screen flex flex-col">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
-        <button onClick={() => step > 1 ? setStep((step - 1) as Step) : router.back()} className="text-sm text-muted-foreground">← 返回</button>
+        <button
+          onClick={() => {
+            if (step > 1) {
+              setStep((step - 1) as Step);
+              return;
+            }
+            if (campaignId && (fromParam === "campaign" || campaignFromUrl)) {
+              router.push(`/business/campaigns/${campaignId}`);
+            } else {
+              router.back();
+            }
+          }}
+          className="text-sm text-muted-foreground"
+        >
+          ← 返回
+        </button>
         <div className="flex items-center gap-1">
           {[1, 2, 3].map((s) => (
             <div key={s} className={`w-2 h-2 rounded-full ${s <= step ? "bg-primary" : "bg-muted"}`} />

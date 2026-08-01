@@ -371,10 +371,16 @@ export function CampaignPrintClient({
           </li>
         </ul>
         <Link
-          href="/business/physical"
+          href={`/business/physical?campaignId=${campaignId}&from=offers`}
           className="inline-block mt-2 text-primary font-medium"
         >
           {lang === "en" ? "Print physical tickets →" : "去印实体券 →"}
+        </Link>
+        <Link
+          href="/business/offers"
+          className="inline-block mt-1 ml-3 text-muted-foreground font-medium"
+        >
+          {lang === "en" ? "Activity perks" : "活动券"}
         </Link>
       </div>
 

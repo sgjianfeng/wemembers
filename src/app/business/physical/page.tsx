@@ -35,9 +35,17 @@ function productTiers(product: {
   return enabledTiers;
 }
 
-export default async function PhysicalBatchesPage() {
+export default async function PhysicalBatchesPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ campaignId?: string; from?: string }>;
+}) {
   const session = await getSession();
   if (!session || session.role !== "business") redirect("/auth/login");
+
+  const sp = searchParams ? await searchParams : {};
+  const fromOffers = sp.from === "offers";
+  const prefCampaignId = sp.campaignId || null;
 
   const c = await cookies();
   const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
@@ -73,11 +81,25 @@ export default async function PhysicalBatchesPage() {
         businessId: session.userId,
         status: { in: ["active", "draft"] },
         endDate: { gte: new Date() },
-        productKind: "self_use",
-        role: "activity",
-        type: {
-          in: ["voucher_sale", "lucky_draw_v2", "lucky_draw", "promotion"],
-        },
+        role: { not: "product_mirror" },
+        // 可印纸质：自用代金/抽奖/促销/节日（国庆满赠挂产品后亦可）
+        OR: [
+          { productKind: "self_use" },
+          {
+            type: {
+              in: [
+                "voucher_sale",
+                "lucky_draw_v2",
+                "lucky_draw",
+                "promotion",
+                "holiday",
+                "event",
+                "seasonal",
+              ],
+            },
+          },
+          ...(prefCampaignId ? [{ id: prefCampaignId }] : []),
+        ],
       },
       select: {
         id: true,
@@ -164,7 +186,17 @@ export default async function PhysicalBatchesPage() {
   return (
     <div className="pb-4 min-h-[60vh]">
       <div className="px-4 py-3.5 border-b border-border/80 sticky top-0 bg-card/95 backdrop-blur-sm z-10">
-        <h1 className="text-lg font-semibold text-foreground tracking-tight">
+        {fromOffers && (
+          <Link
+            href="/business/offers"
+            className="text-xs text-primary font-medium"
+          >
+            ← {lang === "en" ? "Activity perks" : "返回活动券"}
+          </Link>
+        )}
+        <h1
+          className={`text-lg font-semibold text-foreground tracking-tight ${fromOffers ? "mt-1" : ""}`}
+        >
           {lang === "en" ? "Physical print" : "实体印刷"}
         </h1>
         <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
@@ -227,6 +259,8 @@ export default async function PhysicalBatchesPage() {
               biz?.displayName?.trim() || biz?.businessName
             }
             businessLogo={biz?.businessLogo}
+            initialCampaignId={prefCampaignId}
+            defaultOpen={Boolean(prefCampaignId) || fromOffers}
           />
         )}
 

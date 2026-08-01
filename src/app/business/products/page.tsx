@@ -150,66 +150,86 @@ export default function BusinessProductsPage() {
         </h1>
         <p className="text-xs text-muted-foreground mt-0.5">
           {lang === "en"
-            ? "What customers buy. One product = one sellable line with its own link."
-            : "顾客实际购买的东西。一个产品 = 一条可售卖线，自带购买链接。"}
+            ? "Catalog of sellable lines (9% cards, face vouchers, draws). Gift perks live under Gift catalog; link both into Activities."
+            : "可售卖线总目录（9 折卡、原价代金、大奖等）。赠送权益在「权益券」；两者都挂到「活动」后，在「活动券」操作。"}
         </p>
+        <div className="flex flex-wrap gap-2 mt-2">
+          <Link
+            href="/business/coupons"
+            className="text-[11px] font-medium text-foreground px-2.5 py-1 rounded-full bg-muted"
+          >
+            {lang === "en" ? "Gift / perks →" : "权益券（赠送）→"}
+          </Link>
+          <Link
+            href="/business/campaigns"
+            className="text-[11px] font-medium text-foreground px-2.5 py-1 rounded-full bg-muted"
+          >
+            {lang === "en" ? "Activities →" : "活动设置 →"}
+          </Link>
+          <Link
+            href="/business/offers"
+            className="text-[11px] font-medium text-primary px-2.5 py-1 rounded-full bg-primary/10"
+          >
+            {lang === "en" ? "Activity perks →" : "活动券 →"}
+          </Link>
+        </div>
       </div>
 
       <div className="px-4 mt-3">
         <div className="rounded-2xl border border-border bg-muted/40 px-3 py-2.5">
           <p className="text-[11px] font-medium text-foreground mb-1.5">
-            {lang === "en" ? "Four layers (do this order)" : "四层结构（按这个顺序）"}
+            {lang === "en" ? "Three layers + template" : "三层模型 + 模版"}
           </p>
           <ol className="text-[11px] text-muted-foreground space-y-1 list-decimal list-inside leading-relaxed">
             <li>
               {lang === "en" ? (
                 <>
                   <span className="text-foreground font-medium">Template</span> — fee/discount rules
-                  (More → Tools → My templates)
+                  (More → Tools)
                 </>
               ) : (
                 <>
                   <span className="text-foreground font-medium">模版</span>
-                  ：费率/折扣规则（更多 → 工具 → 我的模版）
+                  ：费率/折扣规则（更多 → 工具）
                 </>
               )}
             </li>
             <li>
               {lang === "en" ? (
                 <>
-                  <span className="text-foreground font-medium">Product</span> — this page; create &amp;
-                  activate
+                  <span className="text-foreground font-medium">Products</span> — this page (sellable) +
+                  Gift catalog (free claim)
                 </>
               ) : (
                 <>
                   <span className="text-foreground font-medium">券产品</span>
-                  ：本页创建并上架
+                  ：本页可售线 +「权益券」赠送线
                 </>
               )}
             </li>
             <li>
               {lang === "en" ? (
                 <>
-                  <span className="text-foreground font-medium">Activity</span> — pick which products
-                  run together
+                  <span className="text-foreground font-medium">Activity</span> — settings + link
+                  vouchers + stores
                 </>
               ) : (
                 <>
                   <span className="text-foreground font-medium">活动</span>
-                  ：勾选要一起卖的产品
+                  ：规则设置 · 挂券 · 门店参与
                 </>
               )}
             </li>
             <li>
               {lang === "en" ? (
                 <>
-                  <span className="text-foreground font-medium">Store</span> — store opts into the
-                  activity
+                  <span className="text-foreground font-medium">Activity perks</span> — day-to-day
+                  issue / redeem by activity
                 </>
               ) : (
                 <>
-                  <span className="text-foreground font-medium">门店</span>
-                  ：门店选择参与哪个活动
+                  <span className="text-foreground font-medium">活动券</span>
+                  ：按活动日常发券 / 核销
                 </>
               )}
             </li>

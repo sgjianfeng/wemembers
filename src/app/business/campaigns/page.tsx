@@ -65,21 +65,27 @@ export default async function CampaignsPage() {
         <div className="rounded-2xl border border-border bg-muted/40 px-3 py-2.5 text-[11px] text-muted-foreground leading-relaxed">
           {lang === "en" ? (
             <>
-              <span className="font-medium text-foreground">Flow: </span>
-              Templates →{" "}
+              <span className="font-medium text-foreground">Three layers: </span>
               <Link href="/business/products" className="text-primary font-medium">
                 Products
               </Link>{" "}
-              (what you sell) → this page (pick products + which stores join).
+              (catalog) → this page (activity settings + link vouchers) →{" "}
+              <Link href="/business/offers" className="text-primary font-medium">
+                Activity perks
+              </Link>{" "}
+              (day-to-day issue / redeem).
             </>
           ) : (
             <>
-              <span className="font-medium text-foreground">怎么用：</span>
-              先在{" "}
+              <span className="font-medium text-foreground">三层：</span>
               <Link href="/business/products" className="text-primary font-medium">
                 券产品
-              </Link>{" "}
-              上架要卖的线，再在这里勾选产品、让门店参与。活动本身不直接定价。
+              </Link>
+              （目录）→ 本页（活动设置 + 挂券）→{" "}
+              <Link href="/business/offers" className="text-primary font-medium">
+                活动券
+              </Link>
+              （日常发券/核销）。活动本身不定价。
             </>
           )}
         </div>

@@ -12,13 +12,17 @@ import { CampaignPrintClient } from "./CampaignPrintClient";
  */
 export default async function CampaignPrintPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ from?: string }>;
 }) {
   const session = await getSession();
   if (!session || session.role !== "business") redirect("/auth/login");
 
   const { id } = await params;
+  const sp = searchParams ? await searchParams : {};
+  const fromOffers = sp.from === "offers";
   const c = await cookies();
   const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
 
@@ -73,18 +77,25 @@ export default async function CampaignPrintPage({
     <div className="pb-4">
       <div className="px-4 py-3 border-b border-border sticky top-0 bg-card z-10 print:hidden">
         <Link
-          href={`/business/campaigns/${id}`}
+          href={fromOffers ? "/business/offers" : `/business/campaigns/${id}`}
           className="text-xs text-primary font-medium"
         >
-          ← {lang === "en" ? "Campaign" : "返回活动"}
+          ←{" "}
+          {fromOffers
+            ? lang === "en"
+              ? "Activity perks"
+              : "返回活动券"
+            : lang === "en"
+              ? "Campaign"
+              : "返回活动"}
         </Link>
         <h1 className="text-lg font-semibold mt-1 text-foreground">
-          {lang === "en" ? "Activity card · Print" : "活动卡 · 打印导出"}
+          {lang === "en" ? "Activity ad · Print" : "活动广告 · 打印导出"}
         </h1>
         <p className="text-xs text-muted-foreground mt-0.5">
           {lang === "en"
-            ? "Sell points from campaign · tent / poster / social · distributor versions"
-            : "卖点自动生成 · 台卡/海报/社交图 · 分发版（与实体券 PT- 不同）"}
+            ? "Tent / poster / social · distributor versions · not PT- physical tickets"
+            : "台卡/海报/社交图 · 分发版 · 与实体券 PT- 不同"}
         </p>
       </div>
 

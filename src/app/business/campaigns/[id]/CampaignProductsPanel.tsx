@@ -12,6 +12,10 @@ type Product = {
   slug: string | null;
 };
 
+/**
+ * 活动设置 · 关联「可售」券产品（勾选上架线）
+ * 与赠送/权益券列表同属「本活动包含的券」，此处只做产品线勾选
+ */
 export function CampaignProductsPanel({ campaignId }: { campaignId: string }) {
   const { lang } = useLang();
   const [all, setAll] = useState<Product[]>([]);
@@ -19,6 +23,7 @@ export function CampaignProductsPanel({ campaignId }: { campaignId: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  const [open, setOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -29,7 +34,6 @@ export function CampaignProductsPanel({ campaignId }: { campaignId: string }) {
       ]);
       if (pr.ok) {
         const j = await pr.json();
-        // 活动只挂已上架产品；草稿/下架不出现在勾选列表
         setAll(
           ((j.data || []) as Product[]).filter((p) => p.status === "active")
         );
@@ -70,71 +74,97 @@ export function CampaignProductsPanel({ campaignId }: { campaignId: string }) {
         return;
       }
       setMsg(lang === "en" ? "Saved" : "已保存");
+      // 刷新页面以同步上方统一列表
+      window.location.reload();
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <h3 className="text-sm font-semibold text-foreground">
-        {lang === "en" ? "Voucher products in this activity" : "本活动包含的券产品"}
-      </h3>
-      <p className="text-[11px] text-muted-foreground mt-0.5 mb-3">
-        {lang === "en"
-          ? "Pick catalog products. Stores that join this activity can sell them."
-          : "勾选已上架的券产品。门店参与本活动后即可售卖。"}
-      </p>
-      {loading ? (
-        <p className="text-xs text-muted-foreground">…</p>
-      ) : all.length === 0 ? (
-        <p className="text-xs text-muted-foreground">
-          {lang === "en" ? (
-            <>
-              No products.{" "}
-              <a href="/business/products" className="text-primary">
-                Create products
-              </a>
-            </>
+    <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between text-left"
+      >
+        <div>
+          <p className="text-xs font-semibold text-foreground">
+            {lang === "en"
+              ? "Link sellable products"
+              : "关联可售产品线"}
+          </p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            {lang === "en"
+              ? `${selected.length} selected · pick catalog products stores can sell`
+              : `已选 ${selected.length} 条 · 勾选上架产品，门店参与后可售`}
+          </p>
+        </div>
+        <span className="text-xs text-primary font-medium shrink-0">
+          {open
+            ? lang === "en"
+              ? "Collapse"
+              : "收起"
+            : lang === "en"
+              ? "Edit"
+              : "编辑"}
+        </span>
+      </button>
+
+      {open && (
+        <div className="mt-3 pt-3 border-t border-border/60">
+          {loading ? (
+            <p className="text-xs text-muted-foreground">…</p>
+          ) : all.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              {lang === "en" ? (
+                <>
+                  No products.{" "}
+                  <a href="/business/products" className="text-primary">
+                    Create products
+                  </a>
+                </>
+              ) : (
+                <>
+                  还没有可售产品。
+                  <a href="/business/products" className="text-primary">
+                    去券产品
+                  </a>
+                </>
+              )}
+            </p>
           ) : (
-            <>
-              还没有券产品。
-              <a href="/business/products" className="text-primary">
-                去创建
-              </a>
-            </>
+            <ul className="space-y-2">
+              {all.map((p) => (
+                <label
+                  key={p.id}
+                  className="flex items-center gap-3 rounded-xl bg-card px-3 py-2 cursor-pointer border border-border/50"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(p.id)}
+                    onChange={() => toggle(p.id)}
+                    className="rounded border-border"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="text-sm font-medium text-foreground block truncate">
+                      {p.name}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {p.slug || p.id.slice(0, 8)}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </ul>
           )}
-        </p>
-      ) : (
-        <ul className="space-y-2">
-          {all.map((p) => (
-            <label
-              key={p.id}
-              className="flex items-center gap-3 rounded-xl bg-muted/40 px-3 py-2 cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={selected.includes(p.id)}
-                onChange={() => toggle(p.id)}
-                className="rounded border-border"
-              />
-              <span className="min-w-0 flex-1">
-                <span className="text-sm font-medium text-foreground block truncate">
-                  {p.name}
-                </span>
-                <span className="text-[10px] text-muted-foreground">
-                  {p.status} · {p.slug || p.id.slice(0, 8)}
-                </span>
-              </span>
-            </label>
-          ))}
-        </ul>
-      )}
-      <Button className="w-full mt-3" loading={saving} onClick={save}>
-        {lang === "en" ? "Save products" : "保存产品列表"}
-      </Button>
-      {msg && (
-        <p className="text-xs text-center mt-2 text-muted-foreground">{msg}</p>
+          <Button className="w-full mt-3" loading={saving} onClick={save}>
+            {lang === "en" ? "Save product links" : "保存可售关联"}
+          </Button>
+          {msg && (
+            <p className="text-xs text-center mt-2 text-muted-foreground">{msg}</p>
+          )}
+        </div>
       )}
     </div>
   );

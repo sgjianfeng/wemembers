@@ -71,7 +71,7 @@ export default async function BusinessLayout({
   ];
 
   /**
-   * 运营：活动管理 / 券产品 / 营销券分开；工具与账户进「更多」
+   * 三层：券产品(可售) / 权益券(赠送) / 活动设置；日常操作在底栏「活动券」
    */
   const businessMore = [
     {

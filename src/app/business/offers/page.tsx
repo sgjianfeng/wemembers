@@ -114,7 +114,7 @@ export default async function BusinessOffersPage() {
         status: coupon.status,
         href:
           session.role === "business"
-            ? `/business/coupons/${coupon.id}`
+            ? `/business/coupons/${coupon.id}?from=offers&campaignId=${camp.id}`
             : undefined,
         ops:
           session.role === "business"
@@ -122,7 +122,7 @@ export default async function BusinessOffersPage() {
                 {
                   label: "券详情",
                   labelEn: "Details",
-                  href: `/business/coupons/${coupon.id}`,
+                  href: `/business/coupons/${coupon.id}?from=offers&campaignId=${camp.id}`,
                 },
               ]
             : undefined,
@@ -182,9 +182,22 @@ export default async function BusinessOffersPage() {
       });
     }
     if (session.role === "business") {
+      // 打印设计：活动广告（台卡/海报）+ 实体券 PT-
+      if (camp.slug) {
+        ops.push({
+          label: "活动广告",
+          labelEn: "Ad print",
+          href: `/business/campaigns/${camp.id}/print?from=offers`,
+        });
+      }
       ops.push({
-        label: "活动详情",
-        labelEn: "Details",
+        label: "实体券",
+        labelEn: "Physical",
+        href: `/business/physical?campaignId=${camp.id}&from=offers`,
+      });
+      ops.push({
+        label: "活动设置",
+        labelEn: "Settings",
         href: `/business/campaigns/${camp.id}`,
       });
     }
@@ -266,29 +279,29 @@ export default async function BusinessOffersPage() {
         </h1>
         <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
           {zh
-            ? "按活动分类 · 展开看权益券 · 匹配发券/核销/顾客页"
-            : "By activity · expand entitlements · issue / redeem / landing"}
+            ? "活动 × 券的组合 · 发券/核销 · 活动广告与实体券打印设计"
+            : "Activity × vouchers · issue / redeem · ad & physical print design"}
         </p>
       </div>
 
       <div className="px-4 mt-3 rounded-2xl border border-border bg-muted/40 px-3 py-2.5 text-[11px] text-muted-foreground leading-relaxed">
         {zh ? (
           <>
-            默认三类：
-            <strong className="text-foreground">长期活动</strong>
-            （原价代金）·
-            <strong className="text-foreground">大奖倒计时</strong>
-            （购券抽奖）·
-            <strong className="text-foreground">国庆满赠</strong>
-            （满 120 送 61）。与客户首页/钱包同一心智：活动 → 权益。
+            三层：
+            <strong className="text-foreground">券产品</strong>
+            （可售）·
+            <strong className="text-foreground">活动</strong>
+            （设置）· 本页
+            <strong className="text-foreground">活动券</strong>
+            （组合操作）。默认场次：长期 / 大奖倒计时 / 国庆满赠。
           </>
         ) : (
           <>
-            Defaults:{" "}
-            <strong className="text-foreground">Evergreen</strong> ·{" "}
-            <strong className="text-foreground">Grand countdown</strong> ·{" "}
-            <strong className="text-foreground">National Day</strong>. Same
-            activity → entitlement model as customer home.
+            Layers:{" "}
+            <strong className="text-foreground">Products</strong> ·{" "}
+            <strong className="text-foreground">Activity</strong> · this page{" "}
+            <strong className="text-foreground">Activity perks</strong>. Defaults:
+            Evergreen · Grand countdown · National Day.
           </>
         )}
       </div>
@@ -312,6 +325,12 @@ export default async function BusinessOffersPage() {
             className="text-xs font-semibold px-3 py-1.5 rounded-full border border-border bg-card"
           >
             {zh ? "券产品" : "Products"}
+          </Link>
+          <Link
+            href="/business/physical?from=offers"
+            className="text-xs font-semibold px-3 py-1.5 rounded-full border border-amber-600/40 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+          >
+            {zh ? "实体印刷" : "Physical print"}
           </Link>
         </div>
       )}
@@ -349,7 +368,28 @@ export default async function BusinessOffersPage() {
             )}
           </div>
         ) : (
-          <OffersClient lang={lang === "en" ? "en" : "zh"} bundles={bundles} />
+          <OffersClient
+            lang={lang === "en" ? "en" : "zh"}
+            bundles={bundles}
+            showPrint={session.role === "business"}
+            printables={campaigns.map((camp) => {
+              const tone = activityToneFromType(
+                camp.type,
+                camp.name,
+                camp.tags,
+                camp.rulesSnapshot
+              );
+              return {
+                id: camp.id,
+                name: camp.name,
+                slug: camp.slug,
+                status: camp.status,
+                tone,
+                productCount: camp.catalogProducts.length,
+                couponCount: camp.coupons.length,
+              };
+            })}
+          />
         )}
       </div>
     </div>
