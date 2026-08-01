@@ -252,22 +252,23 @@ export default async function BusinessOffersPage({
       : "/business/scan";
 
     if (meta.enabled || tone === "ndp") {
-      // 国庆：进本店操作台（双路径），不进孤立的 ndp-issue
+      // 活动专属：凭票发 61（发赠券无法塞进通用核销）
       ops.push({
-        label: "国庆操作台",
-        labelEn: "NDP desk",
+        label: "活动操作台",
+        labelEn: "Activity desk",
         href: ndpDeskHref,
         primary: true,
       });
+      // 通用：核销已有的预付券（满额时后端仍可自动触发满赠）
       ops.push({
-        label: "扫码核销",
-        labelEn: "Scan",
+        label: "通用核销",
+        labelEn: "Generic scan",
         href: scanHref,
       });
     } else {
       ops.push({
-        label: "核销",
-        labelEn: "Redeem",
+        label: "通用核销",
+        labelEn: "Scan",
         href: scanHref,
         primary: true,
       });
@@ -413,17 +414,16 @@ export default async function BusinessOffersPage({
       <div className="px-4 mt-3 rounded-2xl border border-border bg-muted/40 px-3 py-2.5 text-[11px] text-muted-foreground leading-relaxed">
         {zh ? (
           <>
-            展开活动 → 点
-            <strong className="text-foreground">国庆操作台</strong>
-            （购券扫码 / 收银凭票）或
-            <strong className="text-foreground">扫码核销</strong>
-            。无需再选店。
+            <strong className="text-foreground">通用券</strong>
+            （预付/实体）→ 点「扫码核销」；
+            <strong className="text-foreground">活动满赠</strong>
+            （如国庆发 61）→ 展开活动进「操作台」凭票发券。门店已锁定。
           </>
         ) : (
           <>
-            Expand activity → <strong className="text-foreground">NDP desk</strong>{" "}
-            (scan or cash) or <strong className="text-foreground">Scan</strong>.
-            Store is already set.
+            <strong className="text-foreground">Generic vouchers</strong> → Scan.{" "}
+            <strong className="text-foreground">Activity gifts</strong> (e.g. spend
+            &amp; get) → open that activity&apos;s desk. Store is locked.
           </>
         )}
       </div>
@@ -432,16 +432,16 @@ export default async function BusinessOffersPage({
         {storeId && (
           <>
             <Link
-              href={ndpDeskHref}
-              className="text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-600 text-white"
-            >
-              {zh ? "国庆操作台" : "NDP desk"}
-            </Link>
-            <Link
               href={`/business/scan?storeId=${encodeURIComponent(storeId)}`}
               className="text-xs font-semibold px-3 py-1.5 rounded-full bg-primary text-primary-foreground"
             >
-              {zh ? "扫码核销" : "Scan"}
+              {zh ? "通用核销" : "Generic scan"}
+            </Link>
+            <Link
+              href={ndpDeskHref}
+              className="text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-600 text-white"
+            >
+              {zh ? "活动满赠台" : "Gift desk"}
             </Link>
           </>
         )}

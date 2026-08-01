@@ -165,8 +165,8 @@ export default async function BusinessStoreDetailPage({
               </p>
               <p className="text-[10px] text-white/85 mt-0.5">
                 {lang === "en"
-                  ? "NDP desk · scan redeem · store locked"
-                  : "国庆操作台 · 扫码核销 · 门店已锁定"}
+                  ? "Activity gift desk · generic scan · store locked"
+                  : "活动满赠台 · 通用核销 · 门店已锁定"}
               </p>
             </CardContent>
           </Card>
@@ -188,7 +188,7 @@ export default async function BusinessStoreDetailPage({
             <CardContent className="p-3">
               <p className="text-lg">🇸🇬</p>
               <p className="text-sm font-semibold mt-1 text-foreground">
-                {lang === "en" ? "NDP desk" : "国庆操作台"}
+                {lang === "en" ? "Gift desk" : "活动满赠台"}
               </p>
             </CardContent>
           </Card>

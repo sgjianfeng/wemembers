@@ -528,11 +528,11 @@ async function StaffStoreHome({
     {
       id: "ndp",
       icon: Gift,
-      title: lang === "en" ? "NDP desk" : "国庆操作台",
+      title: lang === "en" ? "Activity gift desk" : "活动满赠台",
       desc:
         lang === "en"
-          ? "Scan path · cash receipt · this store"
-          : "购券扫码 · 收银凭票 · 本店已锁定",
+          ? "Cash bill → issue gift · this store"
+          : "收银凭票发赠券 · 本店",
       href: `/business/ndp-desk?storeId=${encodeURIComponent(store.id)}`,
       primary: true,
     },

@@ -143,12 +143,12 @@ export function NdpDeskClient({
           </span>
         </div>
         <h1 className="text-lg font-semibold mt-1.5">
-          {zh ? "国庆满赠 · 操作台" : "NDP desk"}
+          {zh ? "活动操作台 · 满赠发券" : "Activity desk · gift issue"}
         </h1>
         <p className="text-xs text-muted-foreground mt-0.5">
           {zh
-            ? `门店已锁定 · 满 S$${minSgd} 送 S$${giftSgd}`
-            : `Store locked · spend S$${minSgd} → S$${giftSgd}`}
+            ? `本店已锁定 · 满 S$${minSgd} 送 S$${giftSgd}（活动规则）· 通用券请用「通用核销」`
+            : `Store locked · spend S$${minSgd} → S$${giftSgd} · generic vouchers use Scan`}
         </p>
       </div>
 
@@ -191,46 +191,34 @@ export function NdpDeskClient({
         {path === "choose" && campaigns.length > 0 && (
           <>
             <p className="text-xs font-semibold text-foreground pt-1">
-              {zh ? "顾客怎么付款？选一条路径" : "How did the customer pay?"}
+              {zh ? "本活动怎么发赠券？" : "How to issue this activity gift?"}
             </p>
 
-            {/* Path A */}
+            {/* 购券路径：跳转通用核销（满额自动触发满赠逻辑） */}
             <Link href={scanHref} className="block">
               <Card className="border-[#1A6EFF]/30 active:scale-[0.99] transition-transform">
                 <CardContent className="p-4">
                   <p className="text-[10px] font-bold text-[#1A6EFF] uppercase tracking-wide">
-                    {zh ? "路径 A · 购券核销" : "Path A · Voucher redeem"}
+                    {zh ? "顾客已有预付券" : "Has prepaid voucher"}
                   </p>
                   <p className="text-sm font-semibold text-foreground mt-1">
                     {zh
-                      ? "顾客已买预付券 → 打开扫码"
-                      : "Customer bought prepaid → open scan"}
+                      ? "走「通用核销」扫码即可"
+                      : "Use generic Scan desk"}
                   </p>
-                  <ol className="mt-2 text-[11px] text-muted-foreground space-y-0.5 list-decimal pl-4 leading-relaxed">
-                    <li>
-                      {zh
-                        ? "扫顾客手机上的券码 / 短码"
-                        : "Scan customer voucher / short code"}
-                    </li>
-                    <li>
-                      {zh
-                        ? `核销金额 ≥ S$${minSgd} 时，系统自动发 S$${giftSgd}`
-                        : `If redeem ≥ S$${minSgd}, auto-issue S$${giftSgd}`}
-                    </li>
-                    <li>
-                      {zh
-                        ? "本店已锁定，无需再选门店"
-                        : "This store is locked — no re-pick"}
-                    </li>
-                  </ol>
+                  <p className="mt-1.5 text-[11px] text-muted-foreground leading-relaxed">
+                    {zh
+                      ? `核销满 S$${minSgd} 时，系统按活动规则自动发 S$${giftSgd}。核销台本身不绑国庆 UI。`
+                      : `Redeem ≥ S$${minSgd} may auto-issue S$${giftSgd} by campaign rules. Scan UI stays generic.`}
+                  </p>
                   <p className="mt-3 text-xs font-semibold text-[#1A6EFF]">
-                    {zh ? "进入扫码核销 →" : "Open scan desk →"}
+                    {zh ? "打开通用核销 →" : "Open generic scan →"}
                   </p>
                 </CardContent>
               </Card>
             </Link>
 
-            {/* Path B */}
+            {/* 收银路径：本台专属，因为「发 61」无法通用 */}
             <button
               type="button"
               className="w-full text-left"
@@ -239,26 +227,18 @@ export function NdpDeskClient({
               <Card className="border-rose-200 active:scale-[0.99] transition-transform">
                 <CardContent className="p-4">
                   <p className="text-[10px] font-bold text-rose-700 uppercase tracking-wide">
-                    {zh ? "路径 B · 收银凭票" : "Path B · Cash / bill"}
+                    {zh ? "收银买单 · 本活动发赠券" : "Cash bill · issue gift"}
                   </p>
                   <p className="text-sm font-semibold text-foreground mt-1">
                     {zh
-                      ? "顾客现金/刷卡买单（没买预付券）"
-                      : "Cash/card bill, no prepaid voucher"}
+                      ? "没买预付券 · 看小票发活动赠券"
+                      : "No prepaid · issue activity gift from bill"}
                   </p>
-                  <ol className="mt-2 text-[11px] text-muted-foreground space-y-0.5 list-decimal pl-4 leading-relaxed">
-                    <li>{zh ? "问顾客手机号" : "Ask for mobile"}</li>
-                    <li>
-                      {zh
-                        ? `看小票总额（须 ≥ S$${minSgd}）`
-                        : `Enter bill total (≥ S$${minSgd})`}
-                    </li>
-                    <li>
-                      {zh
-                        ? `确认后发 S$${giftSgd} 到该手机钱包`
-                        : `Issue S$${giftSgd} to that wallet`}
-                    </li>
-                  </ol>
+                  <p className="mt-1.5 text-[11px] text-muted-foreground leading-relaxed">
+                    {zh
+                      ? "发 61 这类「活动赠券」无法做成通用核销，所以在活动操作台完成：手机 + 金额 → 发券。"
+                      : "Activity gifts can’t fit generic redeem — phone + bill amount on this desk."}
+                  </p>
                   <p className="mt-3 text-xs font-semibold text-rose-700">
                     {zh ? "填写手机与金额 →" : "Enter phone & amount →"}
                   </p>

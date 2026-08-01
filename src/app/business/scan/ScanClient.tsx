@@ -14,7 +14,7 @@ import { resolveStoreLogo } from "@/lib/utils";
 import Link from "next/link";
 import type { ProductKind } from "@/lib/product-kind";
 
-/** 店员核销台：线上券（手机）+ 实体券（纸） */
+/** 通用核销台：线上券（手机）+ 实体券（纸）——活动专属发券走「活动券」 */
 type Tab = "online" | "physical";
 
 type StoreOption = {
@@ -532,27 +532,7 @@ export default function ScanClient({
         </div>
       )}
 
-      {/* 国庆：路径 A 在此自动发 61 */}
-      <div className="mx-4 mt-3 rounded-xl border border-rose-100 bg-rose-50/70 px-3 py-2.5">
-        <p className="text-[11px] font-semibold text-rose-800">
-          {lang === "en"
-            ? "NDP Path A · auto gift on redeem"
-            : "国庆路径 A · 核销满额自动发 61"}
-        </p>
-        <p className="text-[10px] text-rose-900/80 mt-0.5 leading-relaxed">
-          {lang === "en"
-            ? "Scan prepaid voucher · if this redeem ≥ S$120, S$61 gift goes to customer wallet automatically. Cash bill without voucher → use NDP issue page."
-            : "扫顾客预付券码核销；本笔核销 ≥ S$120 时自动发 S$61 到钱包。纯现金买单未购券 → 请用「国庆满赠发券」页。"}
-        </p>
-        <Link
-          href="/business/ndp-issue"
-          className="inline-block mt-1.5 text-[11px] font-semibold text-rose-700"
-        >
-          {lang === "en" ? "Receipt issue (Path B) →" : "现金凭票发券（路径 B）→"}
-        </Link>
-      </div>
-
-      {/* 仅两种：线上券（手机） / 实体券（纸） */}
+      {/* 通用核销：仅线上券 / 实体券。活动满赠、凭票发券 → 底栏「活动券」 */}
       <div className="px-4 mt-3 flex gap-1.5">
         <button
           type="button"
@@ -576,6 +556,11 @@ export default function ScanClient({
 
       <p className="px-4 mt-2 text-[10px] text-muted-foreground text-center">
         {t("scan.twoPathsHint")}
+      </p>
+      <p className="px-4 mt-1 text-[10px] text-muted-foreground text-center leading-relaxed">
+        {lang === "en"
+          ? "Activity gifts (e.g. spend & get) → open Offers for that store."
+          : "活动满赠 / 凭票发券 → 请到底栏「活动券」进对应活动操作。"}
       </p>
 
       {tab === "online" && (
