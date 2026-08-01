@@ -237,6 +237,13 @@ export function CampaignPrintClient({
       hintEn: "Big offer · small stand",
     },
     {
+      id: "vhd",
+      zh: "竖版招贴",
+      en: "Portrait HD",
+      hintZh: "1080×1920 · 屏显/电梯",
+      hintEn: "1080×1920 · screens",
+    },
+    {
       id: "a4",
       zh: "A4 墙贴",
       en: "A4 wall",
@@ -624,7 +631,7 @@ export function CampaignPrintClient({
         <p className="text-xs font-medium text-muted-foreground mb-2">
           {lang === "en" ? "Print layout" : "印刷版式"}
         </p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {layouts.map((L) => (
             <button
               key={L.id}
@@ -651,6 +658,13 @@ export function CampaignPrintClient({
             {lang === "en"
               ? "A4: use Print / Save PDF for print shops, or Download PNG (≈150dpi). Fills one A4 sheet."
               : "A4：打印店建议「打印/存 PDF」或下载 PNG（约 150dpi）。一页一张墙贴。"}
+          </p>
+        )}
+        {layout === "vhd" && (
+          <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed">
+            {lang === "en"
+              ? "Portrait HD 1080×1920: digital screens, elevator ads, vertical displays. Download branded PNG."
+              : "竖版全高清 1080×1920：电梯屏、竖屏广告机、门店竖屏。请用「下载品牌 PNG」。"}
           </p>
         )}
       </div>
@@ -1002,8 +1016,9 @@ function CampaignCardSheet({
     );
   }
 
-  if (layout === "poster" || layout === "a4") {
+  if (layout === "poster" || layout === "a4" || layout === "vhd") {
     const a4 = layout === "a4";
+    const vhd = layout === "vhd";
     return (
       <div
         data-campaign-poster={layout}
@@ -1013,13 +1028,15 @@ function CampaignCardSheet({
           festival ? "border-red-800/30" : "border-border",
           a4
             ? "max-w-[420px] campaign-a4-sheet print:rounded-none"
-            : "max-w-[400px]"
+            : vhd
+              ? "max-w-[320px] aspect-[9/16]"
+              : "max-w-[400px]"
         )}
       >
         <div
           className={cn(
             "relative z-[1] text-white overflow-hidden",
-            a4 ? "px-6 pt-8 pb-5" : "px-5 pt-6 pb-4"
+            a4 || vhd ? "px-6 pt-8 pb-5" : "px-5 pt-6 pb-4"
           )}
           style={{
             background: festival ? accent || SG_NDP_RED : headerBg,
@@ -1048,14 +1065,14 @@ function CampaignCardSheet({
                     alt=""
                     className={cn(
                       "object-cover rounded-2xl bg-white shrink-0",
-                      a4 ? "w-14 h-14" : "w-12 h-12"
+                      a4 || vhd ? "w-14 h-14" : "w-12 h-12"
                     )}
                   />
                 ) : (
                   <div
                     className={cn(
                       "rounded-2xl bg-white/20 flex items-center justify-center text-2xl shrink-0",
-                      a4 ? "w-14 h-14" : "w-12 h-12"
+                      a4 || vhd ? "w-14 h-14" : "w-12 h-12"
                     )}
                   >
                     🎁
@@ -1068,7 +1085,7 @@ function CampaignCardSheet({
                   <h1
                     className={cn(
                       "font-bold mt-0.5 leading-snug truncate",
-                      a4 ? "text-xl" : "text-lg"
+                      a4 || vhd ? "text-xl" : "text-lg"
                     )}
                   >
                     {businessName || campaignName}
@@ -1083,7 +1100,7 @@ function CampaignCardSheet({
                 <p
                   className={cn(
                     "font-extrabold tabular-nums mt-0.5",
-                    a4 ? "text-2xl" : "text-xl"
+                    a4 || vhd ? "text-2xl" : "text-xl"
                   )}
                 >
                   {copy.benefitLine.replace(/ · SG\d+/i, "")}
@@ -1194,8 +1211,14 @@ function CampaignCardSheet({
             src={qrSrc}
             className={cn(
               "mx-auto mt-4 rounded-2xl border border-rose-100 p-2 bg-white shadow-sm",
-              // A4 预览：中等 QR，不再占半屏
-              a4 ? "w-36 h-36" : festival ? "w-40 h-40" : "w-52 h-52"
+              // A4/竖招贴预览：中等 QR；竖版可稍大
+              vhd
+                ? "w-40 h-40"
+                : a4
+                  ? "w-36 h-36"
+                  : festival
+                    ? "w-40 h-40"
+                    : "w-52 h-52"
             )}
           />
           <p

@@ -7,8 +7,16 @@ import JSZip from "jszip";
 import type { CampaignPosterCopy } from "@/lib/campaign-poster-copy";
 import { isNdpFestivalAccent } from "@/lib/visual-templates";
 
-/** tent 台卡 · poster 吧台 · sticker 1:1 社交 · a4 墙贴/打印店 */
-export type CampaignPosterLayoutId = "tent" | "poster" | "sticker" | "a4";
+/**
+ * tent 台卡 · poster 吧台 · sticker 1:1 社交 · a4 墙贴 ·
+ * vhd 竖版全高清招贴（1080×1920，屏显/电梯/竖屏广告）
+ */
+export type CampaignPosterLayoutId =
+  | "tent"
+  | "poster"
+  | "sticker"
+  | "a4"
+  | "vhd";
 
 export type CampaignPosterSurface = "light" | "dark";
 
@@ -32,6 +40,7 @@ export type DrawCampaignPosterPngOpts = {
  * PNG 像素尺寸
  * - a4：约 150dpi（1240×1754），打印店够用、文件不大
  * - sticker：1080 方图社交
+ * - vhd：1080×1920 竖版全高清招贴（电视竖屏 / 电梯屏 / 数字标牌）
  */
 export function posterCanvasSize(layout: CampaignPosterLayoutId): {
   w: number;
@@ -39,6 +48,7 @@ export function posterCanvasSize(layout: CampaignPosterLayoutId): {
 } {
   if (layout === "sticker") return { w: 1080, h: 1080 };
   if (layout === "a4") return { w: 1240, h: 1754 };
+  if (layout === "vhd") return { w: 1080, h: 1920 };
   if (layout === "poster") return { w: 1080, h: 1680 };
   return { w: 1080, h: 1480 };
 }
@@ -218,13 +228,22 @@ export async function paintCampaignPosterCanvas(
   const accent = opts.accent || "#1A6EFF";
   const festival = isNdpFestivalAccent(accent);
   const isA4 = opts.layout === "a4";
-  const isPosterLike = opts.layout === "poster" || isA4;
-  // a4 略放大字号/二维码，贴墙可读
-  const scale = isA4 ? 1.15 : 1;
+  const isVhd = opts.layout === "vhd";
+  const isPosterLike = opts.layout === "poster" || isA4 || isVhd;
+  // a4/vhd 略放大字号/二维码，贴墙/屏显可读
+  const scale = isVhd ? 1.22 : isA4 ? 1.15 : 1;
   const redHex = festival ? accent : "#CE1126";
   // 红区略高，给品牌 + 满赠卡；白区放 QR（对齐落地页 hero 比重）
+  // 竖版招贴红区略矮，留给下方钩子+大 QR
   const redH = Math.round(
-    h * (opts.layout === "sticker" ? 0.55 : isA4 ? 0.5 : 0.52)
+    h *
+      (opts.layout === "sticker"
+        ? 0.55
+        : isVhd
+          ? 0.46
+          : isA4
+            ? 0.5
+            : 0.52)
   );
 
   if (festival) {
@@ -446,28 +465,34 @@ export async function paintCampaignPosterCanvas(
   // 国庆白区：钩子语 + 卖点条 + 适中 QR（A4 不再占半屏）
   // 其它布局保持原逻辑
   const qrSize = festival
-    ? isA4
-      ? 300
-      : opts.layout === "poster"
-        ? 320
-        : opts.layout === "sticker"
-          ? 280
-          : 340
-    : opts.layout === "sticker"
+    ? isVhd
       ? 400
       : isA4
-        ? 480
-        : 500;
+        ? 300
+        : opts.layout === "poster"
+          ? 320
+          : opts.layout === "sticker"
+            ? 280
+            : 340
+    : opts.layout === "sticker"
+      ? 400
+      : isVhd
+        ? 520
+        : isA4
+          ? 480
+          : 500;
 
   if (!festival) {
     const qrY =
       opts.layout === "sticker"
         ? 380
-        : isA4
-          ? 560
-          : opts.layout === "poster"
-            ? 520
-            : 420;
+        : isVhd
+          ? 640
+          : isA4
+            ? 560
+            : opts.layout === "poster"
+              ? 520
+              : 420;
     const benefitColor =
       opts.layout === "sticker" && useGradientHeader
         ? "#ffffff"
@@ -532,14 +557,20 @@ export async function paintCampaignPosterCanvas(
         opts.buyUrl.length > 54
           ? `${opts.buyUrl.slice(0, 52)}…`
           : opts.buyUrl;
-      fillTextCenter(ctx, url, w / 2, h - (isA4 ? 48 : 36), 60);
+      fillTextCenter(ctx, url, w / 2, h - (isVhd ? 64 : isA4 ? 48 : 36), 60);
     }
 
     ctx.fillStyle = bodyMuted;
     ctx.font = `${Math.round(18 * scale)}px system-ui, sans-serif`;
     ctx.textAlign = "center";
     if (isPosterLike) {
-      fillTextCenter(ctx, "WeMembers", w / 2, h - (isA4 ? 96 : 72), 20);
+      fillTextCenter(
+        ctx,
+        "WeMembers",
+        w / 2,
+        h - (isVhd ? 120 : isA4 ? 96 : 72),
+        20
+      );
     }
 
     return canvas;
@@ -547,7 +578,7 @@ export async function paintCampaignPosterCanvas(
 
   // ── 国庆白区（钩子 + 卖点 pill + 中等 QR）──
   const whiteTop = redH;
-  let y = whiteTop + Math.round(isA4 ? 40 : 32);
+  let y = whiteTop + Math.round(isVhd ? 48 : isA4 ? 40 : 32);
 
   ctx.textAlign = "center";
   // 钩子大标题
@@ -557,13 +588,20 @@ export async function paintCampaignPosterCanvas(
       ? `Celebrate SG${giftAmt} · Spend & get`
       : `庆 SG${giftAmt} · 本单满就送`);
   ctx.fillStyle = "#0f172a";
-  ctx.font = `bold ${Math.round((isA4 ? 36 : 30) * scale)}px system-ui, -apple-system, sans-serif`;
-  fillTextCenter(ctx, hook, w / 2, y + Math.round(28 * scale), isA4 ? 36 : 28);
-  y += Math.round((isA4 ? 56 : 48) * scale);
+  const hookFs = isVhd ? 38 : isA4 ? 36 : 30;
+  ctx.font = `bold ${Math.round(hookFs * scale)}px system-ui, -apple-system, sans-serif`;
+  fillTextCenter(
+    ctx,
+    hook,
+    w / 2,
+    y + Math.round(28 * scale),
+    isVhd ? 40 : isA4 ? 36 : 28
+  );
+  y += Math.round((isVhd ? 64 : isA4 ? 56 : 48) * scale);
 
   // 行动 CTA
   ctx.fillStyle = redHex;
-  ctx.font = `bold ${Math.round((isA4 ? 26 : 22) * scale)}px system-ui, -apple-system, sans-serif`;
+  ctx.font = `bold ${Math.round((isVhd ? 28 : isA4 ? 26 : 22) * scale)}px system-ui, -apple-system, sans-serif`;
   fillTextCenter(
     ctx,
     opts.copy.headline,
@@ -571,7 +609,7 @@ export async function paintCampaignPosterCanvas(
     y + Math.round(18 * scale),
     32
   );
-  y += Math.round((isA4 ? 40 : 34) * scale);
+  y += Math.round((isVhd ? 44 : isA4 ? 40 : 34) * scale);
 
   // 卖点 pills
   const pills =
@@ -580,11 +618,11 @@ export async function paintCampaignPosterCanvas(
       : opts.lang === "en"
         ? ["Scan at table", `S$${giftAmt} next visit`, "Easy redeem"]
         : ["桌边扫一扫", `下次再用 S$${giftAmt}`, "到店核销即可"];
-  const pillFont = Math.round((isA4 ? 18 : 16) * scale);
+  const pillFont = Math.round((isVhd ? 20 : isA4 ? 18 : 16) * scale);
   ctx.font = `bold ${pillFont}px system-ui, -apple-system, sans-serif`;
   const pillGap = Math.round(12 * scale);
   const pillPadX = Math.round(18 * scale);
-  const pillH = Math.round((isA4 ? 40 : 34) * scale);
+  const pillH = Math.round((isVhd ? 44 : isA4 ? 40 : 34) * scale);
   const pillWidths = pills.map(
     (p) => ctx.measureText(p).width + pillPadX * 2
   );
@@ -606,9 +644,9 @@ export async function paintCampaignPosterCanvas(
     ctx.fillText(pills[i], px + pw / 2, pillY + pillH * 0.68);
     px += pw + pillGap;
   }
-  y += pillH + Math.round((isA4 ? 36 : 28) * scale);
+  y += pillH + Math.round((isVhd ? 40 : isA4 ? 36 : 28) * scale);
 
-  // QR（居中，适中尺寸）
+  // QR（居中，适中尺寸；竖版招贴更大）
   const qrY = y;
   try {
     const qr = await loadImage(opts.qrSrc);
@@ -631,38 +669,44 @@ export async function paintCampaignPosterCanvas(
     ctx.font = "28px system-ui, sans-serif";
     ctx.fillText("QR", w / 2, qrY + qrSize / 2);
   }
-  y = qrY + qrSize + Math.round((isA4 ? 36 : 28) * scale);
+  y = qrY + qrSize + Math.round((isVhd ? 40 : isA4 ? 36 : 28) * scale);
 
   // 底部说明 + 条款 + 有效期
   ctx.textAlign = "center";
   ctx.fillStyle = "#64748b";
-  ctx.font = `${Math.round((isA4 ? 18 : 16) * scale)}px system-ui, -apple-system, sans-serif`;
+  ctx.font = `${Math.round((isVhd ? 20 : isA4 ? 18 : 16) * scale)}px system-ui, -apple-system, sans-serif`;
   fillTextCenter(ctx, opts.copy.sub, w / 2, y, 42);
-  y += Math.round((isA4 ? 28 : 24) * scale);
+  y += Math.round((isVhd ? 32 : isA4 ? 28 : 24) * scale);
   if (opts.copy.termsLine) {
     ctx.fillStyle = "#94a3b8";
-    ctx.font = `${Math.round((isA4 ? 15 : 13) * scale)}px system-ui, -apple-system, sans-serif`;
+    ctx.font = `${Math.round((isVhd ? 17 : isA4 ? 15 : 13) * scale)}px system-ui, -apple-system, sans-serif`;
     fillTextCenter(ctx, opts.copy.termsLine, w / 2, y, 52);
-    y += Math.round((isA4 ? 26 : 22) * scale);
+    y += Math.round((isVhd ? 30 : isA4 ? 26 : 22) * scale);
   }
   ctx.fillStyle = "#64748b";
-  ctx.font = `${Math.round((isA4 ? 17 : 15) * scale)}px system-ui, -apple-system, sans-serif`;
+  ctx.font = `${Math.round((isVhd ? 19 : isA4 ? 17 : 15) * scale)}px system-ui, -apple-system, sans-serif`;
   fillTextCenter(ctx, opts.copy.untilLine, w / 2, y, 40);
 
   if (opts.layout !== "sticker") {
     ctx.fillStyle = "#94a3b8";
-    ctx.font = "14px ui-monospace, SFMono-Regular, monospace";
+    ctx.font = `${isVhd ? 16 : 14}px ui-monospace, SFMono-Regular, monospace`;
     const url =
       opts.buyUrl.length > 54
         ? `${opts.buyUrl.slice(0, 52)}…`
         : opts.buyUrl;
-    fillTextCenter(ctx, url, w / 2, h - (isA4 ? 56 : 40), 60);
+    fillTextCenter(ctx, url, w / 2, h - (isVhd ? 72 : isA4 ? 56 : 40), 60);
   }
 
   ctx.fillStyle = "#94a3b8";
   ctx.font = `${Math.round(16 * scale)}px system-ui, sans-serif`;
   if (isPosterLike || opts.layout === "tent") {
-    fillTextCenter(ctx, "WeMembers", w / 2, h - (isA4 ? 100 : 72), 20);
+    fillTextCenter(
+      ctx,
+      "WeMembers",
+      w / 2,
+      h - (isVhd ? 120 : isA4 ? 100 : 72),
+      20
+    );
   }
 
   return canvas;

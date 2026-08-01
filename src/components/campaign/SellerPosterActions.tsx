@@ -161,6 +161,16 @@ export function SellerPosterActions({
         <Button
           type="button"
           size="sm"
+          variant="outline"
+          className="text-[11px] h-8"
+          disabled={busy}
+          onClick={() => download("vhd")}
+        >
+          {lang === "en" ? "Portrait HD" : "竖版招贴"}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
           className="text-[11px] h-8"
           onClick={copyShare}
         >
