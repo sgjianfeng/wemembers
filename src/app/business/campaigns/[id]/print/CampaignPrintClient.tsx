@@ -22,6 +22,8 @@ import {
   THEME_SWATCHES,
   VISUAL_TEMPLATES,
   getVisualTemplate,
+  isFestivalNdpCampaign,
+  isNdpFestivalAccent,
   type ThemeColorId,
   type VisualTemplateId,
 } from "@/lib/visual-templates";
@@ -51,6 +53,7 @@ export function CampaignPrintClient({
   businessName,
   businessLogo,
   stores,
+  tags = null,
 }: {
   lang: "zh" | "en";
   campaignId: string;
@@ -66,15 +69,21 @@ export function CampaignPrintClient({
   businessName: string | null;
   businessLogo: string | null;
   stores: { id: string; name: string }[];
+  tags?: string | null;
 }) {
+  const isNdp = isFestivalNdpCampaign(type, campaignName, tags);
   const [layout, setLayout] = useState<LayoutId>("tent");
-  const [templateId, setTemplateId] = useState<VisualTemplateId>(
-    type === "lucky_draw_v2" || type === "lucky_draw"
-      ? "store_bold"
-      : "store_classic"
-  );
+  const [templateId, setTemplateId] = useState<VisualTemplateId>(() => {
+    if (isNdp) return "festival_ndp";
+    if (type === "lucky_draw_v2" || type === "lucky_draw") return "store_bold";
+    return "store_classic";
+  });
   const [themeId, setThemeId] = useState<ThemeColorId | "campaign" | "custom">(
-    color && /^#[0-9A-Fa-f]{6}$/.test(color) ? "campaign" : "orange"
+    () => {
+      if (isNdp) return "ndp_red";
+      if (color && /^#[0-9A-Fa-f]{6}$/.test(color)) return "campaign";
+      return "orange";
+    }
   );
   const [customSubline, setCustomSubline] = useState("");
   const [distributors, setDistributors] = useState<Distributor[]>([]);
@@ -93,11 +102,17 @@ export function CampaignPrintClient({
       : process.env.NEXT_PUBLIC_APP_URL || "";
 
   const buyUrl = useMemo(() => {
+    if (isNdp) {
+      const base = `${origin}/ndp/${encodeURIComponent(slug)}?from=table`;
+      return sellerId
+        ? `${base}&seller=${encodeURIComponent(sellerId)}`
+        : base;
+    }
     const base = `${origin}/voucher/${encodeURIComponent(slug)}`;
     return sellerId
       ? `${base}?seller=${encodeURIComponent(sellerId)}`
       : base;
-  }, [origin, slug, sellerId]);
+  }, [origin, slug, sellerId, isNdp]);
 
   const qrSrc = useMemo(() => {
     const q = new URLSearchParams({
@@ -106,8 +121,10 @@ export function CampaignPrintClient({
       format: "png",
     });
     if (sellerId) q.set("seller", sellerId);
+    // 国庆/节日：确保接口走 NDP 落地与类型放行
+    if (isNdp) q.set("ndp", "1");
     return `/api/campaign/qr?${q.toString()}`;
-  }, [slug, sellerId]);
+  }, [slug, sellerId, isNdp]);
 
   const copy: CampaignPosterCopy = useMemo(
     () =>
@@ -120,6 +137,7 @@ export function CampaignPrintClient({
         description,
         lang,
         customSubline: customSubline || null,
+        tags,
       }),
     [
       type,
@@ -130,6 +148,7 @@ export function CampaignPrintClient({
       description,
       lang,
       customSubline,
+      tags,
     ]
   );
 
@@ -231,16 +250,21 @@ export function CampaignPrintClient({
 
   const exportOpts = useCallback(
     (sid: string, label: string) => {
-      const base = `${origin}/voucher/${encodeURIComponent(slug)}`;
-      const url = sid
-        ? `${base}?seller=${encodeURIComponent(sid)}`
-        : base;
+      let url: string;
+      if (isNdp) {
+        const base = `${origin}/ndp/${encodeURIComponent(slug)}?from=table`;
+        url = sid ? `${base}&seller=${encodeURIComponent(sid)}` : base;
+      } else {
+        const base = `${origin}/voucher/${encodeURIComponent(slug)}`;
+        url = sid ? `${base}?seller=${encodeURIComponent(sid)}` : base;
+      }
       const q = new URLSearchParams({
         slug,
         size: "640",
         format: "png",
       });
       if (sid) q.set("seller", sid);
+      if (isNdp) q.set("ndp", "1");
       return {
         layout,
         campaignName,
@@ -262,6 +286,7 @@ export function CampaignPrintClient({
       businessName,
       campaignName,
       copy,
+      isNdp,
       lang,
       layout,
       origin,
@@ -679,6 +704,7 @@ export function CampaignPrintClient({
           accent={accent}
           surface={surface}
           lang={lang}
+          festival={isNdp || isNdpFestivalAccent(accent)}
         />
       </div>
 
@@ -699,6 +725,40 @@ export function CampaignPrintClient({
   );
 }
 
+function PosterQr({
+  src,
+  className,
+}: {
+  src: string;
+  className?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div
+        className={cn(
+          "flex flex-col items-center justify-center bg-white border border-dashed border-red-300 text-center p-3",
+          className
+        )}
+      >
+        <p className="text-xs font-semibold text-red-600">QR 加载失败</p>
+        <p className="text-[10px] text-muted-foreground mt-1 break-all px-2">
+          请刷新页面或检查活动公开链接
+        </p>
+      </div>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt="QR"
+      className={className}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 function CampaignCardSheet({
   layout,
   campaignName,
@@ -712,6 +772,7 @@ function CampaignCardSheet({
   accent,
   surface,
   lang,
+  festival = false,
 }: {
   layout: LayoutId;
   campaignName: string;
@@ -725,8 +786,12 @@ function CampaignCardSheet({
   accent: string;
   surface: "light" | "dark";
   lang: "zh" | "en";
+  festival?: boolean;
 }) {
-  const isDark = surface === "dark";
+  const isDark = surface === "dark" || festival;
+  const headerBg = festival
+    ? `linear-gradient(145deg, ${accent} 0%, #9B0A1A 55%, #1A0508 100%)`
+    : `linear-gradient(145deg, ${accent} 0%, #1e293b 100%)`;
 
   if (layout === "sticker") {
     return (
@@ -735,14 +800,19 @@ function CampaignCardSheet({
           "w-full max-w-[320px] aspect-square rounded-3xl border-2 overflow-hidden shadow-sm flex flex-col",
           isDark ? "border-slate-700" : "border-border print:border-slate-400"
         )}
-        style={{ background: isDark ? "#1E1B2E" : undefined }}
+        style={{ background: isDark ? (festival ? "#1A0508" : "#1E1B2E") : undefined }}
       >
         <div
-          className="px-4 pt-4 pb-3 text-white text-center"
+          className="px-4 pt-4 pb-3 text-white text-center relative overflow-hidden"
           style={{
-            background: `linear-gradient(145deg, ${accent} 0%, #1e293b 100%)`,
+            background: headerBg,
           }}
         >
+          {festival && (
+            <span className="absolute left-2 top-2 text-[10px] font-bold tracking-wider text-white/70">
+              {lang === "en" ? "SG NDP" : "🇸🇬 国庆"}
+            </span>
+          )}
           <div className="flex items-center justify-center gap-2">
             {businessLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -779,10 +849,8 @@ function CampaignCardSheet({
           >
             {copy.benefitLine}
           </p>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <PosterQr
             src={qrSrc}
-            alt="QR"
             className="w-36 h-36 rounded-xl border bg-white p-1"
           />
           <div className="text-center w-full">
@@ -802,7 +870,8 @@ function CampaignCardSheet({
       <div
         data-campaign-poster={layout}
         className={cn(
-          "w-full rounded-2xl overflow-hidden border border-border shadow-sm bg-card print:border-slate-400 print:shadow-none",
+          "w-full rounded-2xl overflow-hidden border border-border shadow-sm print:border-slate-400 print:shadow-none",
+          festival ? "bg-[#1A0508] text-white" : "bg-card",
           a4
             ? "max-w-[420px] campaign-a4-sheet print:rounded-none"
             : "max-w-[400px]"
@@ -810,13 +879,18 @@ function CampaignCardSheet({
       >
         <div
           className={cn(
-            "text-white text-center",
+            "text-white text-center relative",
             a4 ? "px-8 pt-10 pb-7" : "px-6 pt-7 pb-5"
           )}
           style={{
-            background: `linear-gradient(145deg, ${accent} 0%, #1e293b 100%)`,
+            background: headerBg,
           }}
         >
+          {festival && (
+            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/80 mb-2">
+              {lang === "en" ? "Singapore · National Day" : "新加坡 · 国庆满赠"}
+            </p>
+          )}
           {businessLogo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -849,36 +923,65 @@ function CampaignCardSheet({
             </p>
           )}
         </div>
-        <div className={cn("text-center", a4 ? "px-8 py-7" : "px-6 py-5")}>
+        <div
+          className={cn(
+            "text-center",
+            a4 ? "px-8 py-7" : "px-6 py-5",
+            festival && "bg-[#1A0508]"
+          )}
+        >
           <p
             className={cn("font-bold leading-snug", a4 ? "text-xl" : "text-lg")}
-            style={{ color: accent }}
+            style={{ color: festival ? "#FFE4E6" : accent }}
           >
             {copy.benefitLine}
           </p>
           <p
             className={cn(
-              "font-bold text-foreground mt-2",
+              "font-bold mt-2",
+              festival ? "text-white" : "text-foreground",
               a4 ? "text-lg" : "text-base"
             )}
           >
             {copy.headline}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">{copy.sub}</p>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={qrSrc}
-            alt="QR"
+          <p
             className={cn(
-              "mx-auto mt-4 rounded-2xl border p-2 bg-card",
+              "text-xs mt-1",
+              festival ? "text-rose-200/80" : "text-muted-foreground"
+            )}
+          >
+            {copy.sub}
+          </p>
+          <PosterQr
+            src={qrSrc}
+            className={cn(
+              "mx-auto mt-4 rounded-2xl border p-2 bg-white",
               a4 ? "w-60 h-60" : "w-52 h-52"
             )}
           />
-          <p className="text-xs text-muted-foreground mt-3">{copy.untilLine}</p>
-          <p className="text-[9px] font-mono text-muted-foreground break-all mt-2">
+          <p
+            className={cn(
+              "text-xs mt-3",
+              festival ? "text-rose-200/70" : "text-muted-foreground"
+            )}
+          >
+            {copy.untilLine}
+          </p>
+          <p
+            className={cn(
+              "text-[9px] font-mono break-all mt-2",
+              festival ? "text-rose-200/50" : "text-muted-foreground"
+            )}
+          >
             {buyUrl}
           </p>
-          <p className="text-[10px] text-muted-foreground mt-4 tracking-widest uppercase">
+          <p
+            className={cn(
+              "text-[10px] mt-4 tracking-widest uppercase",
+              festival ? "text-rose-200/60" : "text-muted-foreground"
+            )}
+          >
             WeMembers
           </p>
         </div>
@@ -893,16 +996,42 @@ function CampaignCardSheet({
         "w-full max-w-[360px] rounded-2xl border shadow-sm overflow-hidden print:border-slate-400",
         isDark ? "border-slate-700" : "border-border bg-card"
       )}
-      style={isDark ? { background: "#1E1B2E", color: "#F8FAFC" } : undefined}
+      style={
+        isDark
+          ? {
+              background: festival ? "#1A0508" : "#1E1B2E",
+              color: "#F8FAFC",
+            }
+          : undefined
+      }
     >
+      {festival && (
+        <div
+          className="h-1.5 w-full"
+          style={{
+            background: `linear-gradient(90deg, ${accent}, #ffffff, ${accent})`,
+          }}
+        />
+      )}
       <div className="px-5 pt-5 pb-2 text-center">
         <p
           className={cn(
             "text-[10px] font-semibold tracking-[0.2em] uppercase",
-            isDark ? "text-amber-300/90" : "text-amber-700 dark:text-amber-400/90"
+            festival
+              ? "text-rose-300"
+              : isDark
+                ? "text-amber-300/90"
+                : "text-amber-700 dark:text-amber-400/90"
           )}
         >
-          WeMembers · {lang === "en" ? "Activity" : "活动"}
+          WeMembers ·{" "}
+          {festival
+            ? lang === "en"
+              ? "National Day"
+              : "国庆"
+            : lang === "en"
+              ? "Activity"
+              : "活动"}
         </p>
         <div className="flex items-center justify-center gap-2 mt-3">
           {businessLogo ? (
@@ -934,16 +1063,16 @@ function CampaignCardSheet({
         )}
         <p
           className="mt-3 text-base font-bold leading-snug"
-          style={{ color: isDark ? "#FDE68A" : accent }}
+          style={{
+            color: festival ? "#FFE4E6" : isDark ? "#FDE68A" : accent,
+          }}
         >
           {copy.benefitLine}
         </p>
       </div>
       <div className="px-5 py-3 flex justify-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <PosterQr
           src={qrSrc}
-          alt="QR"
           className="w-52 h-52 rounded-2xl border p-2 bg-white"
         />
       </div>

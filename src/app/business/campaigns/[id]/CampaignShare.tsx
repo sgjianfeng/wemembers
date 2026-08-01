@@ -8,6 +8,7 @@ import {
   buildCampaignPosterCopy,
   fillShareTemplate,
 } from "@/lib/campaign-poster-copy";
+import { isFestivalNdpCampaign } from "@/lib/visual-templates";
 
 interface Props {
   slug: string;
@@ -34,19 +35,27 @@ export function CampaignShare({
   const { t, lang } = useLang();
   const [copied, setCopied] = useState(false);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const isNdp = isFestivalNdpCampaign(type, campaignName, null);
 
   const buyUrl = useMemo(() => {
     if (!slug) return "";
+    if (isNdp) {
+      const base = `${origin}/ndp/${encodeURIComponent(slug)}?from=table`;
+      return sellerId
+        ? `${base}&seller=${encodeURIComponent(sellerId)}`
+        : base;
+    }
     const base = `${origin}/voucher/${encodeURIComponent(slug)}`;
     return sellerId ? `${base}?seller=${encodeURIComponent(sellerId)}` : base;
-  }, [origin, slug, sellerId]);
+  }, [origin, slug, sellerId, isNdp]);
 
   const qrUrl = useMemo(() => {
     if (!slug) return "";
     const q = new URLSearchParams({ slug, size: "280" });
     if (sellerId) q.set("seller", sellerId);
+    if (isNdp) q.set("ndp", "1");
     return `/api/campaign/qr?${q.toString()}`;
-  }, [slug, sellerId]);
+  }, [slug, sellerId, isNdp]);
 
   const posterShare = useMemo(() => {
     if (!type || !endDate) return null;

@@ -39,6 +39,7 @@ export default async function CampaignPrintPage({
       endDate: true,
       rulesSnapshot: true,
       voucherTiers: true,
+      tags: true,
     },
   });
   if (!campaign) notFound();
@@ -114,6 +115,7 @@ export default async function CampaignPrintPage({
         businessName={business?.businessName || null}
         businessLogo={business?.businessLogo || null}
         stores={stores}
+        tags={campaign.tags}
       />
     </div>
   );

@@ -3,9 +3,16 @@
  * 商家只选模版 + 有限主题色；版式由平台固定。
  */
 
-export type VisualTemplateId = "store_classic" | "store_bold";
+export type VisualTemplateId = "store_classic" | "store_bold" | "festival_ndp";
 
-export type ThemeColorId = "blue" | "orange" | "violet" | "green" | "dark";
+export type ThemeColorId =
+  | "blue"
+  | "orange"
+  | "violet"
+  | "green"
+  | "dark"
+  | "ndp_red"
+  | "festival_red";
 
 export interface ThemeSwatch {
   id: ThemeColorId;
@@ -14,8 +21,24 @@ export interface ThemeSwatch {
   labelEn: string;
 }
 
+/** 新加坡国庆红（印刷常用） */
+export const SG_NDP_RED = "#CE1126";
+export const SG_NDP_RED_DEEP = "#9B0A1A";
+
 export const THEME_SWATCHES: ThemeSwatch[] = [
-  { id: "orange", hex: "#E85D04", labelZh: "券橙（推荐）", labelEn: "Voucher orange" },
+  {
+    id: "ndp_red",
+    hex: SG_NDP_RED,
+    labelZh: "国庆红（推荐节日）",
+    labelEn: "National Day red",
+  },
+  {
+    id: "festival_red",
+    hex: "#EF3340",
+    labelZh: "节日红",
+    labelEn: "Festival red",
+  },
+  { id: "orange", hex: "#E85D04", labelZh: "券橙", labelEn: "Voucher orange" },
   { id: "blue", hex: "#1A6EFF", labelZh: "品牌蓝", labelEn: "Blue" },
   { id: "violet", hex: "#7C3AED", labelZh: "抽奖紫", labelEn: "Violet" },
   { id: "green", hex: "#15803D", labelZh: "深绿", labelEn: "Green" },
@@ -57,7 +80,42 @@ export const VISUAL_TEMPLATES: VisualTemplateMeta[] = [
     defaultThemeHex: "#1E1B2E",
     surface: "dark",
   },
+  {
+    id: "festival_ndp",
+    family: "store",
+    nameZh: "国庆节日",
+    nameEn: "National Day",
+    taglineZh: "红白主色 · 新月星点缀 · 适合国庆满赠广告",
+    taglineEn: "Red–white · crescent accent · NDP spend-get ads",
+    defaultThemeHex: SG_NDP_RED,
+    surface: "dark",
+  },
 ];
+
+/** 是否国庆/节日类活动（用于默认模版与落地页） */
+export function isFestivalNdpCampaign(
+  type?: string | null,
+  name?: string | null,
+  tags?: string | null
+): boolean {
+  if (type === "holiday") return true;
+  if (name && /国庆|ndp|national\s*day|满120送|满赠/i.test(name)) return true;
+  if (tags && /ndp|国庆|national|category:ndp/i.test(tags)) return true;
+  return false;
+}
+
+/** 主题是否偏国庆红（导出时用红白渐变 + 星月装饰） */
+export function isNdpFestivalAccent(hex: string | null | undefined): boolean {
+  if (!hex) return false;
+  const h = hex.toUpperCase();
+  return (
+    h === SG_NDP_RED.toUpperCase() ||
+    h === "#EF3340" ||
+    h === "#ED2939" ||
+    h === "#C8102E" ||
+    h === "#DC143C"
+  );
+}
 
 export function getVisualTemplate(
   id: string | null | undefined
@@ -83,10 +141,16 @@ export function resolveThemeHex(
   return getVisualTemplate(templateId).defaultThemeHex;
 }
 
-export function listVisualTemplatesForType(type: "voucher" | "draw") {
-  // P0：两款本店模版均可用；抽奖默认推荐 bold
+export function listVisualTemplatesForType(
+  type: "voucher" | "draw" | "festival"
+) {
   return VISUAL_TEMPLATES.map((t) => ({
     ...t,
-    recommended: type === "draw" ? t.id === "store_bold" : t.id === "store_classic",
+    recommended:
+      type === "festival"
+        ? t.id === "festival_ndp"
+        : type === "draw"
+          ? t.id === "store_bold"
+          : t.id === "store_classic",
   }));
 }

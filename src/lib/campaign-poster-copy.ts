@@ -9,6 +9,7 @@ import {
   parseRulesSnapshot,
   type RulesSnapshot,
 } from "@/lib/templates";
+import { isFestivalNdpCampaign } from "@/lib/visual-templates";
 
 export type CampaignPosterLang = "zh" | "en";
 
@@ -22,6 +23,7 @@ export type CampaignPosterInput = {
   lang: CampaignPosterLang;
   /** 商家可选一行副标题，覆盖默认 sub */
   customSubline?: string | null;
+  tags?: string | null;
 };
 
 export type CampaignPosterCopy = {
@@ -158,7 +160,33 @@ export function buildCampaignPosterCopy(
   let benefitLine: string;
   let sub: string;
 
-  if (isDraw) {
+  const isNdp = isFestivalNdpCampaign(
+    input.type,
+    input.name,
+    input.tags
+  );
+
+  // 从名称解析「满120送61」类文案
+  const spendGet =
+    input.name.match(/满\s*(\d+)\s*送\s*(\d+)/) ||
+    input.name.match(/spend\s*\$?\s*(\d+)\s*get\s*\$?\s*(\d+)/i);
+  const minSpend = spendGet ? Number(spendGet[1]) : 120;
+  const giftAmt = spendGet ? Number(spendGet[2]) : 61;
+
+  if (isNdp) {
+    headline =
+      lang === "en"
+        ? "Scan · join National Day promo"
+        : "扫码参加 · 国庆满赠";
+    benefitLine =
+      lang === "en"
+        ? `Spend S$${minSpend} → gift S$${giftAmt}`
+        : `满 S$${minSpend} 送 S$${giftAmt}`;
+    sub =
+      lang === "en"
+        ? "Gift coupon next visit · valid from claim · limited period"
+        : "到店满额领赠券 · 领后有效 · 活动期内";
+  } else if (isDraw) {
     headline =
       lang === "en" ? "Buy · instant prize · 100% win" : "买就抽 · 100% 有奖";
     benefitLine = tiersLine
@@ -224,7 +252,13 @@ export function buildCampaignPosterCopy(
   const faceHint = tiersLine || (lang === "en" ? "voucher" : "代金券");
   const shareTemplates =
     lang === "en"
-      ? isDraw
+      ? isNdp
+        ? [
+            `${name}: spend S$${minSpend} get S$${giftAmt} gift. Scan: {url}`,
+            `National Day promo at our store — S$${minSpend} → S$${giftAmt}. Join: {url}`,
+            `Until ${untilShort} | ${name} gift coupon: {url}`,
+          ]
+        : isDraw
         ? [
             `${name}: buy a tier, instant prize + store balance. Scan: {url}`,
             `Lucky draw at ${name} — ${faceHint}. 100% win rate. {url}`,
@@ -237,7 +271,13 @@ export function buildCampaignPosterCopy(
               : `${name} voucher (${faceHint}). Redeem in store: {url}`,
             `Grab ${name} before ${untilShort}. Scan: {url}`,
           ]
-      : isDraw
+      : isNdp
+        ? [
+            `【${name}】满${minSpend}送${giftAmt} 超值满赠，扫码参加：{url}`,
+            `${name} 国庆满赠 · 满 S$${minSpend} 送 S$${giftAmt}，到店核销：{url}`,
+            `活动至 ${untilShort}｜${name} 扫码领活动：{url}`,
+          ]
+        : isDraw
         ? [
             `【${name}】买券就抽，当场有奖 + 余额到店核！扫码：{url}`,
             `${name} 抽奖进行中 · ${faceHint} · 100% 有奖 → {url}`,

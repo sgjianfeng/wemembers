@@ -121,6 +121,19 @@ describe("campaign-poster-copy", () => {
     expect(copy.sub).toBe("Only this weekend!");
   });
 
+  test("ndp holiday copy zh", () => {
+    const copy = buildCampaignPosterCopy({
+      type: "holiday",
+      name: "国庆满赠 · 满120送61",
+      endDate: "2026-10-01T00:00:00.000Z",
+      lang: "zh",
+    });
+    expect(copy.benefitLine).toMatch(/120/);
+    expect(copy.benefitLine).toMatch(/61/);
+    expect(copy.headline).toMatch(/国庆|扫码/);
+    expect(copy.shareTemplates[0]).toMatch(/满120送61|满120/);
+  });
+
   test("en draw copy", () => {
     const copy = buildCampaignPosterCopy({
       type: "lucky_draw_v2",
