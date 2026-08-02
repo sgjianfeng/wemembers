@@ -64,7 +64,12 @@ export default async function ShopPage({
 
   return (
     <div className="min-h-screen bg-muted/50">
-      <TopHeader variant="default" title={business.businessName || ""} />
+      <TopHeader
+        variant="default"
+        title={business.businessName || brandName || ""}
+        fallbackUrl="/"
+        preferFallback
+      />
 
       {/* 公司页：品牌蓝顶栏 + 品牌标识（与门店页区分） */}
       <div className="bg-gradient-to-b from-slate-800 via-slate-800 to-primary px-4 pt-7 pb-10 text-white">

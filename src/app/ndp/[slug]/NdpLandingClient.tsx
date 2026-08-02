@@ -16,6 +16,10 @@ import { withActivityBuyContext } from "@/lib/activity-buy-context";
 type Props = {
   lang: "zh" | "en";
   from: "table" | "counter";
+  /** 从门店顾客页进入时回门店；否则首页/我的 */
+  backHref?: string | null;
+  storePath?: string | null;
+  storeName?: string | null;
   campaign: {
     id: string;
     name: string;
@@ -52,6 +56,9 @@ type Props = {
 export function NdpLandingClient({
   lang,
   from,
+  backHref = null,
+  storePath = null,
+  storeName = null,
   campaign,
   rules,
   termsView,
@@ -95,6 +102,8 @@ export function NdpLandingClient({
     activitySlug: campaign.slug,
     activityName: campaign.name,
     brandName: campaign.brandName,
+    storePath: storePath || undefined,
+    storeName: storeName || undefined,
     ndpSlug: campaign.slug || campaign.id,
     ndpFrom: from,
     minSpendSgd: rules.minSpendSgd,
@@ -111,7 +120,13 @@ export function NdpLandingClient({
   const logoutThenBuy = `/api/auth/logout?next=${encodeURIComponent(buyLoginHref)}`;
   const logoutThenCustomer = `/api/auth/logout?next=${encodeURIComponent(headerLoginHref)}`;
 
-  const homeHref = isLoggedIn ? "/home" : "/";
+  /** 顶栏返回：门店货架 > 已登录首页 > 落地 */
+  const homeHref =
+    backHref && backHref.startsWith("/")
+      ? backHref
+      : isLoggedIn
+        ? "/home"
+        : "/";
 
   // Escape / body scroll lock for auth sheet
   useEffect(() => {

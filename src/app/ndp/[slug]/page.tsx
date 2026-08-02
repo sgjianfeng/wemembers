@@ -116,12 +116,24 @@ export default async function NdpLandingPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ from?: string }>;
+  searchParams: Promise<{
+    from?: string;
+    store?: string;
+    storeName?: string;
+    brand?: string;
+  }>;
 }) {
   const { slug } = await params;
   const sp = await searchParams;
   const from =
     sp.from === "counter" ? "counter" : sp.from === "table" ? "table" : "table";
+  // 从门店顾客页进入：返回店页，不丢进首页
+  const storePath =
+    sp.store && sp.store.startsWith("/shop/") && !sp.store.includes("//")
+      ? sp.store
+      : null;
+  const storeName = sp.storeName?.trim() || null;
+  const brandNameQ = sp.brand?.trim() || null;
 
   const campaign = await loadNdpCampaign(slug);
   if (!campaign) notFound();
@@ -244,16 +256,24 @@ export default async function NdpLandingPage({
     }
   }
 
+  const loginQs = new URLSearchParams({ from });
+  if (storePath) loginQs.set("store", storePath);
+  if (storeName) loginQs.set("storeName", storeName);
+  if (brandNameQ) loginQs.set("brand", brandNameQ);
+
   return (
     <NdpLandingClient
       lang={lang}
       from={from}
+      backHref={storePath || null}
+      storePath={storePath}
+      storeName={storeName}
       campaign={{
         id: campaign.id,
         name: campaign.name,
         description: campaign.description,
         slug: campaign.slug,
-        brandName,
+        brandName: brandNameQ || brandName,
         storeNames,
         businessLogo: campaign.business?.businessLogo || null,
         startDate: campaign.startDate.toISOString(),
@@ -275,7 +295,7 @@ export default async function NdpLandingPage({
       customerPhone={customerPhone}
       myGiftCount={myGiftCount}
       myDrawWeight={myDrawWeight}
-      loginRedirect={`/ndp/${encodeURIComponent(campaign.slug || slug)}?from=${from}`}
+      loginRedirect={`/ndp/${encodeURIComponent(campaign.slug || slug)}?${loginQs.toString()}`}
     />
   );
 }

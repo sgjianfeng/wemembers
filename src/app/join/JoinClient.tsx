@@ -138,7 +138,18 @@ export function JoinClient({ storeId }: { storeId: string }) {
     q.set("amount", String(selectedFace));
     q.set("bill", String(billSgd));
     q.set("storeId", storeId);
-    q.set("from", "join");
+    // 与门店货架一致：购券页返回本店
+    if (ctx.store.businessSlug && ctx.store.slug) {
+      q.set("from", "store");
+      q.set("store", `/shop/${ctx.store.businessSlug}/${ctx.store.slug}`);
+      q.set("storeName", ctx.store.name);
+      if (ctx.store.businessName) q.set("brand", ctx.store.businessName);
+    } else {
+      q.set("from", "join");
+    }
+    if (ctx.campaign.id) q.set("activity", ctx.campaign.id);
+    if (ctx.campaign.slug) q.set("activitySlug", ctx.campaign.slug);
+    if (ctx.campaign.name) q.set("activityName", ctx.campaign.name);
     router.push(`/voucher/${encodeURIComponent(ctx.campaign.slug)}?${q.toString()}`);
   }
 
@@ -150,10 +161,15 @@ export function JoinClient({ storeId }: { storeId: string }) {
     );
   }
 
+  const storeBackHref =
+    ctx?.store.businessSlug && ctx.store.slug
+      ? `/shop/${ctx.store.businessSlug}/${ctx.store.slug}`
+      : "/";
+
   if (!ctx) {
     return (
       <div className="min-h-screen bg-background">
-        <TopHeader variant="default" />
+        <TopHeader variant="default" fallbackUrl="/" preferFallback />
         <p className="p-8 text-center text-sm text-muted-foreground">
           {error || (lang === "en" ? "Store not found" : "门店不存在")}
         </p>
@@ -163,7 +179,12 @@ export function JoinClient({ storeId }: { storeId: string }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-brand via-accent-brand to-background pb-10">
-      <TopHeader variant="default" />
+      <TopHeader
+        variant="default"
+        title={lang === "en" ? "Join draw" : "结账参加大奖"}
+        fallbackUrl={storeBackHref}
+        preferFallback
+      />
       <div className="px-4 pt-4 pb-2 text-center text-white">
         <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-semibold">
           <Trophy size={12} />

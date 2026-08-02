@@ -1,9 +1,7 @@
 import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import {
   offerBlurb,
-  offerCta,
   type JoinableActivity,
 } from "@/lib/discover-activities";
 import { categoryLabel } from "@/lib/default-activities";
@@ -11,10 +9,10 @@ import { withActivityBuyContext } from "@/lib/activity-buy-context";
 import {
   ChevronRight,
   Gift,
-  MapPin,
   PartyPopper,
   Ticket,
   Trophy,
+  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +25,8 @@ type Props = {
   brandName: string;
   /** 品牌页不绑具体店时 true */
   brandScope?: boolean;
+  /** 结账参加大奖用 */
+  storeId?: string | null;
 };
 
 const CATEGORY_ORDER = ["ndp", "grand_countdown", "long_term", "other"] as const;
@@ -49,8 +49,25 @@ function categoryTone(cat: JoinableActivity["category"]) {
   return "calm" as const;
 }
 
+function productSubline(
+  p: { type: string; name: string },
+  isDraw: boolean,
+  zh: boolean
+): string {
+  if (isDraw || p.type === "lucky_draw_v2" || p.type === "lucky_draw") {
+    return zh ? "购券进奖池 · 可冲大奖" : "Buy · enter prize pool";
+  }
+  if (/9折|折扣|discount|10%|90/i.test(p.name)) {
+    return zh ? "付 90% 得面值 · 到店花" : "Pay 90% · spend in store";
+  }
+  if (/门槛|threshold/i.test(p.name)) {
+    return zh ? "原价 · 有最低消费 · 到店花" : "Face · min spend · in store";
+  }
+  return zh ? "原价代金 · 到店核销" : "Face credit · redeem in store";
+}
+
 /**
- * 门店/品牌货架：活动 → 其下权益/可购券（统一进 /voucher 带语境）
+ * 门店/品牌货架：活动 → 其下权益（满赠）或可购产品（代金/大奖）
  */
 export function ShopActivityShelf({
   lang,
@@ -59,6 +76,7 @@ export function ShopActivityShelf({
   storeName,
   brandName,
   brandScope = false,
+  storeId = null,
 }: Props) {
   const zh = lang === "zh";
   const ordered = sortByCategory(activities);
@@ -72,9 +90,7 @@ export function ShopActivityShelf({
         const isNdp = a.category === "ndp" || a.type === "holiday";
         const isDraw = a.displayMode === "draw" && !isNdp;
         const catLabel =
-          a.category !== "other"
-            ? categoryLabel(a.category, lang)
-            : null;
+          a.category !== "other" ? categoryLabel(a.category, lang) : null;
         const products = (a.products || []).filter((p) => p.status === "active");
 
         const buyCtx = {
@@ -86,6 +102,26 @@ export function ShopActivityShelf({
           storeName,
           brandName,
         };
+
+        const ndpOpenHref = (() => {
+          const base =
+            a.slug != null
+              ? `/ndp/${encodeURIComponent(a.slug)}`
+              : a.href.startsWith("/ndp")
+                ? a.href.split("?")[0]
+                : `/ndp/${encodeURIComponent(a.id)}`;
+          const q = new URLSearchParams();
+          q.set("from", "table");
+          if (storePath?.startsWith("/shop/")) q.set("store", storePath);
+          if (storeName) q.set("storeName", storeName);
+          if (brandName) q.set("brand", brandName);
+          return `${base}?${q.toString()}`;
+        })();
+
+        const joinHref =
+          storeId && !brandScope
+            ? `/join?storeId=${encodeURIComponent(storeId)}`
+            : null;
 
         return (
           <article
@@ -154,135 +190,156 @@ export function ShopActivityShelf({
                   <p
                     className={cn(
                       "text-[11px] mt-0.5 line-clamp-2",
-                      tone === "calm" ? "text-muted-foreground" : "text-white/90"
+                      tone === "calm"
+                        ? "text-muted-foreground"
+                        : "text-white/90"
                     )}
                   >
                     {offerBlurb(a, lang)}
                   </p>
-                  {!brandScope && (
+                  {/* 仅品牌页显示店名（门店页已在本店，不重复） */}
+                  {brandScope && a.stores?.length === 1 && (
                     <p
                       className={cn(
-                        "flex items-center gap-1 text-[11px] mt-1.5",
+                        "text-[11px] mt-1.5 truncate",
                         tone === "calm"
                           ? "text-muted-foreground"
                           : "text-white/80"
                       )}
                     >
-                      <MapPin size={12} className="shrink-0" />
-                      <span className="truncate">{storeName}</span>
+                      {a.stores[0].name}
                     </p>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* 活动下权益 / 可购券 */}
-            <div className="px-3 pb-3 pt-2 border-t border-border/60">
-              <p className="text-[10px] font-semibold text-muted-foreground mb-1.5 px-0.5">
-                {zh ? "可购权益" : "Available offers"}
-              </p>
-
-              {products.length > 0 ? (
-                <ul className="space-y-1.5">
-                  {products.map((p) => {
-                    const href = withActivityBuyContext(
-                      p.buyPath || (p.slug ? `/voucher/${p.slug}` : null),
-                      buyCtx
-                    );
-                    const isProdDraw =
-                      p.type === "lucky_draw_v2" || p.type === "lucky_draw";
-                    const row = (
-                      <span className="flex items-center gap-2 rounded-xl border border-border bg-muted/30 px-2.5 py-2.5 w-full">
-                        <span
-                          className={cn(
-                            "grid h-8 w-8 place-items-center rounded-lg shrink-0",
-                            isProdDraw
-                              ? "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400"
-                              : isNdp
-                                ? "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400"
-                                : "bg-primary/10 text-primary"
-                          )}
-                        >
-                          {isProdDraw ? (
-                            <Trophy size={14} />
-                          ) : isNdp ? (
-                            <Gift size={14} />
-                          ) : (
-                            <Ticket size={14} />
-                          )}
+            {/* 下半：满赠权益 vs 可购产品 */}
+            <div className="px-3 pb-3 pt-2 border-t border-border/60 space-y-1.5">
+              {isNdp ? (
+                <>
+                  <p className="text-[10px] font-semibold text-muted-foreground px-0.5">
+                    {zh ? "活动权益 · 如何参加" : "How to join"}
+                  </p>
+                  <Link
+                    href={ndpOpenHref}
+                    className="flex items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2.5 dark:border-rose-900/40 dark:bg-rose-950/30 active:scale-[0.99] transition-transform"
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <span className="grid h-8 w-8 place-items-center rounded-lg shrink-0 bg-rose-100 text-rose-600 dark:bg-rose-950/50 dark:text-rose-300">
+                        <Gift size={14} />
+                      </span>
+                      <span className="min-w-0 text-left">
+                        <span className="block text-[13px] font-semibold text-rose-950 dark:text-rose-50 truncate">
+                          {zh ? "满赠权益 S$61" : "Gift perk S$61"}
                         </span>
-                        <span className="min-w-0 flex-1 text-left">
-                          <span className="block text-[13px] font-semibold text-foreground truncate">
-                            {p.name}
-                          </span>
-                          <span className="block text-[10px] text-muted-foreground truncate">
-                            {isProdDraw
-                              ? zh
-                                ? "抽奖 · 购券进池"
-                                : "Draw · buy to join"
-                              : zh
-                                ? "代金 · 到店花"
-                                : "Credit · spend in store"}
-                          </span>
-                        </span>
-                        <span className="text-[11px] font-semibold text-primary shrink-0 inline-flex items-center gap-0.5">
-                          {offerCta(a, lang)}
-                          <ChevronRight size={14} />
+                        <span className="block text-[10px] text-rose-800/80 dark:text-rose-200/80 truncate">
+                          {zh
+                            ? "满消费门槛 · 前台/桌码领取 · 非货架购券"
+                            : "Min spend · claim at counter · not a shelf buy"}
                         </span>
                       </span>
-                    );
-                    return (
-                      <li key={p.id}>
-                        {href ? (
-                          <Link
-                            href={href}
-                            className="block active:scale-[0.99] transition-transform"
-                          >
-                            {row}
-                          </Link>
-                        ) : (
-                          row
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : isNdp ? (
-                <Link
-                  href={
-                    a.href.startsWith("/ndp")
-                      ? a.href
-                      : `/ndp/${a.slug || a.id}?from=table`
-                  }
-                  className="flex items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2.5 dark:border-rose-900/40 dark:bg-rose-950/30"
-                >
-                  <span className="text-[12px] text-rose-950 dark:text-rose-100 min-w-0">
-                    {zh
-                      ? "满赠权益 · 扫码/前台参加"
-                      : "Spend-get perks · join activity"}
-                  </span>
-                  <span className="text-[11px] font-semibold text-rose-700 dark:text-rose-300 inline-flex items-center gap-0.5 shrink-0">
-                    {zh ? "打开活动" : "Open"}
-                    <ChevronRight size={14} />
-                  </span>
-                </Link>
+                    </span>
+                    <span className="text-[11px] font-semibold text-rose-700 dark:text-rose-300 inline-flex items-center gap-0.5 shrink-0">
+                      {zh ? "打开活动" : "Open"}
+                      <ChevronRight size={14} />
+                    </span>
+                  </Link>
+                </>
               ) : (
-                <Link
-                  href={
-                    withActivityBuyContext(a.href, buyCtx) ||
-                    a.href ||
-                    storePath
-                  }
-                  className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2.5"
-                >
-                  <span className="text-[12px] text-foreground/70">
-                    {zh ? "进入活动查看可买的券" : "Open activity for offers"}
-                  </span>
-                  <span className="text-[11px] font-semibold text-primary inline-flex items-center gap-0.5">
-                    {offerCta(a, lang)}
-                    <ChevronRight size={14} />
-                  </span>
-                </Link>
+                <>
+                  <p className="text-[10px] font-semibold text-muted-foreground px-0.5">
+                    {zh ? "可购产品" : "Products for sale"}
+                  </p>
+                  {products.length > 0 ? (
+                    <ul className="space-y-1.5">
+                      {products.map((p) => {
+                        const href = withActivityBuyContext(
+                          p.buyPath || (p.slug ? `/voucher/${p.slug}` : null),
+                          buyCtx
+                        );
+                        const isProdDraw =
+                          p.type === "lucky_draw_v2" ||
+                          p.type === "lucky_draw" ||
+                          isDraw;
+                        const row = (
+                          <span className="flex items-center gap-2 rounded-xl border border-border bg-muted/30 px-2.5 py-2.5 w-full">
+                            <span
+                              className={cn(
+                                "grid h-8 w-8 place-items-center rounded-lg shrink-0",
+                                isProdDraw
+                                  ? "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400"
+                                  : "bg-primary/10 text-primary"
+                              )}
+                            >
+                              {isProdDraw ? (
+                                <Trophy size={14} />
+                              ) : (
+                                <Ticket size={14} />
+                              )}
+                            </span>
+                            <span className="min-w-0 flex-1 text-left">
+                              <span className="block text-[13px] font-semibold text-foreground truncate">
+                                {p.name}
+                              </span>
+                              <span className="block text-[10px] text-muted-foreground truncate">
+                                {productSubline(p, isProdDraw, zh)}
+                              </span>
+                            </span>
+                            <span className="text-[11px] font-semibold text-primary shrink-0 inline-flex items-center gap-0.5">
+                              {zh ? "去购券" : "Buy"}
+                              <ChevronRight size={14} />
+                            </span>
+                          </span>
+                        );
+                        return (
+                          <li key={p.id}>
+                            {href ? (
+                              <Link
+                                href={href}
+                                className="block active:scale-[0.99] transition-transform"
+                              >
+                                {row}
+                              </Link>
+                            ) : (
+                              row
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground px-0.5 py-2">
+                      {zh
+                        ? "暂无可购产品（商家尚未挂载）"
+                        : "No products linked yet"}
+                    </p>
+                  )}
+
+                  {/* 大奖：结账参加放进活动卡内次要入口 */}
+                  {isDraw && joinHref && (
+                    <Link
+                      href={joinHref}
+                      className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-amber-300/80 bg-amber-50/50 px-3 py-2 dark:border-amber-800/50 dark:bg-amber-950/20 active:scale-[0.99] transition-transform"
+                    >
+                      <span className="flex items-center gap-2 min-w-0">
+                        <Receipt
+                          size={14}
+                          className="text-amber-700 dark:text-amber-400 shrink-0"
+                        />
+                        <span className="text-[11px] text-amber-950 dark:text-amber-100">
+                          {zh
+                            ? "结账时按账单参加大奖"
+                            : "Join draw with this bill"}
+                        </span>
+                      </span>
+                      <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 inline-flex items-center gap-0.5 shrink-0">
+                        {zh ? "填写账单" : "Enter bill"}
+                        <ChevronRight size={14} />
+                      </span>
+                    </Link>
+                  )}
+                </>
               )}
             </div>
           </article>

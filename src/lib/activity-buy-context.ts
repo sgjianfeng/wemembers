@@ -58,8 +58,13 @@ export function parseActivityBuyContext(
   sp: URLSearchParams | { get(name: string): string | null }
 ): ActivityBuyContext & { isContextual: boolean } {
   const fromRaw = sp.get("from") || "";
+  // join 结账入口视同门店语境
+  const fromNorm =
+    fromRaw === "join" && sp.get("store")?.startsWith("/shop/")
+      ? "store"
+      : fromRaw;
   const from = (
-    ["store", "ndp", "shop", "home"].includes(fromRaw) ? fromRaw : ""
+    ["store", "ndp", "shop", "home"].includes(fromNorm) ? fromNorm : ""
   ) as ActivityBuyFrom | "";
   const ctx: ActivityBuyContext = {
     from: (from || "home") as ActivityBuyFrom,
@@ -82,16 +87,25 @@ export function parseActivityBuyContext(
 
 /** 返回上一层：门店 / 国庆 / 品牌 */
 export function activityBuyBackHref(ctx: ActivityBuyContext): string {
-  if (ctx.from === "ndp" && ctx.ndpSlug) {
-    const f = ctx.ndpFrom || "table";
-    return `/ndp/${encodeURIComponent(ctx.ndpSlug)}?from=${encodeURIComponent(f)}`;
+  // 国庆购券：优先回门店货架（从店进国庆再进购券），否则回 NDP 落地页
+  if (ctx.from === "ndp") {
+    if (ctx.storePath && ctx.storePath.startsWith("/shop/")) {
+      return ctx.storePath;
+    }
+    if (ctx.ndpSlug) {
+      const f = ctx.ndpFrom || "table";
+      const q = new URLSearchParams({ from: f });
+      if (ctx.storePath?.startsWith("/shop/")) q.set("store", ctx.storePath);
+      if (ctx.storeName) q.set("storeName", ctx.storeName);
+      if (ctx.brandName) q.set("brand", ctx.brandName);
+      return `/ndp/${encodeURIComponent(ctx.ndpSlug)}?${q.toString()}`;
+    }
   }
   if ((ctx.from === "store" || ctx.from === "shop") && ctx.storePath) {
     return ctx.storePath.startsWith("/")
       ? ctx.storePath
       : `/${ctx.storePath}`;
   }
-  if (ctx.from === "shop" && ctx.storePath) return ctx.storePath;
   return "/";
 }
 
