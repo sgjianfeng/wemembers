@@ -531,8 +531,8 @@ export default async function BusinessOffersPage({
             </p>
             <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
               {zh
-                ? "先选产品 → 电子短码或实体印刷"
-                : "Pick product → digital or paper"}
+                ? "活动 → 产品 → 电子/实体"
+                : "Activity → product → digital/paper"}
             </p>
           </Link>
           <Link
@@ -544,8 +544,8 @@ export default async function BusinessOffersPage({
             </p>
             <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
               {zh
-                ? "先选产品 → 抵欠/福利/营销 · 管理层"
-                : "Pick product → debt/welfare · owners"}
+                ? "活动 → 产品 → 抵欠/福利 · 管理层"
+                : "Activity → product → debt/welfare · owners"}
             </p>
           </Link>
         </div>
