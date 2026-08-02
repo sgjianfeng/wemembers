@@ -79,20 +79,24 @@ export function splitPoolFunding(
   return { smallCents, grandCents: total - smallCents };
 }
 
-/** Split deferred pool across prizes by each prize's target weight (same formula for all). */
+/**
+ * 延迟大奖：共享一池，各奖用「同一笔已筹」对照各自目标。
+ *
+ * 旧逻辑按 target 权重拆池（BYD 目标极大 → 几乎全进 BYD，iPad/iPhone 只剩几分钱
+ * 再被 UI 四舍五入成 S$0）。正确叙事：大奖池只有一笔钱；达 S$3k 可抽 iPad，
+ * 达 S$5k 可抽 iPhone，达更高可抽 BYD —— 进度条都看同一 pool。
+ */
 export function allocateDeferredToPrizes(
   deferredPoolCents: number,
   prizes: Array<{ id: string; targetCents: number; name: string; icon?: string }>
 ): Record<string, PoolConfigEntry> {
-  const totalTarget = prizes.reduce((sum, p) => sum + Math.max(0, p.targetCents), 0);
+  const pool = Math.max(0, Math.floor(deferredPoolCents));
   const poolConfigs: Record<string, PoolConfigEntry> = {};
   for (const p of prizes) {
     const target = Math.max(0, p.targetCents);
-    const allocated =
-      totalTarget > 0 ? Math.floor(deferredPoolCents * (target / totalTarget)) : 0;
     poolConfigs[p.id] = {
       targetCents: target,
-      currentCents: Math.min(allocated, target || allocated),
+      currentCents: target > 0 ? Math.min(pool, target) : pool,
       displayName: p.name,
       icon: p.icon,
     };

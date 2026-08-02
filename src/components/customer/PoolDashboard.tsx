@@ -33,7 +33,17 @@ function formatSgd(cents: number): string {
   if (sgd >= 10000) {
     return `S$${(sgd / 1000).toFixed(0)}K`;
   }
-  return `S$${sgd.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  // < S$100 保留 2 位，避免几分钱被四舍五入成 S$0
+  if (sgd > 0 && sgd < 100) {
+    return `S$${sgd.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+  return `S$${sgd.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })}`;
 }
 
 /** Map a grand-prize to a lucide glyph (chrome). Operator-supplied prizeIcon

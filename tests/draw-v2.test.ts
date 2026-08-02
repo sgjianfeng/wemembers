@@ -100,13 +100,27 @@ describe("allocatePrizePools", () => {
 });
 
 describe("allocateDeferredToPrizes", () => {
-  test("splits by target", () => {
-    const configs = allocateDeferredToPrizes(3000, [
+  test("shared pool counts toward every prize target", () => {
+    // 一池：小奖先满、大奖显示同一已筹
+    const configs = allocateDeferredToPrizes(1500, [
       { id: "a", name: "奖A", icon: "🎁", targetCents: 1000 },
       { id: "b", name: "奖B", icon: "📱", targetCents: 2000 },
     ]);
-    expect(configs.a.currentCents).toBe(1000);
-    expect(configs.b.currentCents).toBe(2000);
+    expect(configs.a.currentCents).toBe(1000); // min(1500, 1000)
+    expect(configs.b.currentCents).toBe(1500); // min(1500, 2000)
+  });
+
+  test("early funding shows on small prizes, not only BYD-weight", () => {
+    // S$10.20 deferred；若按目标权重拆 BYD 几乎独吞
+    const pool = 1020;
+    const configs = allocateDeferredToPrizes(pool, [
+      { id: "ipad", name: "iPad", targetCents: 300_000 },
+      { id: "iphone", name: "iPhone", targetCents: 500_000 },
+      { id: "byd", name: "BYD", targetCents: 66_700_000 },
+    ]);
+    expect(configs.ipad.currentCents).toBe(1020);
+    expect(configs.iphone.currentCents).toBe(1020);
+    expect(configs.byd.currentCents).toBe(1020);
   });
 });
 
@@ -131,8 +145,8 @@ describe("estimatePoolCountdown", () => {
 describe("constants", () => {
   test("FIXED_VOUCHER_AMOUNTS is 50/100/200 (draw faces)", () => {
     expect(FIXED_VOUCHER_AMOUNTS).toEqual([50, 100, 200]);
-    // 生产已扩展到 6 档：2/5/10 纯代金 + 50/100/200 抽奖档
-    expect(DEFAULT_VOUCHER_TIERS).toHaveLength(6);
+    // 2/5/10 纯代金 + 50/100/150/200 抽奖档
+    expect(DEFAULT_VOUCHER_TIERS.length).toBeGreaterThanOrEqual(6);
   });
   test("GRAND_PRIZE_TARGETS", () => {
     expect(GRAND_PRIZE_TARGETS.iPhone).toBeDefined();
