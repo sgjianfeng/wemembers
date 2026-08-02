@@ -26,9 +26,34 @@ export async function POST(request: NextRequest) {
       ? raw.toLowerCase()
       : normalizeSingaporePhone(raw);
 
-    const user = isEmail
+    // 手机：优先 E.164；兼容历史店员本地 8 位号（未带 +65）
+    let user = isEmail
       ? await prisma.user.findUnique({ where: { email: contact } })
       : await prisma.user.findUnique({ where: { phone: contact } });
+
+    if (!user && !isEmail) {
+      const digits = contact.replace(/\D/g, "");
+      const local8 =
+        digits.startsWith("65") && digits.length === 10
+          ? digits.slice(2)
+          : /^[89]\d{7}$/.test(digits)
+            ? digits
+            : null;
+      if (local8) {
+        user = await prisma.user.findUnique({ where: { phone: local8 } });
+        // 顺手纠正为 E.164，下次可直接命中
+        if (user?.phone === local8) {
+          try {
+            user = await prisma.user.update({
+              where: { id: user.id },
+              data: { phone: contact.startsWith("+") ? contact : `+65${local8}` },
+            });
+          } catch {
+            // 唯一冲突时保留原记录，登录仍可用
+          }
+        }
+      }
+    }
 
     if (!user || user.status !== "active") {
       return NextResponse.json({ error: "账号不存在或已停用" }, { status: 404 });
