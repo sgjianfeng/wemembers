@@ -44,11 +44,25 @@ export default async function BusinessHubPage() {
       primary: true,
     },
     {
-      id: "issue-self",
+      id: "issue-cash",
       icon: Banknote,
-      title: t("hub.issueSelf.title", lang),
-      desc: t("hub.issueSelf.desc", lang),
-      href: "/business/issue-self",
+      title: lang === "en" ? "Cash sale issue" : "现金购券",
+      desc:
+        lang === "en"
+          ? "Counter paid → issue self/excl. · via Activity perks"
+          : "柜台收款发券 · 入口在「活动券」",
+      href: "/business/issue-self?mode=cash",
+      primary: true,
+    },
+    {
+      id: "issue-manage",
+      icon: Banknote,
+      title: lang === "en" ? "Issue management" : "发券管理",
+      desc:
+        lang === "en"
+          ? "Debt / welfare / marketing · owners only"
+          : "抵欠/福利/营销 · 仅企业管理层",
+      href: "/business/issue-self?mode=manage",
       primary: true,
     },
     {

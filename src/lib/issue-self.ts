@@ -8,8 +8,8 @@ export const ISSUE_REASONS = [
     needsPay: true,
     zh: "现金销售（已收款）",
     en: "Cash sale (paid)",
-    descZh: "顾客已付现金/店收 · 店员可操作",
-    descEn: "Customer paid cash · staff ok",
+    descZh: "顾客已付现金/店收 · 仅企业管理层",
+    descEn: "Customer paid cash · business owners only",
   },
   {
     id: "supplier_debt" as const,

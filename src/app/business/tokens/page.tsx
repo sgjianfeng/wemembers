@@ -280,12 +280,11 @@ export default async function TokenRechargePage({
           <TopUpButton />
           {canWithdraw && <WithdrawButton balance={balance} />}
         </div>
-        <a
-          href="/business/issue-self"
-          className="inline-flex text-xs font-medium text-primary"
-        >
-          {lang === "en" ? "Issue self-use (cash) →" : "现金发自用券 →"}
-        </a>
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          {lang === "en"
+            ? "Cash sales & issue tools: Activity perks (management only)."
+            : "现金购券 / 发券管理请到「活动券」（仅企业管理层）。"}
+        </p>
 
         {/* Status messages — accurate after Stripe refresh above */}
         {sp.onboarding === "success" && isStripeFullyReady && (

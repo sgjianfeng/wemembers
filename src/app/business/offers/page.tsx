@@ -519,6 +519,38 @@ export default async function BusinessOffersPage({
         )}
       </div>
 
+      {/* 柜台：现金购券 / 发券管理（仅企业主，不进账户中心） */}
+      {session.role === "business" && (
+        <div className="px-4 mt-3 grid grid-cols-2 gap-2">
+          <Link
+            href="/business/issue-self?mode=cash"
+            className="rounded-2xl border border-primary/25 bg-primary/5 p-3 active:scale-[0.99] transition-transform"
+          >
+            <p className="text-sm font-semibold text-foreground">
+              {zh ? "现金购券" : "Cash sale"}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
+              {zh
+                ? "柜台已收款 → 按产品发自用/独享券"
+                : "Paid at counter → issue self/excl. voucher"}
+            </p>
+          </Link>
+          <Link
+            href="/business/issue-self?mode=manage"
+            className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 active:scale-[0.99] transition-transform"
+          >
+            <p className="text-sm font-semibold text-foreground">
+              {zh ? "发券管理" : "Issue mgmt"}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
+              {zh
+                ? "抵欠/福利/营销赠送 · 仅管理层"
+                : "Debt/welfare/marketing · owners only"}
+            </p>
+          </Link>
+        </div>
+      )}
+
       <div className="px-4 mt-4">
         {empty ? (
           <div className="text-center py-12 rounded-2xl border border-dashed border-border">

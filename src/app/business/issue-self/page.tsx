@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -97,6 +97,11 @@ function mapCampaign(raw: Record<string, unknown>): CampaignOpt {
 export default function IssueSelfPage() {
   const { t, lang } = useLang();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  /** cash = 柜台已收款购券；manage = 无支付发券（管理层） */
+  const modeParam = searchParams.get("mode");
+  const pageMode: "cash" | "manage" | "all" =
+    modeParam === "cash" || modeParam === "manage" ? modeParam : "all";
   const [campaigns, setCampaigns] = useState<CampaignOpt[]>([]);
   const [stores, setStores] = useState<StoreOpt[]>([]);
   const [campaignId, setCampaignId] = useState("");
@@ -200,12 +205,34 @@ export default function IssueSelfPage() {
     selectedCamp?.type === "lucky_draw";
   const noPay = isNoPayReason(issueReason);
 
-  // 抽奖活动不能选无支付
+  // 按入口模式限制原因；抽奖活动不能选无支付
   useEffect(() => {
+    if (pageMode === "cash") {
+      setIssueReason("cash_sale");
+      return;
+    }
+    if (pageMode === "manage") {
+      const firstNoPay = ISSUE_REASONS.find((r) => !r.needsPay);
+      if (firstNoPay && (issueReason === "cash_sale" || isDrawCamp)) {
+        if (!isDrawCamp) setIssueReason(firstNoPay.id);
+        else setIssueReason("cash_sale");
+      }
+      return;
+    }
     if (isDrawCamp && noPay) {
       setIssueReason("cash_sale");
     }
-  }, [isDrawCamp, noPay]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only sync on mode/camp
+  }, [pageMode, isDrawCamp]);
+
+  const visibleReasons = useMemo(() => {
+    return ISSUE_REASONS.filter((r) => {
+      if (isDrawCamp && !r.needsPay) return false;
+      if (pageMode === "cash") return r.needsPay;
+      if (pageMode === "manage") return !r.needsPay;
+      return true;
+    });
+  }, [pageMode, isDrawCamp]);
 
   const quickAmounts = useMemo(() => {
     if (selectedCamp?.enabledTiers?.length) return selectedCamp.enabledTiers;
@@ -424,19 +451,64 @@ export default function IssueSelfPage() {
         <button
           type="button"
           className="text-xs text-primary font-medium flex items-center gap-0.5 active:scale-[0.97] transition-transform"
-          onClick={() => router.push("/business")}
+          onClick={() => router.push("/business/offers")}
         >
-          <ArrowLeft size={13} /> {lang === "en" ? "Back" : "返回"}
+          <ArrowLeft size={13} />{" "}
+          {lang === "en" ? "Activity perks" : "← 活动券"}
         </button>
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           <h1 className="text-lg font-semibold text-foreground">
-            {t("issueSelf.title")}
+            {pageMode === "cash"
+              ? lang === "en"
+                ? "Cash sale issue"
+                : "现金购券"
+              : pageMode === "manage"
+                ? lang === "en"
+                  ? "Issue management"
+                  : "发券管理"
+                : t("issueSelf.title")}
           </h1>
           <VoucherTypeBadge kind="self_use" size="sm" isDraw={isDrawCamp} />
         </div>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {t("issueSelf.subtitle")}
+          {pageMode === "cash"
+            ? lang === "en"
+              ? "Customer paid at counter · issue self/exclusive voucher · owners only"
+              : "柜台已收款 → 按活动/产品发自用或独享券 · 仅企业管理层"
+            : pageMode === "manage"
+              ? lang === "en"
+                ? "Debt / welfare / marketing issue · no payment · owners only"
+                : "抵欠、福利、营销等无支付发券 · 仅企业管理层"
+              : t("issueSelf.subtitle")}
         </p>
+        {pageMode !== "all" && (
+          <div className="flex gap-2 mt-2">
+            <button
+              type="button"
+              onClick={() => router.replace("/business/issue-self?mode=cash")}
+              className={cn(
+                "text-[11px] font-semibold px-2.5 py-1 rounded-full",
+                pageMode === "cash"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              {lang === "en" ? "Cash sale" : "现金购券"}
+            </button>
+            <button
+              type="button"
+              onClick={() => router.replace("/business/issue-self?mode=manage")}
+              className={cn(
+                "text-[11px] font-semibold px-2.5 py-1 rounded-full",
+                pageMode === "manage"
+                  ? "bg-amber-600 text-white"
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              {lang === "en" ? "Issue mgmt" : "发券管理"}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="px-4 mt-4 space-y-4">
@@ -548,9 +620,7 @@ export default function IssueSelfPage() {
                 {lang === "en" ? "Issue reason" : "发券原因"}
               </label>
               <div className="mt-1.5 grid grid-cols-1 gap-2">
-                {ISSUE_REASONS.filter(
-                  (r) => !(isDrawCamp && !r.needsPay)
-                ).map((r) => {
+                {visibleReasons.map((r) => {
                   const active = issueReason === r.id;
                   return (
                     <button
