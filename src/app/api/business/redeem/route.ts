@@ -3,6 +3,136 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { storeIdsAllows } from "@/lib/utils";
 
+function normalizeCouponCode(raw: string): string {
+  return raw.trim().replace(/\s+/g, "").toUpperCase();
+}
+
+/** 解析当前核销门店 + 企业（与 POST 一致） */
+async function resolveRedeemActor(session: {
+  userId: string;
+  role: string;
+  storeId?: string | null;
+}, bodyStoreId?: string) {
+  let storeId: string | null =
+    session.role === "staff" ? session.storeId || null : bodyStoreId || null;
+  let businessId = session.userId;
+
+  if (session.role === "staff") {
+    if (!session.storeId) {
+      return { error: "店员未绑定门店", status: 403 as const };
+    }
+    const st = await prisma.store.findUnique({
+      where: { id: session.storeId },
+      select: { id: true, businessId: true, name: true },
+    });
+    if (!st) return { error: "门店不存在", status: 404 as const };
+    return { storeId: st.id, businessId: st.businessId, storeName: st.name };
+  }
+
+  if (!storeId) {
+    return { error: "请选择本次核销的门店", status: 400 as const };
+  }
+  const st = await prisma.store.findFirst({
+    where: { id: storeId, businessId: session.userId },
+    select: { id: true, businessId: true, name: true },
+  });
+  if (!st) {
+    return { error: "门店无效或不属于本企业", status: 400 as const };
+  }
+  return { storeId: st.id, businessId: st.businessId, storeName: st.name };
+}
+
+// GET /api/business/redeem?qrCode=&storeId= — 查找赠送券/优惠券（CustomerCoupon）预览
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getSession();
+    if (!session || (session.role !== "business" && session.role !== "staff")) {
+      return NextResponse.json({ error: "无权操作" }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const qrCode = normalizeCouponCode(searchParams.get("qrCode") || "");
+    const bodyStoreId = searchParams.get("storeId") || "";
+    if (!qrCode || qrCode.length < 6) {
+      return NextResponse.json({ error: "请提供核销码" }, { status: 400 });
+    }
+
+    const actor = await resolveRedeemActor(session, bodyStoreId);
+    if ("error" in actor) {
+      return NextResponse.json({ error: actor.error }, { status: actor.status });
+    }
+
+    const claim = await prisma.customerCoupon.findUnique({
+      where: { qrCode },
+      include: {
+        coupon: {
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            valueCents: true,
+            minSpendCents: true,
+            businessId: true,
+            storeIds: true,
+            validUntil: true,
+            status: true,
+          },
+        },
+        customer: {
+          select: { displayName: true, phone: true },
+        },
+      },
+    });
+
+    if (!claim) {
+      return NextResponse.json({ error: "未找到该赠送券/优惠券" }, { status: 404 });
+    }
+
+    const validUntil = claim.expiresAt ?? claim.coupon.validUntil;
+    const expired = validUntil < new Date();
+    const storeOk = storeIdsAllows(claim.coupon.storeIds, actor.storeId);
+    const sameBusiness = claim.coupon.businessId === actor.businessId;
+
+    return NextResponse.json({
+      data: {
+        kind: "customer_coupon" as const,
+        id: claim.id,
+        qrCode: claim.qrCode,
+        status: expired && claim.status === "available" ? "expired" : claim.status,
+        title: claim.coupon.title,
+        type: claim.coupon.type,
+        valueCents: claim.coupon.valueCents,
+        valueSgd: (claim.coupon.valueCents / 100).toFixed(2),
+        minSpendCents: claim.coupon.minSpendCents,
+        expiresAt: validUntil.toISOString(),
+        customerName: claim.customer.displayName || "",
+        customerPhone: claim.customer.phone
+          ? `${claim.customer.phone.slice(0, 4)}****${claim.customer.phone.slice(-2)}`
+          : "",
+        canRedeem:
+          claim.status === "available" &&
+          !expired &&
+          storeOk &&
+          sameBusiness,
+        blockReason: !sameBusiness
+          ? "该券不属于本企业"
+          : !storeOk
+            ? "该券不适用于当前门店"
+            : expired
+              ? "该券已过期"
+              : claim.status !== "available"
+                ? claim.status === "used"
+                  ? "该券已使用"
+                  : `状态：${claim.status}`
+                : null,
+        storeName: actor.storeName,
+      },
+    });
+  } catch (e) {
+    console.error("redeem GET", e);
+    return NextResponse.json({ error: "查询失败" }, { status: 500 });
+  }
+}
 
 // POST /api/business/redeem — 扫码核销
 export async function POST(request: NextRequest) {
@@ -13,44 +143,19 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const qrCode = body.qrCode as string;
+    const qrCode = normalizeCouponCode(
+      typeof body.qrCode === "string" ? body.qrCode : ""
+    );
     const bodyStoreId =
       typeof body.storeId === "string" ? body.storeId.trim() : "";
     if (!qrCode) return NextResponse.json({ error: "缺少核销码" }, { status: 400 });
 
-    // 门店：店员固定 JWT；企业必须传 body.storeId
-    let storeId: string | null =
-      session.role === "staff" ? session.storeId || null : bodyStoreId || null;
-
-    let businessId = session.userId;
-    if (session.role === "staff") {
-      if (!session.storeId) {
-        return NextResponse.json({ error: "店员未绑定门店" }, { status: 403 });
-      }
-      const st = await prisma.store.findUnique({
-        where: { id: session.storeId },
-        select: { id: true, businessId: true },
-      });
-      if (!st) return NextResponse.json({ error: "门店不存在" }, { status: 404 });
-      storeId = st.id;
-      businessId = st.businessId;
-    } else {
-      if (!storeId) {
-        return NextResponse.json(
-          { error: "请选择本次核销的门店" },
-          { status: 400 }
-        );
-      }
-      const st = await prisma.store.findFirst({
-        where: { id: storeId, businessId: session.userId },
-        select: { id: true, businessId: true },
-      });
-      if (!st) {
-        return NextResponse.json({ error: "门店无效或不属于本企业" }, { status: 400 });
-      }
-      storeId = st.id;
-      businessId = st.businessId;
+    const actor = await resolveRedeemActor(session, bodyStoreId);
+    if ("error" in actor) {
+      return NextResponse.json({ error: actor.error }, { status: actor.status });
     }
+    const storeId = actor.storeId;
+    const businessId = actor.businessId;
 
     // 查找券
     const claim = await prisma.customerCoupon.findUnique({
@@ -130,6 +235,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 以下 businessId 一律用核销企业（店员时不是 session.userId）
+
     // 更新状态
     await prisma.customerCoupon.update({
       where: { id: claim.id },
@@ -191,7 +298,7 @@ export async function POST(request: NextRequest) {
           issuerFee,
           redeemerIncome,
           issuerBusinessId: claim.coupon.businessId,
-          redeemerBusinessId: session.userId,
+          redeemerBusinessId: businessId,
           status: "completed",
         },
       });
@@ -208,10 +315,16 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // 核销方：收入
+      // 核销方企业：收入
       await prisma.tokenAccount.upsert({
-        where: { userId: session.userId },
-        create: { userId: session.userId, balance: redeemerIncome, frozenBalance: 0, totalEarned: redeemerIncome, totalSpent: 0 },
+        where: { userId: businessId },
+        create: {
+          userId: businessId,
+          balance: redeemerIncome,
+          frozenBalance: 0,
+          totalEarned: redeemerIncome,
+          totalSpent: 0,
+        },
         update: {
           balance: { increment: redeemerIncome },
           totalEarned: { increment: redeemerIncome },
@@ -287,7 +400,12 @@ export async function POST(request: NextRequest) {
     } catch { /* 不影响核销主流程 */ }
 
     const membership = await prisma.membership.findUnique({
-      where: { businessId_customerId: { businessId: session.userId, customerId: claim.customerId } },
+      where: {
+        businessId_customerId: {
+          businessId,
+          customerId: claim.customerId,
+        },
+      },
     });
 
     if (membership) {
@@ -300,20 +418,20 @@ export async function POST(request: NextRequest) {
         });
         await addPointsLog({
           membershipId: membership.id,
-          storeId: session.storeId,
+          storeId: storeId,
           amount: earnPoints,
           type: "redeem_bonus",
           reason: `核销「${claim.coupon.title}」获得`,
         });
-        const up = await checkAndUpgradeTier(membership.id, session.userId);
+        const up = await checkAndUpgradeTier(membership.id, businessId);
         if (up) tierUpgraded = up;
         pointsAwarded = earnPoints;
       }
     } else {
-      // 还不是会员 → 自动加入
+      // 还不是会员 → 自动加入本企业
       await prisma.membership.create({
         data: {
-          businessId: session.userId,
+          businessId,
           customerId: claim.customerId,
           points: 0,
           visitsCount: 1,

@@ -86,6 +86,18 @@ export default function ScanClient({
     income?: string;
     fee?: string;
   } | null>(null);
+  /** 国庆赠送券 / 优惠券（CustomerCoupon） */
+  const [giftInfo, setGiftInfo] = useState<{
+    qrCode: string;
+    title: string;
+    valueSgd: string;
+    customerName: string;
+    customerPhone?: string;
+    expiresAt: string;
+    canRedeem: boolean;
+    blockReason: string | null;
+  } | null>(null);
+  const [giftRedeeming, setGiftRedeeming] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Physical ticket ──
@@ -132,7 +144,10 @@ export default function ScanClient({
     try {
       if (s.includes("://") || s.includes("?")) {
         const u = new URL(s, "https://local.invalid");
-        const q = u.searchParams.get("id") || u.searchParams.get("voucherId");
+        const q =
+          u.searchParams.get("id") ||
+          u.searchParams.get("voucherId") ||
+          u.searchParams.get("qrCode");
         if (q) s = q;
       }
     } catch {
@@ -142,7 +157,8 @@ export default function ScanClient({
       const part = s.split("/").filter(Boolean).pop() || s;
       if (part.length > 10) s = part;
     }
-    return s.trim();
+    // 赠送券核销码常带空格展示：FV4X K43N WHLG → FV4XK43NWHLG
+    return s.replace(/\s+/g, "").trim();
   }
 
   function mapVoucherData(d: Record<string, unknown>) {
@@ -175,24 +191,63 @@ export default function ScanClient({
     };
   }
 
+  async function lookupGiftCoupon(code: string): Promise<boolean> {
+    if (!storeId) return false;
+    const qs = new URLSearchParams({
+      qrCode: code,
+      storeId,
+    });
+    const res = await fetch(`/api/business/redeem?${qs.toString()}`);
+    const json = await res.json();
+    if (!res.ok || !json.data) return false;
+    const d = json.data;
+    setGiftInfo({
+      qrCode: String(d.qrCode || code),
+      title: String(d.title || ""),
+      valueSgd: String(d.valueSgd || "0"),
+      customerName: String(d.customerName || ""),
+      customerPhone: d.customerPhone ? String(d.customerPhone) : undefined,
+      expiresAt: String(d.expiresAt || ""),
+      canRedeem: Boolean(d.canRedeem),
+      blockReason: d.blockReason ? String(d.blockReason) : null,
+    });
+    setVoucherId(String(d.qrCode || code));
+    return true;
+  }
+
   async function lookupVoucher(rawId?: string) {
     const id = parseVoucherInput(rawId ?? voucherId);
     if (!id) return;
     setVoucherId(id);
     setLookupLoading(true);
     setVoucherInfo(null);
+    setGiftInfo(null);
     setVoucherResult(null);
     setCandidates([]);
     try {
+      // 12 位左右字母数字 → 先试赠送券核销码（国庆满赠）
+      const looksLikeGiftCode = /^[A-Z0-9]{8,16}$/i.test(id) && !/^\d+$/.test(id);
+      if (looksLikeGiftCode) {
+        const hit = await lookupGiftCoupon(id.toUpperCase());
+        if (hit) {
+          setLookupLoading(false);
+          return;
+        }
+      }
+
       const res = await fetch(
         `/api/voucher/lookup?q=${encodeURIComponent(id)}`
       );
       const json = await res.json();
       if (!res.ok) {
-        setVoucherResult({
-          ok: false,
-          message: json.error || t("scan.lookupFail"),
-        });
+        // 预付券未命中 → 再试赠送券
+        const giftHit = await lookupGiftCoupon(id.toUpperCase());
+        if (!giftHit) {
+          setVoucherResult({
+            ok: false,
+            message: json.error || t("scan.lookupFail"),
+          });
+        }
       } else if (json.candidates && Array.isArray(json.candidates)) {
         setCandidates(
           json.candidates.map((c: Record<string, unknown>) => {
@@ -224,14 +279,58 @@ export default function ScanClient({
     setLookupLoading(false);
   }
 
+  async function redeemGiftCoupon() {
+    if (!giftInfo || !storeId) {
+      setVoucherResult({ ok: false, message: needStoreMessage() });
+      return;
+    }
+    if (!giftInfo.canRedeem) {
+      setVoucherResult({
+        ok: false,
+        message: giftInfo.blockReason || (lang === "en" ? "Cannot redeem" : "无法核销"),
+      });
+      return;
+    }
+    setGiftRedeeming(true);
+    setVoucherResult(null);
+    try {
+      const res = await fetch("/api/business/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ qrCode: giftInfo.qrCode, storeId }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setVoucherResult({
+          ok: false,
+          message: json.error || (lang === "en" ? "Redeem failed" : "核销失败"),
+        });
+      } else {
+        setVoucherResult({
+          ok: true,
+          message:
+            lang === "en"
+              ? `Redeemed ${giftInfo.title} · S$${giftInfo.valueSgd}`
+              : `已核销 ${giftInfo.title} · S$${giftInfo.valueSgd}`,
+        });
+        setGiftInfo(null);
+        setVoucherId("");
+      }
+    } catch {
+      setVoucherResult({ ok: false, message: t("business.scan.networkError") });
+    }
+    setGiftRedeeming(false);
+  }
+
   function onVoucherQueryChange(value: string) {
     setVoucherId(value);
     setCandidates([]);
     setVoucherInfo(null);
+    setGiftInfo(null);
     setVoucherResult(null);
     if (searchTimer.current) clearTimeout(searchTimer.current);
     const q = parseVoucherInput(value);
-    // 满 3 位自动搜候选；满 6 位短码也搜
+    // 满 3 位自动搜候选；满 6 位短码 / 赠送券码也搜
     if (q.length < 3) return;
     searchTimer.current = setTimeout(() => {
       void lookupVoucher(q);
@@ -597,8 +696,8 @@ export default function ScanClient({
       </p>
       <p className="px-4 mt-1 text-[10px] text-muted-foreground text-center leading-relaxed">
         {lang === "en"
-          ? "Activity gifts (e.g. spend & get) → open Offers for that store."
-          : "活动满赠 / 凭票发券 → 请到底栏「活动券」进对应活动操作。"}
+          ? "Scan gift coupon QR here · issue gifts from Offers desk."
+          : "线上可核：预付短码 + 赠送券二维码；凭票发赠券请到「活动券」。"}
       </p>
 
       {tab === "online" && (
@@ -617,7 +716,9 @@ export default function ScanClient({
             <div className="relative flex items-center gap-2">
               <div className="flex-1 h-px bg-border" />
               <span className="text-[10px] text-muted-foreground">
-                {lang === "en" ? "or type short code" : "或输 6 位短码"}
+                {lang === "en"
+                  ? "or type short / gift code"
+                  : "或输短码 / 赠送券码"}
               </span>
               <div className="flex-1 h-px bg-border" />
             </div>
@@ -685,6 +786,63 @@ export default function ScanClient({
                     </li>
                   ))}
                 </ul>
+              </CardContent>
+            </Card>
+          )}
+
+          {giftInfo && (
+            <Card className="border-rose-200 bg-rose-50/40">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-rose-700">
+                      {lang === "en" ? "Gift / activity coupon" : "赠送券 · 活动券"}
+                    </p>
+                    <p className="text-sm font-semibold text-foreground mt-0.5">
+                      {giftInfo.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {giftInfo.customerName || "—"}
+                      {giftInfo.customerPhone
+                        ? ` · ${giftInfo.customerPhone}`
+                        : ""}
+                    </p>
+                    <p className="text-base font-bold font-mono tracking-[0.15em] text-primary mt-1">
+                      {giftInfo.qrCode}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-2xl font-bold text-[#FF6B35] tabular-nums">
+                      S${giftInfo.valueSgd}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {lang === "en" ? "Face value" : "面额全额核销"}
+                    </p>
+                  </div>
+                </div>
+                {giftInfo.expiresAt && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {lang === "en" ? "Valid until " : "有效期至 "}
+                    {new Date(giftInfo.expiresAt).toLocaleDateString(
+                      lang === "en" ? "en-SG" : "zh-CN"
+                    )}
+                  </p>
+                )}
+                {giftInfo.blockReason && (
+                  <p className="text-xs text-red-600 bg-red-50 rounded-lg px-2.5 py-2">
+                    {giftInfo.blockReason}
+                  </p>
+                )}
+                <Button
+                  className="w-full h-11 rounded-full font-semibold"
+                  loading={giftRedeeming}
+                  disabled={!giftInfo.canRedeem}
+                  onClick={() => void redeemGiftCoupon()}
+                >
+                  {lang === "en"
+                    ? `Confirm redeem S$${giftInfo.valueSgd}`
+                    : `确认核销 S$${giftInfo.valueSgd}`}
+                </Button>
               </CardContent>
             </Card>
           )}
