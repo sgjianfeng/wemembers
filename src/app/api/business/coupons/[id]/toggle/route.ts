@@ -14,5 +14,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const newStatus = coupon.status === "published" ? "paused" : "published";
   await prisma.coupon.update({ where: { id }, data: { status: newStatus } });
 
-  return NextResponse.redirect(new URL(`/business/coupons/${id}`, request.url));
+  const { publicAbsoluteUrl } = await import("@/lib/request-origin");
+  return NextResponse.redirect(
+    publicAbsoluteUrl(`/business/coupons/${id}`, request)
+  );
 }

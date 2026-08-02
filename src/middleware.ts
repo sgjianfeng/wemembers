@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
+import { publicAbsoluteUrl } from "@/lib/request-origin";
 
 const PUBLIC_STARTS = [
   "/shop",
@@ -101,7 +102,7 @@ export async function middleware(request: NextRequest) {
         staff: "/business",
       };
       return NextResponse.redirect(
-        new URL(map[payload.role] || "/home", request.url)
+        publicAbsoluteUrl(map[payload.role] || "/home", request)
       );
     }
     return NextResponse.next();
@@ -109,8 +110,8 @@ export async function middleware(request: NextRequest) {
 
   // 未登录
   if (!payload) {
-    const loginUrl = new URL("/auth/login", request.url);
-    loginUrl.searchParams.set("redirect", pathname);
+    const loginUrl = publicAbsoluteUrl("/auth/login", request);
+    loginUrl.searchParams.set("redirect", pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }
 
@@ -123,8 +124,9 @@ export async function middleware(request: NextRequest) {
   };
 
   // 页面越权：重定向到本角色首页（不要 JSON 403 白屏）
+  // 必须用公开域名，禁止 new URL(..., request.url) 落到 0.0.0.0
   const denyPage = () =>
-    NextResponse.redirect(new URL(roleHome(role), request.url));
+    NextResponse.redirect(publicAbsoluteUrl(roleHome(role), request));
 
   // Admin
   if (
@@ -151,7 +153,7 @@ export async function middleware(request: NextRequest) {
           (r) => pathname === r || pathname.startsWith(r + "/")
         )
       ) {
-        return NextResponse.redirect(new URL("/business", request.url));
+        return NextResponse.redirect(publicAbsoluteUrl("/business", request));
       }
     }
     return NextResponse.next();

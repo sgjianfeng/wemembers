@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clearSession } from "@/lib/auth";
+import { publicAbsoluteUrl } from "@/lib/request-origin";
 
 // POST /api/auth/logout — 清除登录 Cookie（前端主动退出）
 export async function POST() {
@@ -27,5 +28,6 @@ export async function GET(request: NextRequest) {
   // 只允许站内相对路径，防止 open redirect
   const safe =
     next.startsWith("/") && !next.startsWith("//") ? next : "/auth/login";
-  return NextResponse.redirect(new URL(safe, request.url));
+  // 勿用 request.url 作 base（可能是 0.0.0.0:3000，Safari 会拦截）
+  return NextResponse.redirect(publicAbsoluteUrl(safe, request));
 }
