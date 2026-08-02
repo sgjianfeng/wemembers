@@ -10,6 +10,7 @@ import { timeAgo } from "@/lib/utils";
 import { TopUpButton } from "./TopUpButton";
 import { WithdrawButton } from "./WithdrawButton";
 import { StripeStatusPanel } from "./StripeStatusPanel";
+import { SalesReceiptSection } from "./SalesReceiptSection";
 import { releaseMaturedHolds } from "@/lib/tokens";
 import { getAccountStatus } from "@/lib/stripe";
 
@@ -115,7 +116,7 @@ export default async function TokenRechargePage({
         _sum: { paidCents: true, sellerCommissionCents: true },
         _count: true,
       }),
-      // 近期真卖出（含独享/自用/分发），供「卖券明细」— 不依赖代币流水
+      // 近期真卖出（含独享/自用/分发），供收款明细
       prisma.voucher.findMany({
         where: {
           ...campBiz,
@@ -127,14 +128,16 @@ export default async function TokenRechargePage({
           paidCents: true,
           amountCents: true,
           balanceCents: true,
+          usedCents: true,
           productKind: true,
           paymentMethod: true,
+          status: true,
           createdAt: true,
           campaign: { select: { name: true, type: true } },
           customer: { select: { phone: true, displayName: true } },
         },
         orderBy: { createdAt: "desc" },
-        take: 30,
+        take: 50,
       }),
     ]);
   const selfSoldCents = selfSoldToday._sum.paidCents ?? 0;
@@ -144,7 +147,6 @@ export default async function TokenRechargePage({
   const selfPendingCents = selfPending._sum.balanceCents ?? 0;
   const distSoldAllCents = distSoldAll._sum.paidCents ?? 0;
   const distSoldAllCount = distSoldAll._count;
-  const distCommCents = distSoldAll._sum.sellerCommissionCents ?? 0;
 
   // 业务入账：只计真实收入流水（不含平台赠送额度）
   // totalEarned 计数器历史上把赠送也加进去了，不能直接当「卖券收益」
@@ -263,50 +265,6 @@ export default async function TokenRechargePage({
           </Card>
         </div>
 
-        {/* 卖券一览：和钱包分开，避免「只看见一笔」 */}
-        <Card className="border-border">
-          <CardContent className="p-4 space-y-2">
-            <h3 className="text-sm font-semibold text-foreground">
-              {lang === "en" ? "Voucher sales (all time)" : "卖券记录（全部）"}
-            </h3>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              {lang === "en"
-                ? "Self-use cash stays in-store (not platform wallet). Distribution may settle commission after redeem."
-                : "自用/独享：钱在店里收，不进上方「可提现」。分发券：核销后才可能有佣金进钱包。"}
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-xl bg-muted/50 p-3">
-                <p className="text-[10px] text-muted-foreground">
-                  {lang === "en" ? "Self-use sold" : "自用/独享售出"}
-                </p>
-                <p className="text-lg font-bold tabular-nums mt-0.5">
-                  {selfSoldAllCount}{" "}
-                  <span className="text-sm font-semibold text-muted-foreground">
-                    · S${(selfSoldAllCents / 100).toFixed(2)}
-                  </span>
-                </p>
-              </div>
-              <div className="rounded-xl bg-muted/50 p-3">
-                <p className="text-[10px] text-muted-foreground">
-                  {lang === "en" ? "Distribution sold" : "分发售出"}
-                </p>
-                <p className="text-lg font-bold tabular-nums mt-0.5">
-                  {distSoldAllCount}{" "}
-                  <span className="text-sm font-semibold text-muted-foreground">
-                    · S${(distSoldAllCents / 100).toFixed(2)}
-                  </span>
-                </p>
-                {distCommCents > 0 && (
-                  <p className="text-[10px] text-green-700 mt-0.5">
-                    {lang === "en" ? "Comm." : "已计佣金"} S$
-                    {(distCommCents / 100).toFixed(2)}
-                  </p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* 分发券结算（平台钱包）· 折叠卡 */}
         <StripeStatusPanel
           initial={{
@@ -317,54 +275,17 @@ export default async function TokenRechargePage({
           }}
         />
 
-        {/* 自用券：已收款 / 待核销（不进平台可用） */}
-        <Card className="border-border">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-1 h-4 rounded-full bg-muted-foreground" />
-              <h3 className="text-sm font-semibold text-foreground">
-                {t("tokens.selfTitle", lang)}
-              </h3>
-            </div>
-            <p className="text-[11px] text-muted-foreground mb-3">
-              {t("tokens.selfHint", lang)}
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-xl bg-muted/50 p-3">
-                <p className="text-[10px] text-muted-foreground">
-                  {lang === "en" ? "Sold today" : "今日售出"}
-                </p>
-                <p className="text-xl font-bold text-foreground tabular-nums mt-0.5">
-                  S${(selfSoldCents / 100).toFixed(2)}
-                </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  {selfSoldCount}{" "}
-                  {lang === "en" ? "orders (incl. PayNow/Stripe)" : "笔（含线上付）"}
-                </p>
-              </div>
-              <div className="rounded-xl bg-muted/50 p-3">
-                <p className="text-[10px] text-muted-foreground">
-                  {t("tokens.selfPending", lang)}
-                </p>
-                <p className="text-xl font-bold text-muted-foreground tabular-nums mt-0.5">
-                  S${(selfPendingCents / 100).toFixed(2)}
-                </p>
-              </div>
-            </div>
-            <a
-              href="/business/issue-self"
-              className="mt-3 inline-flex text-xs font-medium text-primary"
-            >
-              现金发自用券 →
-            </a>
-          </CardContent>
-        </Card>
-
         {/* Top-up always available (Checkout); withdraw needs charges_enabled */}
         <div className="flex gap-2">
           <TopUpButton />
           {canWithdraw && <WithdrawButton balance={balance} />}
         </div>
+        <a
+          href="/business/issue-self"
+          className="inline-flex text-xs font-medium text-primary"
+        >
+          {lang === "en" ? "Issue self-use (cash) →" : "现金发自用券 →"}
+        </a>
 
         {/* Status messages — accurate after Stripe refresh above */}
         {sp.onboarding === "success" && isStripeFullyReady && (
@@ -390,93 +311,52 @@ export default async function TokenRechargePage({
           </div>
         )}
 
-        {/* 卖券明细：独享/自用线上付不进代币流水，单独列出 */}
-        <div>
-          <h3 className="text-sm font-semibold text-foreground mb-1">
-            {lang === "en" ? "Sales detail" : "卖券明细"}
-          </h3>
-          <p className="text-[11px] text-muted-foreground mb-2 leading-relaxed">
-            {lang === "en"
-              ? "Paid orders (Stripe/PayNow/cash). Exclusive sales stay as customer credit until redeem — not platform withdrawable."
-              : "顾客实付订单（Stripe/PayNow/现金）。独享售出记为顾客预付权益，不进上方「可提现」，故也不会出现在「钱包流水」里。"}
-          </p>
-          {recentSales.length === 0 ? (
-            <p className="text-xs text-muted-foreground px-3 py-4 bg-card rounded-lg border border-border text-center">
-              {lang === "en" ? "No paid sales yet" : "暂无实付卖券记录"}
-            </p>
-          ) : (
-            <div className="space-y-1">
-              {recentSales.map((sale) => {
-                const isSelf = sale.productKind === "self_use";
-                const pay =
-                  sale.paymentMethod === "stripe"
-                    ? "Stripe/PayNow"
-                    : sale.paymentMethod === "cash"
-                      ? lang === "en"
-                        ? "Cash"
-                        : "现金"
-                      : sale.paymentMethod || "—";
-                const who =
-                  sale.customer?.displayName ||
-                  sale.customer?.phone ||
-                  (lang === "en" ? "Customer" : "顾客");
-                return (
-                  <div
-                    key={sale.id}
-                    className="flex items-center justify-between gap-2 px-3 py-2.5 bg-card rounded-lg border border-border"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-foreground truncate">
-                        {sale.campaign?.name || "—"}
-                        {sale.shortCode ? (
-                          <span className="font-mono text-primary ml-1.5 tracking-wider">
-                            {sale.shortCode}
-                          </span>
-                        ) : null}
-                      </p>
-                      <div className="text-[10px] text-muted-foreground mt-0.5 flex flex-wrap items-center gap-1">
-                        <Badge variant="slate" size="sm">
-                          {isSelf
-                            ? lang === "en"
-                              ? "Self/Exclusive"
-                              : "自用/独享"
-                            : lang === "en"
-                              ? "Distribution"
-                              : "分发"}
-                        </Badge>
-                        <span>{pay}</span>
-                        <span>·</span>
-                        <span className="truncate max-w-[8rem]">{who}</span>
-                        <span>·</span>
-                        <span>{timeAgo(sale.createdAt)}</span>
-                      </div>
-                      {isSelf && sale.balanceCents > 0 && (
-                        <p className="text-[10px] text-amber-700 mt-0.5">
-                          {lang === "en"
-                            ? `Customer balance left S$${(sale.balanceCents / 100).toFixed(2)} (not withdrawable)`
-                            : `顾客剩余可花 S$${(sale.balanceCents / 100).toFixed(2)}（未核销，不可提）`}
-                        </p>
-                      )}
-                    </div>
-                    <span className="text-sm font-semibold shrink-0 text-foreground tabular-nums">
-                      S${(sale.paidCents / 100).toFixed(2)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        {/* 收款总计 + 明细（权益 / 已核销筛选） */}
+        <SalesReceiptSection
+          lang={lang === "en" ? "en" : "zh"}
+          selfSoldTodayCents={selfSoldCents}
+          selfSoldTodayCount={selfSoldCount}
+          selfPendingCents={selfPendingCents}
+          selfSoldAllCents={selfSoldAllCents}
+          selfSoldAllCount={selfSoldAllCount}
+          distSoldAllCents={distSoldAllCents}
+          distSoldAllCount={distSoldAllCount}
+          sales={recentSales.map((s) => ({
+            id: s.id,
+            shortCode: s.shortCode,
+            paidCents: s.paidCents,
+            amountCents: s.amountCents,
+            balanceCents: s.balanceCents,
+            usedCents: s.usedCents,
+            productKind: s.productKind,
+            paymentMethod: s.paymentMethod,
+            status: s.status,
+            createdAt: s.createdAt.toISOString(),
+            campaignName: s.campaign?.name ?? null,
+            customerName: s.customer?.displayName ?? null,
+            customerPhone: s.customer?.phone ?? null,
+          }))}
+        />
 
-        {/* 钱包流水：仅 TokenAccount 变动（充值/赠送/扣服务费/核销入账等） */}
+        {/* 钱包流水：可提现余额变动 + 交易后 balance */}
         <div>
-          <h3 className="text-sm font-semibold text-foreground mb-1">
-            {lang === "en" ? "Wallet ledger" : "钱包流水"}
-          </h3>
+          <div className="flex items-end justify-between gap-2 mb-1">
+            <h3 className="text-sm font-semibold text-foreground">
+              {lang === "en" ? "Wallet ledger" : "钱包流水"}
+              <span className="ml-1.5 text-xs font-normal text-muted-foreground tabular-nums">
+                {lang === "en" ? "Balance" : "可提现"} S$
+                {(balance / 100).toFixed(2)}
+              </span>
+            </h3>
+            <p className="text-[10px] text-muted-foreground tabular-nums">
+              {lang === "en" ? "Gift credit" : "平台额度"} S$
+              {(giftBalance / 100).toFixed(2)}
+            </p>
+          </div>
           <p className="text-[11px] text-muted-foreground mb-2 leading-relaxed">
             {lang === "en"
-              ? "Token wallet only (top-up, gift credit, fees). Not a full sales journal."
-              : "仅平台钱包变动（充值、赠送额度、服务费等）。独享购券本身不写这里。"}
+              ? "Platform wallet only. Balance after = withdrawable after this row. Gift credit is separate."
+              : "仅平台钱包。右侧「余额」= 该笔后的可提现；平台额度（赠送）另计，独享购券不写这里。"}
           </p>
           {transactions.length === 0 ? (
             <p className="text-xs text-muted-foreground px-3 py-4 bg-card rounded-lg border border-border text-center">
@@ -493,27 +373,33 @@ export default async function TokenRechargePage({
                 return (
                   <div
                     key={tx.id}
-                    className="flex items-center justify-between px-3 py-2.5 bg-card rounded-lg border border-border"
+                    className="flex items-center justify-between gap-2 px-3 py-2.5 bg-card rounded-lg border border-border"
                   >
                     <div className="min-w-0">
                       <p className="text-xs text-muted-foreground truncate">
                         {tx.description}
                       </p>
-                      <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                      <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1 flex-wrap">
                         <Badge variant="slate" size="sm">
                           {lang === "zh" ? style.zh : style.en}
                         </Badge>
                         <span>{timeAgo(tx.createdAt)}</span>
                       </div>
                     </div>
-                    <span
-                      className={`text-sm font-semibold shrink-0 ml-2 ${
-                        tx.amount > 0 ? "text-green-600" : "text-red-500"
-                      }`}
-                    >
-                      {tx.amount > 0 ? "+" : ""}S$
-                      {(Math.abs(tx.amount) / 100).toFixed(2)}
-                    </span>
+                    <div className="text-right shrink-0">
+                      <span
+                        className={`text-sm font-semibold tabular-nums ${
+                          tx.amount > 0 ? "text-green-600" : "text-red-500"
+                        }`}
+                      >
+                        {tx.amount > 0 ? "+" : ""}S$
+                        {(Math.abs(tx.amount) / 100).toFixed(2)}
+                      </span>
+                      <p className="text-[10px] text-muted-foreground tabular-nums mt-0.5">
+                        {lang === "en" ? "Bal." : "余额"} S$
+                        {(tx.balanceAfter / 100).toFixed(2)}
+                      </p>
+                    </div>
                   </div>
                 );
               })}
