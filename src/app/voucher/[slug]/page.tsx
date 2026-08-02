@@ -734,7 +734,7 @@ function VoucherDrawInner() {
 
       <div
         className={`px-4 text-center text-white ${
-          drawView ? "pt-3 pb-2" : "pt-4 pb-4"
+          drawView ? "pt-3 pb-5" : "pt-4 pb-4"
         }`}
       >
         <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-full mb-2 bg-white/20">
@@ -874,7 +874,13 @@ function VoucherDrawInner() {
         )}
       </div>
 
-      <div className="px-4 -mt-2 pb-8 space-y-3">
+      <div
+        className={
+          drawView
+            ? "px-4 mt-1 pb-8 space-y-4"
+            : "px-4 -mt-2 pb-8 space-y-3"
+        }
+      >
         {fromNdp && !drawView && (
           <Card className="border-rose-200 bg-rose-50/95 shadow-sm dark:border-rose-900/40 dark:bg-rose-950/40">
             <CardContent className="p-3 text-[12px] leading-relaxed text-rose-950 dark:text-rose-100">
@@ -954,13 +960,21 @@ function VoucherDrawInner() {
 
         {/* 抽奖台：我的机会 + 即时转盘 + 大奖仪式（含 #grand-countdown） */}
         {isDraw && poolStatus?.pool && !result && (
-          <div id="grand-countdown" className="scroll-mt-16">
+          <div
+            id="grand-countdown"
+            className={
+              drawView
+                ? "scroll-mt-16 pt-2 sm:pt-3"
+                : "scroll-mt-16"
+            }
+          >
             <DrawParticipationStage
               slug={String(slug)}
               lang={lang === "en" ? "en" : "zh"}
               countdowns={poolStatus.countdown || []}
               instantPoolSgd={poolStatus.pool?.instantPool?.sgd || "0"}
               dailyAvgVelocity={poolStatus.velocity?.dailyAvgCents || 0}
+              className={drawView ? "mt-1 space-y-4" : undefined}
             />
           </div>
         )}

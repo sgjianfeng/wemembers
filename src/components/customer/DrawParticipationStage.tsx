@@ -143,8 +143,8 @@ export function DrawParticipationStage({
 
   return (
     <div id={stageId} className={cn("scroll-mt-20 space-y-3", className)}>
-      {/* Summary strip */}
-      <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
+      {/* Summary strip — 与上方 Hero 留出呼吸感 */}
+      <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm mt-1">
         <div className="bg-gradient-to-r from-amber-500/15 via-orange-400/10 to-violet-500/15 px-4 py-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
@@ -206,79 +206,145 @@ export function DrawParticipationStage({
         )}
       </div>
 
-      {/* Instant wheel for pending */}
-      {active && (
+      {/* ── 即时小奖区：有待转显示转盘；无待转仍常驻说明，避免「小奖不在这」 ── */}
+      {hasEntries && (
         <div className="space-y-2">
-          {pending.length > 1 && (
-            <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-              {pending.map((p, i) => (
-                <button
-                  key={p.voucherId}
-                  type="button"
-                  onClick={() => setActivePendingIdx(i)}
-                  className={cn(
-                    "shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors",
-                    i === activePendingIdx
-                      ? "bg-amber-500 text-white shadow-sm"
-                      : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {lang === "en" ? `Ticket S$${p.faceSgd}` : `券 S$${p.faceSgd}`}
-                  {p.shortCode ? ` · ${p.shortCode}` : ""}
-                </button>
-              ))}
+          <div className="flex items-center justify-between gap-2 px-0.5">
+            <p className="text-sm font-semibold text-foreground">
+              {lang === "en" ? "Instant small prize" : "即时小奖"}
+            </p>
+            <span className="text-[11px] text-muted-foreground">
+              {pending.length > 0
+                ? lang === "en"
+                  ? `${pending.length} spin(s) left`
+                  : `待转 ${pending.length} 次`
+                : lang === "en"
+                  ? "All spun · buy for more"
+                  : "已抽完 · 再买可再转"}
+            </span>
+          </div>
+          <p className="px-0.5 text-[11px] leading-relaxed text-muted-foreground">
+            {lang === "en"
+              ? "One spin per draw voucher after purchase · 100% win · adds to spendable balance. Separate from grand prize weight below."
+              : "每张抽奖券购后可转 1 次小奖 · 100% 中 · 加进可花余额。与下方延迟大奖权重是两套玩法。"}
+          </p>
+
+          {active ? (
+            <div className="space-y-2">
+              {pending.length > 1 && (
+                <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+                  {pending.map((p, i) => (
+                    <button
+                      key={p.voucherId}
+                      type="button"
+                      onClick={() => setActivePendingIdx(i)}
+                      className={cn(
+                        "shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors",
+                        i === activePendingIdx
+                          ? "bg-amber-500 text-white shadow-sm"
+                          : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {lang === "en"
+                        ? `Ticket S$${p.faceSgd}`
+                        : `券 S$${p.faceSgd}`}
+                      {p.shortCode ? ` · ${p.shortCode}` : ""}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <WinBalanceWheel
+                key={active.voucherId}
+                lang={lang}
+                prize={null}
+                instantCapSgd={active.instantCapSgd}
+                onClaim={async () => {
+                  const res = await fetch("/api/voucher/claim-instant", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ voucherId: active.voucherId }),
+                  });
+                  const j = await res.json();
+                  if (!res.ok) throw new Error(j.error || "claim failed");
+                  const p = j.data?.instantPrize;
+                  if (!p) return null;
+                  return {
+                    name: p.name,
+                    icon: p.icon,
+                    valueSgd: p.valueSgd,
+                  };
+                }}
+                onRevealed={() => {
+                  void refresh();
+                }}
+              />
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-amber-200/70 bg-gradient-to-b from-amber-50/90 to-card px-4 py-4 dark:border-amber-900/40 dark:from-amber-950/30">
+              <p className="text-sm font-semibold text-foreground">
+                {lang === "en"
+                  ? "No pending instant spins"
+                  : "暂无待转小奖"}
+              </p>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                {status.claimedInstant.length > 0
+                  ? lang === "en"
+                    ? "You’ve already claimed instant prizes on your tickets. Buy another draw voucher to get a new spin here."
+                    : "本活动下的参与券已抽过即时小奖。再买一档抽奖券，新的转盘会出现在这里。"
+                  : lang === "en"
+                    ? "After you buy a draw voucher, the wheel appears here for one spin."
+                    : "购券后，小奖转盘会出现在这里，每张券可转一次。"}
+              </p>
+              {status.claimedInstant.length > 0 && (
+                <div className="mt-3">
+                  <p className="mb-1.5 text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">
+                    {lang === "en" ? "Your wins" : "你已中的小奖"}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {status.claimedInstant.slice(0, 6).map((c) => (
+                      <span
+                        key={c.voucherId}
+                        className="inline-flex items-center gap-1 rounded-full bg-card px-2.5 py-1 text-[11px] font-medium ring-1 ring-emerald-200/80 dark:ring-emerald-800/50"
+                      >
+                        <span>{c.icon}</span>
+                        <span>{c.name}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-3 h-10 w-full rounded-full border-amber-300 font-semibold text-amber-900 dark:border-amber-700 dark:text-amber-100"
+                onClick={() => {
+                  onScrollToBuy?.();
+                  document
+                    .getElementById("buy-voucher")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              >
+                {lang === "en"
+                  ? "Buy another · get a spin"
+                  : "再买一档 · 再转小奖"}
+              </Button>
             </div>
           )}
-          <WinBalanceWheel
-            key={active.voucherId}
-            lang={lang}
-            prize={null}
-            instantCapSgd={active.instantCapSgd}
-            onClaim={async () => {
-              const res = await fetch("/api/voucher/claim-instant", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ voucherId: active.voucherId }),
-              });
-              const j = await res.json();
-              if (!res.ok) throw new Error(j.error || "claim failed");
-              const p = j.data?.instantPrize;
-              if (!p) return null;
-              return {
-                name: p.name,
-                icon: p.icon,
-                valueSgd: p.valueSgd,
-              };
-            }}
-            onRevealed={() => {
-              // 切到下一张待抽或刷新
-              void refresh();
-            }}
-          />
         </div>
       )}
 
-      {/* Recent claimed chips */}
-      {!active && status.claimedInstant.length > 0 && (
-        <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/50 px-3 py-2.5 dark:border-emerald-900/40 dark:bg-emerald-950/25">
-          <p className="mb-1.5 text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">
-            {lang === "en" ? "Recent instant wins" : "近期即时中奖"}
+      {/* ── 延迟大奖区 ── */}
+      {hasEntries && (
+        <div className="flex items-center justify-between gap-2 px-0.5 pt-1">
+          <p className="text-sm font-semibold text-foreground">
+            {lang === "en" ? "Deferred grand prizes" : "延迟大奖"}
           </p>
-          <div className="flex flex-wrap gap-1.5">
-            {status.claimedInstant.slice(0, 5).map((c) => (
-              <span
-                key={c.voucherId}
-                className="inline-flex items-center gap-1 rounded-full bg-card px-2.5 py-1 text-[11px] font-medium ring-1 ring-emerald-200/80 dark:ring-emerald-800/50"
-              >
-                <span>{c.icon}</span>
-                <span>{c.name}</span>
-              </span>
-            ))}
-          </div>
+          <span className="text-[11px] text-muted-foreground">
+            {lang === "en" ? "Weight · unlock later" : "权重累计 · 达标再开"}
+          </span>
         </div>
       )}
 
-      {/* Grand arena */}
       <GrandPrizeArena
         lang={lang}
         countdowns={countdowns}

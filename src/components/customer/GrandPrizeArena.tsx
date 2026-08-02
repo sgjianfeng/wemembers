@@ -254,10 +254,38 @@ export function GrandPrizeArena({
 
         <p className="relative text-center text-[11px] leading-relaxed text-white/70">
           {lang === "en"
-            ? "Grand prizes unlock when the shared pool hits each target. Your weight grows with purchase, redeem, and share."
-            : "大奖共享一池：达目标依次解锁。购券、核销、分享都会提升你的开奖权重。"}
+            ? "When a ladder target is fully funded (e.g. iPad), a real grand-draw button appears for participants. Until then: progress + weight only."
+            : "当某一档奖池筹满（如 iPad 达标），参与用户会出现「真抽大奖」按钮；未达标前只显示进度与权重。"}
         </p>
       </div>
+
+      {/* 达标后：真开奖入口位（后端开奖通道上线后启用；现为占位） */}
+      {sorted.some(
+        (c) =>
+          c.targetCents > 0 && c.currentCents >= c.targetCents
+      ) && (
+        <div className="rounded-2xl border border-emerald-300/70 bg-gradient-to-b from-emerald-50 to-card p-4 text-center shadow-sm dark:border-emerald-800/50 dark:from-emerald-950/40">
+          <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">
+            {lang === "en"
+              ? "Prize tier unlocked"
+              : "奖池已达标 · 可开大奖"}
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            {lang === "en"
+              ? "Real weighted draw for this tier will open here for ticket holders."
+              : "该档真实加权开奖将在此出现；有参与券的用户可点按钮进入仪式转盘。"}
+          </p>
+          <Button
+            type="button"
+            className="mt-3 h-11 w-full rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 font-bold text-white"
+            disabled
+          >
+            {lang === "en"
+              ? "Grand draw (opening soon)"
+              : "真抽大奖（通道即将开放）"}
+          </Button>
+        </div>
+      )}
 
       {/* Prize ladder cards */}
       <div className="space-y-2">
@@ -270,15 +298,18 @@ export function GrandPrizeArena({
             Math.max(0, (item.currentCents / Math.max(1, item.targetCents)) * 100)
           );
           const Icon = lucideForPrize(item.prizeName, item.prizeKey);
-          const near = pct >= 80;
+          const unlocked = pct >= 100;
+          const near = !unlocked && pct >= 80;
           return (
             <div
               key={item.prizeKey || item.prizeName}
               className={cn(
                 "overflow-hidden rounded-2xl border bg-card p-3.5 transition-shadow",
-                near
-                  ? "border-amber-300/80 shadow-[0_0_24px_rgba(251,191,36,0.18)]"
-                  : "border-border"
+                unlocked
+                  ? "border-emerald-400/80 shadow-[0_0_24px_rgba(16,185,129,0.2)]"
+                  : near
+                    ? "border-amber-300/80 shadow-[0_0_24px_rgba(251,191,36,0.18)]"
+                    : "border-border"
               )}
             >
               <div className="mb-2 flex items-center justify-between gap-2">
@@ -313,12 +344,18 @@ export function GrandPrizeArena({
                   <p
                     className={cn(
                       "text-sm font-bold",
-                      near
-                        ? "text-[color:var(--gold-strong)]"
-                        : "text-foreground"
+                      unlocked
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : near
+                          ? "text-[color:var(--gold-strong)]"
+                          : "text-foreground"
                     )}
                   >
-                    {daysLabel(item, lang)}
+                    {unlocked
+                      ? lang === "en"
+                        ? "Unlocked"
+                        : "已达标"
+                      : daysLabel(item, lang)}
                   </p>
                   <p className="text-[11px] nums text-muted-foreground">
                     {pct.toFixed(1)}%
@@ -329,9 +366,11 @@ export function GrandPrizeArena({
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-700",
-                    near
-                      ? "bg-gradient-to-r from-amber-400 to-orange-500"
-                      : "bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                    unlocked
+                      ? "bg-gradient-to-r from-emerald-400 to-teal-500"
+                      : near
+                        ? "bg-gradient-to-r from-amber-400 to-orange-500"
+                        : "bg-gradient-to-r from-violet-500 to-fuchsia-500"
                   )}
                   style={{ width: `${Math.max(2, pct)}%` }}
                 />
