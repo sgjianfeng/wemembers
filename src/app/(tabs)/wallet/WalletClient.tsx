@@ -25,6 +25,7 @@ export type WalletDrawEntry = {
   id: string;
   campaignId: string;
   campaignName: string | null;
+  campaignSlug?: string | null;
   businessName: string | null;
   drawWeight: number;
   shortCode: string | null;
@@ -34,6 +35,8 @@ export type WalletDrawEntry = {
   isGiftEntry: boolean;
   amountCents: number;
   balanceCents: number;
+  /** 活动页（含大奖倒计时），勿链到 /balance */
+  countdownHref?: string | null;
 };
 
 type TabKey = "available" | "used" | "expired";
@@ -421,7 +424,14 @@ function DrawEntryCard({
         </div>
         <div className="mt-2 flex justify-end">
           <Link
-            href="/balance"
+            href={
+              entry.countdownHref ||
+              (entry.campaignSlug
+                ? `/voucher/${encodeURIComponent(entry.campaignSlug)}`
+                : entry.campaignId
+                  ? `/activity/${encodeURIComponent(entry.campaignId)}`
+                  : "/discover/draws")
+            }
             className="text-xs font-medium text-[#1A6EFF] px-3 py-1 rounded-full bg-white border border-border"
           >
             {zh ? "看倒计时" : "Countdown"}

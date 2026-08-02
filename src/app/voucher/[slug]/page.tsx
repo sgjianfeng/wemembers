@@ -695,11 +695,13 @@ function VoucherDrawInner() {
         )}
 
         {isDraw && poolStatus?.pool && (
-          <PoolDashboard
-            countdowns={poolStatus.countdown || []}
-            instantPoolSgd={poolStatus.pool?.instantPool?.sgd || "0"}
-            dailyAvgVelocity={poolStatus.velocity?.dailyAvgCents || 0}
-          />
+          <div id="grand-countdown" className="scroll-mt-20">
+            <PoolDashboard
+              countdowns={poolStatus.countdown || []}
+              instantPoolSgd={poolStatus.pool?.instantPool?.sgd || "0"}
+              dailyAvgVelocity={poolStatus.velocity?.dailyAvgCents || 0}
+            />
+          </div>
         )}
 
         {isActive && !result ? (
@@ -948,7 +950,7 @@ function VoucherDrawInner() {
 
               {/* 随时可看大奖进度 */}
               {isDraw && poolStatus?.pool && (
-                <div className="text-left">
+                <div id="grand-countdown" className="scroll-mt-20 text-left">
                   <p className="text-xs font-semibold text-foreground mb-2 text-center">
                     {lang === "en" ? "Grand prizes" : "抽大奖 · 进度"}
                   </p>

@@ -32,6 +32,7 @@ export default async function WalletPage() {
         select: {
           id: true,
           name: true,
+          slug: true,
           business: { select: { businessName: true } },
         },
       },
@@ -62,23 +63,34 @@ export default async function WalletPage() {
     };
   });
 
-  const drawEntries = drawVouchers.map((v) => ({
-    id: v.id,
-    campaignId: v.campaignId,
-    campaignName: v.campaign?.name || null,
-    businessName: v.campaign?.business?.businessName || null,
-    drawWeight: v.drawWeight,
-    shortCode: v.shortCode,
-    status: v.status,
-    createdAt: v.createdAt.toISOString(),
-    isGiftEntry:
-      v.paidCents === 0 ||
-      v.paymentMethod === "free" ||
-      v.issueReason === "marketing" ||
-      v.issueReason === "ndp_draw_entry",
-    amountCents: v.amountCents,
-    balanceCents: v.balanceCents,
-  }));
+  const drawEntries = drawVouchers.map((v) => {
+    const slug = v.campaign?.slug?.trim() || null;
+    // 大奖倒计时在活动购券页 PoolDashboard，不是余额页
+    const countdownHref = slug
+      ? `/voucher/${encodeURIComponent(slug)}#grand-countdown`
+      : v.campaignId
+        ? `/activity/${encodeURIComponent(v.campaignId)}`
+        : "/discover/draws";
+    return {
+      id: v.id,
+      campaignId: v.campaignId,
+      campaignName: v.campaign?.name || null,
+      campaignSlug: slug,
+      businessName: v.campaign?.business?.businessName || null,
+      drawWeight: v.drawWeight,
+      shortCode: v.shortCode,
+      status: v.status,
+      createdAt: v.createdAt.toISOString(),
+      isGiftEntry:
+        v.paidCents === 0 ||
+        v.paymentMethod === "free" ||
+        v.issueReason === "marketing" ||
+        v.issueReason === "ndp_draw_entry",
+      amountCents: v.amountCents,
+      balanceCents: v.balanceCents,
+      countdownHref,
+    };
+  });
 
   return <WalletClient claims={claims} drawEntries={drawEntries} />;
 }
