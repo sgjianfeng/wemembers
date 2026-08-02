@@ -129,8 +129,8 @@ pm2 delete wemembers 2>/dev/null || true
 node <<'NODE'
 const fs = require("fs");
 const envPath = "/var/www/wemembers/.env";
-// 监听 127.0.0.1 供 nginx 反代；勿用 0.0.0.0（Safari 会拦 0.0.0.0 Location）
-const env = { HOSTNAME: "127.0.0.1", PORT: "3000", NODE_ENV: "production" };
+// 0.0.0.0 供 Docker nginx 访问；跳转用 publicAbsoluteUrl 避免 Safari 拦 0.0.0.0
+const env = { HOSTNAME: "0.0.0.0", PORT: "3000", NODE_ENV: "production" };
 if (fs.existsSync(envPath)) {
   for (const line of fs.readFileSync(envPath, "utf8").split("\n")) {
     const t = line.trim();

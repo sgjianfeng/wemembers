@@ -189,9 +189,9 @@ pm2 delete wemembers 2>/dev/null || true
 node <<'NODE'
 const fs = require("fs");
 const envPath = "/var/www/wemembers/.env";
-// 监听 127.0.0.1 供 nginx 反代；勿用 0.0.0.0 作 HOSTNAME，
-// Next 重定向可能拼出 http://0.0.0.0:3000 → Safari “restricted network port”
-const env = { HOSTNAME: "127.0.0.1", PORT: "3000", NODE_ENV: "production" };
+// 必须 0.0.0.0 才能被 Docker nginx 经宿主机网关访问；
+// 用户向跳转勿用 request.url（会变 0.0.0.0）— 见 publicAbsoluteUrl()
+const env = { HOSTNAME: "0.0.0.0", PORT: "3000", NODE_ENV: "production" };
 if (fs.existsSync(envPath)) {
   for (const line of fs.readFileSync(envPath, "utf8").split("\n")) {
     const t = line.trim();
