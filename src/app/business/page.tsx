@@ -520,22 +520,12 @@ async function StaffStoreHome({
       title: lang === "en" ? "Activity perks" : "活动券",
       desc:
         lang === "en"
-          ? "This store · NDP desk / redeem"
-          : "本店活动 · 国庆操作台 / 核销",
+          ? "This store · activities, gift desk & redeem"
+          : "本店活动 · 满赠台 / 核销",
       href: `/business/offers?storeId=${encodeURIComponent(store.id)}`,
       primary: true,
     },
-    {
-      id: "ndp",
-      icon: Gift,
-      title: lang === "en" ? "Activity gift desk" : "活动满赠台",
-      desc:
-        lang === "en"
-          ? "Cash bill → issue gift · this store"
-          : "收银凭票发赠券 · 本店",
-      href: `/business/ndp-desk?storeId=${encodeURIComponent(store.id)}`,
-      primary: true,
-    },
+    // 满赠台已并入「活动券」，工作台不再单独入口
     {
       id: "docs",
       icon: FolderOpen,
