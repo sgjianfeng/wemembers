@@ -24,6 +24,8 @@ type ProductDetail = {
   packKind: string | null;
   discountPercent: number;
   exclusiveFeeTotalPercent: number | null;
+  /** 顾客拆成多张券；默认 false */
+  allowCustomerSplit?: boolean;
 };
 
 export default function ProductDetailPage() {
@@ -42,6 +44,7 @@ export default function ProductDetailPage() {
   const [description, setDescription] = useState("");
   const [tiers, setTiers] = useState<number[]>([]);
   const [customTier, setCustomTier] = useState("");
+  const [allowCustomerSplit, setAllowCustomerSplit] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -60,6 +63,7 @@ export default function ProductDetailPage() {
       setName(p.name || "");
       setDescription(p.description || "");
       setTiers([...(p.enabledTiers || [])].sort((a, b) => a - b));
+      setAllowCustomerSplit(p.allowCustomerSplit === true);
     } finally {
       setLoading(false);
     }
@@ -124,6 +128,7 @@ export default function ProductDetailPage() {
           name: name.trim(),
           description: description.trim() || null,
           enabledTiers: tiers,
+          allowCustomerSplit,
         }),
       });
       const j = await res.json().catch(() => ({}));
@@ -342,6 +347,52 @@ export default function ProductDetailPage() {
                 : lang === "en"
                   ? "none"
                   : "无"}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">
+                  {lang === "en"
+                    ? "Allow customers to split balance"
+                    : "允许顾客拆成多张券"}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                  {lang === "en"
+                    ? "Off by default. When on, customers can split one prepaid balance into 2–3 smaller vouchers on the Balance page."
+                    : "默认关闭。开启后，顾客可在「余额」页把一张预付余额拆成 2～3 张小券（例如分给朋友到店花）。"}
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={allowCustomerSplit}
+                onClick={() => {
+                  setAllowCustomerSplit((v) => !v);
+                  setOk("");
+                }}
+                className={`relative shrink-0 h-7 w-12 rounded-full transition-colors ${
+                  allowCustomerSplit ? "bg-primary" : "bg-muted"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                    allowCustomerSplit ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              {allowCustomerSplit
+                ? lang === "en"
+                  ? "Currently: ON"
+                  : "当前：已开启"
+                : lang === "en"
+                  ? "Currently: OFF (recommended default)"
+                  : "当前：关闭（推荐默认）"}
             </p>
           </CardContent>
         </Card>

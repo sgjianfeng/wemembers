@@ -432,6 +432,8 @@ export async function updateVoucherProduct(
     name?: string;
     description?: string | null;
     enabledTiers?: number[];
+    /** 顾客拆券：默认关；true 开启 */
+    allowCustomerSplit?: boolean;
   }
 ) {
   const product = await prisma.voucherProduct.findFirst({
@@ -456,6 +458,7 @@ export async function updateVoucherProduct(
 
   let snap = parseSnapshotJson(product.rulesSnapshot);
   let voucherTiersJson: string | null = product.voucherTiers;
+  let snapDirty = false;
 
   if (input.enabledTiers !== undefined) {
     const tiers = normalizeEnabledTiers(input.enabledTiers);
@@ -476,12 +479,23 @@ export async function updateVoucherProduct(
     data.rulesSnapshot = JSON.stringify(snap);
     data.voucherTiers = JSON.stringify(tiersArr);
     voucherTiersJson = data.voucherTiers;
+    snapDirty = true;
+  }
+
+  if (input.allowCustomerSplit !== undefined) {
+    snap = {
+      ...snap,
+      allowCustomerSplit: input.allowCustomerSplit === true,
+      snapshottedAt: new Date().toISOString(),
+    };
+    data.rulesSnapshot = JSON.stringify(snap);
+    snapDirty = true;
   }
 
   if (
     !data.name &&
     data.description === undefined &&
-    !data.rulesSnapshot
+    !snapDirty
   ) {
     return product;
   }

@@ -201,7 +201,24 @@ export interface RulesSnapshot {
   /** 是否启用入箱票（独享抽奖仪式） */
   ballotEnabled?: boolean | null;
   packKind?: string | null;
+  /**
+   * 顾客是否可将一张余额券拆成多张（默认 false / 缺省=关）
+   * 企业在券产品里开启后，余额页才显示「拆成多张券」
+   */
+  allowCustomerSplit?: boolean | null;
   snapshottedAt: string;
+}
+
+/** 拆券开关：仅显式 true 才开（默认关闭） */
+export function isCustomerSplitAllowed(
+  rulesSnapshot: string | null | undefined | RulesSnapshot | null
+): boolean {
+  if (!rulesSnapshot) return false;
+  if (typeof rulesSnapshot === "object") {
+    return rulesSnapshot.allowCustomerSplit === true;
+  }
+  const snap = parseRulesSnapshot(rulesSnapshot);
+  return snap?.allowCustomerSplit === true;
 }
 
 export const CAMPAIGN_TEMPLATES: CampaignTemplate[] = [
@@ -662,6 +679,8 @@ export function parseRulesSnapshot(raw: string | null | undefined): RulesSnapsho
     } else if (o.templateId === "self_use_voucher") {
       o.productKind = "self_use";
     }
+    // 拆券：仅 true 开启，缺省/false 均为关
+    o.allowCustomerSplit = o.allowCustomerSplit === true;
     return o;
   } catch {
     return null;

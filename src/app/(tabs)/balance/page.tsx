@@ -8,6 +8,7 @@ import { cookies } from "next/headers";
 import { WithdrawButton } from "./WithdrawButton";
 import { VoucherShowQr } from "./VoucherShowQr";
 import { SplitButton } from "./SplitButton";
+import { isCustomerSplitAllowed } from "@/lib/templates";
 import { Receipt, Store, CreditCard } from "lucide-react";
 
 export default async function BalancePage() {
@@ -32,8 +33,15 @@ export default async function BalancePage() {
       shortCode: true,
       amountCents: true,
       productKind: true,
+      product: { select: { rulesSnapshot: true } },
       campaign: {
-        select: { name: true, slug: true, type: true, productKind: true },
+        select: {
+          name: true,
+          slug: true,
+          type: true,
+          productKind: true,
+          rulesSnapshot: true,
+        },
       },
     },
     orderBy: { createdAt: "desc" },
@@ -230,10 +238,14 @@ export default async function BalancePage() {
                     shortCode={v.shortCode}
                     lang={lang}
                   />
-                  <SplitButton
-                    voucherId={v.id}
-                    balanceCents={v.balanceCents}
-                  />
+                  {/* 拆券：券产品开关，默认关 */}
+                  {(isCustomerSplitAllowed(v.product?.rulesSnapshot) ||
+                    isCustomerSplitAllowed(v.campaign?.rulesSnapshot)) && (
+                    <SplitButton
+                      voucherId={v.id}
+                      balanceCents={v.balanceCents}
+                    />
+                  )}
                   {!isSelf && (
                     <WithdrawButton
                       voucherId={v.id}

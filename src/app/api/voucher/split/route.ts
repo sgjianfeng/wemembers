@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { calculateTierWeight, resolveTier } from "@/lib/draw-v2";
+import { isCustomerSplitAllowed } from "@/lib/templates";
 import { generateShortCodeCandidate } from "@/lib/voucher-short-code";
 
 const MAX_PARTS = 3;
@@ -61,12 +62,26 @@ export async function POST(request: NextRequest) {
         status: "active",
       },
       include: {
-        campaign: { select: { type: true } },
+        campaign: { select: { type: true, rulesSnapshot: true } },
+        product: { select: { rulesSnapshot: true } },
       },
     });
 
     if (!parent) {
       return NextResponse.json({ error: "券不存在或不可用" }, { status: 404 });
+    }
+    // 券产品开关（优先产品 rules，回落活动）；默认关闭
+    const splitOk =
+      isCustomerSplitAllowed(parent.product?.rulesSnapshot) ||
+      isCustomerSplitAllowed(parent.campaign?.rulesSnapshot);
+    if (!splitOk) {
+      return NextResponse.json(
+        {
+          error:
+            "该券产品未开放拆分。请联系商家在「券产品」中开启「允许顾客拆成多张券」。",
+        },
+        { status: 403 }
+      );
     }
     if (parent.balanceCents <= 0) {
       return NextResponse.json({ error: "余额为 0，无法拆分" }, { status: 400 });

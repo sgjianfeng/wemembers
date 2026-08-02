@@ -69,6 +69,8 @@ export async function GET(
         exclusiveFeeTotalPercent:
           (snap as { exclusiveFeeTotalPercent?: number } | null)
             ?.exclusiveFeeTotalPercent ?? null,
+        // 默认关：仅显式 true
+        allowCustomerSplit: snap?.allowCustomerSplit === true,
         buyPath: product.slug ? `/voucher/${product.slug}` : null,
       },
     });
@@ -106,12 +108,17 @@ export async function PATCH(
       if (
         body.name !== undefined ||
         body.description !== undefined ||
-        body.enabledTiers !== undefined
+        body.enabledTiers !== undefined ||
+        body.allowCustomerSplit !== undefined
       ) {
         await updateVoucherProduct(session.userId, id, {
           name: body.name,
           description: body.description,
           enabledTiers: body.enabledTiers,
+          allowCustomerSplit:
+            body.allowCustomerSplit === undefined
+              ? undefined
+              : body.allowCustomerSplit === true,
         });
       }
     } catch (e) {
