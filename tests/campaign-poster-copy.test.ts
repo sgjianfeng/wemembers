@@ -132,6 +132,12 @@ describe("campaign-poster-copy", () => {
     expect(copy.benefitLine).toMatch(/61/);
     expect(copy.benefitLine).toMatch(/SG61/);
     expect(copy.headline).toMatch(/国庆|扫码/);
+    // 红卡利益 vs 底部条款分层，避免「领后30天 / 一桌一券」叠三遍
+    expect(copy.sub).toMatch(/下次再用/);
+    expect(copy.sub).not.toMatch(/领后/);
+    expect(copy.sub).not.toMatch(/一桌一券/);
+    expect(copy.termsLine).toMatch(/领后30天|一桌一券|有权调整/);
+    expect(copy.hookPills?.join(" ")).not.toMatch(/领后|一桌一券/);
     // 第一条不重复「满120送61」利益点
     expect(copy.shareTemplates[0]).toMatch(/扫码参加/);
     expect(copy.shareTemplates[0]).not.toMatch(/满120送61 国庆满赠/);

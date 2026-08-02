@@ -1222,21 +1222,24 @@ function CampaignCardSheet({
                     : "w-52 h-52"
             )}
           />
-          <p
-            className={cn(
-              "text-[11px] mt-2.5 leading-snug px-1",
-              festival ? "text-slate-600" : "text-muted-foreground"
-            )}
-          >
-            {festival ? copy.sub : copy.untilLine}
-          </p>
-          {festival && copy.termsLine && (
-            <p className="text-[10px] text-slate-500 mt-1 leading-snug px-1 font-medium">
-              {copy.termsLine}
+          {festival ? (
+            <>
+              {/* 红区已有利益 sub；底部只印条款 + 活动至，避免重复 */}
+              {copy.termsLine ? (
+                <p className="text-[10px] text-slate-500 mt-2.5 leading-snug px-1 font-medium">
+                  {copy.termsLine}
+                </p>
+              ) : (
+                <p className="text-[11px] text-slate-600 mt-2.5 leading-snug px-1">
+                  {copy.sub}
+                </p>
+              )}
+              <p className="text-[11px] text-slate-500 mt-1">{copy.untilLine}</p>
+            </>
+          ) : (
+            <p className="text-[11px] mt-2.5 leading-snug px-1 text-muted-foreground">
+              {copy.untilLine}
             </p>
-          )}
-          {festival && (
-            <p className="text-[11px] text-slate-500 mt-1">{copy.untilLine}</p>
           )}
           <p
             className={cn(
@@ -1430,21 +1433,24 @@ function CampaignCardSheet({
         />
       </div>
       <div className="px-5 pb-5 text-center relative z-[1] bg-card">
-        <p
-          className={cn(
-            "text-[11px] mt-0.5 leading-snug px-0.5",
-            festival
-              ? "text-slate-600"
-              : isDark
-                ? "text-slate-400"
-                : "text-muted-foreground"
-          )}
-        >
-          {copy.sub}
-        </p>
-        {festival && copy.termsLine && (
-          <p className="text-[10px] text-slate-500 mt-1.5 leading-snug px-1 font-medium">
-            {copy.termsLine}
+        {festival ? (
+          copy.termsLine ? (
+            <p className="text-[10px] text-slate-500 mt-0.5 leading-snug px-1 font-medium">
+              {copy.termsLine}
+            </p>
+          ) : (
+            <p className="text-[11px] text-slate-600 mt-0.5 leading-snug px-0.5">
+              {copy.sub}
+            </p>
+          )
+        ) : (
+          <p
+            className={cn(
+              "text-[11px] mt-0.5 leading-snug px-0.5",
+              isDark ? "text-slate-400" : "text-muted-foreground"
+            )}
+          >
+            {copy.sub}
           </p>
         )}
         <p

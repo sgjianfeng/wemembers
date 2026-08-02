@@ -685,17 +685,18 @@ export async function paintCampaignPosterCanvas(
   }
   y = qrY + qrSize + Math.round((isVhd ? 40 : isA4 ? 36 : 28) * scale);
 
-  // 底部说明 + 条款 + 有效期
+  // 底部：国庆有 termsLine 时只印条款（红区已有 sub 利益点，避免叠三遍）
   ctx.textAlign = "center";
-  ctx.fillStyle = "#64748b";
-  ctx.font = `${Math.round((isVhd ? 20 : isA4 ? 18 : 16) * scale)}px system-ui, -apple-system, sans-serif`;
-  fillTextCenter(ctx, opts.copy.sub, w / 2, y, 42);
-  y += Math.round((isVhd ? 32 : isA4 ? 28 : 24) * scale);
   if (opts.copy.termsLine) {
     ctx.fillStyle = "#94a3b8";
     ctx.font = `${Math.round((isVhd ? 17 : isA4 ? 15 : 13) * scale)}px system-ui, -apple-system, sans-serif`;
     fillTextCenter(ctx, opts.copy.termsLine, w / 2, y, 52);
     y += Math.round((isVhd ? 30 : isA4 ? 26 : 22) * scale);
+  } else {
+    ctx.fillStyle = "#64748b";
+    ctx.font = `${Math.round((isVhd ? 20 : isA4 ? 18 : 16) * scale)}px system-ui, -apple-system, sans-serif`;
+    fillTextCenter(ctx, opts.copy.sub, w / 2, y, 42);
+    y += Math.round((isVhd ? 32 : isA4 ? 28 : 24) * scale);
   }
   ctx.fillStyle = "#64748b";
   ctx.font = `${Math.round((isVhd ? 19 : isA4 ? 17 : 15) * scale)}px system-ui, -apple-system, sans-serif`;

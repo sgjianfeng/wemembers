@@ -10,7 +10,7 @@ import {
   type RulesSnapshot,
 } from "@/lib/templates";
 import { isFestivalNdpCampaign } from "@/lib/visual-templates";
-import { NDP_VALID_DAYS, ndpPosterTermsLine } from "@/lib/ndp-promo";
+import { ndpPosterTermsLine } from "@/lib/ndp-promo";
 
 export type CampaignPosterLang = "zh" | "en";
 
@@ -192,6 +192,7 @@ export function buildCampaignPosterCopy(
 
   if (isNdp) {
     // 对齐顾客落地页 + 广告钩子（SG61 国庆意象）
+    // 分层避免重复：红卡利益 → 中部行动 pill → 底部条款一行
     headline =
       lang === "en"
         ? "Scan · claim your gift"
@@ -200,25 +201,23 @@ export function buildCampaignPosterCopy(
       lang === "en"
         ? `S$${minSpend} → S$${giftAmt} · SG${giftAmt}`
         : `S$${minSpend} → S$${giftAmt} · SG${giftAmt}`;
-    // 台卡空间紧：副文案直接带关键条款，避免只改 termsLine 却被旧预览漏掉
+    // 红区副文案：只说利益，不塞完整条款
     sub =
       lang === "en"
-        ? `S$${giftAmt} next visit · ${NDP_VALID_DAYS}d after claim · no stacking · 1/table (≤4)`
-        : `S$${giftAmt} 下次再用 · 领后${NDP_VALID_DAYS}天 · 不可叠优惠 · 一桌一券(≤4人)`;
+        ? `S$${giftAmt} next visit · non-cash`
+        : `S$${giftAmt} 下次再用 · 不可兑现`;
     // 钩子语：短、口语、抓眼球（非官方口号抄袭，原创促销向）
     // 稍短，避免竖版中间换行只剩「S$61」单独一行
     hookLine =
       lang === "en"
         ? `SG${giftAmt} · Spend S$${minSpend} get S$${giftAmt}`
         : `本单满 S$${minSpend} 送 S$${giftAmt} · 庆 SG${giftAmt}`;
+    // 卖点 pill：动作/场景，不与 termsLine 重复（领后天数 / 一桌一券留给底部）
     hookPills =
       lang === "en"
-        ? [
-            "Scan at the table",
-            `Valid ${NDP_VALID_DAYS} days`,
-            "1 table · ≤4 guests",
-          ]
-        : ["桌边扫一扫", `领后${NDP_VALID_DAYS}天有效`, "一桌一券·4人内"];
+        ? ["Scan at the table", "Gift on this bill", "Use next visit"]
+        : ["桌边扫一扫", "本单满就送", "赠券下次用"];
+    // 底部唯一条款行：天数 · 不叠惠 · 一桌一券 · 本店有权调整
     termsLine = ndpPosterTermsLine(lang);
   } else if (isDraw) {
     headline =
