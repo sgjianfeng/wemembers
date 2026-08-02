@@ -2,7 +2,7 @@
  * Auth system tests — register, login, verify code, role routing, staff roles.
  */
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
-import { testPrisma, createTestBusiness, signTestJwt, mockRequest, setAuthCookie } from "./helpers";
+import { testPrisma, createTestBusiness, signTestJwt, mockRequest, setAuthCookie, deleteUsersSafe } from "./helpers";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -15,7 +15,12 @@ describe("Auth System", () => {
   });
 
   afterAll(async () => {
-    await testPrisma.user.deleteMany({ where: { phone: { startsWith: "+65" } } });
+    // 删除本测试创建的所有用户（含关联表，FK 安全）
+    const ids = await testPrisma.user.findMany({
+      where: { phone: { startsWith: "+65" } },
+      select: { id: true },
+    });
+    await deleteUsersSafe(ids.map((u) => u.id));
     await prisma.$disconnect();
   });
 
@@ -41,7 +46,9 @@ describe("Auth System", () => {
 
       expect(res.status).toBe(200);
       expect(json.data.user.role).toBe("customer");
-      expect(json.data.token).toBeDefined();
+      // 生产已改：token 走 httpOnly cookie，不再返回 data.token
+      expect(json.data.token).toBeUndefined();
+      expect(json.data.user.phone).toBe(phone);
 
       // Verify DB
       const user = await prisma.user.findUnique({ where: { phone } });
@@ -64,29 +71,35 @@ describe("Auth System", () => {
         contact: email, code: "654321", role: "business",
         displayName: "Biz Owner", businessName: "Test Biz Co",
         businessCategory: "cafe",
+        password: "pass123456", businessUen: "202216301G",
       });
       const res = await POST(req as any);
       const json = await res.json();
 
       expect(res.status).toBe(200);
       expect(json.data.user.role).toBe("business");
-
+      expect(json.data.user.businessName).toBe("Test Biz Co");
+      // 企业注册：不自动建门店（后台引导添加）
       const user = await prisma.user.findUnique({
         where: { email },
         include: { tokenAccount: true, managedStores: true },
       });
       expect(user).toBeTruthy();
       expect(user!.tokenAccount).toBeTruthy();
-      expect(user!.managedStores.length).toBeGreaterThan(0);
-      expect(user!.tokenAccount!.balance).toBeGreaterThan(0);
+      expect(user!.tokenAccount!.giftBalance).toBeGreaterThan(0);
+      expect(user!.managedStores.length).toBe(0);
     });
 
     test("rejects duplicate email", async () => {
       const { POST } = await import("@/app/api/auth/register/route");
       const email = testBusiness.user.email || "dup@test.com";
+      const validUen = "202216301G";
 
+      // 前置校验通过（密码/公司名/UEN 合法）后，重复邮箱返回 409
       const req = mockRequest({
         contact: email, code: "000000", role: "business",
+        displayName: "Dup", businessName: "Dup Co",
+        businessUen: validUen, password: "pass123456",
       });
       const res = await POST(req as any);
       expect(res.status).toBe(409);
@@ -128,7 +141,8 @@ describe("Auth System", () => {
 
       expect(res.status).toBe(200);
       expect(json.data.user.role).toBe("business");
-      expect(json.data.token).toBeDefined();
+      expect(json.data.sessionDays).toBeDefined();
+      expect(json.data.token).toBeUndefined();
     });
 
     test("rejects expired code", async () => {

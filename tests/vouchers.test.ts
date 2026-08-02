@@ -2,7 +2,7 @@
  * Voucher system tests — create, claim, redeem, cross-store settlement.
  */
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
-import { testPrisma, createTestBusiness, createTestUser, signTestJwt, mockRequest, setAuthCookie } from "./helpers";
+import { testPrisma, createTestBusiness, createTestUser, signTestJwt, mockRequest, setAuthCookie, deleteUsersSafe } from "./helpers";
 
 describe("Voucher System", () => {
   let bizA: any, storeA: any, bizB: any, storeB: any, customer: any;
@@ -18,7 +18,7 @@ describe("Voucher System", () => {
   });
 
   afterAll(async () => {
-    await testPrisma.user.deleteMany({ where: { id: { in: [bizA.id, bizB.id, customer.id] } } });
+    await deleteUsersSafe([bizA.id, bizB.id, customer.id]);
   });
 
   describe("Create Coupon", () => {
@@ -48,11 +48,7 @@ describe("Voucher System", () => {
       couponId = json.data.id;
     });
 
-    test("create triggers token deduction", async () => {
-      const before = await testPrisma.tokenAccount.findUnique({ where: { userId: bizA.id } });
-      expect(before!.totalSpent).toBeGreaterThan(before!.balance === before!.totalEarned ? before!.totalEarned - 10000 : 0);
-    });
-
+    // Token 经济已下线（TOKEN_COSTS.coupon_create = 0），建券不再扣 Token
     test("lists business coupons by status", async () => {
       const { GET } = await import("@/app/api/business/coupons/route");
       const token = await signTestJwt(bizA);
@@ -165,7 +161,7 @@ describe("Voucher System", () => {
     test("same-store redeem works", async () => {
       const { POST } = await import("@/app/api/business/redeem/route");
       const token = await signTestJwt(bizA);
-      const req = mockRequest({ qrCode: claim.qrCode });
+      const req = mockRequest({ qrCode: claim.qrCode, storeId: storeA.id });
       setAuthCookie(req, token);
 
       const res = await POST(req as any);
@@ -195,7 +191,7 @@ describe("Voucher System", () => {
       // Try to redeem from bizB without partnership
       const { POST } = await import("@/app/api/business/redeem/route");
       const token = await signTestJwt(bizB);
-      const req = mockRequest({ qrCode: j.data.claim.qrCode });
+      const req = mockRequest({ qrCode: j.data.claim.qrCode, storeId: storeB.id });
       setAuthCookie(req, token);
       const res = await POST(req as any);
       expect(res.status).toBe(403);
@@ -226,7 +222,7 @@ describe("Voucher System", () => {
       // Redeem from bizB
       const { POST } = await import("@/app/api/business/redeem/route");
       const token = await signTestJwt(bizB);
-      const req = mockRequest({ qrCode: j.data.claim.qrCode });
+      const req = mockRequest({ qrCode: j.data.claim.qrCode, storeId: storeB.id });
       setAuthCookie(req, token);
       const res = await POST(req as any);
       const json = await res.json();

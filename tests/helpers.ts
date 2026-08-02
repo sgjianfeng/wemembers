@@ -6,7 +6,15 @@ import { signToken } from "@/lib/auth";
 
 import path from "path";
 
-const TEST_DB_PATH = "file:" + path.resolve(__dirname, "../prisma/test.db");
+// Use the same worker-isolated DB as tests/setup.ts so helpers and tests
+// always hit the same (per-worker) SQLite file.
+const TEST_DB_PATH =
+  process.env.DATABASE_URL ||
+  "file:" +
+    path.resolve(
+      __dirname,
+      `../prisma/test-${process.env.JEST_WORKER_ID || "0"}.db`
+    );
 
 export const testPrisma = new PrismaClient({
   datasources: { db: { url: TEST_DB_PATH } },
@@ -80,6 +88,11 @@ export function mockRequest(body: any, overrides: Record<string, any> = {}) {
 
 export function setAuthCookie(req: any, token: string) {
   req.headers.set("Cookie", `gwm_token=${token}`);
+  // 同步写入 mocked next/headers cookie store（getSession 读的是 cookies()）
+  try {
+    const { cookies } = require("next/headers");
+    cookies().set("gwm_token", token, { httpOnly: true, path: "/" });
+  } catch {}
 }
 
 // ── Assert helpers ──
@@ -102,8 +115,25 @@ export async function expectError(res: Response, status: number) {
 
 // ── DB Cleanup ──
 
-export async function cleanupTestData(userIds: string[]) {
-  for (const id of userIds) {
-    await testPrisma.user.deleteMany({ where: { id } });
+/**
+ * Delete users together with all FK-referencing rows, in dependency order.
+ * SQLite enforces foreign keys, so a bare user.deleteMany throws when
+ * verification codes / token accounts / stores / memberships still point at
+ * the user.
+ */
+export async function deleteUsersSafe(userIds: string[]) {
+  if (!userIds.length) return;
+  // 快速路径：临时关闭 SQLite 外键约束，一次性删除用户及其关联数据。
+  // beforeAll 会对每个 worker DB force-reset，因此这里不需要精确的依赖顺序。
+  await testPrisma.$executeRawUnsafe(`PRAGMA foreign_keys = OFF`);
+  try {
+    await testPrisma.user.deleteMany({ where: { id: { in: userIds } } });
+  } finally {
+    await testPrisma.$executeRawUnsafe(`PRAGMA foreign_keys = ON`);
   }
+}
+
+/** @deprecated use deleteUsersSafe (FK-safe ordered cleanup) */
+export async function cleanupTestData(userIds: string[]) {
+  await deleteUsersSafe(userIds);
 }

@@ -76,7 +76,8 @@ describe("POST /api/business/campaigns template create", () => {
 
     const snap = JSON.parse(json.data.rulesSnapshot);
     expect(snap.discountPercent).toBe(12);
-    expect(snap.enabledTiers).toEqual([50, 200]);
+    // 生产：代金面额允许任意整数 ≥ S$2（不限于模版预置档），999 会保留
+    expect(snap.enabledTiers).toEqual([50, 200, 999]);
     expect(snap.allowDiscount).toBe(true);
     expect(snap.prizePoolPercent).toBe(0);
 

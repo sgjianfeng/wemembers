@@ -156,7 +156,7 @@ describe("campaign-poster-copy", () => {
 
 describe("campaign-poster-export sizes", () => {
   // size helpers are pure — import dynamically to avoid DOM deps in node
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+   
   const {
     posterCanvasSize,
     posterFilename,

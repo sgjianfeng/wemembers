@@ -50,3 +50,8 @@ prisma/*.db-journal
 # production DB dumps / summaries (contain PII — never commit)
 /tmp/
 /tmp/prod-dumps/
+
+# local dev databases (contain test/PII data — never commit)
+dev.db
+prisma/dev.db
+prisma/test-*.db

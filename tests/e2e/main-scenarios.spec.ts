@@ -102,9 +102,9 @@ async function authApi(
 
 // ── Shared state ──────────────────────────────────────────
 const r = Date.now().toString(36);
-let bizPhone = `+65921${r}`;
-let biz2Phone = `+65922${r}`;
-let custPhone = `+65923${r}`;
+const bizPhone = `+65921${r}`;
+const biz2Phone = `+65922${r}`;
+const custPhone = `+65923${r}`;
 let bizToken = "";
 let biz2Token = "";
 let custToken = "";

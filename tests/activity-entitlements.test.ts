@@ -56,17 +56,17 @@ describe("activity-entitlements grouping", () => {
       [
         {
           id: "a1",
-          name: "国庆活动",
+          name: "夏季促销",
           businessName: "Meow",
-          type: "holiday",
-          href: "/ndp/x",
+          type: "promotion",
+          href: "/voucher/meow-summer",
           joined: false,
         },
       ],
       "zh"
     );
     expect(ads[0].entitlements).toHaveLength(0);
-    expect(ads[0].href).toBe("/ndp/x");
-    expect(ads[0].tone).toBe("ndp");
+    expect(ads[0].href).toBe("/voucher/meow-summer");
+    expect(ads[0].tone).toBe("default");
   });
 });

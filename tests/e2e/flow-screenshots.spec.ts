@@ -172,7 +172,7 @@ test("capture flow screenshots from seed + live actions", async ({ page }) => {
 
   // Customer path
   let custPhone = "+65981000001";
-  let cust = await prisma.user.findUnique({ where: { phone: custPhone } });
+  const cust = await prisma.user.findUnique({ where: { phone: custPhone } });
   if (!cust) {
     custPhone = `+65942${r}`;
     await api("/api/auth/send-code", {

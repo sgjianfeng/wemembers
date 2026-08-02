@@ -19,14 +19,14 @@ import {
 
 describe("drawInstantV2", () => {
   test("returns a prize (100% win rate)", () => {
-    const tier = DEFAULT_VOUCHER_TIERS[0];
+    const tier = DEFAULT_VOUCHER_TIERS.find((t) => t.min === 50)!; // S$50 / cap 8
     const result = drawInstantV2(tier, 50000);
     expect(result.won).toBe(true);
     expect(result.prize).toBeDefined();
   });
 
   test("respects instantPrizeCap for entry tier (S$8)", () => {
-    const tier = DEFAULT_VOUCHER_TIERS[0]; // S$50 / cap 8
+    const tier = DEFAULT_VOUCHER_TIERS.find((t) => t.min === 50)!; // S$50 / cap 8
     for (let i = 0; i < 50; i++) {
       const r = drawInstantV2(tier, 50000);
       expect(r.prize.valueCents).toBeLessThanOrEqual(800);
@@ -34,7 +34,7 @@ describe("drawInstantV2", () => {
   });
 
   test("S$200 tier can hit higher prizes than S$50", () => {
-    const large = DEFAULT_VOUCHER_TIERS[2];
+    const large = DEFAULT_VOUCHER_TIERS.find((t) => t.min === 200)!;
     expect(large.instantPrizeCap).toBe(40);
     let sawHigh = false;
     for (let i = 0; i < 200; i++) {
@@ -129,9 +129,10 @@ describe("estimatePoolCountdown", () => {
 });
 
 describe("constants", () => {
-  test("FIXED_VOUCHER_AMOUNTS is 50/100/200", () => {
+  test("FIXED_VOUCHER_AMOUNTS is 50/100/200 (draw faces)", () => {
     expect(FIXED_VOUCHER_AMOUNTS).toEqual([50, 100, 200]);
-    expect(DEFAULT_VOUCHER_TIERS).toHaveLength(3);
+    // 生产已扩展到 6 档：2/5/10 纯代金 + 50/100/200 抽奖档
+    expect(DEFAULT_VOUCHER_TIERS).toHaveLength(6);
   });
   test("GRAND_PRIZE_TARGETS", () => {
     expect(GRAND_PRIZE_TARGETS.iPhone).toBeDefined();
@@ -140,6 +141,8 @@ describe("constants", () => {
     expect(resolveTier(50)?.tier).toBe("small");
     expect(resolveTier(100)?.tier).toBe("medium");
     expect(resolveTier(200)?.tier).toBe("large");
-    expect(resolveTier(20)).toBeNull();
+    // 生产：20 会落到 ≥10 纯代金档（small, cap 0），不再是 null
+    expect(resolveTier(20)?.tier).toBe("small");
+    expect(resolveTier(20)?.instantPrizeCap).toBe(0);
   });
 });

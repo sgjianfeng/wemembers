@@ -29,7 +29,7 @@ async function get(path: string, cookie?: string) {
 }
 
 // ── Helpers ──
-let runId = Date.now().toString(36);
+const runId = Date.now().toString(36);
 
 async function regBusiness(phone: string, name: string) {
   await post("/api/auth/send-code", { contact: phone, purpose: "register" });

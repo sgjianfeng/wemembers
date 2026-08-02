@@ -210,7 +210,7 @@ describe("Voucher Purchase Flow (Integration)", () => {
       const { POST } = await import("@/app/api/voucher/purchase/route");
       const url = `http://localhost/api/voucher/purchase?slug=${campaignV2.slug}`;
       const req = mockRequest(
-        { amountSgd: 100, spendNowSgd: 50 },
+        { amountSgd: 100, spendNowSgd: 50, sellerId: business.id },
         { url, method: "POST" },
       );
 
@@ -267,7 +267,7 @@ describe("Voucher Purchase Flow (Integration)", () => {
 
       const { POST } = await import("@/app/api/voucher/purchase/route");
       const req = mockRequest(
-        { amountSgd: 50, spendNowSgd: 0 },
+        { amountSgd: 50, spendNowSgd: 0, sellerId: business.id },
         { url: `http://localhost/api/voucher/purchase?slug=${campaignV2.slug}`, method: "POST" },
       );
 
@@ -288,7 +288,7 @@ describe("Voucher Purchase Flow (Integration)", () => {
       const { POST } = await import("@/app/api/voucher/purchase/route");
       const url = `http://localhost/api/voucher/purchase?slug=${campaignV2.slug}`;
       const req = mockRequest(
-        { amountSgd: 100, spendNowSgd: 0 },
+        { amountSgd: 100, spendNowSgd: 0, sellerId: business.id },
         { url, method: "POST" },
       );
 
@@ -338,7 +338,7 @@ describe("Voucher Purchase Flow (Integration)", () => {
       const { POST } = await import("@/app/api/voucher/purchase/route");
       const url = `http://localhost/api/voucher/purchase?slug=${campaignV2.slug}`;
       const req = mockRequest(
-        { amountSgd: 100, spendNowSgd: 10 },
+        { amountSgd: 100, spendNowSgd: 10, sellerId: business.id },
         { url, method: "POST" },
       );
 
@@ -364,7 +364,7 @@ describe("Voucher Purchase Flow (Integration)", () => {
       const { POST } = await import("@/app/api/voucher/purchase/route");
       const url = `http://localhost/api/voucher/purchase?slug=${campaignV2.slug}`;
       const req = mockRequest(
-        { amountSgd: 100, spendNowSgd: 0 },
+        { amountSgd: 100, spendNowSgd: 0, sellerId: business.id },
         { url, method: "POST" },
       );
 
@@ -407,7 +407,7 @@ describe("Voucher Purchase Flow (Integration)", () => {
       const { POST } = await import("@/app/api/voucher/purchase/route");
       const url = `http://localhost/api/voucher/purchase?slug=${campaignV2.slug}`;
       const req = mockRequest(
-        { amountSgd: 100, spendNowSgd: 0 },
+        { amountSgd: 100, spendNowSgd: 0, sellerId: business.id },
         { url, method: "POST" },
       );
 
@@ -434,7 +434,7 @@ describe("Voucher Purchase Flow (Integration)", () => {
       const { POST: purchase } = await import("@/app/api/voucher/purchase/route");
       const buyRes = await purchase(
         mockRequest(
-          { amountSgd: 100, spendNowSgd: 0 },
+          { amountSgd: 100, spendNowSgd: 0, sellerId: business.id },
           { url: `http://localhost/api/voucher/purchase?slug=${campaignV2.slug}`, method: "POST" }
         ) as any
       );
@@ -456,29 +456,32 @@ describe("Voucher Purchase Flow (Integration)", () => {
       setMockSession({ userId: business.id, role: "business" });
       const { POST: redeem } = await import("@/app/api/voucher/redeem/route");
       const redeemRes = await redeem(
-        mockRequest({ voucherId, amountCents: 1500 }, { method: "POST" }) as any
+        mockRequest({ voucherId, amountCents: 1500, storeId: store.id }, { method: "POST" }) as any
       );
       const redeemJson = await redeemRes.json();
       expect(redeemRes.status).toBe(200);
-      expect(redeemJson.data.usage.storeIncomeSgd).toBe("12.00"); // 80% of 15
+      // 生产定稿 pot 20%（有 seller：小奖3% + 平台2% + 卖券5% + 大奖10%）
+      // S$15: 小奖45 + 平台30 + 卖券75 + 大奖150 = 300; store 1200
+      // prizePool = 小奖45 + 大奖150 = 195
+      expect(redeemJson.data.usage.storeIncomeSgd).toBe("12.00");
       expect(redeemJson.data.usage.feeSgd).toBe("3.00"); // pot 20%
-      // pot 300: platform floor(1500*1.5%)=22, pool=278, no seller
-      expect(redeemJson.data.usage.prizePoolSgd).toBe("2.78");
-      expect(redeemJson.data.usage.platformFeeSgd).toBe("0.22");
-      expect(redeemJson.data.usage.sellerCommissionSgd).toBe("0.00");
+      expect(redeemJson.data.usage.prizePoolSgd).toBe("1.95");
+      expect(redeemJson.data.usage.platformFeeSgd).toBe("0.30");
+      expect(redeemJson.data.usage.sellerCommissionSgd).toBe("0.75");
       expect(redeemJson.data.voucher.remainingBalanceSgd).toBe("85.00");
 
       const afterAcct = await testPrisma.tokenAccount.findUnique({
         where: { userId: business.id },
       });
-      expect(afterAcct!.frozenBalance).toBe(frozenBefore + 1200);
+      // store 1200 + seller 75（business 既是 seller 也是 redeemer，都入 frozen）
+      expect(afterAcct!.frozenBalance).toBe(frozenBefore + 1275);
 
       const afterCamp = await testPrisma.campaign.findUnique({ where: { id: campaignV2.id } });
-      // pot pool 278 → small 20% = 55, grand 80% = 223
-      expect(afterCamp!.instantPoolCents).toBe(smallBefore + 55);
-      expect(afterCamp!.grandPoolCents).toBe(grandBefore + 223);
+      // 定稿：小奖 3% = 45，大奖 = prizePool - small = 150
+      expect(afterCamp!.instantPoolCents).toBe(smallBefore + 45);
+      expect(afterCamp!.grandPoolCents).toBe(grandBefore + 150);
       const v = await testPrisma.voucher.findUnique({ where: { id: voucherId } });
-      expect(v!.prizePoolContribution).toBe(278);
+      expect(v!.prizePoolContribution).toBe(195);
 
       setMockSession(null);
     });
@@ -504,14 +507,14 @@ describe("Voucher Purchase Flow (Integration)", () => {
       setMockSession({ userId: business.id, role: "business" });
       const { POST: redeem } = await import("@/app/api/voucher/redeem/route");
       const redeemRes = await redeem(
-        mockRequest({ voucherId: buyJson.data.voucher.id, amountCents: 10_000 }, { method: "POST" }) as any
+        mockRequest({ voucherId: buyJson.data.voucher.id, amountCents: 10_000, storeId: store.id }, { method: "POST" }) as any
       );
       const redeemJson = await redeemRes.json();
       expect(redeemRes.status).toBe(200);
-      // full S$100 redeem: seller 5% = 500, platform 150, pool 1350, store 8000
+      // full S$100 redeem: seller 5% = 500, platform 2% = 200, pool 1300 (小奖300+大奖1000), store 8000
       expect(redeemJson.data.usage.sellerCommissionSgd).toBe("5.00");
-      expect(redeemJson.data.usage.platformFeeSgd).toBe("1.50");
-      expect(redeemJson.data.usage.prizePoolSgd).toBe("13.50");
+      expect(redeemJson.data.usage.platformFeeSgd).toBe("2.00");
+      expect(redeemJson.data.usage.prizePoolSgd).toBe("13.00");
       expect(redeemJson.data.usage.storeIncomeSgd).toBe("80.00");
 
       const sellerAfter = await testPrisma.tokenAccount.findUnique({
@@ -528,7 +531,7 @@ describe("Voucher Purchase Flow (Integration)", () => {
       const { POST: purchase } = await import("@/app/api/voucher/purchase/route");
       const buyRes = await purchase(
         mockRequest(
-          { amountSgd: 100, spendNowSgd: 0 },
+          { amountSgd: 100, spendNowSgd: 0, sellerId: business.id },
           { url: `http://localhost/api/voucher/purchase?slug=${campaignV2.slug}`, method: "POST" }
         ) as any
       );
@@ -547,7 +550,7 @@ describe("Voucher Purchase Flow (Integration)", () => {
       const prizeCents = prize?.valueCents || 0;
 
       const wRes = await withdraw(
-        mockRequest({ voucherId }, { method: "POST" }) as any
+        mockRequest({ voucherId, storeId: store.id }, { method: "POST" }) as any
       );
       const wJson = await wRes.json();
       expect(wRes.status).toBe(200);
@@ -556,14 +559,15 @@ describe("Voucher Purchase Flow (Integration)", () => {
       const expectedNet = Math.max(0, 9500 - prizeCents);
       expect(wJson.data.netSgd).toBe((expectedNet / 100).toFixed(2));
       expect(Number(wJson.data.clawbackSgd)).toBeCloseTo(Math.min(prizeCents, 9500) / 100, 2);
-      expect(wJson.data.split.smallPoolSgd).toBe("4.00"); // no seller → 3%+1%
+      // 5% fee 拆分：平台1% + 小奖池3% + 卖券1%（voucher 带 sellerId → hasSeller）
+      expect(wJson.data.split.smallPoolSgd).toBe("3.00");
       expect(wJson.data.drawWeight).toBe(0);
       expect(wJson.data.status).toBe("withdrawn");
 
       const afterCamp = await testPrisma.campaign.findUnique({ where: { id: campaignV2.id } });
-      // small pool: fee 400 + clawback prize
+      // small pool: fee 300（3%）+ clawback prize
       const claw = Math.min(prizeCents, 9500);
-      expect(afterCamp!.instantPoolCents).toBe(smallBefore + 400 + claw);
+      expect(afterCamp!.instantPoolCents).toBe(smallBefore + 300 + claw);
       expect(afterCamp!.grandPoolCents).toBe(grandBefore); // grand untouched
       const v = await testPrisma.voucher.findUnique({ where: { id: voucherId } });
       expect(v!.balanceCents).toBe(0);
@@ -604,6 +608,7 @@ describe("V2 Algorithm (integration-level sanity checks)", () => {
 
     test("instant prize respects tier cap across many draws", () => {
       for (const tier of drawV2.DEFAULT_VOUCHER_TIERS) {
+        if (tier.instantPrizeCap <= 0) continue; // 纯代金档无即时奖
         const maxCents = tier.instantPrizeCap * 100;
         for (let i = 0; i < 50; i++) {
           const { prize } = drawV2.drawInstantV2(tier, 50000);
@@ -694,8 +699,9 @@ describe("V2 Algorithm (integration-level sanity checks)", () => {
     });
 
     test("returns null for amounts below minimum", () => {
-      expect(drawV2.resolveTier(20)).toBeNull();
-      expect(drawV2.resolveTier(9)).toBeNull();
+      // 生产：≥S$2 任意整数面额都有效（落到纯代金档），<S$2 才 null
+      expect(drawV2.resolveTier(20)?.instantPrizeCap).toBe(0); // 纯代金档
+      expect(drawV2.resolveTier(9)?.instantPrizeCap).toBe(0);
       expect(drawV2.resolveTier(0)).toBeNull();
       expect(drawV2.resolveTier(-5)).toBeNull();
     });

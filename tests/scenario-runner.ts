@@ -58,7 +58,7 @@ const vars: Record<string, string> = {};
 // ── Var resolution ──
 
 function resolveVars(template: string): string {
-  let s = template.replace(/\$\{(\w+)\}/g, (_, key) => vars[key] ?? `\$\{${key}\}`);
+  const s = template.replace(/\$\{(\w+)\}/g, (_, key) => vars[key] ?? `\$\{${key}\}`);
   return s;
 }
 

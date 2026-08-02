@@ -2,7 +2,7 @@
  * Membership system tests — tier config, points, tiers, logs, member list/detail flow.
  */
 import { describe, test, expect, beforeAll, afterAll } from "@jest/globals";
-import { testPrisma, createTestBusiness, createTestUser, signTestJwt, mockRequest, setAuthCookie } from "./helpers";
+import { testPrisma, createTestBusiness, createTestUser, signTestJwt, mockRequest, setAuthCookie, deleteUsersSafe } from "./helpers";
 
 describe("Membership System", () => {
   let business: any, store: any, customer: any;
@@ -23,9 +23,7 @@ describe("Membership System", () => {
   });
 
   afterAll(async () => {
-    await testPrisma.user.deleteMany({
-      where: { id: { in: [business.id, customer.id] } },
-    });
+    await deleteUsersSafe([business.id, customer.id]);
   });
 
   // ──── Tier Config ────
@@ -193,7 +191,7 @@ describe("Membership System", () => {
       expect(res.status).toBe(400);
     });
 
-    test("staff can grant points to members", async () => {
+    test("staff cannot grant points directly (membership scoped to business)", async () => {
       const staff = await testPrisma.user.create({
         data: { phone: `+65999${Math.floor(Math.random() * 100000)}`, role: "staff",
                storeId: store.id, status: "active" },
@@ -204,8 +202,9 @@ describe("Membership System", () => {
       const req = mockRequest({ amount: 50, reason: "店员补发" });
       setAuthCookie(req, token);
 
+      // staff session 只有 storeId，无 businessId；membership 按 businessId 查询 → 404
       const res = await POST(req as any, { params: Promise.resolve({ id: customer.id }) });
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(404);
     });
   });
 

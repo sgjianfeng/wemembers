@@ -6,7 +6,10 @@ import {
 } from "@/lib/redeem-economics";
 
 describe("splitRedeemAmount (draw · model A pot)", () => {
-  test("draw · no seller: pot 20% → platform 1.5% + rest pool; store 80%", () => {
+  // 生产定稿（redeem-economics.ts splitDrawRedeem）：
+  // pot 20% = 小奖 3% + 平台 2% + 卖券 5% + 大奖 10%；
+  // hasSeller=false 时卖券 5% 并入大奖（兜底）。
+  test("draw · no seller: 小奖3%+平台2%+大奖10%+卖券并入5%; store 80%", () => {
     const s = splitRedeemAmount({
       amountCents: 10_000,
       budgetPercent: 20,
@@ -18,11 +21,11 @@ describe("splitRedeemAmount (draw · model A pot)", () => {
     expect(s.storeIncomeCents).toBe(8000);
     expect(s.potCents).toBe(2000);
     expect(s.sellerCommissionCents).toBe(0);
-    expect(s.platformFeeCents).toBe(150);
-    expect(s.prizePoolCents).toBe(1850);
+    expect(s.platformFeeCents).toBe(200); // 固定 2%
+    expect(s.prizePoolCents).toBe(1800); // 小奖 300 + 大奖 1500
   });
 
-  test("draw · with seller: 5% + 1.5% from pot, rest pool", () => {
+  test("draw · with seller: 5% + 2% + 小奖3% + 大奖10%, rest pool", () => {
     const s = splitRedeemAmount({
       amountCents: 10_000,
       hasSeller: true,
@@ -32,8 +35,8 @@ describe("splitRedeemAmount (draw · model A pot)", () => {
       mode: "draw",
     });
     expect(s.sellerCommissionCents).toBe(500);
-    expect(s.platformFeeCents).toBe(150);
-    expect(s.prizePoolCents).toBe(1350);
+    expect(s.platformFeeCents).toBe(200);
+    expect(s.prizePoolCents).toBe(1300); // 小奖 300 + 大奖 1000
     expect(s.storeIncomeCents).toBe(8000);
   });
 
