@@ -41,7 +41,7 @@ export function ProfileEditName({ initialName }: { initialName: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-[10px] text-white/80 underline underline-offset-2"
+        className="text-[11px] font-medium text-white underline underline-offset-2 decoration-white/70 hover:decoration-white"
       >
         {lang === "en" ? "Edit name" : "改昵称"}
       </button>

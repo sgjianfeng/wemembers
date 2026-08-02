@@ -184,56 +184,58 @@ export default async function ProfilePage() {
 
   return (
     <div className="pb-6">
-      {/* 账号头：轻量，不做平台大会员感 */}
-      <div className="px-4 pt-5 pb-4 bg-gradient-to-b from-[#1A6EFF]/90 to-background">
+      {/* 账号头：实色底 + 白卡片速览，避免渐变发白看不清 */}
+      <div className="px-4 pt-5 pb-5 bg-[#1A6EFF]">
         <div className="flex items-center gap-3">
-          <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold text-white shrink-0">
+          <div className="w-14 h-14 rounded-full bg-white/25 ring-2 ring-white/40 flex items-center justify-center text-xl font-bold text-white shrink-0">
             {displayName.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 text-white">
-            <p className="text-lg font-semibold truncate">{displayName}</p>
-            <p className="text-xs text-white/75 mt-0.5 font-mono truncate">
+            <p className="text-lg font-bold tracking-tight truncate drop-shadow-sm">
+              {displayName}
+            </p>
+            <p className="text-xs text-white/95 mt-0.5 font-mono truncate">
               {contact}
             </p>
             <ProfileEditName initialName={user.displayName || ""} />
           </div>
         </div>
 
-        {/* 权益速览（对齐活动三大类资产） */}
+        {/* 权益速览：白底深字，对比度最高 */}
         <div className="grid grid-cols-3 gap-2 mt-4">
           <Link
             href="/wallet"
-            className="text-center bg-white/15 backdrop-blur rounded-xl py-2.5 active:scale-[0.98] transition-transform"
+            className="text-center bg-white rounded-xl py-2.5 px-1 shadow-sm active:scale-[0.98] transition-transform"
           >
-            <p className="text-base font-bold text-white tabular-nums">
+            <p className="text-lg font-bold text-[#1A6EFF] tabular-nums leading-none">
               {giftAvailable}
             </p>
-            <p className="text-[10px] text-white/80 mt-0.5">
+            <p className="text-[10px] font-medium text-slate-600 mt-1">
               {zh ? "可用赠券" : "Gifts"}
             </p>
           </Link>
           <Link
             href="/balance"
-            className="text-center bg-white/15 backdrop-blur rounded-xl py-2.5 active:scale-[0.98] transition-transform"
+            className="text-center bg-white rounded-xl py-2.5 px-1 shadow-sm active:scale-[0.98] transition-transform"
           >
-            <p className="text-base font-bold text-white tabular-nums">
+            <p className="text-lg font-bold text-[#1A6EFF] tabular-nums leading-none">
               {prepaidBalance > 0
                 ? `S$${(prepaidBalance / 100).toFixed(0)}`
                 : "0"}
             </p>
-            <p className="text-[10px] text-white/80 mt-0.5">
+            <p className="text-[10px] font-medium text-slate-600 mt-1">
               {zh ? "预付余额" : "Prepaid"}
             </p>
           </Link>
           <Link
             href="/wallet"
-            className="text-center bg-white/15 backdrop-blur rounded-xl py-2.5 active:scale-[0.98] transition-transform"
+            className="text-center bg-white rounded-xl py-2.5 px-1 shadow-sm active:scale-[0.98] transition-transform"
           >
-            <p className="text-base font-bold text-white tabular-nums flex items-center justify-center gap-0.5">
-              <Trophy size={14} className="opacity-90" />
+            <p className="text-lg font-bold text-[#1A6EFF] tabular-nums leading-none flex items-center justify-center gap-0.5">
+              <Trophy size={15} className="text-amber-500 shrink-0" />
               {drawEntries}
             </p>
-            <p className="text-[10px] text-white/80 mt-0.5">
+            <p className="text-[10px] font-medium text-slate-600 mt-1">
               {zh ? "抽奖资格" : "Draws"}
             </p>
           </Link>
