@@ -75,6 +75,10 @@ export function NdpLandingClient({
   const zh = lang === "zh";
   const router = useRouter();
   const [authOpen, setAuthOpen] = useState(false);
+  /** 客户端再确认一次会话（SSR 与扫码进 Safari 后返回等场景） */
+  const [loggedIn, setLoggedIn] = useState(isLoggedIn);
+  const [bizSession, setBizSession] = useState(isBusinessSession);
+  const [phoneLabel, setPhoneLabel] = useState(customerPhone);
 
   const gift = rules.giftSgd.toFixed(0);
   const minSpend = rules.minSpendSgd.toFixed(0);
@@ -124,9 +128,59 @@ export function NdpLandingClient({
   const homeHref =
     backHref && backHref.startsWith("/")
       ? backHref
-      : isLoggedIn
+      : loggedIn
         ? "/home"
         : "/";
+
+  // 挂载 / 回到前台时拉 /api/auth/me，避免「其实已登录仍弹登录」
+  useEffect(() => {
+    let cancelled = false;
+    async function refreshSession() {
+      try {
+        const res = await fetch("/api/auth/me", {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (cancelled) return;
+        if (!res.ok) {
+          setLoggedIn(false);
+          setBizSession(false);
+          setPhoneLabel(null);
+          return;
+        }
+        const j = await res.json();
+        const role = j.data?.role as string | undefined;
+        if (role === "customer") {
+          setLoggedIn(true);
+          setBizSession(false);
+          setPhoneLabel(
+            typeof j.data?.phone === "string" ? j.data.phone : null
+          );
+        } else if (role === "business" || role === "staff") {
+          setLoggedIn(false);
+          setBizSession(true);
+          setPhoneLabel(null);
+        } else {
+          setLoggedIn(false);
+          setBizSession(false);
+          setPhoneLabel(null);
+        }
+      } catch {
+        /* 保持 SSR 初值 */
+      }
+    }
+    void refreshSession();
+    const onVis = () => {
+      if (document.visibilityState === "visible") void refreshSession();
+    };
+    window.addEventListener("focus", onVis);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onVis);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
 
   // Escape / body scroll lock for auth sheet
   useEffect(() => {
@@ -145,11 +199,11 @@ export function NdpLandingClient({
 
   function handleBuyClick() {
     if (!buyHref) return;
-    if (isLoggedIn) {
+    if (loggedIn) {
       router.push(buyHref);
       return;
     }
-    if (isBusinessSession) {
+    if (bizSession) {
       // 企业号不能购顾客券：先退出再走登录
       window.location.href = logoutThenBuy;
       return;
@@ -157,20 +211,20 @@ export function NdpLandingClient({
     setAuthOpen(true);
   }
 
-  const sessionChip = isLoggedIn ? (
+  const sessionChip = loggedIn ? (
     <Link
       href="/home"
       className="flex items-center gap-1 max-w-[7.5rem] text-left hover:opacity-90 transition-opacity"
-      title={customerPhone || (zh ? "已登录" : "Signed in")}
+      title={phoneLabel || (zh ? "已登录" : "Signed in")}
     >
       <span className="shrink-0 text-[9px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 border border-emerald-500/25">
         {zh ? "已登录" : "In"}
       </span>
       <span className="text-[11px] font-medium text-foreground truncate">
-        {customerPhone || (zh ? "我的" : "Me")}
+        {phoneLabel || (zh ? "我的" : "Me")}
       </span>
     </Link>
-  ) : isBusinessSession ? (
+  ) : bizSession ? (
     <span
       className="text-[10px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-800 border border-amber-500/30"
       title={businessSessionLabel || undefined}
@@ -285,7 +339,7 @@ export function NdpLandingClient({
 
       <div className="px-4 -mt-2 space-y-3 relative z-[1]">
         {/* 企业 session 隔离提示（仅企业号时） */}
-        {isBusinessSession && (
+        {bizSession && (
           <Card className="border-amber-300 bg-amber-50 shadow-sm">
             <CardContent className="p-4">
               <p className="font-semibold text-amber-950">
@@ -310,7 +364,7 @@ export function NdpLandingClient({
         )}
 
         {/* 已登录：轻量状态（有赠券时更有用） */}
-        {isLoggedIn && myGiftCount > 0 && (
+        {loggedIn && myGiftCount > 0 && (
           <Card className="border-emerald-200 bg-emerald-50/90 shadow-sm">
             <CardContent className="p-3 text-sm">
               <p className="font-semibold text-emerald-900">
@@ -384,9 +438,9 @@ export function NdpLandingClient({
                     ? "请让店员为您办理发券"
                     : "Ask staff to issue your gift"}
               </p>
-              {isLoggedIn && customerPhone && (
+              {loggedIn && phoneLabel && (
                 <p className="mt-2 text-lg font-bold tabular-nums text-foreground tracking-wide">
-                  {customerPhone}
+                  {phoneLabel}
                 </p>
               )}
             </div>
@@ -493,18 +547,23 @@ export function NdpLandingClient({
                 ? "券和赠送权益会记在您的账号。完成后自动进入购券页。"
                 : "Vouchers and gifts go to your account. You’ll land on the purchase page after."}
             </p>
+            <p className="text-[11px] text-amber-900/90 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 mt-3 leading-relaxed">
+              {zh
+                ? "提示：用相机扫桌码会打开系统浏览器。主屏幕 App 与浏览器的登录互不同步（手机系统限制）。在浏览器里登录一次后，约 90 天内再扫码一般不用重登。"
+                : "Tip: Camera opens the system browser. Home-screen App and browser logins are separate (OS limit). Log in once here; about 90 days before you need to again."}
+            </p>
             <div className="flex flex-col gap-2 mt-4">
-              <Link href={buyRegisterHref} className="w-full">
+              <Link href={buyLoginHref} className="w-full">
                 <Button className="w-full rounded-full h-12 text-base font-semibold">
-                  {zh ? "注册" : "Register"}
+                  {zh ? "已有账号 · 登录" : "I have an account · Log in"}
                 </Button>
               </Link>
-              <Link href={buyLoginHref} className="w-full">
+              <Link href={buyRegisterHref} className="w-full">
                 <Button
                   variant="outline"
                   className="w-full rounded-full h-12 text-base font-semibold"
                 >
-                  {zh ? "登录" : "Log in"}
+                  {zh ? "新用户 · 注册" : "New · Register"}
                 </Button>
               </Link>
               <button
