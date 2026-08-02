@@ -24,41 +24,94 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing slug parameter" }, { status: 400 });
   }
 
-  // 优先券产品 slug → 镜像 Campaign；兼容旧活动 slug
-  let campaign = await prisma.campaign.findFirst({
-    where: {
-      OR: [{ slug }, { id: slug }],
-      type: { in: ["lucky_draw", "lucky_draw_v2", "voucher_sale"] },
-    },
-    include: {
-      _count: {
-        select: { vouchers: true },
-      },
-    },
+  /**
+   * 解析顺序（重要）：
+   * 1) 券产品 slug → product_mirror（购券/奖池真正落在镜像活动上）
+   * 2) 再按 Campaign slug / id
+   *
+   * 若先查 Campaign，会命中同名「编排活动」slug（常无购券、grandPool=0），
+   * 而顾客实际买的是 m-{productSlug} 镜像，已筹金额显示成 0。
+   */
+  type CampRow = NonNullable<
+    Awaited<
+      ReturnType<
+        typeof prisma.campaign.findFirst<{
+          include: { _count: { select: { vouchers: true } } };
+        }>
+      >
+    >
+  >;
+  let campaign: CampRow | null = null;
+  let displaySlug: string | null = slug;
+  let displayName: string | null = null;
+
+  const product = await prisma.voucherProduct.findFirst({
+    where: { slug, status: { in: ["active", "draft", "archived"] } },
   });
+  if (product?.mirrorCampaignId) {
+    campaign = await prisma.campaign.findFirst({
+      where: { id: product.mirrorCampaignId },
+      include: { _count: { select: { vouchers: true } } },
+    });
+    if (campaign) {
+      displayName = product.name;
+      displaySlug = product.slug || campaign.slug;
+    }
+  }
 
   if (!campaign) {
-    const product = await prisma.voucherProduct.findFirst({
-      where: { slug, status: { in: ["active", "draft"] } },
+    campaign = await prisma.campaign.findFirst({
+      where: {
+        OR: [{ slug }, { id: slug }],
+        type: { in: ["lucky_draw", "lucky_draw_v2", "voucher_sale"] },
+      },
+      include: { _count: { select: { vouchers: true } } },
     });
-    if (product?.mirrorCampaignId) {
-      campaign = await prisma.campaign.findFirst({
-        where: { id: product.mirrorCampaignId },
-        include: {
-          _count: { select: { vouchers: true } },
+  }
+
+  // 命中编排活动但池/券为空：再尝试同 slug 产品镜像（兼容历史双 slug）
+  if (
+    campaign &&
+    (campaign as { role?: string | null }).role !== "product_mirror" &&
+    (campaign.grandPoolCents ?? 0) === 0 &&
+    (campaign.instantPoolCents ?? 0) === 0 &&
+    campaign._count.vouchers === 0
+  ) {
+    const prod2 =
+      product ||
+      (await prisma.voucherProduct.findFirst({
+        where: {
+          OR: [{ slug }, { slug: slug.replace(/^m-/, "") }],
+          status: { in: ["active", "draft", "archived"] },
         },
+      }));
+    if (prod2?.mirrorCampaignId && prod2.mirrorCampaignId !== campaign.id) {
+      const mirror = await prisma.campaign.findFirst({
+        where: { id: prod2.mirrorCampaignId },
+        include: { _count: { select: { vouchers: true } } },
       });
-      if (campaign) {
-        // 展示用产品名与公开 slug
-        (campaign as { name: string; slug: string | null }).name = product.name;
-        (campaign as { name: string; slug: string | null }).slug =
-          product.slug || campaign.slug;
+      if (
+        mirror &&
+        ((mirror.grandPoolCents ?? 0) > 0 ||
+          (mirror.instantPoolCents ?? 0) > 0 ||
+          mirror._count.vouchers > 0)
+      ) {
+        campaign = mirror;
+        displayName = prod2.name;
+        displaySlug = prod2.slug || mirror.slug;
       }
     }
   }
 
   if (!campaign) {
     return NextResponse.json({ error: "券产品不存在" }, { status: 404 });
+  }
+
+  if (displayName) {
+    (campaign as { name: string }).name = displayName;
+  }
+  if (displaySlug) {
+    (campaign as { slug: string | null }).slug = displaySlug;
   }
 
   const isDraw =
