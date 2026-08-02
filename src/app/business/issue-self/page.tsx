@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { Card, CardContent } from "@/components/ui/Card";
 import { useLang } from "@/components/i18n/LanguageProvider";
 import { VoucherTypeBadge } from "@/components/voucher/VoucherTypeBadge";
-import { ArrowLeft, Copy } from "lucide-react";
+import { ArrowLeft, Copy, Printer, Smartphone } from "lucide-react";
 import { parseRulesSnapshot } from "@/lib/templates";
 import { cn } from "@/lib/utils";
 import {
@@ -15,6 +15,7 @@ import {
   isNoPayReason,
   type IssueReasonId,
 } from "@/lib/issue-self";
+import Link from "next/link";
 
 type CampaignOpt = {
   id: string;
@@ -31,7 +32,22 @@ type CampaignOpt = {
   discountLocked: boolean;
 };
 
+/** 柜台发券以「券产品」为先 */
+type ProductOpt = {
+  id: string;
+  name: string;
+  type: string;
+  productKind: string;
+  status: string;
+  packKind: string | null;
+  enabledTiers: number[];
+  issueCampaignId: string | null;
+  description: string | null;
+};
+
 type StoreOpt = { id: string; name: string };
+
+type Channel = "digital" | "physical" | null;
 
 const FALLBACK_VOUCHER_TIERS = [10, 20, 50, 100];
 const FALLBACK_DRAW_TIERS = [50, 100];
@@ -102,8 +118,11 @@ export default function IssueSelfPage() {
   const modeParam = searchParams.get("mode");
   const pageMode: "cash" | "manage" | "all" =
     modeParam === "cash" || modeParam === "manage" ? modeParam : "all";
+  const [products, setProducts] = useState<ProductOpt[]>([]);
   const [campaigns, setCampaigns] = useState<CampaignOpt[]>([]);
   const [stores, setStores] = useState<StoreOpt[]>([]);
+  const [productId, setProductId] = useState("");
+  const [channel, setChannel] = useState<Channel>(null);
   const [campaignId, setCampaignId] = useState("");
   const [storeId, setStoreId] = useState("");
   const [amountSgd, setAmountSgd] = useState("100");
@@ -146,10 +165,43 @@ export default function IssueSelfPage() {
   >([]);
 
   async function loadCampaignsAndStores() {
-    const [cRes, sRes] = await Promise.all([
+    const [pRes, cRes, sRes] = await Promise.all([
+      fetch("/api/business/products"),
       fetch("/api/business/campaigns"),
       fetch("/api/business/stores"),
     ]);
+    if (pRes.ok) {
+      const j = await pRes.json();
+      const list = ((j.data || []) as Record<string, unknown>[])
+        .filter(
+          (p) =>
+            p.productKind === "self_use" &&
+            (p.status === "active" || p.status === "draft")
+        )
+        .map((p) => ({
+          id: String(p.id),
+          name: String(p.name || ""),
+          type: String(p.type || ""),
+          productKind: String(p.productKind || "self_use"),
+          status: String(p.status || ""),
+          packKind:
+            typeof p.packKind === "string" ? p.packKind : null,
+          enabledTiers: Array.isArray(p.enabledTiers)
+            ? (p.enabledTiers as number[]).filter(
+                (n) => Number.isFinite(n) && n > 0
+              )
+            : [],
+          issueCampaignId:
+            typeof p.issueCampaignId === "string" ? p.issueCampaignId : null,
+          description:
+            typeof p.description === "string" ? p.description : null,
+        })) as ProductOpt[];
+      setProducts(list);
+      const pref = searchParams.get("productId");
+      if (pref && list.some((p) => p.id === pref)) {
+        setProductId(pref);
+      }
+    }
     if (cRes.ok) {
       const j = await cRes.json();
       const list = (j.data || [])
@@ -160,11 +212,6 @@ export default function IssueSelfPage() {
         )
         .map((c: Record<string, unknown>) => mapCampaign(c));
       setCampaigns(list);
-      if (list[0]) {
-        setCampaignId((id) =>
-          list.some((c: CampaignOpt) => c.id === id) ? id : list[0].id
-        );
-      }
     }
     if (sRes.ok) {
       const j = await sRes.json();
@@ -196,14 +243,46 @@ export default function IssueSelfPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const selectedProduct = useMemo(
+    () => products.find((p) => p.id === productId) || null,
+    [products, productId]
+  );
+
+  // 选产品 → 绑定发券用的 campaign（活动优先，否则镜像）
+  useEffect(() => {
+    if (!selectedProduct) {
+      setCampaignId("");
+      setChannel(null);
+      return;
+    }
+    const cid = selectedProduct.issueCampaignId || "";
+    setCampaignId(cid);
+    setChannel(null);
+    setCashConfirmed(false);
+    setResult(null);
+    if (selectedProduct.enabledTiers.length) {
+      setAmountSgd(String(selectedProduct.enabledTiers[0]));
+    }
+  }, [selectedProduct]);
+
   const selectedCamp = useMemo(
     () => campaigns.find((c) => c.id === campaignId) || null,
     [campaigns, campaignId]
   );
   const isDrawCamp =
+    selectedProduct?.type === "lucky_draw_v2" ||
+    selectedProduct?.type === "lucky_draw" ||
+    selectedProduct?.packKind === "exclusive_ballot" ||
     selectedCamp?.type === "lucky_draw_v2" ||
     selectedCamp?.type === "lucky_draw";
   const noPay = isNoPayReason(issueReason);
+
+  const productTiers = useMemo(() => {
+    if (selectedProduct?.enabledTiers?.length)
+      return selectedProduct.enabledTiers;
+    if (selectedCamp?.enabledTiers?.length) return selectedCamp.enabledTiers;
+    return isDrawCamp ? FALLBACK_DRAW_TIERS : FALLBACK_VOUCHER_TIERS;
+  }, [selectedProduct, selectedCamp, isDrawCamp]);
 
   // 按入口模式限制原因；抽奖活动不能选无支付
   useEffect(() => {
@@ -234,33 +313,34 @@ export default function IssueSelfPage() {
     });
   }, [pageMode, isDrawCamp]);
 
-  const quickAmounts = useMemo(() => {
-    if (selectedCamp?.enabledTiers?.length) return selectedCamp.enabledTiers;
-    return isDrawCamp ? FALLBACK_DRAW_TIERS : FALLBACK_VOUCHER_TIERS;
-  }, [selectedCamp, isDrawCamp]);
+  const quickAmounts = productTiers;
+  const packKind =
+    selectedProduct?.packKind || selectedCamp?.packKind || null;
 
-  // 切换活动：同步折扣与默认档
+  // 切换产品/活动：同步折扣
   useEffect(() => {
-    if (!selectedCamp) return;
-    setDiscountPercent(selectedCamp.discountPercent);
+    if (selectedCamp) {
+      setDiscountPercent(selectedCamp.discountPercent);
+    } else if (isDrawCamp) {
+      setDiscountPercent(0);
+    }
     setCashConfirmed(false);
-    setAmountSgd((prev) => {
-      const n = Number(prev);
-      if (selectedCamp.enabledTiers.length) {
-        if (selectedCamp.enabledTiers.includes(n)) return prev;
-        return String(selectedCamp.enabledTiers[0]);
-      }
-      const fallback = isDrawCamp ? FALLBACK_DRAW_TIERS : FALLBACK_VOUCHER_TIERS;
-      if (fallback.includes(n)) return prev;
-      return String(fallback[0]);
-    });
-  }, [selectedCamp?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedCamp, selectedProduct, isDrawCamp]);
+
+  const discountLocked =
+    isDrawCamp ||
+    packKind === "discount_10" ||
+    packKind === "face_open" ||
+    packKind === "face_threshold" ||
+    packKind === "exclusive_ballot" ||
+    !!selectedCamp?.discountLocked;
 
   const discApply =
     isDrawCamp || noPay
       ? 0
-      : selectedCamp?.discountLocked
-        ? selectedCamp.discountPercent
+      : discountLocked
+        ? selectedCamp?.discountPercent ??
+          (packKind === "discount_10" ? 10 : 0)
         : Math.min(90, Math.max(0, discountPercent));
   const faceNum = Number(amountSgd) || 0;
   const paidPreview = noPay
@@ -421,28 +501,30 @@ export default function IssueSelfPage() {
   }
 
   const packHint = (() => {
-    if (!selectedCamp) return null;
+    if (!selectedProduct && !selectedCamp) return null;
     if (isDrawCamp) {
       return lang === "en"
-        ? "Exclusive draw · customer pays face · 15% fee from business balance"
-        : "独享抽奖 · 顾客付面值 · 企业账户扣 15%（小奖+服务费+大奖）";
+        ? "Exclusive draw product · digital code or printed paper · face 100/150/200 etc."
+        : "独享抽奖产品 · 可发电子短码或印实体纸 · 档位见产品配置";
     }
-    if (selectedCamp.packKind === "discount_10") {
+    if (packKind === "discount_10") {
       return lang === "en"
-        ? "10% off card · pay 90% cash, customer gets 100% face (matches online SKU)"
-        : "9 折卡 · 收 90% 现金，顾客得 100% 面值（与线上 SKU 一致，不可改折扣）";
+        ? "10% off card · pay 90% cash, customer gets 100% face"
+        : "9 折卡 · 收 90% 现金，顾客得 100% 面值";
     }
-    if (selectedCamp.packKind === "face_threshold") {
+    if (packKind === "face_threshold") {
       return lang === "en"
-        ? `Face voucher · min spend ≈ face × ${selectedCamp.minSpendMultiplier || 10}`
-        : `原价门槛代金 · 满约 券面×${selectedCamp.minSpendMultiplier || 10} 可用`;
+        ? `Face voucher · min spend ≈ face × ${selectedCamp?.minSpendMultiplier || 10}`
+        : `原价门槛代金 · 满约 券面×${selectedCamp?.minSpendMultiplier || 10} 可用`;
     }
-    if (selectedCamp.packKind === "face_open") {
+    if (packKind === "face_open") {
       return lang === "en"
-        ? "Face voucher · pay face, spend face · no extra discount at counter"
-        : "原价无门槛 · 付多少抵多少 · 柜台不再另打折";
+        ? "Face voucher · pay face, spend face"
+        : "原价无门槛 · 付多少抵多少";
     }
-    return null;
+    return lang === "en"
+      ? "Select channel: digital short code or physical print batch"
+      : "请先选渠道：电子短码（即时）或实体印刷（批量）";
   })();
 
   return (
@@ -514,92 +596,171 @@ export default function IssueSelfPage() {
       <div className="px-4 mt-4 space-y-4">
         <div className="rounded-2xl bg-muted/50 border border-border px-3 py-2.5 text-[11px] text-muted-foreground leading-relaxed">
           {lang === "en" ? (
-            noPay ? (
-              <>
-                <strong>No-pay issue</strong> (business only): pick reason → note
-                (invoice/supplier) → phone → face → authorize → issue. Staff cannot
-                do this.
-              </>
-            ) : (
-              <>
-                1) Collect cash · 2) Confirm below · 3) Issue · 4) Give{" "}
-                <strong>6-digit code</strong> or phone · 5) Redeem later
-              </>
-            )
-          ) : noPay ? (
             <>
-              <strong>无支付发券</strong>（仅企业主）：选原因 → 填备注（供应商/欠款单号）→
-              必填手机 → 选面值 → 勾选授权 → 发券。店员账号无法操作。
+              <strong>1 Product</strong> → <strong>2 Channel</strong> (digital
+              code or physical print) → issue. Digital = short code now;
+              Physical = batch print then sell/bind.
             </>
           ) : (
             <>
-              ① 按「应收」收现金 → ② 勾选已收款 → ③ 发券 → ④ 短码或手机给顾客 → ⑤
-              核销输入短码
+              <strong>① 选券产品</strong> → <strong>② 选渠道</strong>
+              （电子短码当场发 / 实体印刷批量印）→ 再填门店与原因。实体票售出绑定后走核销台。
             </>
           )}
         </div>
 
-        {campaigns.length === 0 ? (
+        {products.length === 0 ? (
           <Card>
-            <CardContent className="p-4 space-y-3">
+            <CardContent className="p-4 space-y-2">
               <p className="text-sm text-muted-foreground">
                 {lang === "en"
-                  ? "No self-use campaign yet. Create one in one tap."
-                  : "还没有自用券活动。一键创建即可开卖。"}
+                  ? "No self-use products. Create a product first."
+                  : "暂无自用/独享券产品。请先在「券产品」创建。"}
               </p>
               <Button
-                className="w-full h-12"
-                loading={bootstrapping}
-                onClick={() => void bootstrapCampaign()}
+                variant="outline"
+                className="w-full"
+                onClick={() => router.push("/business/products")}
               >
-                {lang === "en"
-                  ? "Create self-use campaign"
-                  : "一键创建自用券活动"}
+                {lang === "en" ? "Voucher products →" : "去券产品 →"}
               </Button>
-              <button
-                type="button"
-                className="w-full text-xs text-primary"
-                onClick={() => router.push("/business/campaigns/new")}
-              >
-                {lang === "en" ? "Or full create flow →" : "或完整创建流程 →"}
-              </button>
             </CardContent>
           </Card>
         ) : (
           <>
+            {/* ① 先选券产品 */}
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                {lang === "en"
-                  ? "Activity / product line"
-                  : "活动（对齐线上产品）"}
+                {lang === "en" ? "1. Voucher product" : "① 先选券产品"}
               </label>
-              <select
-                className="mt-1 w-full h-12 rounded-xl border border-border px-3 text-sm bg-card"
-                value={campaignId}
-                onChange={(e) => setCampaignId(e.target.value)}
-              >
-                {campaigns.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                    {c.status === "draft" ? " (draft)" : ""}
-                    {c.type === "lucky_draw_v2" || c.type === "lucky_draw"
-                      ? lang === "en"
-                        ? " · draw"
-                        : " · 抽奖"
-                      : ""}
-                  </option>
-                ))}
-              </select>
-              {packHint && (
+              <p className="text-[10px] text-muted-foreground mt-0.5 mb-1.5">
+                {lang === "en"
+                  ? "Rules & face tiers come from the product (same as online)."
+                  : "档位与规则跟线上 SKU 一致；电子发码与实体印刷都按该产品。"}
+              </p>
+              <div className="grid grid-cols-1 gap-2">
+                {products.map((p) => {
+                  const active = productId === p.id;
+                  const draw =
+                    p.type === "lucky_draw_v2" ||
+                    p.packKind === "exclusive_ballot";
+                  const tiers =
+                    p.enabledTiers.length > 0
+                      ? p.enabledTiers.map((t) => `S$${t}`).join(" / ")
+                      : "—";
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setProductId(p.id)}
+                      className={cn(
+                        "text-left rounded-xl border px-3 py-2.5 transition-all active:scale-[0.99]",
+                        active
+                          ? "border-primary bg-primary/5 ring-1 ring-primary/25"
+                          : "border-border bg-card"
+                      )}
+                    >
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-foreground">
+                          {p.name}
+                        </p>
+                        <VoucherTypeBadge
+                          kind="self_use"
+                          size="sm"
+                          isDraw={draw}
+                        />
+                        {p.status === "draft" && (
+                          <span className="text-[10px] text-amber-700">
+                            draft
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {lang === "en" ? "Tiers" : "档位"} {tiers}
+                        {!p.issueCampaignId
+                          ? lang === "en"
+                            ? " · no campaign linked"
+                            : " · 未挂活动/镜像"
+                          : ""}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+              {packHint && selectedProduct && (
                 <p className="mt-1.5 text-[11px] text-muted-foreground leading-relaxed">
                   {packHint}
                 </p>
               )}
             </div>
 
+            {selectedProduct && !selectedProduct.issueCampaignId && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-950">
+                {lang === "en"
+                  ? "This product has no activity/mirror campaign. Link it in Campaigns or re-create the product."
+                  : "该产品未关联活动/镜像，无法发券。请到活动管理挂上产品，或重新生成产品。"}
+              </div>
+            )}
+
+            {/* ② 渠道：电子 vs 实体 */}
+            {selectedProduct && selectedProduct.issueCampaignId && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  {lang === "en" ? "2. Channel" : "② 发券渠道"}
+                </label>
+                <div className="mt-1.5 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setChannel("digital")}
+                    className={cn(
+                      "rounded-xl border p-3 text-left active:scale-[0.99]",
+                      channel === "digital"
+                        ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                        : "border-border bg-card"
+                    )}
+                  >
+                    <Smartphone size={18} className="text-primary mb-1" />
+                    <p className="text-sm font-semibold">
+                      {lang === "en" ? "Digital code" : "电子短码"}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {lang === "en"
+                        ? "Issue now · phone/code to customer"
+                        : "当场发码 · 报手机/短码给顾客"}
+                    </p>
+                  </button>
+                  <Link
+                    href={`/business/physical?from=offers&campaignId=${encodeURIComponent(selectedProduct.issueCampaignId)}`}
+                    className={cn(
+                      "rounded-xl border p-3 text-left active:scale-[0.99] block",
+                      channel === "physical"
+                        ? "border-amber-500 bg-amber-50 ring-1 ring-amber-500/30"
+                        : "border-border bg-card"
+                    )}
+                    onClick={() => setChannel("physical")}
+                  >
+                    <Printer size={18} className="text-amber-700 mb-1" />
+                    <p className="text-sm font-semibold">
+                      {lang === "en" ? "Physical print" : "实体印刷"}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {lang === "en"
+                        ? "Batch paper tickets · sell/bind later"
+                        : "批量印纸票 · 售出/绑定后再核"}
+                    </p>
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {/* ③ 电子发码表单 */}
+            {selectedProduct &&
+              selectedProduct.issueCampaignId &&
+              channel === "digital" && (
+              <>
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                {lang === "en" ? "Store" : "门店"}
+                {lang === "en" ? "3. Store" : "③ 门店"}
               </label>
               <select
                 className="mt-1 w-full h-12 rounded-xl border border-border px-3 text-sm bg-card"
@@ -705,7 +866,7 @@ export default function IssueSelfPage() {
                   </button>
                 ))}
               </div>
-              {selectedCamp?.enabledTiers?.length ? (
+              {productTiers.length > 0 ? (
                 <p className="mt-1.5 text-[10px] text-muted-foreground">
                   {lang === "en"
                     ? "Tiers locked to product SKU (same as online)."
@@ -729,7 +890,7 @@ export default function IssueSelfPage() {
                 <label className="text-xs font-medium text-muted-foreground">
                   {lang === "en" ? "Cash vs face" : "实收 vs 可花"}
                 </label>
-                {selectedCamp?.discountLocked ? (
+                {discountLocked ? (
                   <div className="mt-1.5 rounded-2xl border border-border bg-muted/40 px-3 py-2.5">
                     <p className="text-sm font-semibold text-foreground">
                       {discApply > 0
@@ -866,6 +1027,9 @@ export default function IssueSelfPage() {
             >
               {t("issueSelf.submit")}
             </Button>
+              </>
+            )}
+
           </>
         )}
 

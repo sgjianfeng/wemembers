@@ -531,8 +531,8 @@ export default async function BusinessOffersPage({
             </p>
             <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
               {zh
-                ? "柜台已收款 → 按产品发自用/独享券"
-                : "Paid at counter → issue self/excl. voucher"}
+                ? "先选产品 → 电子短码或实体印刷"
+                : "Pick product → digital or paper"}
             </p>
           </Link>
           <Link
@@ -544,8 +544,8 @@ export default async function BusinessOffersPage({
             </p>
             <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
               {zh
-                ? "抵欠/福利/营销赠送 · 仅管理层"
-                : "Debt/welfare/marketing · owners only"}
+                ? "先选产品 → 抵欠/福利/营销 · 管理层"
+                : "Pick product → debt/welfare · owners"}
             </p>
           </Link>
         </div>

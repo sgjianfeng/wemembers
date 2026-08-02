@@ -45,6 +45,17 @@ export async function GET() {
             /* ignore */
           }
         }
+        const packKind =
+          snap && typeof (snap as { packKind?: string }).packKind === "string"
+            ? String((snap as { packKind?: string }).packKind)
+            : null;
+        const activityCampaigns = p.campaignLinks
+          .filter((l) => l.campaign.role === "activity")
+          .map((l) => ({
+            id: l.campaign.id,
+            name: l.campaign.name,
+            status: l.campaign.status,
+          }));
         return {
           id: p.id,
           name: p.name,
@@ -55,11 +66,17 @@ export async function GET() {
           slug: p.slug,
           templateId: p.templateId,
           color: p.color,
+          packKind,
           mirrorCampaignId: p.mirrorCampaignId,
+          activityCampaigns,
+          /** 柜台发券优先用活动；否则用产品镜像 Campaign */
+          issueCampaignId:
+            activityCampaigns.find((c) => c.status === "active")?.id ||
+            activityCampaigns[0]?.id ||
+            p.mirrorCampaignId ||
+            null,
           buyPath: p.slug ? `/voucher/${p.slug}` : null,
-          activityCount: p.campaignLinks.filter(
-            (l) => l.campaign.role === "activity"
-          ).length,
+          activityCount: activityCampaigns.length,
           voucherCount: p._count.vouchers,
           enabledTiers,
           rulesSnapshot: p.rulesSnapshot,
