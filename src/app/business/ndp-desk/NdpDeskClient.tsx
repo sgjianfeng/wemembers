@@ -3,8 +3,9 @@
 /**
  * 本店国庆操作台：门店已锁定，双路径（购券扫码 / 收银凭票）
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Camera, ImageIcon, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -56,9 +57,14 @@ export function NdpDeskClient({
   const [channel, setChannel] = useState<"receipt" | "comp">("receipt");
   const [path, setPath] = useState<"choose" | "receipt">("choose");
   const [loading, setLoading] = useState(false);
+  const [ocrLoading, setOcrLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [ocrHint, setOcrHint] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [lastOk, setLastOk] = useState(false);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const albumInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/business/promo/ndp/issue");
@@ -90,6 +96,62 @@ export function NdpDeskClient({
   const minSgd = ((selected?.minSpendCents ?? 12000) / 100).toFixed(0);
   const giftSgd = ((selected?.giftCouponCents ?? 6100) / 100).toFixed(0);
   const scanHref = `/business/scan?storeId=${encodeURIComponent(storeId)}`;
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  async function onReceiptPhoto(file: File | null | undefined) {
+    if (!file) return;
+    setErr(null);
+    setOcrHint(null);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(URL.createObjectURL(file));
+    setOcrLoading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/business/promo/ndp/receipt-ocr", {
+        method: "POST",
+        body: form,
+      });
+      const j = await res.json();
+      if (!res.ok) {
+        setOcrHint(
+          j.error ||
+            (zh
+              ? "识别失败，请手动填金额与单号后四位"
+              : "OCR failed — enter amount & last 4 manually")
+        );
+        return;
+      }
+      const d = j.data || {};
+      if (typeof d.amountSgd === "string" && d.amountSgd) {
+        setAmountSgd(d.amountSgd);
+      }
+      if (typeof d.receiptLast4 === "string" && d.receiptLast4) {
+        setReceiptNote(d.receiptLast4);
+      } else if (typeof d.receiptNumber === "string" && d.receiptNumber) {
+        setReceiptNote(String(d.receiptNumber).replace(/\D/g, "").slice(-4));
+      }
+      setOcrHint(
+        d.message ||
+          (zh
+            ? "请核对金额与单号后四位"
+            : "Please verify amount and last 4 digits")
+      );
+    } catch {
+      setOcrHint(
+        zh
+          ? "网络错误，请手动填写金额与单号后四位"
+          : "Network error — fill amount & last 4 manually"
+      );
+    } finally {
+      setOcrLoading(false);
+    }
+  }
 
   async function submit() {
     setLoading(true);
@@ -236,11 +298,11 @@ export function NdpDeskClient({
                   </p>
                   <p className="mt-1.5 text-[11px] text-muted-foreground leading-relaxed">
                     {zh
-                      ? "发 61 这类「活动赠券」无法做成通用核销，所以在活动操作台完成：手机 + 金额 → 发券。"
-                      : "Activity gifts can’t fit generic redeem — phone + bill amount on this desk."}
+                      ? "拍小票（金额+编号入镜）→ 填手机 → 发活动赠券。"
+                      : "Photo of bill (amount + number) → phone → issue gift."}
                   </p>
                   <p className="mt-3 text-xs font-semibold text-rose-700">
-                    {zh ? "填写手机与金额 →" : "Enter phone & amount →"}
+                    {zh ? "拍照 / 填手机与金额 →" : "Photo / phone & amount →"}
                   </p>
                 </CardContent>
               </Card>
@@ -312,14 +374,109 @@ export function NdpDeskClient({
               </div>
 
               {channel === "receipt" ? (
-                <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-3 space-y-2">
-                  <p className="text-xs font-bold text-foreground">
-                    2. {zh ? `小票金额（≥ S$${minSgd}）` : `Bill (≥ S$${minSgd})`}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-3 space-y-3">
+                  <div>
+                    <p className="text-xs font-bold text-foreground">
+                      2. {zh ? "拍小票（推荐）" : "Photo of bill (recommended)"}
+                    </p>
+                    <ul className="mt-1.5 text-[11px] text-rose-900/80 leading-relaxed space-y-0.5 list-disc pl-4">
+                      <li>
+                        {zh
+                          ? "请拍清：实付金额（TOTAL）与小票编号"
+                          : "Capture TOTAL amount and receipt number clearly"}
+                      </li>
+                      <li>
+                        {zh
+                          ? "尽量平放、光线足、无反光；编号与金额都入镜"
+                          : "Flat, bright, no glare — number + amount in frame"}
+                      </li>
+                      <li>
+                        {zh
+                          ? "能识别则自动填金额与后四位，务必再核对"
+                          : "We auto-fill amount & last 4 when possible — always verify"}
+                      </li>
+                    </ul>
+                  </div>
+
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      void onReceiptPhoto(f);
+                      e.target.value = "";
+                    }}
+                  />
+                  <input
+                    ref={albumInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      void onReceiptPhoto(f);
+                      e.target.value = "";
+                    }}
+                  />
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={ocrLoading}
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="flex-1 h-11 rounded-full bg-rose-600 text-white text-sm font-semibold flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-60"
+                    >
+                      {ocrLoading ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Camera size={16} />
+                      )}
+                      {zh ? "拍照" : "Camera"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={ocrLoading}
+                      onClick={() => albumInputRef.current?.click()}
+                      className="flex-1 h-11 rounded-full bg-white border border-rose-200 text-rose-800 text-sm font-semibold flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-60"
+                    >
+                      <ImageIcon size={16} />
+                      {zh ? "相册" : "Album"}
+                    </button>
+                  </div>
+
+                  {previewUrl && (
+                    <div className="relative rounded-xl overflow-hidden border border-rose-100 bg-white">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={previewUrl}
+                        alt="receipt"
+                        className="w-full max-h-40 object-contain bg-muted/30"
+                      />
+                      {ocrLoading && (
+                        <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
+                          <p className="text-xs font-medium text-white flex items-center gap-1.5">
+                            <Loader2 size={14} className="animate-spin" />
+                            {zh ? "识别中…" : "Reading…"}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {ocrHint && (
+                    <p className="text-[11px] text-rose-900 bg-white/80 border border-rose-100 rounded-lg px-2.5 py-2 leading-relaxed">
+                      {ocrHint}
+                    </p>
+                  )}
+
+                  <p className="text-xs font-bold text-foreground pt-1">
+                    3.{" "}
                     {zh
-                      ? "看纸质小票或 POS 实付总额，例如 128.50。不用拍照。"
-                      : "Read POS/paper total. No photo required."}
+                      ? `金额（≥ S$${minSgd}）与单号后四位`
+                      : `Amount (≥ S$${minSgd}) & last 4`}
                   </p>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 font-semibold text-muted-foreground">
@@ -335,7 +492,13 @@ export function NdpDeskClient({
                   </div>
                   <Input
                     className="mt-1"
-                    placeholder={zh ? "小票后4位（可选）" : "Bill last 4 (opt.)"}
+                    inputMode="numeric"
+                    maxLength={8}
+                    placeholder={
+                      zh
+                        ? "小票编号后 4 位（建议填写，防重复）"
+                        : "Receipt last 4 (recommended)"
+                    }
                     value={receiptNote}
                     onChange={(e) => setReceiptNote(e.target.value)}
                   />

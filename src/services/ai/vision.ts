@@ -36,6 +36,10 @@ export interface ReceiptOcr {
   taxAmountCents?: number | null;
   currency?: string | null;
   receiptDate?: string | null; // ISO yyyy-mm-dd
+  /** 小票号 / 单号 / Invoice No. 原文 */
+  receiptNumber?: string | null;
+  /** 单号末 4 位（数字优先）；识别不到可为 null */
+  receiptLast4?: string | null;
   items: ReceiptOcrItem[];
   candidateTags: string[];
   rawText?: string | null;
@@ -43,16 +47,25 @@ export interface ReceiptOcr {
 }
 
 // 分类 + 抽字段的共享说明（provider 无关）
-const CORE_PROMPT = `你是餐饮门店的票据识别助手。用户会给你一张票据图片。请完成三件事：
+const CORE_PROMPT = `你是新加坡餐饮门店的票据识别助手。用户会给你一张 POS/纸质小票图片。请完成：
 1. 分类 category，取值之一：
-   - purchase        供应商采购单/发票（有供应商抬头、品项明细、税号）
-   - customer_sale   顾客消费小票（门店自己出票、桌号/单号）
-   - platform        外卖平台对账单（美团/饿了么等平台、含佣金/结算）
-   - expense         费用报销（水电/房租/工资/杂费）
+   - purchase        供应商采购单/发票
+   - customer_sale   顾客消费小票（门店 POS、桌号/单号）——满赠凭票最常见
+   - platform        外卖平台对账单
+   - expense         费用报销
    - unknown         无法确定
-2. 抽字段：商家名(vendorName)、总额(totalAmountCents)、税额(taxAmountCents)、币种(currency)、日期(receiptDate, yyyy-mm-dd)、逐行明细(items)。
-   所有金额一律用「分」为单位的整数（例如 12.80 元 => 1280）。识别不到的字段填 null。
-3. 候选标签 candidateTags：给出 3~6 个便于归档检索的中文短标签（如「冷冻食材」「含税」「蜀海」「2026-07」）。`;
+2. 抽字段：
+   - vendorName 商家名
+   - totalAmountCents 应付/实付总额（分）。新加坡小票常见 TOTAL / Grand Total / Amount Due / Net Total，优先取最终应付（含税后）。S$12.80 => 1280
+   - taxAmountCents 税额（分）
+   - currency 默认 SGD
+   - receiptDate yyyy-mm-dd
+   - receiptNumber 小票号/Receipt No./Invoice/Bill/Order/Check 号的完整字符串
+   - receiptLast4 单号末 4 位数字（仅数字；不足 4 位则取全部数字尾部）
+   - items 明细
+   识别不到的字段填 null。
+3. candidateTags：3~6 个中文短标签。
+4. rawText：尽量抄录小票上可见的关键文字（含 TOTAL 与单号行）。`;
 
 const started = () => Date.now();
 
@@ -105,6 +118,14 @@ const CLAUDE_TOOL = {
       taxAmountCents: { type: ["integer", "null"], description: "税额（分）" },
       currency: { type: ["string", "null"] },
       receiptDate: { type: ["string", "null"], description: "yyyy-mm-dd" },
+      receiptNumber: {
+        type: ["string", "null"],
+        description: "小票号/Receipt/Invoice/Order 号原文",
+      },
+      receiptLast4: {
+        type: ["string", "null"],
+        description: "单号末 4 位数字",
+      },
       items: {
         type: "array",
         items: {
@@ -201,6 +222,8 @@ const OPENAI_SCHEMA = {
       taxAmountCents: { type: ["integer", "null"] },
       currency: { type: ["string", "null"] },
       receiptDate: { type: ["string", "null"] },
+      receiptNumber: { type: ["string", "null"] },
+      receiptLast4: { type: ["string", "null"] },
       items: {
         type: "array",
         items: {
@@ -226,6 +249,8 @@ const OPENAI_SCHEMA = {
       "taxAmountCents",
       "currency",
       "receiptDate",
+      "receiptNumber",
+      "receiptLast4",
       "items",
       "candidateTags",
       "rawText",
