@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { generateCode, normalizeSingaporePhone } from "@/lib/utils";
-import { sendVerificationSMS } from "@/lib/sms";
+import { sendVerificationSMS, smsErrorMessage } from "@/lib/sms";
 import { sendVerificationCode } from "@/lib/email";
 import { shouldLogOnly } from "@/lib/messaging";
 
@@ -75,10 +75,21 @@ export async function POST(request: NextRequest) {
     }
 
     if (!sendResult.success) {
-      console.error(`[send-code] ${isEmail ? "Email" : "SMS"} failed: ${sendResult.error}`);
+      console.error(
+        `[send-code] ${isEmail ? "Email" : "SMS"} failed: ${sendResult.error}`
+      );
+      // 发送失败：作废刚写入的码，避免用户拿不到却反复试旧码
+      await prisma.verificationCode.updateMany({
+        where: { contact, purpose, code, usedAt: null },
+        data: { usedAt: new Date() },
+      });
       return NextResponse.json(
-        { error: isEmail ? "邮件发送失败，请稍后重试" : "短信发送失败，请稍后重试" },
-        { status: 500 }
+        {
+          error: isEmail
+            ? "邮件发送失败，请稍后重试"
+            : smsErrorMessage(sendResult.error),
+        },
+        { status: 502 }
       );
     }
 
@@ -93,6 +104,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       data: {
         message: "验证码已发送",
+        channel: isEmail ? "email" : "sms",
         ...(logOnly ? { devCode: code } : {}),
       },
     });

@@ -89,10 +89,7 @@ export default function RegisterPage() {
       setError(t("register.error.businessUseEmail"));
       return;
     }
-    if (role === "customer" && isEmail) {
-      setError(t("register.error.customerUsePhone"));
-      return;
-    }
+    // 客户：手机号优先；短信不可用时可用邮箱
     if (role === "business") {
       if (!businessName.trim()) {
         setError(t("register.error.enterBusinessName"));
@@ -289,15 +286,16 @@ export default function RegisterPage() {
                 label={
                   role === "business"
                     ? t("auth.register.companyEmail")
-                    : t("auth.register.companyPhone")
+                    : t("auth.register.customerContact")
                 }
                 placeholder={
                   role === "business"
                     ? "name@company.com"
-                    : t("register.phonePlaceholder")
+                    : t("register.customerContactPlaceholder")
                 }
-                type={role === "business" ? "email" : "tel"}
-                autoComplete={role === "business" ? "email" : "tel"}
+                type={role === "business" ? "email" : "text"}
+                autoComplete={role === "business" ? "email" : "username"}
+                inputMode={role === "business" ? "email" : "text"}
                 value={contact}
                 onChange={(e) => setContact(e.target.value)}
                 className="h-12 rounded-xl"

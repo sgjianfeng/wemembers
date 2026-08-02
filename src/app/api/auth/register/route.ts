@@ -60,9 +60,7 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-    if (role === "customer" && isEmail) {
-      return NextResponse.json({ error: "客户请使用手机号注册" }, { status: 400 });
-    }
+    // 客户可用手机号或邮箱（短信试用拒发时邮箱可作降级通道）
     if (password && password.length < 6) {
       return NextResponse.json({ error: "密码至少 6 位" }, { status: 400 });
     }
