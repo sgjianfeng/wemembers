@@ -287,6 +287,57 @@ input:-webkit-autofill:active {
   }
 }
 
+/* 抽奖仪式：彩屑 + 大奖环浮动（尊重 reduced-motion） */
+@keyframes lucky-confetti-fly {
+  0% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--tx, 40px), var(--ty, -60px)) scale(0.25)
+      rotate(220deg);
+    opacity: 0;
+  }
+}
+
+@keyframes grand-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.lucky-confetti {
+  animation: lucky-confetti-fly 0.95s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+.grand-orbit > div {
+  animation: grand-float 3.2s ease-in-out infinite;
+}
+
+.grand-orbit > div:nth-child(2) {
+  animation-delay: 0.4s;
+}
+.grand-orbit > div:nth-child(3) {
+  animation-delay: 0.8s;
+}
+.grand-orbit > div:nth-child(4) {
+  animation-delay: 1.2s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lucky-confetti {
+    animation: none;
+    opacity: 0;
+  }
+  .grand-orbit > div {
+    animation: none;
+  }
+}
+
 /* A4 实体券 / 活动墙贴打印：保留背景色（勿全局强制 color:#111，会冲掉国庆红底白字） */
 @media print {
   @page {

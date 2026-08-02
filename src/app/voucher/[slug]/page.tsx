@@ -18,9 +18,10 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { TopHeader } from "@/components/ui/TopHeader";
 import { VoucherTierSelector } from "@/components/customer/VoucherTierSelector";
-import { PoolDashboard } from "@/components/customer/PoolDashboard";
 import { InstantPrizePreview } from "@/components/customer/InstantPrizePreview";
 import { WinBalanceWheel } from "@/components/customer/WinBalanceWheel";
+import { DrawParticipationStage } from "@/components/customer/DrawParticipationStage";
+import { GrandPrizeArena } from "@/components/customer/GrandPrizeArena";
 import { useLang } from "@/components/i18n/LanguageProvider";
 import { resolveTier } from "@/lib/draw-v2";
 import {
@@ -33,6 +34,191 @@ function TrustPill({ children }: { children: React.ReactNode }) {
     <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-white/90 text-[10px] font-medium text-foreground/90 border border-white/40">
       {children}
     </span>
+  );
+}
+
+/** 购券表单（买券模式全显 / 抽奖台模式可折叠复用） */
+function BuyVoucherPanel({
+  t,
+  lang,
+  isDraw,
+  isExclusiveDraw,
+  discountPercent,
+  facePreview,
+  paidPreview,
+  creditPreview,
+  balancePreview,
+  selectedAmount,
+  setSelectedAmount,
+  spendNow,
+  setSpendNow,
+  enabledTiers,
+  tier,
+  error,
+  submitting,
+  onPurchase,
+}: {
+  t: (k: string, v?: Record<string, string | number>) => string;
+  lang: "zh" | "en";
+  isDraw: boolean;
+  isExclusiveDraw: boolean;
+  discountPercent: number;
+  facePreview: number;
+  paidPreview: number;
+  creditPreview: number;
+  balancePreview: number;
+  selectedAmount: number;
+  setSelectedAmount: (n: number) => void;
+  spendNow: string;
+  setSpendNow: (s: string) => void;
+  enabledTiers?: number[];
+  tier: ReturnType<typeof resolveTier>;
+  error: string;
+  submitting: boolean;
+  onPurchase: () => void;
+}) {
+  return (
+    <>
+      <div className="mb-4 p-3 rounded-xl bg-muted/50 border border-border">
+        <p className="text-[11px] font-semibold text-foreground/90 mb-2">
+          {t("voucher.trust.moneyTitle")}
+        </p>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div>
+            <p className="text-[10px] text-muted-foreground">
+              {t("voucher.trust.face")}
+            </p>
+            <p className="text-sm font-bold text-foreground">
+              S${facePreview.toFixed(0)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground">
+              {t("voucher.trust.pay")}
+            </p>
+            <p className="text-sm font-bold text-[#1A6EFF]">
+              S${paidPreview.toFixed(0)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground">
+              {isDraw
+                ? t("voucher.trust.credit")
+                : t("voucher.trust.spendable")}
+            </p>
+            <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+              S${creditPreview.toFixed(0)}
+            </p>
+          </div>
+        </div>
+        {!isDraw && discountPercent > 0 && (
+          <p className="text-[10px] text-blue-700 dark:text-blue-400/80 mt-2 text-center">
+            {t("voucher.payGetFace", {
+              paid: paidPreview.toFixed(0),
+              face: facePreview.toFixed(0),
+              pct: discountPercent,
+            })}
+          </p>
+        )}
+        {!isDraw && discountPercent === 0 && (
+          <p className="text-[10px] text-muted-foreground mt-2 text-center">
+            {t("voucher.balanceEqFace")}
+          </p>
+        )}
+        {isDraw && (
+          <p className="text-[10px] text-muted-foreground mt-2 text-center">
+            {t("voucher.balanceEqPaid")}
+          </p>
+        )}
+      </div>
+
+      <h3 className="text-sm font-semibold text-foreground mb-2">
+        {t("voucher.selectTier")}
+      </h3>
+      <div className="mb-4">
+        <VoucherTierSelector
+          selectedAmount={selectedAmount}
+          onSelect={setSelectedAmount}
+          enabledAmounts={enabledTiers}
+        />
+      </div>
+
+      {isDraw && tier && (
+        <div className="mb-4">
+          <InstantPrizePreview
+            tier={tier}
+            selectedAmount={selectedAmount}
+            compareAmounts={
+              enabledTiers?.length ? enabledTiers : [50, 100, 200]
+            }
+          />
+        </div>
+      )}
+
+      {isDraw && !isExclusiveDraw && (
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+            {t("voucher.spendNow")}
+          </label>
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground text-sm">S$</span>
+            <input
+              type="number"
+              value={spendNow}
+              onChange={(e) => setSpendNow(e.target.value)}
+              placeholder={`max S$${(creditPreview * 0.8).toFixed(0)}`}
+              className="flex-1 h-10 px-3 rounded-lg border border-input bg-background text-base nums"
+            />
+            <span
+              className={`text-xs px-2 py-1 rounded shrink-0 ${
+                balancePreview >= creditPreview * 0.2
+                  ? "bg-green-50 dark:bg-green-950/35 text-green-600"
+                  : "bg-red-50 dark:bg-red-950/35 text-red-500"
+              }`}
+            >
+              {t("voucher.balanceAfter")}: S${balancePreview.toFixed(0)}
+            </span>
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {t("voucher.minRemain")} S${(creditPreview * 0.2).toFixed(0)}
+          </p>
+        </div>
+      )}
+
+      {isExclusiveDraw && (
+        <p className="text-[10px] text-muted-foreground mb-3 text-center rounded-lg bg-muted/50 py-1.5 px-2">
+          {lang === "en"
+            ? "Pay now · fee funds prize pools · draw on purchase"
+            : "付款即参与 · 费用进奖池 · 购买当场抽奖"}
+        </p>
+      )}
+
+      {isDraw && !isExclusiveDraw && selectedAmount < 100 && (
+        <p className="text-[10px] text-amber-600 dark:text-amber-400 mb-3 text-center bg-amber-50 dark:bg-amber-950/35 rounded-lg py-1.5">
+          {t("voucher.upgradeHint", { amount: "100" })}
+        </p>
+      )}
+
+      {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
+
+      <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] text-amber-950 leading-relaxed dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
+        {t("voucher.paynowMobileTip")}
+      </div>
+
+      <Button
+        className="w-full"
+        size="lg"
+        onClick={onPurchase}
+        loading={submitting}
+      >
+        {isDraw
+          ? t("voucher.payDraw")
+          : t("voucher.payAmount", { amount: paidPreview.toFixed(0) })}
+      </Button>
+      <p className="text-[10px] text-muted-foreground text-center mt-2">
+        {t("voucher.paynowHint")}
+      </p>
+    </>
   );
 }
 
@@ -123,6 +309,22 @@ function VoucherDrawInner() {
   const sessionIdParam = searchParams.get("session_id");
   /** 结账 join 入口带来的推荐档 */
   const amountFromJoin = Number(searchParams.get("amount") || 0);
+  /**
+   * 券包/权益「看倒计时」入口：抽奖台优先，不把买券当主叙事。
+   * 兼容旧链仅有 #grand-countdown。
+   */
+  const viewParam = (searchParams.get("view") || "").toLowerCase();
+  const [hashDraw, setHashDraw] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const h = window.location.hash.replace(/^#/, "");
+    setHashDraw(h === "grand-countdown" || h === "my-draw-stage");
+  }, []);
+  const drawView =
+    viewParam === "draw" ||
+    viewParam === "countdown" ||
+    viewParam === "pool" ||
+    hashDraw;
   /** 从国庆 / 门店货架进入：保持活动语境 */
   const buyCtx = parseActivityBuyContext(searchParams);
   const fromNdp = buyCtx.from === "ndp";
@@ -164,6 +366,17 @@ function VoucherDrawInner() {
     }
     load();
   }, [refreshPool]);
+
+  // 抽奖台模式：数据就绪后滚到舞台（异步加载后 hash 原生滚动常失效）
+  useEffect(() => {
+    if (loading || !drawView || result) return;
+    const t = window.setTimeout(() => {
+      document
+        .getElementById("grand-countdown")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [loading, drawView, result, poolStatus?.pool]);
 
   // 支付回跳确认
   // - PayNow 回跳时可能尚未 paid → 短轮询（202/402）
@@ -418,22 +631,26 @@ function VoucherDrawInner() {
   const tier = resolveTier(selectedAmount);
   const paidCancelled = searchParams.get("paid") === "0";
 
-  const headerTitle = fromNdp
+  const headerTitle = drawView
     ? lang === "en"
-      ? "National Day buy"
-      : "国庆购券"
-    : fromStore
+      ? "Prize countdown"
+      : "大奖倒计时"
+    : fromNdp
       ? lang === "en"
-        ? "Store buy"
-        : "门店购券"
-      : undefined;
+        ? "National Day buy"
+        : "国庆购券"
+      : fromStore
+        ? lang === "en"
+          ? "Store buy"
+          : "门店购券"
+        : undefined;
 
   return (
     <div
       className={`min-h-screen bg-gradient-to-b ${
-        fromNdp
+        fromNdp && !drawView
           ? "from-rose-700 via-rose-600 to-background"
-          : fromStore
+          : fromStore && !drawView
             ? isDraw
               ? "from-amber-600 via-orange-500 to-background"
               : "from-primary via-primary/80 to-background"
@@ -447,12 +664,14 @@ function VoucherDrawInner() {
       <TopHeader
         variant="default"
         title={headerTitle}
-        fallbackUrl={fromActivityShelf ? activityBackHref : "/"}
-        preferFallback={fromActivityShelf}
+        fallbackUrl={
+          drawView ? "/wallet" : fromActivityShelf ? activityBackHref : "/"
+        }
+        preferFallback={drawView || fromActivityShelf}
       />
 
-      {/* 活动/门店语境条：购券页不「跳戏」 */}
-      {fromNdp && (
+      {/* 活动/门店语境条：购券页不「跳戏」；抽奖台模式不展示买券引导条 */}
+      {fromNdp && !drawView && (
         <div className="px-4 pt-2">
           <Link
             href={activityBackHref}
@@ -480,7 +699,7 @@ function VoucherDrawInner() {
         </div>
       )}
 
-      {fromStore && (
+      {fromStore && !drawView && (
         <div className="px-4 pt-2">
           <Link
             href={
@@ -513,111 +732,150 @@ function VoucherDrawInner() {
         </div>
       )}
 
-      <div className="px-4 pt-4 pb-4 text-center text-white">
+      <div
+        className={`px-4 text-center text-white ${
+          drawView ? "pt-3 pb-2" : "pt-4 pb-4"
+        }`}
+      >
         <span className="inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-full mb-2 bg-white/20">
-          {fromNdp
+          {drawView
             ? lang === "en"
-              ? "Activity purchase · Grand countdown"
-              : "活动购券 · 大奖倒计时"
-            : fromStore
+              ? "Your draw stage"
+              : "我的抽奖台"
+            : fromNdp
               ? lang === "en"
-                ? "Activity offer · buy here"
-                : "活动权益 · 在此购买"
-              : isDraw
-                ? isSelfUse
-                  ? t("productKind.self") + " · " + t("voucher.tag.draw")
-                  : t("voucher.tag.draw")
-                : isSelfUse
-                  ? t("productKind.self")
-                  : t("voucher.tag.discount")}
+                ? "Activity purchase · Grand countdown"
+                : "活动购券 · 大奖倒计时"
+              : fromStore
+                ? lang === "en"
+                  ? "Activity offer · buy here"
+                  : "活动权益 · 在此购买"
+                : isDraw
+                  ? isSelfUse
+                    ? t("productKind.self") + " · " + t("voucher.tag.draw")
+                    : t("voucher.tag.draw")
+                  : isSelfUse
+                    ? t("productKind.self")
+                    : t("voucher.tag.discount")}
         </span>
-        <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-white/15">
+        <div
+          className={`mx-auto mb-2 grid place-items-center rounded-2xl bg-white/15 ${
+            drawView ? "h-11 w-11" : "h-14 w-14 mb-3"
+          }`}
+        >
           {isDraw ? (
-            <Trophy size={28} />
+            <Trophy size={drawView ? 22 : 28} />
           ) : isSelfUse ? (
             <Ticket size={28} />
           ) : (
             <Tag size={28} />
           )}
         </div>
-        <h1 className="text-2xl font-bold text-balance">{campaign.name}</h1>
+        <h1
+          className={`font-bold text-balance ${
+            drawView ? "text-xl" : "text-2xl"
+          }`}
+        >
+          {campaign.name}
+        </h1>
         <p className="text-white/80 text-sm mt-1">
-          {fromNdp
+          {drawView
             ? lang === "en"
-              ? "Pay for a voucher · use in store · join the prize countdown"
-              : "付款买券 · 到店使用 · 同步冲大奖倒计时"
-            : fromStore
+              ? "Instant wheel · grand pool countdown · your chances"
+              : "即时转盘 · 大奖池进度 · 你的抽奖机会"
+            : fromNdp
               ? lang === "en"
-                ? "Pay for this offer · redeem at the store you came from"
-                : "付款购买本权益 · 回刚才门店核销使用"
-              : isSelfUse && isDraw
+                ? "Pay for a voucher · use in store · join the prize countdown"
+                : "付款买券 · 到店使用 · 同步冲大奖倒计时"
+              : fromStore
                 ? lang === "en"
-                  ? "Exclusive draw · pay first · 15% to prizes (no seller fee) · group redeem"
-                  : "独享抽奖 · 先付款 · 15%进小奖/大奖/服务费（无卖券奖）· 集团可核"
-                : isSelfUse
-                  ? t("voucher.selfUseSubtitle")
-                  : isDraw
-                    ? t("voucher.subtitle")
-                    : t("voucher.discountSubtitle")}
+                  ? "Pay for this offer · redeem at the store you came from"
+                  : "付款购买本权益 · 回刚才门店核销使用"
+                : isSelfUse && isDraw
+                  ? lang === "en"
+                    ? "Exclusive draw · pay first · 15% to prizes (no seller fee) · group redeem"
+                    : "独享抽奖 · 先付款 · 15%进小奖/大奖/服务费（无卖券奖）· 集团可核"
+                  : isSelfUse
+                    ? t("voucher.selfUseSubtitle")
+                    : isDraw
+                      ? t("voucher.subtitle")
+                      : t("voucher.discountSubtitle")}
         </p>
-        {discountPercent > 0 && !fromActivityShelf && (
+        {discountPercent > 0 && !fromActivityShelf && !drawView && (
           <p className="text-white text-sm mt-2 font-semibold">
             {t("voucher.discountBanner", { pct: discountPercent })}
           </p>
         )}
-        <div className="flex flex-wrap justify-center gap-1.5 mt-3">
-          {fromNdp ? (
-            <>
-              <TrustPill>
-                {lang === "en"
-                  ? `Spend S$${ndpMin} → S$${ndpGift}`
-                  : `满 S$${ndpMin} 送 S$${ndpGift}`}
-              </TrustPill>
-              <TrustPill>{t("voucher.trust.pillPaynow")}</TrustPill>
-              <TrustPill>
-                {lang === "en" ? "Grand countdown" : "大奖倒计时"}
-              </TrustPill>
-              <TrustPill>
-                {lang === "en" ? "In-store redeem" : "到店核销"}
-              </TrustPill>
-            </>
-          ) : fromStore ? (
-            <>
-              {buyCtx.storeName && (
-                <TrustPill>{buyCtx.storeName}</TrustPill>
-              )}
-              <TrustPill>{t("voucher.trust.pillPaynow")}</TrustPill>
-              <TrustPill>
-                {lang === "en" ? "In-store redeem" : "到店核销"}
-              </TrustPill>
-              {isDraw && (
+        {!drawView && (
+          <div className="flex flex-wrap justify-center gap-1.5 mt-3">
+            {fromNdp ? (
+              <>
                 <TrustPill>
-                  {lang === "en" ? "Prize countdown" : "大奖倒计时"}
+                  {lang === "en"
+                    ? `Spend S$${ndpMin} → S$${ndpGift}`
+                    : `满 S$${ndpMin} 送 S$${ndpGift}`}
                 </TrustPill>
-              )}
-            </>
-          ) : isSelfUse ? (
-            <>
-              <TrustPill>{t("voucher.trust.pillGroupStores")}</TrustPill>
-              <TrustPill>{t("voucher.trust.pillPaynow")}</TrustPill>
-              <TrustPill>{t("voucher.trust.pillNoWithdraw")}</TrustPill>
-              <TrustPill>{t("voucher.trust.pillSave")}</TrustPill>
-            </>
-          ) : (
-            <>
-              <TrustPill>{t("voucher.trust.pillNetwork")}</TrustPill>
-              <TrustPill>{t("voucher.trust.pillWithdraw")}</TrustPill>
-              <TrustPill>{t("voucher.trust.pillPaynow")}</TrustPill>
-              <TrustPill>
-                {isDraw ? t("voucher.trust.pillWin") : t("voucher.trust.pillSave")}
-              </TrustPill>
-            </>
-          )}
-        </div>
+                <TrustPill>{t("voucher.trust.pillPaynow")}</TrustPill>
+                <TrustPill>
+                  {lang === "en" ? "Grand countdown" : "大奖倒计时"}
+                </TrustPill>
+                <TrustPill>
+                  {lang === "en" ? "In-store redeem" : "到店核销"}
+                </TrustPill>
+              </>
+            ) : fromStore ? (
+              <>
+                {buyCtx.storeName && (
+                  <TrustPill>{buyCtx.storeName}</TrustPill>
+                )}
+                <TrustPill>{t("voucher.trust.pillPaynow")}</TrustPill>
+                <TrustPill>
+                  {lang === "en" ? "In-store redeem" : "到店核销"}
+                </TrustPill>
+                {isDraw && (
+                  <TrustPill>
+                    {lang === "en" ? "Prize countdown" : "大奖倒计时"}
+                  </TrustPill>
+                )}
+              </>
+            ) : isSelfUse ? (
+              <>
+                <TrustPill>{t("voucher.trust.pillGroupStores")}</TrustPill>
+                <TrustPill>{t("voucher.trust.pillPaynow")}</TrustPill>
+                <TrustPill>{t("voucher.trust.pillNoWithdraw")}</TrustPill>
+                <TrustPill>{t("voucher.trust.pillSave")}</TrustPill>
+              </>
+            ) : (
+              <>
+                <TrustPill>{t("voucher.trust.pillNetwork")}</TrustPill>
+                <TrustPill>{t("voucher.trust.pillWithdraw")}</TrustPill>
+                <TrustPill>{t("voucher.trust.pillPaynow")}</TrustPill>
+                <TrustPill>
+                  {isDraw
+                    ? t("voucher.trust.pillWin")
+                    : t("voucher.trust.pillSave")}
+                </TrustPill>
+              </>
+            )}
+          </div>
+        )}
+        {drawView && (
+          <div className="flex flex-wrap justify-center gap-1.5 mt-2">
+            <TrustPill>
+              {lang === "en" ? "Live pool" : "奖池进行中"}
+            </TrustPill>
+            <TrustPill>
+              {lang === "en" ? "Your weight counts" : "权重计入开奖"}
+            </TrustPill>
+            <TrustPill>
+              {lang === "en" ? "Instant spin if pending" : "有待抽可转盘"}
+            </TrustPill>
+          </div>
+        )}
       </div>
 
       <div className="px-4 -mt-2 pb-8 space-y-3">
-        {fromNdp && (
+        {fromNdp && !drawView && (
           <Card className="border-rose-200 bg-rose-50/95 shadow-sm dark:border-rose-900/40 dark:bg-rose-950/40">
             <CardContent className="p-3 text-[12px] leading-relaxed text-rose-950 dark:text-rose-100">
               <p className="font-semibold">
@@ -642,7 +900,7 @@ function VoucherDrawInner() {
           </Card>
         )}
 
-        {fromStore && (
+        {fromStore && !drawView && (
           <Card className="border-primary/20 bg-primary/5 shadow-sm">
             <CardContent className="p-3 text-[12px] leading-relaxed text-foreground">
               <p className="font-semibold">
@@ -694,9 +952,12 @@ function VoucherDrawInner() {
           </div>
         )}
 
-        {isDraw && poolStatus?.pool && (
-          <div id="grand-countdown" className="scroll-mt-20">
-            <PoolDashboard
+        {/* 抽奖台：我的机会 + 即时转盘 + 大奖仪式（含 #grand-countdown） */}
+        {isDraw && poolStatus?.pool && !result && (
+          <div id="grand-countdown" className="scroll-mt-16">
+            <DrawParticipationStage
+              slug={String(slug)}
+              lang={lang === "en" ? "en" : "zh"}
               countdowns={poolStatus.countdown || []}
               instantPoolSgd={poolStatus.pool?.instantPool?.sgd || "0"}
               dailyAvgVelocity={poolStatus.velocity?.dailyAvgCents || 0}
@@ -705,140 +966,72 @@ function VoucherDrawInner() {
         )}
 
         {isActive && !result ? (
-          <Card className="mb-2">
-            <CardContent className="p-4">
-              {/* Money transparency */}
-              <div className="mb-4 p-3 rounded-xl bg-muted/50 border border-border">
-                <p className="text-[11px] font-semibold text-foreground/90 mb-2">
-                  {t("voucher.trust.moneyTitle")}
-                </p>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div>
-                    <p className="text-[10px] text-muted-foreground">{t("voucher.trust.face")}</p>
-                    <p className="text-sm font-bold text-foreground">
-                      S${facePreview.toFixed(0)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground">{t("voucher.trust.pay")}</p>
-                    <p className="text-sm font-bold text-[#1A6EFF]">
-                      S${paidPreview.toFixed(0)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground">
-                      {isDraw ? t("voucher.trust.credit") : t("voucher.trust.spendable")}
-                    </p>
-                    <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                      S${creditPreview.toFixed(0)}
-                    </p>
-                  </div>
-                </div>
-                {!isDraw && discountPercent > 0 && (
-                  <p className="text-[10px] text-blue-700 dark:text-blue-400/80 mt-2 text-center">
-                    {t("voucher.payGetFace", {
-                      paid: paidPreview.toFixed(0),
-                      face: facePreview.toFixed(0),
-                      pct: discountPercent,
-                    })}
-                  </p>
-                )}
-                {!isDraw && discountPercent === 0 && (
-                  <p className="text-[10px] text-muted-foreground mt-2 text-center">
-                    {t("voucher.balanceEqFace")}
-                  </p>
-                )}
-                {isDraw && (
-                  <p className="text-[10px] text-muted-foreground mt-2 text-center">
-                    {t("voucher.balanceEqPaid")}
-                  </p>
-                )}
-              </div>
-
-              <h3 className="text-sm font-semibold text-foreground mb-2">{t("voucher.selectTier")}</h3>
-              <div className="mb-4">
-                <VoucherTierSelector
+          drawView && isDraw ? (
+            /* 看倒计时入口：买券收进折叠，不抢抽奖台主位 */
+            <details
+              id="buy-voucher"
+              className="group scroll-mt-20 rounded-2xl border border-border bg-card overflow-hidden"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3.5 text-[13px] font-semibold text-foreground">
+                <span>
+                  {lang === "en"
+                    ? "Boost weight · buy another voucher"
+                    : "加大权重 · 再买一档"}
+                </span>
+                <ChevronDown
+                  size={16}
+                  className="shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+                />
+              </summary>
+              <div className="border-t border-border px-4 pb-4 pt-3">
+                <BuyVoucherPanel
+                  t={t}
+                  lang={lang === "en" ? "en" : "zh"}
+                  isDraw={isDraw}
+                  isExclusiveDraw={isExclusiveDraw}
+                  discountPercent={discountPercent}
+                  facePreview={facePreview}
+                  paidPreview={paidPreview}
+                  creditPreview={creditPreview}
+                  balancePreview={balancePreview}
                   selectedAmount={selectedAmount}
-                  onSelect={setSelectedAmount}
-                  enabledAmounts={poolStatus?.rules?.enabledTiers}
+                  setSelectedAmount={setSelectedAmount}
+                  spendNow={spendNow}
+                  setSpendNow={setSpendNow}
+                  enabledTiers={poolStatus?.rules?.enabledTiers}
+                  tier={tier}
+                  error={error}
+                  submitting={submitting}
+                  onPurchase={handlePurchase}
                 />
               </div>
-
-              {isDraw && tier && (
-                <div className="mb-4">
-                  <InstantPrizePreview
-                    tier={tier}
-                    selectedAmount={selectedAmount}
-                    compareAmounts={
-                      poolStatus?.rules?.enabledTiers?.length
-                        ? poolStatus.rules.enabledTiers
-                        : [50, 100, 200]
-                    }
-                  />
-                </div>
-              )}
-
-              {/* 联合抽奖可「先花」；独享付款即扣费，不展示 max / 留余额 */}
-              {isDraw && !isExclusiveDraw && (
-                <div className="mb-3">
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                    {t("voucher.spendNow")}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground text-sm">S$</span>
-                    <input
-                      type="number"
-                      value={spendNow}
-                      onChange={(e) => setSpendNow(e.target.value)}
-                      placeholder={`max S$${(creditPreview * 0.8).toFixed(0)}`}
-                      className="flex-1 h-10 px-3 rounded-lg border border-input bg-background text-base nums"
-                    />
-                    <span
-                      className={`text-xs px-2 py-1 rounded shrink-0 ${
-                        balancePreview >= creditPreview * 0.2
-                          ? "bg-green-50 dark:bg-green-950/35 text-green-600"
-                          : "bg-red-50 dark:bg-red-950/35 text-red-500"
-                      }`}
-                    >
-                      {t("voucher.balanceAfter")}: S${balancePreview.toFixed(0)}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    {t("voucher.minRemain")} S${(creditPreview * 0.2).toFixed(0)}
-                  </p>
-                </div>
-              )}
-
-              {isExclusiveDraw && (
-                <p className="text-[10px] text-muted-foreground mb-3 text-center rounded-lg bg-muted/50 py-1.5 px-2">
-                  {lang === "en"
-                    ? "Pay now · fee funds prize pools · draw on purchase"
-                    : "付款即参与 · 费用进奖池 · 购买当场抽奖"}
-                </p>
-              )}
-
-              {isDraw && !isExclusiveDraw && selectedAmount < 100 && (
-                <p className="text-[10px] text-amber-600 dark:text-amber-400 mb-3 text-center bg-amber-50 dark:bg-amber-950/35 rounded-lg py-1.5">
-                  {t("voucher.upgradeHint", { amount: "100" })}
-                </p>
-              )}
-
-              {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
-
-              <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] text-amber-950 leading-relaxed">
-                {t("voucher.paynowMobileTip")}
-              </div>
-
-              <Button className="w-full" size="lg" onClick={handlePurchase} loading={submitting}>
-                {isDraw
-                  ? t("voucher.payDraw")
-                  : t("voucher.payAmount", { amount: paidPreview.toFixed(0) })}
-              </Button>
-              <p className="text-[10px] text-muted-foreground text-center mt-2">
-                {t("voucher.paynowHint")}
-              </p>
+            </details>
+          ) : (
+          <Card id="buy-voucher" className="mb-2 scroll-mt-20">
+            <CardContent className="p-4">
+              <BuyVoucherPanel
+                t={t}
+                lang={lang === "en" ? "en" : "zh"}
+                isDraw={isDraw}
+                isExclusiveDraw={isExclusiveDraw}
+                discountPercent={discountPercent}
+                facePreview={facePreview}
+                paidPreview={paidPreview}
+                creditPreview={creditPreview}
+                balancePreview={balancePreview}
+                selectedAmount={selectedAmount}
+                setSelectedAmount={setSelectedAmount}
+                spendNow={spendNow}
+                setSpendNow={setSpendNow}
+                enabledTiers={poolStatus?.rules?.enabledTiers}
+                tier={tier}
+                error={error}
+                submitting={submitting}
+                onPurchase={handlePurchase}
+              />
             </CardContent>
           </Card>
+          )
         ) : !result ? (
           <div className="flex flex-col items-center rounded-2xl border border-border bg-card p-6 text-center">
             <Lock size={22} className="mb-2 text-muted-foreground" />
@@ -846,7 +1039,7 @@ function VoucherDrawInner() {
           </div>
         ) : null}
 
-        {/* Long trust/network/withdraw copy folded here — focal point is the purchase above */}
+        {/* Long trust/network/withdraw copy folded here */}
         {!result && <RulesDrawer isSelfUse={isSelfUse} isDraw={isDraw} t={t} />}
 
         {result && (
@@ -877,7 +1070,7 @@ function VoucherDrawInner() {
                 )}
               </div>
 
-              {/* 点一下赢余额：购券后 commit 即时小奖 */}
+              {/* 购后即时小奖转盘（仪式感） */}
               {isDraw &&
                 result.voucher?.id &&
                 (result.instantPrizePending || result.instantPrize) && (
@@ -891,6 +1084,10 @@ function VoucherDrawInner() {
                             valueSgd: result.instantPrize.valueSgd,
                           }
                         : null
+                    }
+                    instantCapSgd={
+                      resolveTier(Number(result.voucher?.amountSgd || selectedAmount))
+                        ?.instantPrizeCap
                     }
                     onClaim={
                       result.instantPrize
@@ -948,16 +1145,25 @@ function VoucherDrawInner() {
                   />
                 )}
 
-              {/* 随时可看大奖进度 */}
+              {/* 购后大奖舞台 */}
               {isDraw && poolStatus?.pool && (
-                <div id="grand-countdown" className="scroll-mt-20 text-left">
-                  <p className="text-xs font-semibold text-foreground mb-2 text-center">
-                    {lang === "en" ? "Grand prizes" : "抽大奖 · 进度"}
+                <div className="text-left space-y-2">
+                  <p className="text-xs font-semibold text-foreground text-center">
+                    {lang === "en"
+                      ? "You’re in the grand draw"
+                      : "你已进入大奖局"}
+                    {result.voucher?.drawWeight != null
+                      ? ` · ${lang === "en" ? "weight" : "权重"} ${result.voucher.drawWeight}`
+                      : ""}
                   </p>
-                  <PoolDashboard
+                  <GrandPrizeArena
+                    lang={lang === "en" ? "en" : "zh"}
                     countdowns={poolStatus.countdown || []}
                     instantPoolSgd={poolStatus.pool?.instantPool?.sgd || "0"}
                     dailyAvgVelocity={poolStatus.velocity?.dailyAvgCents || 0}
+                    myWeight={Number(result.voucher?.drawWeight || 0)}
+                    entryCount={1}
+                    showCeremonyPreview
                   />
                 </div>
               )}

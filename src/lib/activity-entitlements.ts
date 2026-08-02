@@ -143,13 +143,14 @@ export function resolveCustomerDrawLinks(input: {
         : `/activity/${encodeURIComponent(input.campaignId)}`;
 
   // 国庆赠送签权重挂在满赠活动上，倒计时看关联的大奖（独享）活动
+  // view=draw：落地为抽奖台优先（非买券主叙事）；hash 兼容旧链
   const countdownHref =
     isNdp && buySlug
-      ? `/voucher/${encodeURIComponent(buySlug)}#grand-countdown`
+      ? `/voucher/${encodeURIComponent(buySlug)}?view=draw#grand-countdown`
       : isNdp
         ? activityHref
         : slug
-          ? `/voucher/${encodeURIComponent(slug)}#grand-countdown`
+          ? `/voucher/${encodeURIComponent(slug)}?view=draw#grand-countdown`
           : activityHref;
 
   return { activityHref, countdownHref };
@@ -203,7 +204,7 @@ export function buildCustomerActivityBundles(input: {
     activityHref?: string | null;
     /**
      * 大奖倒计时：
-     * - 独享抽奖 → /voucher/{slug}#grand-countdown
+     * - 独享抽奖 → /voucher/{slug}?view=draw#grand-countdown
      * - 国庆赠送签 → 关联 buyVoucherSlug 的大奖活动（勿链 /voucher/ndp-slug）
      */
     countdownHref?: string | null;
@@ -294,7 +295,7 @@ export function buildCustomerActivityBundles(input: {
       return activityOf(d);
     }
     if (slug) {
-      return `/voucher/${encodeURIComponent(slug)}#grand-countdown`;
+      return `/voucher/${encodeURIComponent(slug)}?view=draw#grand-countdown`;
     }
     return activityOf(d);
   };

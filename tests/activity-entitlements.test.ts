@@ -64,7 +64,7 @@ describe("activity-entitlements grouping", () => {
     });
     expect(links.activityHref).toBe("/ndp/ndp-2uevq5-2026");
     expect(links.countdownHref).toBe(
-      "/voucher/meow-bbq-exclusive-ballot-15#grand-countdown"
+      "/voucher/meow-bbq-exclusive-ballot-15?view=draw#grand-countdown"
     );
   });
 
@@ -77,7 +77,7 @@ describe("activity-entitlements grouping", () => {
     });
     expect(links.activityHref).toBe("/voucher/meow-bbq-exclusive-ballot-15");
     expect(links.countdownHref).toBe(
-      "/voucher/meow-bbq-exclusive-ballot-15#grand-countdown"
+      "/voucher/meow-bbq-exclusive-ballot-15?view=draw#grand-countdown"
     );
   });
 
