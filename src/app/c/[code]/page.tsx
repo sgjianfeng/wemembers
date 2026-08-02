@@ -125,8 +125,12 @@ export default function PhysicalClaimPage() {
               🎰 抽奖券 · 绑定后可看大奖
             </p>
           )}
-          <p className="text-xs text-center text-muted-foreground">
-            自用券打印版 · 同品牌可核 · 绑后进余额
+          <p className="text-xs text-center text-muted-foreground leading-relaxed">
+            {/国庆|满赠|赠送/.test(data.title || "")
+              ? "国庆满赠纸质版 · 绑定后进券包 · 与线上赠送券一致"
+              : data.type === "draw"
+                ? "抽奖实体 · 绑后进余额/资格"
+                : "自用券打印版 · 同品牌可核 · 绑后进余额"}
           </p>
           <p className="text-[11px] text-center font-mono text-muted-foreground break-all">
             {data.code}
@@ -152,7 +156,7 @@ export default function PhysicalClaimPage() {
                 绑定到我的账号
               </Button>
               <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
-                未登录将跳转登录/注册。绑后券进钱包；抽奖可看大奖进度。
+                未登录将跳转登录/注册。绑后与线上券一致：满赠进券包，预付进余额。
               </p>
               <div className="flex gap-2 justify-center text-xs">
                 <Link
@@ -175,14 +179,28 @@ export default function PhysicalClaimPage() {
           {data.status === "claimed" && data.claimedByYou && (
             <div className="space-y-2">
               <p className="text-sm text-emerald-600 dark:text-emerald-400 text-center font-medium">
-                已绑定到你的账号
-                {data.type === "voucher"
-                  ? " · 按线上券处理"
-                  : " · 已按线上抽奖资格处理"}
+                {msg ||
+                  (data.type === "draw"
+                    ? "已绑定 · 线上抽奖资格已同步"
+                    : /国庆|满赠|赠送/.test(data.title || "")
+                      ? "已绑定 · 国庆赠送券已进券包"
+                      : "已绑定 · 线上预付余额已同步")}
               </p>
-              <Link href={data.type === "draw" ? "/home" : "/wallet"}>
+              <Link
+                href={
+                  data.type === "draw"
+                    ? "/home"
+                    : /国庆|满赠|赠送/.test(data.title || "")
+                      ? "/wallet"
+                      : "/balance"
+                }
+              >
                 <Button className="w-full" variant="outline">
-                  {data.type === "draw" ? "查看活动/首页" : "打开我的钱包"}
+                  {data.type === "draw"
+                    ? "查看活动/首页"
+                    : /国庆|满赠|赠送/.test(data.title || "")
+                      ? "打开券包"
+                      : "打开预付余额"}
                 </Button>
               </Link>
             </div>

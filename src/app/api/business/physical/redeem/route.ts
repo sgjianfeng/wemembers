@@ -112,7 +112,84 @@ export async function POST(request: NextRequest) {
         return { error: "该券已过期", status: 400 as const };
       }
 
-      const wasClaimed = ticket.status === "claimed" || Boolean(ticket.voucherId);
+      const wasClaimed =
+        ticket.status === "claimed" ||
+        Boolean(ticket.voucherId) ||
+        Boolean(ticket.customerCouponId);
+
+      // ── 已绑国庆赠送 CustomerCoupon：核销线上赠送券 + 实体码 ──
+      if (ticket.customerCouponId) {
+        const claim = await tx.customerCoupon.findUnique({
+          where: { id: ticket.customerCouponId },
+          include: { coupon: true },
+        });
+        if (!claim) {
+          return { error: "关联赠送券不存在", status: 400 as const };
+        }
+        if (claim.status === "used") {
+          await tx.physicalTicket.update({
+            where: { id: ticket.id },
+            data: {
+              status: "redeemed",
+              redeemedAt: new Date(),
+              redeemedById: session.userId,
+              redeemedStoreId: actingStoreId,
+            },
+          });
+          return { error: "该赠送券已核销", status: 400 as const };
+        }
+        if (claim.status !== "available") {
+          return {
+            error: `赠送券状态不可核：${claim.status}`,
+            status: 400 as const,
+          };
+        }
+        if (claim.expiresAt && claim.expiresAt.getTime() < Date.now()) {
+          return { error: "赠送券已过期", status: 400 as const };
+        }
+
+        const now = new Date();
+        await tx.customerCoupon.update({
+          where: { id: claim.id },
+          data: { status: "used", usedAt: now },
+        });
+        await tx.coupon.update({
+          where: { id: claim.couponId },
+          data: { usedCount: { increment: 1 } },
+        });
+        await tx.redemptionLog.create({
+          data: {
+            customerId: claim.customerId,
+            businessId,
+            storeId: actingStoreId!,
+            customerCouponId: claim.id,
+            couponId: claim.couponId,
+            amountSaved: claim.coupon.valueCents / 100,
+            staffUserId: session.userId,
+          },
+        });
+        await tx.physicalTicket.update({
+          where: { id: ticket.id },
+          data: {
+            status: "redeemed",
+            redeemedAt: now,
+            redeemedById: session.userId,
+            redeemedStoreId: actingStoreId,
+          },
+        });
+        return {
+          error: null,
+          status: 200 as const,
+          title: claim.coupon.title,
+          valueCents: claim.coupon.valueCents,
+          wasClaimed: true,
+          soldStoreName: ticket.soldStore?.name || null,
+          redeemStoreName: actingStoreName,
+          remainingBalanceCents: 0,
+          productKind: "gift",
+          displayKind: "ndp_gift",
+        };
+      }
 
       // ── 已绑线上自用 Voucher ──
       if (ticket.voucherId && ticket.voucher) {

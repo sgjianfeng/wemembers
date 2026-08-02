@@ -5,7 +5,11 @@ import {
   canClaimPhysicalStatus,
   normalizePhysicalCode,
 } from "@/lib/physical-tickets";
-import { materializePhysicalToVoucher } from "@/lib/physical-to-voucher";
+import {
+  isNdpGiftCampaign,
+  materializePhysicalToNdpGift,
+  materializePhysicalToVoucher,
+} from "@/lib/physical-to-voucher";
 
 // GET /api/physical/[code] — 公开查实体码状态（绑定页）
 export async function GET(
@@ -106,11 +110,31 @@ export async function POST(
       }
       if (ticket.status === "claimed") {
         if (ticket.customerId === session.userId) {
+          // 已绑国庆赠送券
+          if (ticket.customerCouponId) {
+            const cc = await tx.customerCoupon.findUnique({
+              where: { id: ticket.customerCouponId },
+            });
+            return {
+              error: null,
+              status: 200 as const,
+              already: true,
+              ticket,
+              kind: "ndp_gift" as const,
+              customerCoupon: cc,
+              giftCents: ticket.batch.valueCents,
+              expiresAt: cc?.expiresAt || null,
+            };
+          }
           return {
             error: null,
             status: 200 as const,
             already: true,
             ticket,
+            kind: "voucher" as const,
+            voucher: ticket.voucherId
+              ? await tx.voucher.findUnique({ where: { id: ticket.voucherId } })
+              : null,
           };
         }
         return { error: "该券已绑定其他账号", status: 409 as const };
@@ -126,6 +150,54 @@ export async function POST(
         ticket.batch.validUntil.getTime() < Date.now()
       ) {
         return { error: "该券已过期", status: 400 as const };
+      }
+
+      // ── 国庆满赠实体 → CustomerCoupon（与线上赠送券一致）──
+      if (ticket.batch.type === "voucher" && ticket.batch.campaignId) {
+        const camp = await tx.campaign.findUnique({
+          where: { id: ticket.batch.campaignId },
+          select: {
+            id: true,
+            type: true,
+            name: true,
+            tags: true,
+            rulesSnapshot: true,
+          },
+        });
+        if (camp && isNdpGiftCampaign(camp)) {
+          try {
+            const mat = await materializePhysicalToNdpGift(tx, {
+              ticketId: ticket.id,
+              customerId: session.userId,
+            });
+            return {
+              error: null,
+              status: 200 as const,
+              already: !mat.created,
+              ticket: { ...ticket, ...mat.ticket, batch: ticket.batch },
+              kind: "ndp_gift" as const,
+              customerCoupon: mat.customerCoupon,
+              giftCents: "giftCents" in mat ? mat.giftCents : ticket.batch.valueCents,
+              expiresAt:
+                "expiresAt" in mat && mat.expiresAt
+                  ? mat.expiresAt
+                  : mat.customerCoupon?.expiresAt || null,
+            };
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : "BIND_FAIL";
+            if (msg === "ALREADY_REDEEMED") {
+              return { error: "该券已核销，无法绑定", status: 400 as const };
+            }
+            if (msg === "NDP_CAMPAIGN_REQUIRED") {
+              return {
+                error: "国庆活动无效，请联系门店",
+                status: 400 as const,
+              };
+            }
+            console.error("physical NDP claim:", e);
+            return { error: "绑定失败", status: 500 as const };
+          }
+        }
       }
 
       // ── 自用代金 / 独享抽奖实体 → Voucher(self_use) ──
@@ -163,6 +235,7 @@ export async function POST(
             status: 200 as const,
             already: false,
             ticket: { ...ticket, ...mat.ticket, batch: ticket.batch },
+            kind: "voucher" as const,
             voucher: mat.voucher,
             instantPrize: mat.instantPrize,
             prizeFulfillment: realPrize ? "balance" : "store",
@@ -186,14 +259,56 @@ export async function POST(
       return { error: "不支持的票种", status: 400 as const };
     });
 
-    if (result.error) {
+    if (result.error || !result.ticket) {
       return NextResponse.json(
-        { error: result.error },
-        { status: result.status }
+        { error: result.error || "绑定失败" },
+        { status: result.status || 500 }
       );
     }
 
-    const isDraw = result.ticket.batch.type === "draw";
+    const ticketOut = result.ticket;
+
+    // 国庆满赠实体绑定
+    if ("kind" in result && result.kind === "ndp_gift") {
+      const giftCents =
+        "giftCents" in result && typeof result.giftCents === "number"
+          ? result.giftCents
+          : ticketOut.batch.valueCents;
+      const expRaw =
+        "expiresAt" in result && result.expiresAt
+          ? result.expiresAt
+          : null;
+      const exp = expRaw
+        ? new Date(expRaw as Date).toLocaleDateString("zh-CN")
+        : null;
+      const cc =
+        "customerCoupon" in result ? result.customerCoupon : null;
+      return NextResponse.json({
+        data: {
+          code,
+          status: "claimed",
+          already: result.already,
+          type: "ndp_gift",
+          title: ticketOut.batch.title,
+          productKind: "gift",
+          displayKind: "ndp_gift",
+          paymentMethod: "free",
+          giftCoupon: {
+            id: cc?.id,
+            valueSgd: (giftCents / 100).toFixed(0),
+            expiresAt: exp,
+          },
+          voucher: null,
+          message: exp
+            ? `已绑定：国庆赠送券 S$${(giftCents / 100).toFixed(0)} 已放入券包 · 有效至 ${exp}`
+            : `已绑定：国庆赠送券 S$${(giftCents / 100).toFixed(0)} 已放入券包`,
+          goWallet: true,
+          goBalance: false,
+        },
+      });
+    }
+
+    const isDraw = ticketOut.batch.type === "draw";
     const v = "voucher" in result ? result.voucher : null;
     const prize =
       "instantPrize" in result ? result.instantPrize : null;
@@ -203,8 +318,8 @@ export async function POST(
         code,
         status: "claimed",
         already: result.already,
-        type: result.ticket.batch.type,
-        title: result.ticket.batch.title,
+        type: ticketOut.batch.type,
+        title: ticketOut.batch.title,
         productKind: "self_use",
         displayKind: isDraw ? "exclusive" : "self_use",
         paymentMethod: v?.paymentMethod || "physical",
