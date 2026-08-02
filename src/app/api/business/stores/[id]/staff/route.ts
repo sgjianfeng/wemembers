@@ -101,14 +101,24 @@ export async function POST(
     if (staffUser) break;
   }
 
-  if (staffUser && staffUser.role !== "customer" && staffUser.role !== "staff") {
+  // 顾客账号专用于收券，不可直接改成店员（否则满赠/发券找不到客户）
+  if (staffUser?.role === "customer") {
+    return NextResponse.json(
+      {
+        error:
+          "该手机号已是顾客账号（用于收券）。店员请换一个手机号；发券请走「活动券 / 满赠台」。",
+      },
+      { status: 409 }
+    );
+  }
+  if (staffUser && staffUser.role !== "staff") {
     return NextResponse.json({ error: "该用户已是其他角色" }, { status: 409 });
   }
 
   const passwordHash = password ? await hashPassword(password) : undefined;
 
   if (staffUser) {
-    // 一律纠正为 E.164，避免登录查 +65 对不上本地号
+    // 已有店员：纠正 E.164、换绑门店、可更新密码
     staffUser = await prisma.user.update({
       where: { id: staffUser.id },
       data: {
@@ -120,6 +130,7 @@ export async function POST(
       },
     });
   } else {
+    // 若 E.164 空闲但本地号被企业占用，店员仍可用 E.164 新建
     staffUser = await prisma.user.create({
       data: {
         phone: e164,

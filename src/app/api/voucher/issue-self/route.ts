@@ -277,22 +277,31 @@ export async function POST(request: NextRequest) {
 
     let customerId = customerIdBody;
     if (!customerId && customerPhone) {
-      const phone = customerPhone.replace(/\s/g, "");
-      let user = await prisma.user.findFirst({
-        where: { phone, role: "customer" },
-        select: { id: true },
-      });
-      if (!user) {
-        user = await prisma.user.create({
-          data: {
-            phone,
-            role: "customer",
-            displayName: phone.slice(-4) ? `客户${phone.slice(-4)}` : "顾客",
-          },
-          select: { id: true },
-        });
+      const { findOrCreateCustomerByPhone } = await import(
+        "@/lib/customer-by-phone"
+      );
+      try {
+        const found = await findOrCreateCustomerByPhone(prisma, customerPhone);
+        customerId = found.id;
+      } catch (e) {
+        const code = e instanceof Error ? e.message : "";
+        if (code === "PHONE_NOT_CUSTOMER") {
+          return NextResponse.json(
+            {
+              error:
+                "该手机号已是店员/企业账号写法，请用顾客账号常用格式，或换号发券",
+            },
+            { status: 400 }
+          );
+        }
+        if (code === "INVALID_PHONE") {
+          return NextResponse.json(
+            { error: "请填写有效手机号" },
+            { status: 400 }
+          );
+        }
+        throw e;
       }
-      customerId = user.id;
     }
     if (!customerId) {
       // 现金销售可不绑手机（短码）；无支付已强制手机

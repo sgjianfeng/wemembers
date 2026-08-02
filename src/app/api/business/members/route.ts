@@ -58,14 +58,29 @@ export async function POST(request: NextRequest) {
     const { phone, name, tags } = await request.json();
     if (!phone) return NextResponse.json({ error: "请提供手机号" }, { status: 400 });
 
-    // 查找或创建客户用户
-    let customer = await prisma.user.findUnique({ where: { phone } });
-    if (!customer) {
-      customer = await prisma.user.create({
-        data: { phone, displayName: name || null, role: "customer", status: "active" },
-      });
-      // 给新客户发注册Token
-      await prisma.tokenAccount.create({ data: { userId: customer.id, balance: 100, totalEarned: 100 } });
+    // 查找或创建「顾客」账号（兼容 +65 / 本地号，不误绑企业）
+    const { findOrCreateCustomerByPhone } = await import(
+      "@/lib/customer-by-phone"
+    );
+    let customer: { id: string };
+    try {
+      const found = await findOrCreateCustomerByPhone(prisma, phone);
+      customer = { id: found.id };
+      if (name && found.created) {
+        await prisma.user.update({
+          where: { id: found.id },
+          data: { displayName: name },
+        });
+      }
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "";
+      if (code === "PHONE_NOT_CUSTOMER") {
+        return NextResponse.json(
+          { error: "该手机号已是店员/企业账号，请用顾客手机号" },
+          { status: 400 }
+        );
+      }
+      return NextResponse.json({ error: "请提供有效手机号" }, { status: 400 });
     }
 
     // 检查是否已存在

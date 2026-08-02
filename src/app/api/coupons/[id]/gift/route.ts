@@ -20,11 +20,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!claim) return NextResponse.json({ error: "无法转赠此券" }, { status: 400 });
   if (!claim.coupon.isGiftable) return NextResponse.json({ error: "此券不允许转赠" }, { status: 400 });
 
-  // 查找或创建目标用户
-  let target = await prisma.user.findUnique({ where: { phone: targetPhone } });
-  if (!target) {
-    target = await prisma.user.create({ data: { phone: targetPhone, role: "customer", status: "active" } });
-    await prisma.tokenAccount.create({ data: { userId: target.id, balance: 100, totalEarned: 100 } });
+  // 查找或创建「顾客」账号（兼容 +65 / 本地号，不误绑企业）
+  const { findOrCreateCustomerByPhone } = await import("@/lib/customer-by-phone");
+  let target: { id: string };
+  try {
+    const found = await findOrCreateCustomerByPhone(prisma, targetPhone);
+    target = { id: found.id };
+  } catch (e) {
+    const code = e instanceof Error ? e.message : "";
+    if (code === "PHONE_NOT_CUSTOMER") {
+      return NextResponse.json(
+        { error: "该手机号已是非顾客账号，无法转赠" },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json({ error: "请输入有效手机号" }, { status: 400 });
   }
 
   // 转赠

@@ -12,6 +12,9 @@ import type { Prisma } from "@prisma/client";
 import { generateQrCode } from "@/lib/utils";
 import { normalizePhoneLocal } from "@/lib/physical-tickets";
 import {
+  findOrCreateCustomerByPhone as findOrCreateCustomerByPhoneShared,
+} from "@/lib/customer-by-phone";
+import {
   calculateTierWeight,
   resolveTier,
 } from "@/lib/draw-v2";
@@ -398,45 +401,12 @@ export async function ensureNdpGiftCoupon(
   return coupon;
 }
 
+/** 发券：优先找顾客账号（兼容 +65 / 本地号），不误伤同号企业/店员 */
 export async function findOrCreateCustomerByPhone(
   tx: Tx,
   phoneRaw: string
 ): Promise<{ id: string; phone: string; created: boolean }> {
-  const phone = normalizePhoneLocal(phoneRaw);
-  if (!phone || phone.length < 8) {
-    throw new Error("INVALID_PHONE");
-  }
-  const existing = await tx.user.findFirst({
-    where: { phone, role: "customer" },
-    select: { id: true, phone: true },
-  });
-  if (existing?.phone) {
-    return { id: existing.id, phone: existing.phone, created: false };
-  }
-  // phone @unique — also check any role
-  const anyPhone = await tx.user.findFirst({
-    where: { phone },
-    select: { id: true, role: true, phone: true },
-  });
-  if (anyPhone?.role === "customer" && anyPhone.phone) {
-    return { id: anyPhone.id, phone: anyPhone.phone, created: false };
-  }
-  if (anyPhone && anyPhone.role !== "customer") {
-    throw new Error("PHONE_NOT_CUSTOMER");
-  }
-  const created = await tx.user.create({
-    data: {
-      phone,
-      role: "customer",
-      displayName: phone.length >= 4 ? `客户${phone.slice(-4)}` : "顾客",
-    },
-    select: { id: true, phone: true },
-  });
-  return {
-    id: created.id,
-    phone: created.phone || phone,
-    created: true,
-  };
+  return findOrCreateCustomerByPhoneShared(tx, phoneRaw);
 }
 
 export type IssueNdpGrantInput = {
@@ -699,7 +669,8 @@ export function ndpErrorMessage(code: string, lang: "zh" | "en" = "zh"): string 
     BELOW_MIN_SPEND: `消费未满 S$${(NDP_MIN_SPEND_CENTS / 100).toFixed(0)}，无法发放`,
     DUPLICATE_RECEIPT: "此消费单今日已发过券，请勿重复发放",
     INVALID_PHONE: "请输入有效手机号",
-    PHONE_NOT_CUSTOMER: "该手机号已注册为非顾客账号",
+    PHONE_NOT_CUSTOMER:
+      "该手机号的 E.164 写法已是店员/企业账号；若另有顾客账号请用其常用号码格式，或换号发券",
     NO_CUSTOMER: "券未绑定顾客，无法发放国庆赠送券",
   };
   const en: Record<string, string> = {
