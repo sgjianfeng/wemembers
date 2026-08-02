@@ -113,11 +113,15 @@ export const DEFAULT_VOUCHER_TIERS: VoucherTierConfig[] = [
   { min: 10, max: 10, tier: "small", instantPrizeCap: 0 },
   { min: 50, max: 50, tier: "small", instantPrizeCap: 8 },
   { min: 100, max: 100, tier: "medium", instantPrizeCap: 20 },
+  /** 大奖活动常用中间档（如 100/150/200） */
+  { min: 150, max: 150, tier: "medium", instantPrizeCap: 30 },
   { min: 200, max: 200, tier: "large", instantPrizeCap: 40 },
 ];
 
 /** 抽奖默认三档（与 draw_standard 模板一致） */
 export const DRAW_FACE_AMOUNTS = [50, 100, 200] as const;
+/** 品牌大奖 / 独享抽奖常用三档（可被产品 enabledTiers 覆盖） */
+export const GRAND_DRAW_FACE_AMOUNTS = [100, 150, 200] as const;
 /** 纯代金默认可开面额（≥S$2） */
 export const VOUCHER_FACE_AMOUNTS = [2, 5, 10, 50, 100, 200] as const;
 /** 纯代金最低面额（SGD 整数） */
@@ -210,6 +214,7 @@ export function resolveTier(amountSgd: number): VoucherTierConfig | null {
   }
   // Fallback: map nearest known ladder
   if (amt >= 200) return DEFAULT_VOUCHER_TIERS.find((t) => t.min === 200) ?? null;
+  if (amt >= 150) return DEFAULT_VOUCHER_TIERS.find((t) => t.min === 150) ?? null;
   if (amt >= 100) return DEFAULT_VOUCHER_TIERS.find((t) => t.min === 100) ?? null;
   if (amt >= 50) return DEFAULT_VOUCHER_TIERS.find((t) => t.min === 50) ?? null;
   if (amt >= 10) return DEFAULT_VOUCHER_TIERS.find((t) => t.min === 10) ?? null;

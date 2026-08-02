@@ -8,8 +8,8 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { useLang } from "@/components/i18n/LanguageProvider";
 
-/** Common face amounts (SGD) merchants can toggle */
-const PRESET_TIERS = [2, 5, 10, 20, 50, 100, 200, 500] as const;
+/** Common face amounts (SGD) merchants can toggle（含大奖定制档 150） */
+const PRESET_TIERS = [2, 5, 10, 20, 50, 100, 150, 200, 500] as const;
 
 type ProductDetail = {
   id: string;

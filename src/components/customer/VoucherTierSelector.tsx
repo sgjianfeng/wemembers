@@ -24,6 +24,7 @@ const PRESET: TierOption[] = [
   { value: 10, label: "S$10", desc: "试点代金" },
   { value: 50, label: "S$50", descKey: "voucher.smallTier.desc", badge: "featured" },
   { value: 100, label: "S$100", descKey: "voucher.mediumTier.desc", badge: "boost" },
+  { value: 150, label: "S$150", desc: "进阶 · 大奖权重" },
   { value: 200, label: "S$200", descKey: "voucher.largeTier.desc", badge: "max" },
 ];
 
