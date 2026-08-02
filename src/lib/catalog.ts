@@ -208,50 +208,154 @@ export async function createVoucherProduct(
       });
       const packKind = String(snapshot.packKind || "");
       const listScope = String(snapshot.listScope || "hot");
-      const activity = await tx.campaign.create({
-        data: {
-          businessId,
-          name,
-          description:
-            input.description ||
-            `常驻上架 · 含券产品「${name}」· 门店可选用`,
-          // 与产品同型，避免抽奖/代金在客户端判反（勿用 promotion）
-          type: type === "lucky_draw_v2" ? "lucky_draw_v2" : "voucher_sale",
-          role: "activity",
-          color:
-            input.color ||
-            (type === "lucky_draw_v2" ? "#FF6B35" : "#1A6EFF"),
-          startDate: now,
-          endDate: end,
-          drawDate: type === "lucky_draw_v2" ? end : null,
-          status: status === "active" ? "active" : "draft",
-          productKind,
-          templateId,
-          rulesSnapshot: JSON.stringify(snapshot),
-          voucherTiers: voucherTiers ? JSON.stringify(voucherTiers) : null,
-          slug: `a-${slug}`,
-          storeIds: serializeStoreIds(stores.map((s) => s.id)),
-          joinable: false,
-          allowCollaboration: false,
-          budgetPercent: 0,
-          instantPoolRatio: Number(snapshot.instantPoolRatio) || 0,
-          grandPoolRatio: Number(snapshot.grandPoolRatio) || 0,
-          tags: JSON.stringify([
-            "activity",
-            "shelf",
-            product.id,
-            packKind,
-            `scope:${listScope}`,
-          ]),
-        },
-      });
-      await tx.campaignProduct.create({
-        data: {
-          campaignId: activity.id,
-          productId: product.id,
-          sortOrder: 0,
-        },
-      });
+      const isLongTermPack =
+        packKind === "face_open" ||
+        packKind === "face_threshold" ||
+        packKind === "discount_10";
+
+      // 长期券：原价 / 门槛 / 9 折 共用一个活动容器，不各自开 shelf
+      if (isLongTermPack) {
+        let longTerm = await tx.campaign.findFirst({
+          where: {
+            businessId,
+            role: "activity",
+            status: { in: ["active", "draft"] },
+            OR: [
+              { name: "长期券" },
+              { name: { startsWith: "长期券" } },
+              { tags: { contains: "category:long_term" } },
+              { tags: { contains: "face_open" } },
+              { rulesSnapshot: { contains: '"packKind":"face_open"' } },
+            ],
+          },
+          orderBy: { createdAt: "asc" },
+        });
+        if (!longTerm) {
+          longTerm = await tx.campaign.create({
+            data: {
+              businessId,
+              name: "长期券",
+              description:
+                "原价代金 · 9折卡等门店常年可售 · 进店可见",
+              type: "voucher_sale",
+              role: "activity",
+              color: input.color || "#1A6EFF",
+              startDate: now,
+              endDate: end,
+              status: status === "active" ? "active" : "draft",
+              productKind: "self_use",
+              templateId: templateId || "self_use_voucher",
+              rulesSnapshot: JSON.stringify({
+                ...snapshot,
+                packKind: packKind || "face_open",
+                listScope: "store",
+              }),
+              voucherTiers: voucherTiers
+                ? JSON.stringify(voucherTiers)
+                : null,
+              slug: `a-long-term-${businessId.slice(-6)}`,
+              storeIds: serializeStoreIds(stores.map((s) => s.id)),
+              joinable: false,
+              allowCollaboration: false,
+              budgetPercent: 0,
+              tags: JSON.stringify([
+                "activity",
+                "shelf",
+                "category:long_term",
+                "long_term",
+                "default_activity",
+                `scope:store`,
+              ]),
+            },
+          });
+        } else if (longTerm.name !== "长期券" || longTerm.status !== "active") {
+          const tags = (() => {
+            try {
+              const t = JSON.parse(longTerm.tags || "[]") as string[];
+              return Array.isArray(t) ? t : [];
+            } catch {
+              return [] as string[];
+            }
+          })();
+          await tx.campaign.update({
+            where: { id: longTerm.id },
+            data: {
+              name: "长期券",
+              status: "active",
+              tags: JSON.stringify([
+                ...new Set([
+                  ...tags,
+                  "category:long_term",
+                  "long_term",
+                  "shelf",
+                  "default_activity",
+                ]),
+              ]),
+            },
+          });
+        }
+        const existingLink = await tx.campaignProduct.findFirst({
+          where: { campaignId: longTerm.id, productId: product.id },
+        });
+        if (!existingLink) {
+          const maxSort = await tx.campaignProduct.aggregate({
+            where: { campaignId: longTerm.id },
+            _max: { sortOrder: true },
+          });
+          await tx.campaignProduct.create({
+            data: {
+              campaignId: longTerm.id,
+              productId: product.id,
+              sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
+            },
+          });
+        }
+      } else {
+        const activity = await tx.campaign.create({
+          data: {
+            businessId,
+            name,
+            description:
+              input.description ||
+              `常驻上架 · 含券产品「${name}」· 门店可选用`,
+            // 与产品同型，避免抽奖/代金在客户端判反（勿用 promotion）
+            type: type === "lucky_draw_v2" ? "lucky_draw_v2" : "voucher_sale",
+            role: "activity",
+            color:
+              input.color ||
+              (type === "lucky_draw_v2" ? "#FF6B35" : "#1A6EFF"),
+            startDate: now,
+            endDate: end,
+            drawDate: type === "lucky_draw_v2" ? end : null,
+            status: status === "active" ? "active" : "draft",
+            productKind,
+            templateId,
+            rulesSnapshot: JSON.stringify(snapshot),
+            voucherTiers: voucherTiers ? JSON.stringify(voucherTiers) : null,
+            slug: `a-${slug}`,
+            storeIds: serializeStoreIds(stores.map((s) => s.id)),
+            joinable: false,
+            allowCollaboration: false,
+            budgetPercent: 0,
+            instantPoolRatio: Number(snapshot.instantPoolRatio) || 0,
+            grandPoolRatio: Number(snapshot.grandPoolRatio) || 0,
+            tags: JSON.stringify([
+              "activity",
+              "shelf",
+              product.id,
+              packKind,
+              `scope:${listScope}`,
+            ]),
+          },
+        });
+        await tx.campaignProduct.create({
+          data: {
+            campaignId: activity.id,
+            productId: product.id,
+            sortOrder: 0,
+          },
+        });
+      }
     }
 
     return product;

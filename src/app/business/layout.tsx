@@ -71,25 +71,19 @@ export default async function BusinessLayout({
   ];
 
   /**
-   * 三层：券产品(可售) / 权益券(赠送) / 活动设置；日常操作在底栏「活动券」
+   * 三大块：券管理（模版+产品）/ 活动管理 / 活动券（底栏不动）
    */
   const businessMore = [
+    {
+      icon: "coupons" as const,
+      label: lang === "en" ? "Vouchers" : "券管理",
+      href: "/business/vouchers",
+      section: moreOp,
+    },
     {
       icon: "campaigns" as const,
       label: lang === "en" ? "Activities" : "活动管理",
       href: "/business/campaigns",
-      section: moreOp,
-    },
-    {
-      icon: "gift" as const,
-      label: lang === "en" ? "Products" : "券产品",
-      href: "/business/products",
-      section: moreOp,
-    },
-    {
-      icon: "coupons" as const,
-      label: t("business.tabs.coupons", lang),
-      href: "/business/coupons",
       section: moreOp,
     },
     {

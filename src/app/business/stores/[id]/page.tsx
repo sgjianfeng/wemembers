@@ -165,8 +165,8 @@ export default async function BusinessStoreDetailPage({
               </p>
               <p className="text-[10px] text-white/85 mt-0.5">
                 {lang === "en"
-                  ? "Activity gift desk · generic scan · store locked"
-                  : "活动满赠台 · 通用核销 · 门店已锁定"}
+                  ? "Day-to-day perks · store locked"
+                  : "本店日常权益操作 · 门店已锁定"}
               </p>
             </CardContent>
           </Card>
@@ -181,18 +181,6 @@ export default async function BusinessStoreDetailPage({
             </CardContent>
           </Card>
         </Link>
-        <Link
-          href={`/business/ndp-desk?storeId=${encodeURIComponent(store.id)}`}
-        >
-          <Card className="border-rose-200 bg-rose-50 dark:bg-rose-950/30">
-            <CardContent className="p-3">
-              <p className="text-lg">🇸🇬</p>
-              <p className="text-sm font-semibold mt-1 text-foreground">
-                {lang === "en" ? "Gift desk" : "活动满赠台"}
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
         <a href={publicUrl} target="_blank" rel="noreferrer">
           <Card className="hover:border-primary/30">
             <CardContent className="p-3">
@@ -203,16 +191,6 @@ export default async function BusinessStoreDetailPage({
             </CardContent>
           </Card>
         </a>
-        <Link href="/business/physical">
-          <Card className="hover:border-primary/30">
-            <CardContent className="p-3">
-              <p className="text-lg">🖨️</p>
-              <p className="text-sm font-semibold mt-1 text-foreground">
-                {lang === "en" ? "Print tickets" : "印实体券"}
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
       </div>
 
       <div className="px-4 mt-4">

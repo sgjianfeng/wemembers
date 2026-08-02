@@ -55,27 +55,21 @@ export default async function CouponsPage() {
         </div>
         <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
           {lang === "en"
-            ? "Gift / claim perks (catalog). Sellable 9% cards live under Products. Link them into an Activity to show under Activity perks."
-            : "赠送/积分领取类权益（目录）。可售的 9 折卡等在「券产品」。挂到「活动」后，在「活动券」按场次操作。"}
+            ? "Gift / claim perks under Voucher catalog (spend & get family). Sellable SKUs are Products."
+            : "满赠族赠送权益（归属券管理）。可售 SKU 在「产品」。"}
         </p>
         <div className="flex flex-wrap gap-2 mt-2">
           <Link
-            href="/business/products"
+            href="/business/vouchers"
             className="text-[11px] font-medium text-primary px-2.5 py-1 rounded-full bg-primary/10"
           >
-            {lang === "en" ? "Sellable products →" : "可售 · 券产品 →"}
+            {lang === "en" ? "← Voucher catalog" : "← 券管理"}
           </Link>
           <Link
-            href="/business/offers"
+            href="/business/products"
             className="text-[11px] font-medium text-foreground px-2.5 py-1 rounded-full bg-muted"
           >
-            {lang === "en" ? "Activity perks →" : "活动券 →"}
-          </Link>
-          <Link
-            href="/business/campaigns"
-            className="text-[11px] font-medium text-foreground px-2.5 py-1 rounded-full bg-muted"
-          >
-            {lang === "en" ? "Activities →" : "活动设置 →"}
+            {lang === "en" ? "Products →" : "产品 →"}
           </Link>
         </div>
       </div>

@@ -24,31 +24,35 @@ type Product = {
 const PACKS = [
   {
     id: "discount_10",
+    family: "prepaid" as const,
     nameZh: "9折优惠卡",
     nameEn: "10% off store card",
-    descZh: "付90得100 · 档 10/20/50/100/200 · 热门展示",
-    descEn: "Pay 90 get 100 · tiers 10–200 · shown in hot",
+    descZh: "折扣/预付 · 付90得100 · 档 10–200",
+    descEn: "Prepaid · pay 90 get 100 · tiers 10–200",
   },
   {
     id: "face_open",
-    nameZh: "原价无门槛代金（门店基础）",
-    nameEn: "Face voucher base (store only)",
-    descZh: "付多少抵多少 · 不进首页热门 · 门店列表可见",
-    descEn: "Pay face · store catalog only · not on home hot",
+    family: "prepaid" as const,
+    nameZh: "原价无门槛代金",
+    nameEn: "Face voucher (no min)",
+    descZh: "折扣/预付 · 付多少抵多少 · 门店长期",
+    descEn: "Prepaid · face value · store long-term",
   },
   {
     id: "face_threshold",
-    nameZh: "原价门槛代金（门店基础）",
-    nameEn: "Face min-spend base (store only)",
-    descZh: "券面×10 门槛 · 不进首页热门",
-    descEn: "Min spend ×10 · store catalog only",
+    family: "prepaid" as const,
+    nameZh: "原价门槛代金",
+    nameEn: "Face voucher (min spend)",
+    descZh: "折扣/预付 · 券面×10 门槛 · 门店长期",
+    descEn: "Prepaid · min spend ×10 · store long-term",
   },
   {
     id: "exclusive_ballot",
-    nameZh: "投箱大奖·独享 15%",
-    nameEn: "Ballot draw 15%",
-    descZh: "50/100 · 3%+2%+10% · 可打入箱票 · 热门",
-    descEn: "50/100 · exclusive 15% · hot feed",
+    family: "exclusive" as const,
+    nameZh: "独享倒计时大奖",
+    nameEn: "Exclusive countdown draw",
+    descZh: "独享大奖 · 15% · 50/100 · 可入箱",
+    descEn: "Exclusive · 15% · 50/100 · ballot",
   },
 ] as const;
 
@@ -64,6 +68,16 @@ export default function BusinessProductsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const CREATE_PRESETS = [2, 5, 10, 20, 50, 100, 200, 500] as const;
+
+  useEffect(() => {
+    try {
+      const f = new URLSearchParams(window.location.search).get("family");
+      if (f === "exclusive") setPackKind("exclusive_ballot");
+      else if (f === "prepaid") setPackKind("discount_10");
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     // Default tiers per pack when switching pack
@@ -141,99 +155,31 @@ export default function BusinessProductsPage() {
     <div className="pb-8 min-h-screen">
       <div className="px-4 py-3 border-b border-border sticky top-0 bg-background/95 z-10 backdrop-blur">
         <div className="flex items-center gap-3">
-          <Link href="/business" className="text-xs text-primary font-medium">
-            ← {lang === "en" ? "Home" : "概览"}
+          <Link href="/business/vouchers" className="text-xs text-primary font-medium">
+            ← {lang === "en" ? "Voucher catalog" : "券管理"}
           </Link>
         </div>
         <h1 className="text-lg font-semibold text-foreground mt-1">
-          {lang === "en" ? "Voucher products" : "券产品"}
+          {lang === "en" ? "Products" : "产品"}
         </h1>
         <p className="text-xs text-muted-foreground mt-0.5">
           {lang === "en"
-            ? "Catalog of sellable lines (9% cards, face vouchers, draws). Gift perks live under Gift catalog; link both into Activities."
-            : "可售卖线总目录（9 折卡、原价代金、大奖等）。赠送权益在「权益券」；两者都挂到「活动」后，在「活动券」操作。"}
+            ? "Sellable SKUs from templates (prepaid / exclusive). Day-to-day ops stay on Offers."
+            : "从模版生成的可售 SKU（折扣预付 / 独享大奖）。日常操作仍在「活动券」。"}
         </p>
         <div className="flex flex-wrap gap-2 mt-2">
           <Link
-            href="/business/coupons"
-            className="text-[11px] font-medium text-foreground px-2.5 py-1 rounded-full bg-muted"
+            href="/business/vouchers"
+            className="text-[11px] font-medium text-primary px-2.5 py-1 rounded-full bg-primary/10"
           >
-            {lang === "en" ? "Gift / perks →" : "权益券（赠送）→"}
+            {lang === "en" ? "3 templates →" : "三大类模版 →"}
           </Link>
           <Link
             href="/business/campaigns"
             className="text-[11px] font-medium text-foreground px-2.5 py-1 rounded-full bg-muted"
           >
-            {lang === "en" ? "Activities →" : "活动设置 →"}
+            {lang === "en" ? "Activities →" : "活动管理 →"}
           </Link>
-          <Link
-            href="/business/offers"
-            className="text-[11px] font-medium text-primary px-2.5 py-1 rounded-full bg-primary/10"
-          >
-            {lang === "en" ? "Activity perks →" : "活动券 →"}
-          </Link>
-        </div>
-      </div>
-
-      <div className="px-4 mt-3">
-        <div className="rounded-2xl border border-border bg-muted/40 px-3 py-2.5">
-          <p className="text-[11px] font-medium text-foreground mb-1.5">
-            {lang === "en" ? "Three layers + template" : "三层模型 + 模版"}
-          </p>
-          <ol className="text-[11px] text-muted-foreground space-y-1 list-decimal list-inside leading-relaxed">
-            <li>
-              {lang === "en" ? (
-                <>
-                  <span className="text-foreground font-medium">Template</span> — fee/discount rules
-                  (More → Tools)
-                </>
-              ) : (
-                <>
-                  <span className="text-foreground font-medium">模版</span>
-                  ：费率/折扣规则（更多 → 工具）
-                </>
-              )}
-            </li>
-            <li>
-              {lang === "en" ? (
-                <>
-                  <span className="text-foreground font-medium">Products</span> — this page (sellable) +
-                  Gift catalog (free claim)
-                </>
-              ) : (
-                <>
-                  <span className="text-foreground font-medium">券产品</span>
-                  ：本页可售线 +「权益券」赠送线
-                </>
-              )}
-            </li>
-            <li>
-              {lang === "en" ? (
-                <>
-                  <span className="text-foreground font-medium">Activity</span> — settings + link
-                  vouchers + stores
-                </>
-              ) : (
-                <>
-                  <span className="text-foreground font-medium">活动</span>
-                  ：规则设置 · 挂券 · 门店参与
-                </>
-              )}
-            </li>
-            <li>
-              {lang === "en" ? (
-                <>
-                  <span className="text-foreground font-medium">Activity perks</span> — day-to-day
-                  issue / redeem by activity
-                </>
-              ) : (
-                <>
-                  <span className="text-foreground font-medium">活动券</span>
-                  ：按活动日常发券 / 核销
-                </>
-              )}
-            </li>
-          </ol>
         </div>
       </div>
 
@@ -315,8 +261,8 @@ export default function BusinessProductsPage() {
             </Button>
             <p className="text-[10px] text-muted-foreground">
               {lang === "en"
-                ? "Also creates a shelf activity with all stores enabled. Edit under Activities."
-                : "会同步创建一个「常驻活动」并启用全部门店。可在「活动」里改门店与组合。"}
+                ? "Creates a shelf activity for all stores. Edit under Activities; day-to-day on Offers."
+                : "会挂到常驻活动（全部门店）。配置在「活动管理」；日常在「活动券」。"}
             </p>
           </CardContent>
         </Card>

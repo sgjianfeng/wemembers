@@ -128,7 +128,7 @@ export default async function BusinessOffersPage({
     );
   }
 
-  const campaigns = await prisma.campaign.findMany({
+  const campaignsRaw = await prisma.campaign.findMany({
     where: {
       businessId,
       role: { not: "product_mirror" },
@@ -165,6 +165,24 @@ export default async function BusinessOffersPage({
     take: 40,
   });
 
+  // 已合并进长期券 / 清理掉的旧活动不再出现在「活动券」
+  const campaigns = campaignsRaw.filter((c) => {
+    try {
+      const tags = JSON.parse(c.tags || "[]") as unknown;
+      if (
+        Array.isArray(tags) &&
+        tags.some(
+          (t) => t === "archived_cleanup" || t === "merged_to_long_term"
+        )
+      ) {
+        return false;
+      }
+    } catch {
+      /* ignore */
+    }
+    return true;
+  });
+
   // 发放统计 per campaign
   const grantCounts = await prisma.promoGrant.groupBy({
     by: ["campaignId"],
@@ -185,60 +203,102 @@ export default async function BusinessOffersPage({
       camp.tags,
       camp.rulesSnapshot
     );
+    /**
+     * 真正的国庆满赠容器：只用 tone，勿用 meta.enabled。
+     * 大奖/购券活动 rules 里也会挂 ndp 联动块，meta.enabled 会误判。
+     */
+    const isNdpActivity = tone === "ndp";
+    const isDrawActivity = tone === "draw";
     const entitlements: EntitlementItem[] = [];
 
-    for (const coupon of camp.coupons) {
-      entitlements.push({
-        id: coupon.id,
-        kind: "gift_coupon",
-        tone: "gift",
-        title: coupon.title,
-        primaryLabel: `S$${(coupon.valueCents / 100).toFixed(0)}`,
-        secondaryLabel: zh
-          ? `领 ${coupon.claimedCount} · 用 ${coupon.usedCount} · ${coupon.status}`
-          : `Claimed ${coupon.claimedCount} · used ${coupon.usedCount}`,
-        status: coupon.status,
-        href:
-          session.role === "business"
-            ? `/business/coupons/${coupon.id}?from=offers&campaignId=${camp.id}`
-            : undefined,
-        ops:
-          session.role === "business"
-            ? [
-                {
-                  label: "券详情",
-                  labelEn: "Details",
-                  href: `/business/coupons/${coupon.id}?from=offers&campaignId=${camp.id}`,
-                },
-              ]
-            : undefined,
-      });
+    // 仅国庆活动展示赠送券模版；其它活动只挂可售产品
+    if (isNdpActivity) {
+      for (const coupon of camp.coupons) {
+        const terms = buildNdpTermsDatesView(
+          {
+            startDate: camp.startDate,
+            endDate: camp.endDate,
+            description: camp.description,
+          },
+          meta
+        );
+        entitlements.push({
+          id: coupon.id,
+          kind: "gift_coupon",
+          tone: "gift",
+          title: coupon.title,
+          primaryLabel: `S$${(coupon.valueCents / 100).toFixed(0)}`,
+          secondaryLabel: zh
+            ? `门槛 S$${meta.minSpendCents / 100} · 领 ${coupon.claimedCount} · 用 ${coupon.usedCount} · ${terms.redeemRuleZh}`
+            : `Min S$${meta.minSpendCents / 100} · claimed ${coupon.claimedCount} · ${terms.redeemRuleEn || terms.redeemRuleZh}`,
+          status: coupon.status,
+          href:
+            session.role === "business"
+              ? `/business/coupons/${coupon.id}?from=offers&campaignId=${camp.id}`
+              : undefined,
+          ops:
+            session.role === "business"
+              ? [
+                  {
+                    label: "券详情",
+                    labelEn: "Details",
+                    href: `/business/coupons/${coupon.id}?from=offers&campaignId=${camp.id}`,
+                  },
+                ]
+              : undefined,
+        });
+      }
+
+      // 国庆无券模版时仍展示「可发权益」占位（条款写在 secondary，不单开一行）
+      if (!camp.coupons.some((x) => x.valueCents === NDP_GIFT_COUPON_CENTS)) {
+        const terms = buildNdpTermsDatesView(
+          {
+            startDate: camp.startDate,
+            endDate: camp.endDate,
+            description: camp.description,
+          },
+          meta
+        );
+        entitlements.unshift({
+          id: `ndp-gift-${camp.id}`,
+          kind: "gift_coupon",
+          tone: "gift",
+          title: zh ? "国庆赠送券 S$61" : "National Day gift S$61",
+          primaryLabel: "S$61",
+          secondaryLabel: zh
+            ? `门槛 S$${meta.minSpendCents / 100} · 已发放 ${grantMap.get(camp.id) || 0} · ${terms.redeemRuleZh}`
+            : `Min S$${meta.minSpendCents / 100} · issued ${grantMap.get(camp.id) || 0}`,
+        });
+      }
     }
 
     for (const link of camp.catalogProducts) {
       const p = link.product;
+      // 下架产品不展示；draft 历史线仅企业主可见（非店员）
+      if (p.status === "archived") continue;
+      if (p.status === "draft" && session.role !== "business") continue;
+      // 国庆满赠容器一般不挂购券产品（购券在大奖活动）
+      if (isNdpActivity) continue;
       entitlements.push({
         id: p.id,
         kind: "catalog",
-        tone: p.type?.includes("draw") ? "draw" : "prepaid",
+        tone:
+          isDrawActivity || p.type?.includes("draw") || p.type === "lucky_draw_v2"
+            ? "draw"
+            : "prepaid",
         title: p.name,
-        primaryLabel: p.status === "active" ? (zh ? "在售" : "Live") : p.status,
+        primaryLabel:
+          p.status === "active"
+            ? zh
+              ? "在售"
+              : "Live"
+            : p.status === "draft"
+              ? zh
+                ? "历史/草稿"
+                : "History"
+              : p.status,
         secondaryLabel: p.slug ? `/voucher/${p.slug}` : p.type,
         href: session.role === "business" ? `/business/products/${p.id}` : undefined,
-      });
-    }
-
-    // 国庆无券模版时仍展示「可发权益」占位
-    if (meta.enabled && !camp.coupons.some((x) => x.valueCents === NDP_GIFT_COUPON_CENTS)) {
-      entitlements.unshift({
-        id: `ndp-gift-${camp.id}`,
-        kind: "gift_coupon",
-        tone: "gift",
-        title: zh ? "国庆赠送券 S$61（发放时自动建）" : "NDP gift S$61 (auto)",
-        primaryLabel: "S$61",
-        secondaryLabel: zh
-          ? `门槛 S$${meta.minSpendCents / 100} · 已发放 ${grantMap.get(camp.id) || 0}`
-          : `Min S$${meta.minSpendCents / 100} · issued ${grantMap.get(camp.id) || 0}`,
       });
     }
 
@@ -251,15 +311,16 @@ export default async function BusinessOffersPage({
       ? `/business/scan?storeId=${encodeURIComponent(storeId)}`
       : "/business/scan";
 
-    if (meta.enabled || tone === "ndp") {
-      // 活动满赠：只进本活动操作台（购券扫码 / 收银凭票），不跳通用核销
+    // 操作按活动类型：只有国庆需要「活动券核销」定制台
+    if (isNdpActivity) {
       ops.push({
         label: "活动券核销",
         labelEn: "Activity redeem",
         href: ndpDeskHref,
         primary: true,
       });
-    } else {
+    } else if (!isDrawActivity) {
+      // 长期券等预付：通用扫码核销
       ops.push({
         label: "核销",
         labelEn: "Redeem",
@@ -267,25 +328,28 @@ export default async function BusinessOffersPage({
         primary: true,
       });
     }
+
     if (camp.slug) {
       ops.push({
         label: "顾客页",
         labelEn: "Landing",
-        href:
-          meta.enabled || tone === "ndp"
-            ? `/ndp/${camp.slug}?from=counter`
-            : `/voucher/${camp.slug}`,
+        href: isNdpActivity
+          ? `/ndp/${camp.slug}?from=counter`
+          : `/voucher/${camp.slug}`,
+        primary: isDrawActivity,
       });
     }
+
     if (session.role === "business") {
-      // 打印设计：活动广告（台卡/海报）+ 实体券 PT-
-      if (camp.slug) {
+      // 打印 / 实体 / 设置：各活动自有（国庆、大奖、长期均可）
+      if (camp.slug || isNdpActivity) {
         ops.push({
           label: "活动广告",
           labelEn: "Ad print",
           href: `/business/campaigns/${camp.id}/print?from=offers`,
         });
       }
+      // 实体券：大奖/长期有票；国庆以赠送券为主，仍可进批次页
       ops.push({
         label: "实体券",
         labelEn: "Physical",
@@ -298,35 +362,26 @@ export default async function BusinessOffersPage({
       });
     }
 
-    const nGift = camp.coupons.length;
-    const nProd = camp.catalogProducts.length;
-    const issued = grantMap.get(camp.id) || 0;
+    const nGift = isNdpActivity
+      ? entitlements.filter((e) => e.kind === "gift_coupon").length
+      : 0;
+    const nProd = isNdpActivity
+      ? 0
+      : camp.catalogProducts.filter((l) => l.product.status !== "archived")
+          .length;
+    const issued = isNdpActivity ? grantMap.get(camp.id) || 0 : 0;
 
-    const ndpBlurb =
-      meta.enabled || tone === "ndp"
-        ? zh
-          ? `满 S$${meta.minSpendCents / 100} 送 S$${meta.giftCouponCents / 100} · 领后 ${meta.validDays} 天有效（活动结束不缩短）`
-          : `Spend S$${meta.minSpendCents / 100} → S$${meta.giftCouponCents / 100} · ${meta.validDays}d from claim`
-        : null;
-
-    // 国庆：副文带有效期规则，方便店员对客
-    if (meta.enabled || tone === "ndp") {
-      const terms = buildNdpTermsDatesView(
-        {
-          startDate: camp.startDate,
-          endDate: camp.endDate,
-          description: camp.description,
-        },
-        meta
-      );
-      entitlements.push({
-        id: `terms-${camp.id}`,
-        kind: "gift_coupon",
-        tone: "default",
-        title: zh ? "日期与条款（对客口径）" : "Dates & terms (customer copy)",
-        primaryLabel: zh ? "展开活动见详情" : "See activity",
-        secondaryLabel: `${terms.redeemRuleZh}`,
-      });
+    let blurb: string;
+    let blurbEn: string | undefined;
+    if (isNdpActivity) {
+      blurb = `满 S$${meta.minSpendCents / 100} 送 S$${meta.giftCouponCents / 100} · 领后 ${meta.validDays} 天有效（活动结束不缩短）`;
+      blurbEn = `Spend S$${meta.minSpendCents / 100} → S$${meta.giftCouponCents / 100} · ${meta.validDays}d from claim`;
+    } else if (isDrawActivity) {
+      blurb = "独享购券 · 进奖池倒计时 · 可入箱票";
+      blurbEn = "Exclusive buy · pool countdown · ballot optional";
+    } else {
+      blurb = "活动容器 · 展开看可售产品与操作";
+      blurbEn = "Activity · expand products & actions";
     }
 
     return {
@@ -337,41 +392,48 @@ export default async function BusinessOffersPage({
       type: camp.type,
       status: camp.status,
       tone,
-      blurb:
-        ndpBlurb ||
-        (zh
-          ? "活动容器 · 展开看权益与操作"
-          : "Activity · expand perks & actions"),
+      blurb,
+      blurbEn,
       href:
         session.role === "business"
           ? `/business/campaigns/${camp.id}`
           : camp.slug
-            ? `/ndp/${camp.slug}?from=counter`
+            ? isNdpActivity
+              ? `/ndp/${camp.slug}?from=counter`
+              : `/voucher/${camp.slug}`
             : null,
       entitlements,
       summary: zh
-        ? `${nGift} 赠券模版 · ${nProd} 产品 · 发放 ${issued} · 购券 ${camp._count.vouchers}`
-        : `${nGift} coupons · ${nProd} products · ${issued} grants · ${camp._count.vouchers} sold`,
+        ? isNdpActivity
+          ? `${nGift} 赠券 · 发放 ${issued}`
+          : `${nProd} 产品 · 购券 ${camp._count.vouchers}`
+        : isNdpActivity
+          ? `${nGift} gifts · ${issued} issued`
+          : `${nProd} products · ${camp._count.vouchers} sold`,
       ops,
-      stats: [
-        { label: zh ? "状态" : "Status", value: camp.status },
-        { label: zh ? "发放" : "Issued", value: String(issued) },
-        {
-          label: zh ? "购券" : "Sold",
-          value: String(camp._count.vouchers),
-        },
-      ],
+      stats: isNdpActivity
+        ? [
+            { label: zh ? "状态" : "Status", value: camp.status },
+            { label: zh ? "发放" : "Issued", value: String(issued) },
+          ]
+        : [
+            { label: zh ? "状态" : "Status", value: camp.status },
+            {
+              label: zh ? "购券" : "Sold",
+              value: String(camp._count.vouchers),
+            },
+          ],
     };
   });
 
   // 无活动时的引导
   const empty = bundles.length === 0;
 
-  const ndpCamp = campaigns.find((c) => {
-    const m = parseNdpMetaFromCampaign(c);
-    const tone = activityToneFromType(c.type, c.name, c.tags, c.rulesSnapshot);
-    return m.enabled || tone === "ndp";
-  });
+  // 仅真正的国庆满赠活动（勿用购券活动上的 ndp 联动 meta）
+  const ndpCamp = campaigns.find(
+    (c) =>
+      activityToneFromType(c.type, c.name, c.tags, c.rulesSnapshot) === "ndp"
+  );
   const ndpDeskHref =
     storeId && ndpCamp
       ? `/business/ndp-desk?storeId=${encodeURIComponent(storeId)}&campaignId=${encodeURIComponent(ndpCamp.id)}`

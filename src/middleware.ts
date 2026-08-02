@@ -37,6 +37,7 @@ const STAFF_BLOCKED = [
   // 配置类：店员底栏无入口，直链也拦
   "/business/products",
   "/business/templates",
+  "/business/vouchers",
 ];
 
 export async function middleware(request: NextRequest) {

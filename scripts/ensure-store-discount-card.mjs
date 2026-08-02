@@ -31,7 +31,7 @@ function snapDiscount10() {
     minSpendMultiplier: 0,
     productKind: "self_use",
     packKind: "discount_10",
-    listScope: "hot",
+    listScope: "store",
     snapshottedAt: new Date().toISOString(),
   };
 }
@@ -141,8 +141,18 @@ async function ensureDiscountCard(businessId, businessName) {
     } catch {
       snap = {};
     }
-    if (snap.discountPercent !== DISCOUNT || snap.packKind !== "discount_10") {
-      const next = { ...snapDiscount10(), ...snap, discountPercent: DISCOUNT, packKind: "discount_10", listScope: "hot" };
+    if (
+      snap.discountPercent !== DISCOUNT ||
+      snap.packKind !== "discount_10" ||
+      snap.listScope !== "store"
+    ) {
+      const next = {
+        ...snapDiscount10(),
+        ...snap,
+        discountPercent: DISCOUNT,
+        packKind: "discount_10",
+        listScope: "store",
+      };
       await prisma.voucherProduct.update({
         where: { id: existing.id },
         data: {
@@ -152,6 +162,8 @@ async function ensureDiscountCard(businessId, businessName) {
         },
       });
     }
+    // 确保挂在「长期券」活动下，而非独立 shelf
+    await attachToLongTerm(businessId, existing.id);
     return existing;
   }
 
@@ -162,10 +174,6 @@ async function ensureDiscountCard(businessId, businessName) {
   );
   const now = new Date();
   const end = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
-  const stores = await prisma.store.findMany({
-    where: { businessId },
-    select: { id: true },
-  });
 
   const mirror = await prisma.campaign.create({
     data: {
@@ -184,7 +192,7 @@ async function ensureDiscountCard(businessId, businessName) {
       voucherTiers: JSON.stringify(tiersJson(TIERS)),
       slug: `m-${slug}`,
       storeIds: null,
-      tags: JSON.stringify(["product_mirror", "discount_10", "scope:hot"]),
+      tags: JSON.stringify(["product_mirror", "discount_10", "scope:store"]),
     },
   });
 
@@ -205,37 +213,130 @@ async function ensureDiscountCard(businessId, businessName) {
     },
   });
 
-  const activity = await prisma.campaign.create({
-    data: {
-      businessId,
-      name,
-      description: "付90得100 · 门店优惠卡 · 热门展示",
-      type: "voucher_sale",
-      role: "activity",
-      color: "#10B981",
-      startDate: now,
-      endDate: end,
-      status: "active",
-      productKind: "self_use",
-      templateId: "self_use_voucher",
-      rulesSnapshot: JSON.stringify(snap),
-      voucherTiers: JSON.stringify(tiersJson(TIERS)),
-      slug: `a-${slug}`,
-      storeIds: JSON.stringify(stores.map((s) => s.id)),
-      tags: JSON.stringify(["activity", "shelf", "discount_10", "scope:hot", product.id]),
-    },
-  });
-
-  await prisma.campaignProduct.create({
-    data: {
-      campaignId: activity.id,
-      productId: product.id,
-      sortOrder: 0,
-    },
-  });
-
-  console.log("  created discount card:", slug, "stores", stores.length);
+  await attachToLongTerm(businessId, product.id);
+  console.log("  created discount card under 长期券:", slug);
   return product;
+}
+
+/** 9 折 / 原价等门店基础产品挂到统一「长期券」活动 */
+async function attachToLongTerm(businessId, productId) {
+  const stores = await prisma.store.findMany({
+    where: { businessId },
+    select: { id: true },
+  });
+  let longTerm = await prisma.campaign.findFirst({
+    where: {
+      businessId,
+      role: "activity",
+      status: { in: ["active", "draft"] },
+      OR: [
+        { name: "长期券" },
+        { name: { startsWith: "长期券" } },
+        { tags: { contains: "category:long_term" } },
+        { tags: { contains: "face_open" } },
+      ],
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  const now = new Date();
+  const end = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+  if (!longTerm) {
+    longTerm = await prisma.campaign.create({
+      data: {
+        businessId,
+        name: "长期券",
+        description: "原价代金 · 9折卡等门店常年可售 · 进店可见",
+        type: "voucher_sale",
+        role: "activity",
+        color: "#1A6EFF",
+        startDate: now,
+        endDate: end,
+        status: "active",
+        productKind: "self_use",
+        templateId: "self_use_voucher",
+        rulesSnapshot: JSON.stringify(snapDiscount10()),
+        slug: `a-long-term-${businessId.slice(-6)}`,
+        storeIds: JSON.stringify(stores.map((s) => s.id)),
+        tags: JSON.stringify([
+          "activity",
+          "shelf",
+          "category:long_term",
+          "long_term",
+          "default_activity",
+          "scope:store",
+        ]),
+      },
+    });
+    console.log("  created 长期券 activity", longTerm.slug);
+  } else if (longTerm.name !== "长期券") {
+    await prisma.campaign.update({
+      where: { id: longTerm.id },
+      data: {
+        name: "长期券",
+        status: "active",
+        tags: JSON.stringify([
+          ...new Set([
+            ...(() => {
+              try {
+                const t = JSON.parse(longTerm.tags || "[]");
+                return Array.isArray(t) ? t : [];
+              } catch {
+                return [];
+              }
+            })(),
+            "category:long_term",
+            "long_term",
+            "shelf",
+          ]),
+        ]),
+      },
+    });
+  }
+
+  const link = await prisma.campaignProduct.findFirst({
+    where: { campaignId: longTerm.id, productId },
+  });
+  if (!link) {
+    const max = await prisma.campaignProduct.aggregate({
+      where: { campaignId: longTerm.id },
+      _max: { sortOrder: true },
+    });
+    await prisma.campaignProduct.create({
+      data: {
+        campaignId: longTerm.id,
+        productId,
+        sortOrder: (max._max.sortOrder ?? -1) + 1,
+      },
+    });
+    console.log("  linked product → 长期券");
+  }
+
+  // 摘除其它独立 9 折 shelf 活动上的链接
+  const otherLinks = await prisma.campaignProduct.findMany({
+    where: { productId, campaignId: { not: longTerm.id } },
+    include: { campaign: { select: { id: true, name: true, tags: true, status: true } } },
+  });
+  for (const l of otherLinks) {
+    await prisma.campaignProduct.delete({ where: { id: l.id } });
+    const tags = (() => {
+      try {
+        const t = JSON.parse(l.campaign.tags || "[]");
+        return Array.isArray(t) ? t : [];
+      } catch {
+        return [];
+      }
+    })();
+    await prisma.campaign.update({
+      where: { id: l.campaignId },
+      data: {
+        status: "ended",
+        tags: JSON.stringify([
+          ...new Set([...tags, "archived_cleanup", "merged_to_long_term"]),
+        ]),
+      },
+    });
+    console.log("  unlinked from old activity", l.campaign.name);
+  }
 }
 
 async function fixExclusiveActivityTypes(businessId) {

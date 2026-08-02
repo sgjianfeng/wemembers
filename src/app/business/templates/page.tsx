@@ -170,17 +170,17 @@ export default function BusinessTemplatesPage() {
     <div className="pb-10 min-h-screen">
       <div className="px-4 py-3 border-b border-border sticky top-0 bg-card z-10">
         <div className="flex items-center gap-3">
-          <Link href="/business/hub" className="text-xs text-primary font-medium">
-            ← {lang === "en" ? "Tools" : "工具"}
+          <Link href="/business/vouchers" className="text-xs text-primary font-medium">
+            ← {lang === "en" ? "Voucher catalog" : "券管理"}
           </Link>
         </div>
         <h1 className="text-lg font-semibold mt-1">
-          {lang === "en" ? "My templates" : "我的模版"}
+          {lang === "en" ? "Template rules" : "模版规则微调"}
         </h1>
         <p className="text-xs text-muted-foreground mt-0.5">
           {lang === "en"
-            ? "Fee/discount rules only — not sellable. Sell under Voucher products."
-            : "只存费率/折扣规则，不能直接卖。真正上架请用「券产品」。"}
+            ? "Fee/discount rules only — not sellable. Create SKUs under Products."
+            : "只改费率/折扣，不能直接卖。上架 SKU 请到「产品」。"}
         </p>
       </div>
 
@@ -194,8 +194,8 @@ export default function BusinessTemplatesPage() {
           </span>
           <span className="text-muted-foreground">
             {lang === "en"
-              ? "Create sellable products from default packs (with purchase links)."
-              : "在「券产品」用默认包创建可售卖线（带购买链接）。"}
+              ? "Create products from the 3 template families."
+              : "从三大类模版创建可售产品。"}
           </span>
           <span className="text-primary font-medium ml-1">→</span>
         </Link>

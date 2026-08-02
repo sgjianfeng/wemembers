@@ -72,14 +72,14 @@ export default async function BusinessHubPage() {
       href: "/business/physical/ballot",
     },
     {
-      id: "templates",
+      id: "vouchers",
       icon: ClipboardList,
-      title: lang === "en" ? "My templates" : "我的模版",
+      title: lang === "en" ? "Voucher catalog" : "券管理",
       desc:
         lang === "en"
-          ? "Fee/discount rules only (not sellable). After editing, create products from packs."
-          : "只改费率/折扣规则（不可直接售卖）。改完后在「券产品」用默认包创建。",
-      href: "/business/templates",
+          ? "3 templates + products. Fine-tune fees under templates."
+          : "三大类模版 + 产品。费率微调在模版规则。",
+      href: "/business/vouchers",
     },
     {
       id: "partners",
