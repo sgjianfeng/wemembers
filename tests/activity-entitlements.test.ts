@@ -2,6 +2,7 @@ import {
   buildCustomerActivityBundles,
   buildDiscoverActivityBundles,
   activityToneFromType,
+  resolveCustomerDrawLinks,
 } from "@/lib/activity-entitlements";
 
 describe("activity-entitlements grouping", () => {
@@ -49,6 +50,35 @@ describe("activity-entitlements grouping", () => {
   it("detects ndp tone from name", () => {
     expect(activityToneFromType("promotion", "国庆满赠")).toBe("ndp");
     expect(activityToneFromType("lucky_draw_v2", "Summer")).toBe("draw");
+  });
+
+  it("ndp draw links go to /ndp and grand voucher countdown", () => {
+    const links = resolveCustomerDrawLinks({
+      campaignId: "c1",
+      campaignSlug: "ndp-2uevq5-2026",
+      campaignType: "holiday",
+      campaignName: "国庆满赠 · 满120送61",
+      rulesSnapshot: JSON.stringify({
+        ndp: { enabled: true, buyVoucherSlug: "meow-bbq-exclusive-ballot-15" },
+      }),
+    });
+    expect(links.activityHref).toBe("/ndp/ndp-2uevq5-2026");
+    expect(links.countdownHref).toBe(
+      "/voucher/meow-bbq-exclusive-ballot-15#grand-countdown"
+    );
+  });
+
+  it("exclusive draw links stay on voucher pool page", () => {
+    const links = resolveCustomerDrawLinks({
+      campaignId: "c2",
+      campaignSlug: "meow-bbq-exclusive-ballot-15",
+      campaignType: "lucky_draw_v2",
+      campaignName: "大奖倒计时·品牌独享",
+    });
+    expect(links.activityHref).toBe("/voucher/meow-bbq-exclusive-ballot-15");
+    expect(links.countdownHref).toBe(
+      "/voucher/meow-bbq-exclusive-ballot-15#grand-countdown"
+    );
   });
 
   it("builds discover ads without entitlements", () => {

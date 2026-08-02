@@ -2,7 +2,10 @@ import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { buildCustomerActivityBundles } from "@/lib/activity-entitlements";
+import {
+  buildCustomerActivityBundles,
+  resolveCustomerDrawLinks,
+} from "@/lib/activity-entitlements";
 import { isSpendableBalanceVoucher } from "@/lib/voucher-classification";
 import { WalletClient } from "./WalletClient";
 
@@ -37,6 +40,8 @@ export default async function WalletPage() {
             name: true,
             slug: true,
             type: true,
+            tags: true,
+            rulesSnapshot: true,
             business: { select: { businessName: true } },
           },
         },
@@ -88,12 +93,19 @@ export default async function WalletPage() {
     draws: myVouchers
       .filter((v) => (v.drawWeight ?? 0) > 0)
       .map((v) => {
-        const slug = v.campaign?.slug?.trim() || null;
+        const links = resolveCustomerDrawLinks({
+          campaignId: v.campaignId,
+          campaignSlug: v.campaign?.slug,
+          campaignType: v.campaign?.type,
+          campaignName: v.campaign?.name,
+          campaignTags: v.campaign?.tags,
+          rulesSnapshot: v.campaign?.rulesSnapshot,
+        });
         return {
           id: v.id,
           campaignId: v.campaignId,
           campaignName: v.campaign?.name || null,
-          campaignSlug: slug,
+          campaignSlug: v.campaign?.slug?.trim() || null,
           campaignType: v.campaign?.type || null,
           businessName: v.campaign?.business?.businessName || null,
           drawWeight: v.drawWeight,
@@ -105,11 +117,8 @@ export default async function WalletPage() {
             v.issueReason === "ndp_draw_entry",
           balanceCents: v.balanceCents,
           amountCents: v.amountCents,
-          countdownHref: slug
-            ? `/voucher/${encodeURIComponent(slug)}#grand-countdown`
-            : v.campaignId
-              ? `/activity/${encodeURIComponent(v.campaignId)}`
-              : "/discover/draws",
+          activityHref: links.activityHref,
+          countdownHref: links.countdownHref,
           balanceHref: "/balance",
         };
       }),

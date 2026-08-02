@@ -16,6 +16,7 @@ import {
 import {
   buildCustomerActivityBundles,
   buildDiscoverActivityBundles,
+  resolveCustomerDrawLinks,
 } from "@/lib/activity-entitlements";
 
 export default async function CustomerHome() {
@@ -57,6 +58,8 @@ export default async function CustomerHome() {
             name: true,
             type: true,
             slug: true,
+            tags: true,
+            rulesSnapshot: true,
             businessId: true,
             business: {
               select: {
@@ -81,7 +84,16 @@ export default async function CustomerHome() {
         coupon: {
           include: {
             business: { select: { businessName: true } },
-            campaign: { select: { id: true, name: true, type: true, slug: true } },
+            campaign: {
+              select: {
+                id: true,
+                name: true,
+                type: true,
+                slug: true,
+                tags: true,
+                rulesSnapshot: true,
+              },
+            },
           },
         },
       },
@@ -142,12 +154,19 @@ export default async function CustomerHome() {
     draws: myVouchers
       .filter((v) => (v.drawWeight ?? 0) > 0)
       .map((v) => {
-        const slug = v.campaign?.slug?.trim() || null;
+        const links = resolveCustomerDrawLinks({
+          campaignId: v.campaignId,
+          campaignSlug: v.campaign?.slug,
+          campaignType: v.campaign?.type,
+          campaignName: v.campaign?.name,
+          campaignTags: v.campaign?.tags,
+          rulesSnapshot: v.campaign?.rulesSnapshot,
+        });
         return {
           id: v.id,
           campaignId: v.campaignId,
           campaignName: v.campaign?.name || null,
-          campaignSlug: slug,
+          campaignSlug: v.campaign?.slug?.trim() || null,
           campaignType: v.campaign?.type || null,
           businessName: v.campaign?.business?.businessName || null,
           drawWeight: v.drawWeight,
@@ -159,11 +178,8 @@ export default async function CustomerHome() {
             v.issueReason === "ndp_draw_entry",
           balanceCents: v.balanceCents,
           amountCents: v.amountCents,
-          countdownHref: slug
-            ? `/voucher/${encodeURIComponent(slug)}#grand-countdown`
-            : v.campaignId
-              ? `/activity/${encodeURIComponent(v.campaignId)}`
-              : "/discover/draws",
+          activityHref: links.activityHref,
+          countdownHref: links.countdownHref,
           balanceHref: "/balance",
         };
       }),

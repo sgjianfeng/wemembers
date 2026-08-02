@@ -98,6 +98,63 @@ export function entitlementBarClass(tone: EntitlementTone): string {
   }
 }
 
+/**
+ * 顾客持仓里抽奖行的跳转：区分国庆落地页 vs 独享大奖倒计时。
+ */
+export function resolveCustomerDrawLinks(input: {
+  campaignId: string;
+  campaignSlug?: string | null;
+  campaignType?: string | null;
+  campaignName?: string | null;
+  campaignTags?: string | null;
+  rulesSnapshot?: string | null;
+  /** 国庆 rules 里的 buyVoucherSlug；也可调用方直接传入 */
+  buyVoucherSlug?: string | null;
+}): { activityHref: string; countdownHref: string } {
+  const slug = input.campaignSlug?.trim() || null;
+  const isNdp =
+    input.campaignType === "holiday" ||
+    /国庆|ndp|national\s*day/i.test(input.campaignName || "") ||
+    (input.campaignTags
+      ? /ndp|国庆|national|category:ndp/i.test(input.campaignTags)
+      : false);
+
+  let buySlug = input.buyVoucherSlug?.trim() || null;
+  if (!buySlug && input.rulesSnapshot) {
+    try {
+      const raw = JSON.parse(input.rulesSnapshot) as Record<string, unknown>;
+      const ndp =
+        raw.ndp && typeof raw.ndp === "object"
+          ? (raw.ndp as Record<string, unknown>)
+          : null;
+      if (ndp && typeof ndp.buyVoucherSlug === "string") {
+        buySlug = ndp.buyVoucherSlug.trim() || null;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const activityHref =
+    slug && isNdp
+      ? `/ndp/${encodeURIComponent(slug)}`
+      : slug
+        ? `/voucher/${encodeURIComponent(slug)}`
+        : `/activity/${encodeURIComponent(input.campaignId)}`;
+
+  // 国庆赠送签权重挂在满赠活动上，倒计时看关联的大奖（独享）活动
+  const countdownHref =
+    isNdp && buySlug
+      ? `/voucher/${encodeURIComponent(buySlug)}#grand-countdown`
+      : isNdp
+        ? activityHref
+        : slug
+          ? `/voucher/${encodeURIComponent(slug)}#grand-countdown`
+          : activityHref;
+
+  return { activityHref, countdownHref };
+}
+
 export function kindLabel(
   kind: EntitlementKind,
   lang: "zh" | "en"
@@ -138,7 +195,17 @@ export function buildCustomerActivityBundles(input: {
     isGiftEntry: boolean;
     balanceCents: number;
     amountCents: number;
-    /** 大奖倒计时（活动页）；勿用 /balance */
+    /**
+     * 活动详情页：
+     * - 国庆 holiday → /ndp/{slug}
+     * - 抽奖/独享 → /voucher/{slug}
+     */
+    activityHref?: string | null;
+    /**
+     * 大奖倒计时：
+     * - 独享抽奖 → /voucher/{slug}#grand-countdown
+     * - 国庆赠送签 → 关联 buyVoucherSlug 的大奖活动（勿链 /voucher/ndp-slug）
+     */
     countdownHref?: string | null;
     /** 预付余额行跳转，默认 /balance */
     balanceHref?: string | null;
@@ -184,19 +251,52 @@ export function buildCustomerActivityBundles(input: {
     return map.get(key)!;
   };
 
-  const countdownOf = (d: {
+  const activityOf = (d: {
     campaignSlug?: string | null;
     campaignId: string;
-    countdownHref?: string | null;
+    campaignType?: string | null;
+    campaignName?: string | null;
+    activityHref?: string | null;
   }) => {
-    if (d.countdownHref) return d.countdownHref;
-    if (d.campaignSlug?.trim()) {
-      return `/voucher/${encodeURIComponent(d.campaignSlug.trim())}#grand-countdown`;
+    if (d.activityHref) return d.activityHref;
+    const slug = d.campaignSlug?.trim();
+    const isNdp =
+      d.campaignType === "holiday" ||
+      /国庆|ndp|national\s*day/i.test(d.campaignName || "");
+    if (slug && isNdp) {
+      return `/ndp/${encodeURIComponent(slug)}`;
+    }
+    if (slug) {
+      return `/voucher/${encodeURIComponent(slug)}`;
     }
     if (d.campaignId) {
       return `/activity/${encodeURIComponent(d.campaignId)}`;
     }
     return "/discover/draws";
+  };
+
+  const countdownOf = (d: {
+    campaignSlug?: string | null;
+    campaignId: string;
+    campaignType?: string | null;
+    campaignName?: string | null;
+    activityHref?: string | null;
+    countdownHref?: string | null;
+  }) => {
+    // 国庆满赠签：调用方应传入关联大奖 slug 的 countdownHref
+    if (d.countdownHref) return d.countdownHref;
+    const slug = d.campaignSlug?.trim();
+    const isNdp =
+      d.campaignType === "holiday" ||
+      /国庆|ndp|national\s*day/i.test(d.campaignName || "");
+    // 国庆活动本身不是 lucky_draw 页：无关联时回活动详情，勿打开 /voucher/ndp-*
+    if (isNdp) {
+      return activityOf(d);
+    }
+    if (slug) {
+      return `/voucher/${encodeURIComponent(slug)}#grand-countdown`;
+    }
+    return activityOf(d);
   };
 
   for (const c of input.claims) {
@@ -225,6 +325,7 @@ export function buildCustomerActivityBundles(input: {
 
   for (const d of input.draws) {
     const key = d.campaignId;
+    const activityHref = activityOf(d);
     const countdownHref = countdownOf(d);
     const tone = activityToneFromType(
       d.campaignType || (d.isGiftEntry ? "holiday" : "lucky_draw_v2"),
@@ -243,7 +344,8 @@ export function buildCustomerActivityBundles(input: {
         : zh
           ? "购券 · 大奖资格"
           : "Paid · Grand draw",
-      href: countdownHref,
+      // 活动详情：国庆落地页 / 购券活动页（不是错误的 /voucher/ndp）
+      href: activityHref,
     });
     // 同一张券：可花余额 + 抽奖资格 拆成两行（首页/券包一致）
     if (d.balanceCents > 0) {
