@@ -97,6 +97,28 @@ export type JoinableActivity = {
   discountPercent: number;
 };
 
+/**
+ * 顾客侧是否展示：至少有一家门店「参加」
+ * storeIds 为 null → 全部门店；为 [] → 无店参加（关干净了，不展示）
+ */
+export function isActivityCustomerVisible(
+  a: Pick<JoinableActivity, "storesAll" | "storeCount">
+): boolean {
+  if (a.storesAll) return true;
+  return a.storeCount > 0;
+}
+
+/** 某门店顾客页是否展示该活动 */
+export function isActivityAtStore(
+  a: Pick<JoinableActivity, "storesAll" | "stores" | "storeCount">,
+  storeId: string
+): boolean {
+  if (!storeId) return isActivityCustomerVisible(a);
+  if (a.storesAll) return true;
+  if (a.storeCount <= 0) return false;
+  return a.stores.some((s) => s.id === storeId);
+}
+
 function parsePackMeta(rulesSnapshot: string | null | undefined): {
   packKind: string | null;
   listScope: "hot" | "store";

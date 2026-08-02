@@ -11,7 +11,10 @@ import { cookies } from "next/headers";
 import { t } from "@/lib/i18n";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { listJoinableActivities } from "@/lib/discover-activities";
+import {
+  isActivityCustomerVisible,
+  listJoinableActivities,
+} from "@/lib/discover-activities";
 import { ShopActivityShelf } from "@/components/shop/ShopActivityShelf";
 import { Building2 } from "lucide-react";
 
@@ -49,12 +52,14 @@ export default async function ShopPage({
     select: { id: true, name: true, slug: true, address: true },
   });
 
-  const storeOffers = await listJoinableActivities({
+  const allBrandOffers = await listJoinableActivities({
     limit: 40,
     listScope: "all",
     businessId: business.id,
     customerId: session?.role === "customer" ? session.userId : null,
   });
+  // 门店全关（storeIds=[]）的活动不在品牌页露出
+  const storeOffers = allBrandOffers.filter(isActivityCustomerVisible);
 
   const categoryLabel =
     lang === "zh"

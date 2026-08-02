@@ -10,7 +10,10 @@ import { t } from "@/lib/i18n";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MapPin } from "lucide-react";
-import { listJoinableActivities } from "@/lib/discover-activities";
+import {
+  isActivityAtStore,
+  listJoinableActivities,
+} from "@/lib/discover-activities";
 
 /**
  * 门店顾客页（主入口）
@@ -57,9 +60,9 @@ export default async function CompanyStorePage({
     customerId: session?.role === "customer" ? session.userId : null,
   });
 
-  // 仅本店参与的活动
-  const storeOffers = allOffers.filter(
-    (o) => o.storesAll || o.stores.some((s) => s.id === store.id)
+  // 仅本店「活动参与」开启的活动（storeIds=[] 不展示；与登录无关）
+  const storeOffers = allOffers.filter((o) =>
+    isActivityAtStore(o, store.id)
   );
 
   const nNdp = storeOffers.filter((o) => o.category === "ndp").length;
