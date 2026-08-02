@@ -9,6 +9,11 @@ import { formatMoney } from "@/lib/utils";
 import { Ticket, Dice5, Store, Package } from "lucide-react";
 import { parseRulesSnapshot } from "@/lib/templates";
 import {
+  NDP_GIFT_COUPON_CENTS,
+  NDP_MIN_SPEND_CENTS,
+  parseNdpMetaFromCampaign,
+} from "@/lib/ndp-promo";
+import {
   PhysicalBatchCreateForm,
   type PrintableCampaign,
 } from "./PhysicalBatchCreateForm";
@@ -33,6 +38,18 @@ function productTiers(product: {
     }
   }
   return enabledTiers;
+}
+
+function isNdpLike(camp: {
+  type: string;
+  name: string;
+  tags?: string | null;
+}): boolean {
+  if (camp.type === "holiday") return true;
+  if (/国庆|ndp|national\s*day/i.test(camp.name || "")) return true;
+  if (camp.tags && /ndp|国庆|national|category:ndp/i.test(camp.tags))
+    return true;
+  return false;
 }
 
 export default async function PhysicalBatchesPage({
@@ -107,6 +124,8 @@ export default async function PhysicalBatchesPage({
         type: true,
         status: true,
         productKind: true,
+        tags: true,
+        rulesSnapshot: true,
         catalogProducts: {
           orderBy: { sortOrder: "asc" },
           include: {
@@ -132,6 +151,47 @@ export default async function PhysicalBatchesPage({
 
   const campaigns: PrintableCampaign[] = rawCampaigns
     .map((camp) => {
+      const ndp = isNdpLike(camp);
+      // 国庆满赠：固定赠送面额（默认 S$61），不是预付 10/20/50 档
+      if (ndp) {
+        const meta = parseNdpMetaFromCampaign({
+          type: camp.type,
+          name: camp.name,
+          tags: camp.tags,
+          rulesSnapshot: camp.rulesSnapshot,
+        });
+        const giftSgd = Math.round(
+          (meta.giftCouponCents || NDP_GIFT_COUPON_CENTS) / 100
+        );
+        const minSgd = Math.round(
+          (meta.minSpendCents || NDP_MIN_SPEND_CENTS) / 100
+        );
+        return {
+          id: camp.id,
+          name: camp.name,
+          type: camp.type,
+          status: camp.status,
+          productKind: camp.productKind || undefined,
+          products: [
+            {
+              id: `campaign:${camp.id}`,
+              name:
+                lang === "en"
+                  ? `National Day gift S$${giftSgd}`
+                  : `国庆赠送券 S$${giftSgd}`,
+              type: "holiday",
+              productKind: "self_use",
+              status: camp.status,
+              description: camp.name,
+              enabledTiers: [giftSgd],
+              packKind: "ndp_gift",
+              summaryZh: `满赠券 S$${giftSgd} · 门槛 S$${minSgd}`,
+              summaryEn: `Gift S$${giftSgd} · min spend S$${minSgd}`,
+            },
+          ],
+        };
+      }
+
       const products = camp.catalogProducts
         .map((link) => link.product)
         .filter(

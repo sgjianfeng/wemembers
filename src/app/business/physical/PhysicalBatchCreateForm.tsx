@@ -40,6 +40,7 @@ function paperTypeFromProduct(
   product: PrintableProduct | null | undefined
 ): "voucher" | "draw" {
   if (!product) return "voucher";
+  // 国庆满赠纸质仍按消费券样式，但面额固定
   if (
     product.type === "lucky_draw_v2" ||
     product.type === "lucky_draw" ||
@@ -50,12 +51,27 @@ function paperTypeFromProduct(
   return "voucher";
 }
 
+function isNdpGiftProduct(p: PrintableProduct | null | undefined): boolean {
+  if (!p) return false;
+  return (
+    p.packKind === "ndp_gift" ||
+    p.type === "holiday" ||
+    /国庆|ndp|national/i.test(p.name || "")
+  );
+}
+
 function productSummary(
   p: PrintableProduct,
   lang: "zh" | "en"
 ): string {
   if (lang === "en" && p.summaryEn) return p.summaryEn;
   if (lang === "zh" && p.summaryZh) return p.summaryZh;
+  if (isNdpGiftProduct(p)) {
+    const face = p.enabledTiers[0];
+    return lang === "en"
+      ? `Gift coupon${face ? ` · face S$${face}` : ""}`
+      : `满赠券${face ? ` · 面额 S$${face}` : ""}`;
+  }
   const tiers =
     p.enabledTiers.length > 0
       ? p.enabledTiers.map((t) => `S$${t}`).join(" / ")
@@ -109,10 +125,12 @@ export function PhysicalBatchCreateForm({
     [products, productId]
   );
   const paperType = paperTypeFromProduct(selectedProduct);
+  const isNdpGift = isNdpGiftProduct(selectedProduct);
   const tiers = useMemo(() => {
     if (selectedProduct?.enabledTiers?.length) {
       return selectedProduct.enabledTiers;
     }
+    if (isNdpGiftProduct(selectedProduct)) return [61];
     return paperType === "draw" ? [50, 100] : [10, 20, 50, 100, 200];
   }, [selectedProduct, paperType]);
 
@@ -142,9 +160,11 @@ export function PhysicalBatchCreateForm({
     const nextTiers =
       selectedProduct.enabledTiers?.length > 0
         ? selectedProduct.enabledTiers
-        : paperTypeFromProduct(selectedProduct) === "draw"
-          ? [50, 100]
-          : [10, 20, 50, 100, 200];
+        : isNdpGiftProduct(selectedProduct)
+          ? [61]
+          : paperTypeFromProduct(selectedProduct) === "draw"
+            ? [50, 100]
+            : [10, 20, 50, 100, 200];
     setValueSgd((prev) => {
       const n = Number(prev);
       if (nextTiers.includes(n)) return prev;
@@ -196,15 +216,19 @@ export function PhysicalBatchCreateForm({
     }
     const autoTitle =
       title.trim() ||
-      `${selectedProduct.name} S$${valueSgd}${
-        paperType === "draw"
-          ? lang === "en"
-            ? " draw"
-            : " 抽奖券"
-          : lang === "en"
-            ? " voucher"
-            : " 自用券"
-      }`;
+      (isNdpGiftProduct(selectedProduct)
+        ? lang === "en"
+          ? `National Day gift S$${valueSgd}`
+          : `国庆赠送券 S$${valueSgd}`
+        : `${selectedProduct.name} S$${valueSgd}${
+            paperType === "draw"
+              ? lang === "en"
+                ? " draw"
+                : " 抽奖券"
+              : lang === "en"
+                ? " voucher"
+                : " 自用券"
+          }`);
     const res = await fetch("/api/business/physical/batches", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -395,6 +419,7 @@ export function PhysicalBatchCreateForm({
                 {products.map((p) => {
                   const active = productId === p.id;
                   const kind = paperTypeFromProduct(p);
+                  const ndpGift = isNdpGiftProduct(p);
                   return (
                     <button
                       key={p.id}
@@ -414,23 +439,28 @@ export function PhysicalBatchCreateForm({
                         <span
                           className={cn(
                             "text-[10px] font-semibold shrink-0 rounded-full px-2 py-0.5",
-                            kind === "draw"
-                              ? "bg-brand/10 text-brand"
-                              : "bg-primary/10 text-primary"
+                            ndpGift
+                              ? "bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300"
+                              : kind === "draw"
+                                ? "bg-brand/10 text-brand"
+                                : "bg-primary/10 text-primary"
                           )}
                         >
-                          {kind === "draw"
+                          {ndpGift
                             ? lang === "en"
-                              ? "Draw paper"
-                              : "抽奖消费券"
-                            : lang === "en"
-                              ? "Voucher"
-                              : "自用券"}
+                              ? "Gift"
+                              : "满赠券"
+                            : kind === "draw"
+                              ? lang === "en"
+                                ? "Draw paper"
+                                : "抽奖消费券"
+                              : lang === "en"
+                                ? "Voucher"
+                                : "自用券"}
                         </span>
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
                         {productSummary(p, lang)}
-                        {p.packKind ? ` · ${p.packKind}` : ""}
                       </p>
                     </button>
                   );
@@ -438,16 +468,26 @@ export function PhysicalBatchCreateForm({
               </div>
             )}
             <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">
-              {lang === "en"
-                ? "Paper type follows the product — no extra type step. Ballot (box-only) is under Tools → Ballot print."
-                : "纸质类型由产品决定，无需再选手动类型。入箱票请到「更多 → 工具 → 入箱票印刷」。"}
+              {isNdpGift
+                ? lang === "en"
+                  ? "National Day paper uses the fixed gift face (S$61), not prepaid tiers."
+                  : "国庆纸质券使用固定赠送面额（S$61），不是预付 10/20/50 档。"
+                : lang === "en"
+                  ? "Paper type follows the product — no extra type step. Ballot (box-only) is under Tools → Ballot print."
+                  : "纸质类型由产品决定，无需再选手动类型。入箱票请到「更多 → 工具 → 入箱票印刷」。"}
             </p>
           </div>
 
           {/* Face tiers from product */}
           <div>
             <label className="block text-[13px] font-medium text-foreground mb-1.5">
-              {lang === "en" ? "Face tier (from product)" : "面值档（来自产品）"}
+              {isNdpGift
+                ? lang === "en"
+                  ? "Gift face (fixed)"
+                  : "赠送面额（固定）"
+                : lang === "en"
+                  ? "Face tier (from product)"
+                  : "面值档（来自产品）"}
             </label>
             <div className="flex flex-wrap gap-2">
               {tiers.map((t) => {
