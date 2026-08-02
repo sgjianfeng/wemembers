@@ -305,21 +305,42 @@ export async function paintCampaignPosterCanvas(
   const isA4 = opts.layout === "a4";
   const isVhd = opts.layout === "vhd";
   const isPosterLike = opts.layout === "poster" || isA4 || isVhd;
-  // a4/vhd 略放大字号/二维码，贴墙/屏显可读
-  const scale = isVhd ? 1.22 : isA4 ? 1.15 : 1;
+  // a4/vhd 略放大字号；竖版 scale 勿过大，否则字号/间距像被拉长
+  const scale = isVhd ? 1.08 : isA4 ? 1.12 : 1;
   const redHex = festival ? accent : "#CE1126";
-  // 红区略高，给品牌 + 满赠卡；白区放 QR（对齐落地页 hero 比重）
-  // 竖版招贴红区略矮，留给下方钩子+大 QR
-  const redH = Math.round(
-    h *
-      (opts.layout === "sticker"
-        ? 0.55
-        : isVhd
-          ? 0.46
-          : isA4
-            ? 0.5
-            : 0.52)
-  );
+
+  // 从 benefit 解析满赠数字（落地页同款大字）
+  const spendMatch =
+    opts.copy.benefitLine.match(/S\$\s*(\d+)\s*→\s*S\$\s*(\d+)/i) ||
+    opts.copy.benefitLine.match(/满\s*S\$?\s*(\d+)\s*送\s*S\$?\s*(\d+)/) ||
+    opts.campaignName.match(/满\s*(\d+)\s*送\s*(\d+)/);
+  const minSpend = spendMatch ? spendMatch[1] : "120";
+  const giftAmt = spendMatch ? spendMatch[2] : "61";
+
+  /**
+   * 国庆红区：按「品牌行 + 满赠卡」内容紧凑算高度。
+   * 旧逻辑用画布比例（vhd≈46%）再把卡贴红区底 → 中间大片空红，竖屏像变形。
+   */
+  const festPad = Math.round(36 * scale);
+  const festLogoS = Math.round(80 * scale);
+  const festRowY = Math.round(52 * scale);
+  const festCardH = Math.round(140 * scale);
+  const festCardGap = Math.round(22 * scale);
+  const festCardY = festRowY + festLogoS + festCardGap;
+  const festContentRedH = festCardY + festCardH + Math.round(26 * scale);
+  const redH = festival
+    ? // 国庆：红区高度 = 内容底边（各版式一致，禁止「比例红区 + 卡贴底」空心）
+      Math.min(festContentRedH, Math.round(h * 0.55))
+    : Math.round(
+        h *
+          (opts.layout === "sticker"
+            ? 0.55
+            : isVhd
+              ? 0.46
+              : isA4
+                ? 0.5
+                : 0.52)
+      );
 
   if (festival) {
     drawNdpLandingStyleBackdrop(ctx, w, h, redHex, redH);
@@ -331,14 +352,6 @@ export async function paintCampaignPosterCanvas(
 
   const fg = festival || isDark ? "#F8FAFC" : "#0f172a";
   const muted = festival ? "#475569" : isDark ? "#94A3B8" : "#64748b";
-
-  // 从 benefit 解析满赠数字（落地页同款大字）
-  const spendMatch =
-    opts.copy.benefitLine.match(/S\$\s*(\d+)\s*→\s*S\$\s*(\d+)/i) ||
-    opts.copy.benefitLine.match(/满\s*S\$?\s*(\d+)\s*送\s*S\$?\s*(\d+)/) ||
-    opts.campaignName.match(/满\s*(\d+)\s*送\s*(\d+)/);
-  const minSpend = spendMatch ? spendMatch[1] : "120";
-  const giftAmt = spendMatch ? spendMatch[2] : "61";
 
   const useGradientHeader =
     !festival && (isPosterLike || opts.layout === "sticker" || isDark);
@@ -385,19 +398,21 @@ export async function paintCampaignPosterCanvas(
       );
     }
   } else if (festival) {
-    // 对齐落地页：左品牌、右星月；下方满赠数字卡（S$120 → S$61）
-    const pad = Math.round(40 * scale);
+    // 对齐落地页：左品牌、右星月；满赠卡紧跟品牌行（不贴红区底，避免竖版中间空红）
+    const pad = festPad;
+    const logoS = festLogoS;
+    const rowY = festRowY;
+    const cardY = festCardY;
+    const cardH = festCardH;
     ctx.textAlign = "left";
     ctx.fillStyle = "rgba(255,255,255,0.95)";
-    ctx.font = `bold ${Math.round(16 * scale)}px system-ui, -apple-system, sans-serif`;
+    ctx.font = `bold ${Math.round(15 * scale)}px system-ui, -apple-system, sans-serif`;
     ctx.fillText(
       opts.lang === "en" ? "Table scan · spend & get" : "桌边扫码 · 结账满额即送",
       pad,
-      Math.round(36 * scale)
+      Math.round(34 * scale)
     );
 
-    const logoS = Math.round(88 * scale);
-    const rowY = Math.round(58 * scale);
     try {
       if (opts.businessLogo) {
         const logo = await loadImage(opts.businessLogo);
@@ -409,91 +424,86 @@ export async function paintCampaignPosterCanvas(
     } catch {
       /* optional */
     }
-    const textX = pad + logoS + Math.round(20 * scale);
+    const textX = pad + logoS + Math.round(18 * scale);
     // 预留给右上角星月，按像素裁切避免「Meow BBQ …」误伤中文品牌
     const textMaxW = Math.max(
       120,
-      w - textX - pad - Math.round(isVhd ? 100 : 90) * scale
+      w - textX - pad - Math.round(isVhd ? 96 : 88) * scale
     );
     ctx.fillStyle = "rgba(255,255,255,0.9)";
-    ctx.font = `bold ${Math.round(14 * scale)}px system-ui, -apple-system, sans-serif`;
+    ctx.font = `bold ${Math.round(13 * scale)}px system-ui, -apple-system, sans-serif`;
     ctx.fillText(
       `SG${giftAmt} · ${opts.lang === "en" ? "National Day" : "国庆满赠"}`,
       textX,
-      rowY + Math.round(22 * scale)
+      rowY + Math.round(20 * scale)
     );
     ctx.fillStyle = "#ffffff";
-    // 品牌略小、按宽度适配，完整显示「Meow BBQ 猫抓烤肉」一类中英混排
-    const brandFs = Math.round((isVhd ? 28 : 30) * scale);
+    const brandFs = Math.round((isVhd ? 26 : 28) * scale);
     ctx.font = `bold ${brandFs}px system-ui, -apple-system, sans-serif`;
     const brand =
       opts.businessName?.trim() ||
       (opts.lang === "en" ? "Store" : "门店");
     const brandLine = fitTextToWidth(ctx, brand, textMaxW);
-    ctx.fillText(brandLine, textX, rowY + Math.round(56 * scale));
+    ctx.fillText(brandLine, textX, rowY + Math.round(52 * scale));
     ctx.fillStyle = "rgba(255,255,255,0.88)";
-    ctx.font = `${Math.round(16 * scale)}px system-ui, -apple-system, sans-serif`;
+    ctx.font = `${Math.round(15 * scale)}px system-ui, -apple-system, sans-serif`;
     const campShort = fitTextToWidth(ctx, opts.campaignName, textMaxW);
-    ctx.fillText(campShort, textX, rowY + Math.round(84 * scale));
+    ctx.fillText(campShort, textX, rowY + Math.round(78 * scale));
 
-    // 满赠数字卡
+    // 满赠数字卡：紧跟品牌，不锚在 redH 底部
     const cardX = pad;
     const cardW = w - pad * 2;
-    const cardH = Math.round(148 * scale);
-    const cardY = redH - cardH - Math.round(28 * scale);
     ctx.fillStyle = "rgba(255,255,255,0.18)";
-    roundRect(ctx, cardX, cardY, cardW, cardH, 24);
+    roundRect(ctx, cardX, cardY, cardW, cardH, 22);
     ctx.fill();
     ctx.strokeStyle = "rgba(255,255,255,0.35)";
     ctx.lineWidth = 2;
-    roundRect(ctx, cardX, cardY, cardW, cardH, 24);
+    roundRect(ctx, cardX, cardY, cardW, cardH, 22);
     ctx.stroke();
 
     ctx.textAlign = "left";
     ctx.fillStyle = "rgba(255,255,255,0.9)";
-    ctx.font = `${Math.round(16 * scale)}px system-ui, -apple-system, sans-serif`;
+    ctx.font = `${Math.round(15 * scale)}px system-ui, -apple-system, sans-serif`;
     ctx.fillText(
       opts.lang === "en"
         ? `National Day · Spend ${minSpend} Get ${giftAmt}`
         : `国庆满赠 · 满${minSpend}送${giftAmt}`,
-      cardX + Math.round(28 * scale),
-      cardY + Math.round(36 * scale)
+      cardX + Math.round(24 * scale),
+      cardY + Math.round(34 * scale)
     );
     ctx.fillStyle = "#ffffff";
-    ctx.font = `bold ${Math.round(48 * scale)}px system-ui, -apple-system, sans-serif`;
-    ctx.fillText(
-      `S$${minSpend} → S$${giftAmt}`,
-      cardX + Math.round(28 * scale),
-      cardY + Math.round(92 * scale)
-    );
-    ctx.font = `bold ${Math.round(22 * scale)}px system-ui, -apple-system, sans-serif`;
+    const faceFs = Math.round(44 * scale);
+    ctx.font = `bold ${faceFs}px system-ui, -apple-system, sans-serif`;
+    const faceText = `S$${minSpend} → S$${giftAmt}`;
+    ctx.fillText(faceText, cardX + Math.round(24 * scale), cardY + Math.round(88 * scale));
+    const bigW2 = ctx.measureText(faceText).width;
+    ctx.font = `bold ${Math.round(20 * scale)}px system-ui, -apple-system, sans-serif`;
     ctx.fillStyle = "rgba(255,255,255,0.92)";
-    const bigW = ctx.measureText(`S$${minSpend} → S$${giftAmt}`).width;
-    // 若 measure 用了上一字号，重新量
-    ctx.font = `bold ${Math.round(48 * scale)}px system-ui, -apple-system, sans-serif`;
-    const bigW2 = ctx.measureText(`S$${minSpend} → S$${giftAmt}`).width;
-    ctx.font = `bold ${Math.round(22 * scale)}px system-ui, -apple-system, sans-serif`;
     ctx.fillText(
       `SG${giftAmt}`,
-      cardX + Math.round(28 * scale) + bigW2 + Math.round(16 * scale),
-      cardY + Math.round(88 * scale)
+      cardX + Math.round(24 * scale) + bigW2 + Math.round(14 * scale),
+      cardY + Math.round(84 * scale)
     );
-    void bigW;
     ctx.fillStyle = "rgba(255,255,255,0.88)";
-    ctx.font = `${Math.round(15 * scale)}px system-ui, -apple-system, sans-serif`;
-    ctx.fillText(
+    ctx.font = `${Math.round(14 * scale)}px system-ui, -apple-system, sans-serif`;
+    const subLine = fitTextToWidth(
+      ctx,
       opts.copy.sub,
-      cardX + Math.round(28 * scale),
-      cardY + Math.round(124 * scale)
+      cardW - Math.round(48 * scale)
+    );
+    ctx.fillText(
+      subLine,
+      cardX + Math.round(24 * scale),
+      cardY + Math.round(118 * scale)
     );
     if (opts.isDist) {
       ctx.fillStyle = "#FDE68A";
-      ctx.font = `bold ${Math.round(16 * scale)}px system-ui, sans-serif`;
+      ctx.font = `bold ${Math.round(15 * scale)}px system-ui, sans-serif`;
       ctx.textAlign = "right";
       ctx.fillText(
         `${opts.lang === "en" ? "Via" : "分发"} · ${opts.distLabel}`,
         w - pad,
-        Math.round(36 * scale)
+        Math.round(34 * scale)
       );
     }
   } else {
@@ -538,9 +548,10 @@ export async function paintCampaignPosterCanvas(
 
   // 国庆白区：钩子语 + 卖点条 + 适中 QR（A4 不再占半屏）
   // 其它布局保持原逻辑
+  // 竖版白区更高：QR 可更大且仍居中，避免「上头空、下头挤」
   const qrSize = festival
     ? isVhd
-      ? 400
+      ? Math.min(480, Math.round(w * 0.44))
       : isA4
         ? 300
         : opts.layout === "poster"
@@ -652,7 +663,23 @@ export async function paintCampaignPosterCanvas(
 
   // ── 国庆白区（钩子 + 卖点 pill + 中等 QR）──
   const whiteTop = redH;
-  let y = whiteTop + Math.round(isVhd ? 48 : isA4 ? 40 : 32);
+  // 竖版白区更高：内容块在白区内略居中，避免全顶死、底下大片空白
+  const whiteBodyPad = Math.round(isVhd ? 36 : isA4 ? 36 : 28);
+  let y = whiteTop + whiteBodyPad;
+  if (isVhd) {
+    // 粗算白区内容高：钩子+CTA+pills+QR+条款+截止
+    const approxBlock =
+      Math.round(64 * scale) +
+      Math.round(44 * scale) +
+      Math.round(44 * scale) +
+      qrSize +
+      Math.round(160 * scale);
+    const whiteH = h - redH;
+    const free = whiteH - approxBlock - whiteBodyPad * 2;
+    if (free > 40) {
+      y += Math.round(free * 0.28); // 略偏上居中，不是绝对中线
+    }
+  }
 
   ctx.textAlign = "center";
   // 钩子大标题
@@ -662,16 +689,16 @@ export async function paintCampaignPosterCanvas(
       ? `Celebrate SG${giftAmt} · Spend & get`
       : `庆 SG${giftAmt} · 本单满就送`);
   ctx.fillStyle = "#0f172a";
-  const hookFs = isVhd ? 38 : isA4 ? 36 : 30;
+  const hookFs = isVhd ? 34 : isA4 ? 34 : 28;
   ctx.font = `bold ${Math.round(hookFs * scale)}px system-ui, -apple-system, sans-serif`;
   fillTextCenter(
     ctx,
     hook,
     w / 2,
-    y + Math.round(28 * scale),
-    isVhd ? 40 : isA4 ? 36 : 28
+    y + Math.round(26 * scale),
+    isVhd ? 36 : isA4 ? 34 : 28
   );
-  y += Math.round((isVhd ? 64 : isA4 ? 56 : 48) * scale);
+  y += Math.round((isVhd ? 56 : isA4 ? 52 : 46) * scale);
 
   // 行动 CTA
   ctx.fillStyle = redHex;

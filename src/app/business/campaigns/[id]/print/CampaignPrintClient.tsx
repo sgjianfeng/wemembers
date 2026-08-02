@@ -904,14 +904,13 @@ export function CampaignPrintClient({
             </button>
           </div>
 
-          <div className="flex-1 overflow-auto px-3 py-2 flex items-start justify-center">
+          <div className="flex-1 min-h-0 overflow-auto px-3 py-2 flex items-center justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={pngPreview.dataUrl}
               alt={pngPreview.filename}
-              className="max-w-full h-auto rounded-xl shadow-2xl bg-white"
-              // 原图像素展示；CSS 只缩放显示，分享/下载仍用无损 PNG
-              style={{ imageRendering: "auto" }}
+              className="max-w-full max-h-full w-auto h-auto object-contain rounded-xl shadow-2xl bg-white"
+              // 只等比缩放显示，不拉宽/拉高；导出仍是原图像素
             />
           </div>
 
