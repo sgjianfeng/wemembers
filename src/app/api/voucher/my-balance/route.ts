@@ -12,16 +12,21 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  const totalBalance = vouchers.reduce((sum, v) => sum + v.balanceCents, 0);
-  const totalAmount = vouchers.reduce((sum, v) => sum + v.amountCents, 0);
-  const totalUsed = vouchers.reduce((sum, v) => sum + v.usedCents, 0);
+  const { isSpendableBalanceVoucher } = await import(
+    "@/lib/voucher-classification"
+  );
+  const spendable = vouchers.filter(isSpendableBalanceVoucher);
+
+  const totalBalance = spendable.reduce((sum, v) => sum + v.balanceCents, 0);
+  const totalAmount = spendable.reduce((sum, v) => sum + v.amountCents, 0);
+  const totalUsed = spendable.reduce((sum, v) => sum + v.usedCents, 0);
 
   return NextResponse.json({
     data: {
       totalBalanceSgd: (totalBalance / 100).toFixed(2),
       totalAmountSgd: (totalAmount / 100).toFixed(2),
       totalUsedSgd: (totalUsed / 100).toFixed(2),
-      vouchers: vouchers.map((v) => ({
+      vouchers: spendable.map((v) => ({
         id: v.id,
         amountSgd: (v.amountCents / 100).toFixed(2),
         balanceSgd: (v.balanceCents / 100).toFixed(2),

@@ -74,7 +74,8 @@ export default async function WalletPage() {
     isGiftEntry:
       v.paidCents === 0 ||
       v.paymentMethod === "free" ||
-      v.issueReason === "marketing",
+      v.issueReason === "marketing" ||
+      v.issueReason === "ndp_draw_entry",
     amountCents: v.amountCents,
     balanceCents: v.balanceCents,
   }));

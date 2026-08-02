@@ -88,6 +88,40 @@ const include = {
   customer: { select: { displayName: true, phone: true } },
 } as const;
 
+async function rejectIfDrawEntryOnly(
+  voucher: {
+    balanceCents: number;
+    paidCents: number;
+    usedCents: number;
+    drawWeight: number;
+    paymentMethod: string | null;
+    issueReason: string | null;
+    issueNote: string | null;
+    status: string;
+  }
+): Promise<NextResponse | null> {
+  const { isDrawEntryOnlyVoucher } = await import(
+    "@/lib/voucher-classification"
+  );
+  if (isDrawEntryOnlyVoucher(voucher)) {
+    return NextResponse.json(
+      {
+        error:
+          "这是大奖抽奖资格（非余额券）。请核销顾客券包里的赠送券二维码，或到「活动券」操作。",
+        code: "DRAW_ENTRY_ONLY",
+      },
+      { status: 400 }
+    );
+  }
+  if (voucher.balanceCents <= 0) {
+    return NextResponse.json(
+      { error: "该券无可核销余额", code: "NO_BALANCE" },
+      { status: 400 }
+    );
+  }
+  return null;
+}
+
 async function withShortCode(v: VoucherRow): Promise<VoucherRow> {
   if (v.shortCode) return v;
   try {
@@ -140,6 +174,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (voucher) {
+      const blocked = await rejectIfDrawEntryOnly(voucher);
+      if (blocked) return blocked;
       const row = await withShortCode(voucher as VoucherRow);
       return NextResponse.json({ data: formatVoucher(row) });
     }

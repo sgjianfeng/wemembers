@@ -17,11 +17,17 @@ export default async function BalancePage() {
   const c = await cookies();
   const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
 
-  // ── 所有有效券的余额汇总 ──
+  // ── 可花余额券（排除国庆满赠「大奖签」零余额 Voucher）──
   const activeVouchersRaw = await prisma.voucher.findMany({
     where: { customerId: session.userId, status: "active" },
     select: {
       balanceCents: true,
+      paidCents: true,
+      usedCents: true,
+      drawWeight: true,
+      paymentMethod: true,
+      issueReason: true,
+      issueNote: true,
       id: true,
       shortCode: true,
       amountCents: true,
@@ -33,10 +39,15 @@ export default async function BalancePage() {
     orderBy: { createdAt: "desc" },
   });
 
+  const { isSpendableBalanceVoucher } = await import(
+    "@/lib/voucher-classification"
+  );
+  const spendableRaw = activeVouchersRaw.filter(isSpendableBalanceVoucher);
+
   // 旧券补短码（懒生成，店员可口播）
   const { ensureVoucherShortCode } = await import("@/lib/voucher-short-code");
   const activeVouchers = await Promise.all(
-    activeVouchersRaw.map(async (v) => {
+    spendableRaw.map(async (v) => {
       if (v.shortCode) return v;
       try {
         const shortCode = await ensureVoucherShortCode(v.id);
@@ -133,6 +144,11 @@ export default async function BalancePage() {
             </p>
             <p className="text-[11px] text-white/90 mt-2 font-medium">
               {t("balance.trustLine", lang)}
+            </p>
+            <p className="text-[10px] text-white/75 mt-2 leading-relaxed">
+              {lang === "en"
+                ? "Gift coupons & draw entries live in Wallet · only spendable prepaid balance is listed here."
+                : "赠送券与大奖资格在「券包」；此处仅展示可花的预付余额。"}
             </p>
           </CardContent>
         </Card>

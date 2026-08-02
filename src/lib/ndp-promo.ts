@@ -578,7 +578,8 @@ export async function issueNdpGrantDual(
       status: "active",
       productKind,
       paymentMethod: "free",
-      issueReason: isComp ? "marketing" : "marketing",
+      // 标记为大奖签：余额页/核销台勿当预付余额展示
+      issueReason: "ndp_draw_entry",
       issueNote: isComp
         ? `国庆Comp赠送大奖签 · ${input.receiptNote || ""}`.slice(0, 500)
         : `国庆满赠大奖签 · 消费${(input.receiptAmountCents / 100).toFixed(2)}`.slice(
