@@ -117,12 +117,10 @@ export async function POST(request: NextRequest) {
       isDraw ? "余额全额可用 · 到店核销 20% 进奖池" : null,
     ].filter(Boolean);
 
-    // Live: PayNow only (SG). Test keys: also enable card so 4242… can 验账.
-    const stripeKey = process.env.STRIPE_SECRET_KEY || "";
-    const isTestStripe = stripeKey.startsWith("sk_test");
-    const paymentMethodTypes: ("paynow" | "card")[] = isTestStripe
-      ? ["card", "paynow"]
-      : ["paynow"];
+    // 手机上 PayNow 只能显示二维码，本机无法自扫，需截图后用银行 App 扫相册，
+    // 或用另一台设备扫。同时开放 card，方便手机用户直接填卡支付。
+    // 顺序：PayNow 优先展示，卡作备选。
+    const paymentMethodTypes: ("paynow" | "card")[] = ["paynow", "card"];
 
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "payment",

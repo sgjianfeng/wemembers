@@ -823,6 +823,10 @@ function VoucherDrawInner() {
 
               {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
 
+              <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] text-amber-950 leading-relaxed">
+                {t("voucher.paynowMobileTip")}
+              </div>
+
               <Button className="w-full" size="lg" onClick={handlePurchase} loading={submitting}>
                 {isDraw
                   ? t("voucher.payDraw")

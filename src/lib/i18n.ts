@@ -1094,9 +1094,12 @@ const zh: Record<string, string> = {
   "scan.physicalDrawNoAnon": "抽奖券不能匿名核销，请先让顾客扫码绑定。",
 
   // ── Voucher purchase page ──
-  "voucher.payDraw": "PayNow 支付并抽奖",
-  "voucher.payAmount": "PayNow 支付 S${amount}",
-  "voucher.paynowHint": "仅支持 PayNow（Stripe）· 新加坡银行 App 扫码支付",
+  "voucher.payDraw": "支付并抽奖",
+  "voucher.payAmount": "支付 S${amount}",
+  "voucher.paynowHint":
+    "支持 PayNow 与银行卡（Stripe）。手机用 PayNow：先截图二维码 → 打开银行 App → 扫相册/上传二维码。也可选银行卡直接付。",
+  "voucher.paynowMobileTip":
+    "手机 PayNow 提示：本机屏幕上的码不能用同一台手机摄像头扫。请「截图」→ 打开 DBS/OCBC/UOB 等银行 App → 选 PayNow 扫码 → 从相册选刚才的截图。或在支付页改选银行卡。",
   "voucher.discountBanner": "现享 {pct}% 折扣",
   "voucher.listPay": "标价 S${list} · 实付 S${paid}（−{pct}%）",
   "voucher.balanceEqPaid": "入账余额 = 实付金额",
@@ -2320,9 +2323,12 @@ const en: Record<string, string> = {
   "scan.physicalDrawNoAnon": "Draw tickets cannot be redeemed anonymously — bind first.",
 
   // ── Voucher purchase page ──
-  "voucher.payDraw": "PayNow & Draw",
-  "voucher.payAmount": "PayNow S${amount}",
-  "voucher.paynowHint": "PayNow only via Stripe · scan with your SG banking app",
+  "voucher.payDraw": "Pay & Draw",
+  "voucher.payAmount": "Pay S${amount}",
+  "voucher.paynowHint":
+    "PayNow or card via Stripe. On phone with PayNow: screenshot the QR → open bank app → scan from Photos. Or choose card on the payment page.",
+  "voucher.paynowMobileTip":
+    "Mobile PayNow: you can’t scan the on-screen QR with the same phone. Screenshot it → open your bank app (DBS/OCBC/UOB…) → PayNow scan → pick the screenshot from Photos. Or switch to card on Stripe Checkout.",
   "voucher.discountBanner": "{pct}% off",
   "voucher.listPay": "List S${list} · You pay S${paid} (−{pct}%)",
   "voucher.balanceEqPaid": "Balance credited = amount paid",
