@@ -75,24 +75,26 @@ export default async function TokenRechargePage({
     !!stripeAcct?.chargesEnabled &&
     !stripeAcct?.payoutsEnabled;
 
-  // 自用券：今日售出 + 累计售出 + 待核销（店内收款，不进平台可提现）
+  // 自用/独享：只计实付>0（排除国庆零元大奖签等）
   const dayStart = new Date();
   dayStart.setHours(0, 0, 0, 0);
   const campBiz = { campaign: { businessId: session.userId } };
-  const [selfSoldToday, selfSoldAll, selfPending, distSoldAll] =
+  const paidFilter = { paidCents: { gt: 0 } as const };
+  const [selfSoldToday, selfSoldAll, selfPending, distSoldAll, recentSales] =
     await Promise.all([
       prisma.voucher.aggregate({
         where: {
           productKind: "self_use",
           ...campBiz,
+          ...paidFilter,
           createdAt: { gte: dayStart },
         },
-        _sum: { amountCents: true },
+        _sum: { paidCents: true },
         _count: true,
       }),
       prisma.voucher.aggregate({
-        where: { productKind: "self_use", ...campBiz },
-        _sum: { amountCents: true },
+        where: { productKind: "self_use", ...campBiz, ...paidFilter },
+        _sum: { paidCents: true },
         _count: true,
       }),
       prisma.voucher.aggregate({
@@ -108,17 +110,39 @@ export default async function TokenRechargePage({
         where: {
           productKind: "distribution",
           ...campBiz,
+          ...paidFilter,
         },
-        _sum: { amountCents: true, sellerCommissionCents: true },
+        _sum: { paidCents: true, sellerCommissionCents: true },
         _count: true,
       }),
+      // 近期真卖出（含独享/自用/分发），供「卖券明细」— 不依赖代币流水
+      prisma.voucher.findMany({
+        where: {
+          ...campBiz,
+          ...paidFilter,
+        },
+        select: {
+          id: true,
+          shortCode: true,
+          paidCents: true,
+          amountCents: true,
+          balanceCents: true,
+          productKind: true,
+          paymentMethod: true,
+          createdAt: true,
+          campaign: { select: { name: true, type: true } },
+          customer: { select: { phone: true, displayName: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 30,
+      }),
     ]);
-  const selfSoldCents = selfSoldToday._sum.amountCents ?? 0;
+  const selfSoldCents = selfSoldToday._sum.paidCents ?? 0;
   const selfSoldCount = selfSoldToday._count;
-  const selfSoldAllCents = selfSoldAll._sum.amountCents ?? 0;
+  const selfSoldAllCents = selfSoldAll._sum.paidCents ?? 0;
   const selfSoldAllCount = selfSoldAll._count;
   const selfPendingCents = selfPending._sum.balanceCents ?? 0;
-  const distSoldAllCents = distSoldAll._sum.amountCents ?? 0;
+  const distSoldAllCents = distSoldAll._sum.paidCents ?? 0;
   const distSoldAllCount = distSoldAll._count;
   const distCommCents = distSoldAll._sum.sellerCommissionCents ?? 0;
 
@@ -366,31 +390,136 @@ export default async function TokenRechargePage({
           </div>
         )}
 
-        {/* Transactions */}
-        {transactions.length > 0 && (
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-2">{t("business.tokens.transactions", lang)}</h3>
+        {/* 卖券明细：独享/自用线上付不进代币流水，单独列出 */}
+        <div>
+          <h3 className="text-sm font-semibold text-foreground mb-1">
+            {lang === "en" ? "Sales detail" : "卖券明细"}
+          </h3>
+          <p className="text-[11px] text-muted-foreground mb-2 leading-relaxed">
+            {lang === "en"
+              ? "Paid orders (Stripe/PayNow/cash). Exclusive sales stay as customer credit until redeem — not platform withdrawable."
+              : "顾客实付订单（Stripe/PayNow/现金）。独享售出记为顾客预付权益，不进上方「可提现」，故也不会出现在「钱包流水」里。"}
+          </p>
+          {recentSales.length === 0 ? (
+            <p className="text-xs text-muted-foreground px-3 py-4 bg-card rounded-lg border border-border text-center">
+              {lang === "en" ? "No paid sales yet" : "暂无实付卖券记录"}
+            </p>
+          ) : (
             <div className="space-y-1">
-              {transactions.map((tx) => {
-                const style = consumeTypeLabels[tx.type] || { zh: tx.type, en: tx.type, color: "text-muted-foreground" };
+              {recentSales.map((sale) => {
+                const isSelf = sale.productKind === "self_use";
+                const pay =
+                  sale.paymentMethod === "stripe"
+                    ? "Stripe/PayNow"
+                    : sale.paymentMethod === "cash"
+                      ? lang === "en"
+                        ? "Cash"
+                        : "现金"
+                      : sale.paymentMethod || "—";
+                const who =
+                  sale.customer?.displayName ||
+                  sale.customer?.phone ||
+                  (lang === "en" ? "Customer" : "顾客");
                 return (
-                  <div key={tx.id} className="flex items-center justify-between px-3 py-2.5 bg-card rounded-lg border border-border">
+                  <div
+                    key={sale.id}
+                    className="flex items-center justify-between gap-2 px-3 py-2.5 bg-card rounded-lg border border-border"
+                  >
                     <div className="min-w-0">
-                      <p className="text-xs text-muted-foreground truncate">{tx.description}</p>
-                      <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
-                        <Badge variant="slate" size="sm">{lang === "zh" ? style.zh : style.en}</Badge>
-                        <span>{timeAgo(tx.createdAt)}</span>
+                      <p className="text-xs font-medium text-foreground truncate">
+                        {sale.campaign?.name || "—"}
+                        {sale.shortCode ? (
+                          <span className="font-mono text-primary ml-1.5 tracking-wider">
+                            {sale.shortCode}
+                          </span>
+                        ) : null}
+                      </p>
+                      <div className="text-[10px] text-muted-foreground mt-0.5 flex flex-wrap items-center gap-1">
+                        <Badge variant="slate" size="sm">
+                          {isSelf
+                            ? lang === "en"
+                              ? "Self/Exclusive"
+                              : "自用/独享"
+                            : lang === "en"
+                              ? "Distribution"
+                              : "分发"}
+                        </Badge>
+                        <span>{pay}</span>
+                        <span>·</span>
+                        <span className="truncate max-w-[8rem]">{who}</span>
+                        <span>·</span>
+                        <span>{timeAgo(sale.createdAt)}</span>
                       </div>
+                      {isSelf && sale.balanceCents > 0 && (
+                        <p className="text-[10px] text-amber-700 mt-0.5">
+                          {lang === "en"
+                            ? `Customer balance left S$${(sale.balanceCents / 100).toFixed(2)} (not withdrawable)`
+                            : `顾客剩余可花 S$${(sale.balanceCents / 100).toFixed(2)}（未核销，不可提）`}
+                        </p>
+                      )}
                     </div>
-                    <span className={`text-sm font-semibold shrink-0 ml-2 ${tx.amount > 0 ? "text-green-600" : "text-red-500"}`}>
-                      {tx.amount > 0 ? "+" : ""}S${(Math.abs(tx.amount) / 100).toFixed(2)}
+                    <span className="text-sm font-semibold shrink-0 text-foreground tabular-nums">
+                      S${(sale.paidCents / 100).toFixed(2)}
                     </span>
                   </div>
                 );
               })}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* 钱包流水：仅 TokenAccount 变动（充值/赠送/扣服务费/核销入账等） */}
+        <div>
+          <h3 className="text-sm font-semibold text-foreground mb-1">
+            {lang === "en" ? "Wallet ledger" : "钱包流水"}
+          </h3>
+          <p className="text-[11px] text-muted-foreground mb-2 leading-relaxed">
+            {lang === "en"
+              ? "Token wallet only (top-up, gift credit, fees). Not a full sales journal."
+              : "仅平台钱包变动（充值、赠送额度、服务费等）。独享购券本身不写这里。"}
+          </p>
+          {transactions.length === 0 ? (
+            <p className="text-xs text-muted-foreground px-3 py-4 bg-card rounded-lg border border-border text-center">
+              {lang === "en" ? "No wallet movements" : "暂无钱包流水"}
+            </p>
+          ) : (
+            <div className="space-y-1">
+              {transactions.map((tx) => {
+                const style = consumeTypeLabels[tx.type] || {
+                  zh: tx.type,
+                  en: tx.type,
+                  color: "text-muted-foreground",
+                };
+                return (
+                  <div
+                    key={tx.id}
+                    className="flex items-center justify-between px-3 py-2.5 bg-card rounded-lg border border-border"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground truncate">
+                        {tx.description}
+                      </p>
+                      <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                        <Badge variant="slate" size="sm">
+                          {lang === "zh" ? style.zh : style.en}
+                        </Badge>
+                        <span>{timeAgo(tx.createdAt)}</span>
+                      </div>
+                    </div>
+                    <span
+                      className={`text-sm font-semibold shrink-0 ml-2 ${
+                        tx.amount > 0 ? "text-green-600" : "text-red-500"
+                      }`}
+                    >
+                      {tx.amount > 0 ? "+" : ""}S$
+                      {(Math.abs(tx.amount) / 100).toFixed(2)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
