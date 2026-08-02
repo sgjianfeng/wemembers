@@ -32,8 +32,8 @@ export function HomeActivityEntitlements({
             </h2>
             <p className="text-[10px] text-muted-foreground mt-0.5">
               {zh
-                ? "按活动查看 · 展开见赠送券 / 抽奖 / 余额"
-                : "By activity · expand gift · draw · balance"}
+                ? "按活动分组 · 展开见赠送券 / 抽奖资格 / 预付余额（与券包一致）"
+                : "By activity · gift / draw / prepaid (same as wallet)"}
             </p>
           </div>
           <Link

@@ -117,6 +117,10 @@ export default async function CustomerHome() {
 
   const langCode = lang === "en" ? "en" : "zh";
 
+  const { isSpendableBalanceVoucher } = await import(
+    "@/lib/voucher-classification"
+  );
+
   const mineBundles = buildCustomerActivityBundles({
     lang: langCode,
     claims: myCoupons.map((c) => {
@@ -134,25 +138,38 @@ export default async function CustomerHome() {
         href: `/redeem/${c.id}`,
       };
     }),
+    // 有抽奖权重的券：余额+资格都进活动包（与券包同一套）
     draws: myVouchers
-      .filter((v) => v.drawWeight > 0)
-      .map((v) => ({
-        id: v.id,
-        campaignId: v.campaignId,
-        campaignName: v.campaign?.name || null,
-        businessName: v.campaign?.business?.businessName || null,
-        drawWeight: v.drawWeight,
-        shortCode: v.shortCode,
-        isGiftEntry:
-          v.paidCents === 0 ||
-          v.paymentMethod === "free" ||
-          v.issueReason === "marketing",
-        balanceCents: v.balanceCents,
-        amountCents: v.amountCents,
-        href: "/balance",
-      })),
+      .filter((v) => (v.drawWeight ?? 0) > 0)
+      .map((v) => {
+        const slug = v.campaign?.slug?.trim() || null;
+        return {
+          id: v.id,
+          campaignId: v.campaignId,
+          campaignName: v.campaign?.name || null,
+          campaignSlug: slug,
+          campaignType: v.campaign?.type || null,
+          businessName: v.campaign?.business?.businessName || null,
+          drawWeight: v.drawWeight,
+          shortCode: v.shortCode,
+          isGiftEntry:
+            v.paidCents === 0 ||
+            v.paymentMethod === "free" ||
+            v.issueReason === "marketing" ||
+            v.issueReason === "ndp_draw_entry",
+          balanceCents: v.balanceCents,
+          amountCents: v.amountCents,
+          countdownHref: slug
+            ? `/voucher/${encodeURIComponent(slug)}#grand-countdown`
+            : v.campaignId
+              ? `/activity/${encodeURIComponent(v.campaignId)}`
+              : "/discover/draws",
+          balanceHref: "/balance",
+        };
+      }),
+    // 纯预付（无抽奖权重）：单独挂活动
     prepaid: myVouchers
-      .filter((v) => v.balanceCents > 0 && v.drawWeight <= 0)
+      .filter((v) => isSpendableBalanceVoucher(v) && (v.drawWeight ?? 0) <= 0)
       .map((v) => ({
         id: v.id,
         campaignId: v.campaignId,

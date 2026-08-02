@@ -181,12 +181,13 @@ function EntitlementRow({
         </div>
       </div>
       {item.ops && item.ops.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-2">
+        <div className="flex flex-wrap gap-1.5 mt-2 justify-end">
           {item.ops.map((op) => (
             <Link
               key={op.href}
               href={op.href}
-              className="text-[11px] font-medium text-primary"
+              className="text-[11px] font-semibold text-[#1A6EFF] px-3 py-1 rounded-full bg-white border border-border"
+              onClick={(e) => e.stopPropagation()}
             >
               {zh ? op.label : op.labelEn || op.label}
             </Link>

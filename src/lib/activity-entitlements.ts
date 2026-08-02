@@ -130,13 +130,18 @@ export function buildCustomerActivityBundles(input: {
     id: string;
     campaignId: string;
     campaignName: string | null;
+    campaignSlug?: string | null;
+    campaignType?: string | null;
     businessName: string | null;
     drawWeight: number;
     shortCode: string | null;
     isGiftEntry: boolean;
     balanceCents: number;
     amountCents: number;
-    href?: string | null;
+    /** 大奖倒计时（活动页）；勿用 /balance */
+    countdownHref?: string | null;
+    /** 预付余额行跳转，默认 /balance */
+    balanceHref?: string | null;
   }>;
   prepaid?: Array<{
     id: string;
@@ -170,8 +175,28 @@ export function buildCustomerActivityBundles(input: {
         joined: true,
         summary: "",
       });
+    } else {
+      // 后写入的活动页链接可补全
+      const g = map.get(key)!;
+      if (!g.href && partial.href) g.href = partial.href;
+      if (!g.blurb && partial.blurb) g.blurb = partial.blurb;
     }
     return map.get(key)!;
+  };
+
+  const countdownOf = (d: {
+    campaignSlug?: string | null;
+    campaignId: string;
+    countdownHref?: string | null;
+  }) => {
+    if (d.countdownHref) return d.countdownHref;
+    if (d.campaignSlug?.trim()) {
+      return `/voucher/${encodeURIComponent(d.campaignSlug.trim())}#grand-countdown`;
+    }
+    if (d.campaignId) {
+      return `/activity/${encodeURIComponent(d.campaignId)}`;
+    }
+    return "/discover/draws";
   };
 
   for (const c of input.claims) {
@@ -200,21 +225,27 @@ export function buildCustomerActivityBundles(input: {
 
   for (const d of input.draws) {
     const key = d.campaignId;
+    const countdownHref = countdownOf(d);
+    const tone = activityToneFromType(
+      d.campaignType || (d.isGiftEntry ? "holiday" : "lucky_draw_v2"),
+      d.campaignName
+    );
     const g = ensure(key, {
       campaignId: d.campaignId,
       title: d.campaignName || (zh ? "大奖活动" : "Grand draw"),
       businessName: d.businessName,
-      type: "lucky_draw_v2",
-      tone: d.isGiftEntry ? "ndp" : "draw",
+      type: d.campaignType || "lucky_draw_v2",
+      tone: tone === "default" ? (d.isGiftEntry ? "ndp" : "draw") : tone,
       blurb: d.isGiftEntry
         ? zh
           ? "赠送抽奖 · 购券可获约 5 倍机会"
           : "Gift draw · buy for ~5× chance"
         : zh
-          ? "购券大奖资格"
-          : "Paid draw entry",
+          ? "购券 · 大奖资格"
+          : "Paid · Grand draw",
+      href: countdownHref,
     });
-    // 有余额的当作 prepaid 也列一条
+    // 同一张券：可花余额 + 抽奖资格 拆成两行（首页/券包一致）
     if (d.balanceCents > 0) {
       g.entitlements.push({
         id: `${d.id}-bal`,
@@ -223,9 +254,9 @@ export function buildCustomerActivityBundles(input: {
         title: zh ? "预付余额" : "Prepaid balance",
         primaryLabel: `S$${(d.balanceCents / 100).toFixed(2)}`,
         secondaryLabel: zh
-          ? `面值 S$${(d.amountCents / 100).toFixed(0)}`
-          : `Face S$${(d.amountCents / 100).toFixed(0)}`,
-        href: d.href ?? "/balance",
+          ? `面值 S$${(d.amountCents / 100).toFixed(0)} · 到店核销`
+          : `Face S$${(d.amountCents / 100).toFixed(0)} · redeem in store`,
+        href: d.balanceHref ?? "/balance",
       });
     }
     g.entitlements.push({
@@ -239,24 +270,30 @@ export function buildCustomerActivityBundles(input: {
         : zh
           ? "购券 · 大奖资格"
           : "Paid · Grand draw",
-      primaryLabel: d.isGiftEntry
-        ? zh
-          ? "1 次机会"
-          : "1 chance"
-        : `w=${d.drawWeight}`,
+      // 与首页一致：都显示「1 次机会」，不暴露内部权重数字
+      primaryLabel: zh ? "1 次机会" : "1 chance",
       secondaryLabel: d.shortCode
         ? `${zh ? "短码" : "Code"} ${d.shortCode}`
         : d.isGiftEntry
           ? zh
             ? "购券可获约 5 倍机会"
             : "~5× if you buy"
-          : undefined,
-      href: d.href ?? "/balance",
+          : zh
+            ? "点进看大奖倒计时"
+            : "Tap for prize countdown",
+      href: countdownHref,
+      ops: [
+        {
+          label: zh ? "看倒计时" : "Countdown",
+          labelEn: "Countdown",
+          href: countdownHref,
+        },
+      ],
     });
   }
 
   for (const p of input.prepaid || []) {
-    const key = p.campaignId;
+    const key = p.campaignId || `solo-prepaid-${p.id}`;
     const g = ensure(key, {
       campaignId: p.campaignId,
       title: p.campaignName || (zh ? "预付活动" : "Prepaid"),
@@ -264,6 +301,7 @@ export function buildCustomerActivityBundles(input: {
       type: "voucher_sale",
       tone: "voucher",
       blurb: zh ? "到店可花余额" : "Spend in-store",
+      href: p.href ?? "/balance",
     });
     if (!g.entitlements.some((e) => e.id === p.id || e.id === `${p.id}-bal`)) {
       g.entitlements.push({
@@ -273,8 +311,8 @@ export function buildCustomerActivityBundles(input: {
         title: zh ? "预付余额" : "Prepaid balance",
         primaryLabel: `S$${(p.balanceCents / 100).toFixed(2)}`,
         secondaryLabel: zh
-          ? `面值 S$${(p.amountCents / 100).toFixed(0)}`
-          : `Face S$${(p.amountCents / 100).toFixed(0)}`,
+          ? `面值 S$${(p.amountCents / 100).toFixed(0)} · 到店核销`
+          : `Face S$${(p.amountCents / 100).toFixed(0)} · redeem in store`,
         href: p.href ?? "/balance",
       });
     }
@@ -282,13 +320,26 @@ export function buildCustomerActivityBundles(input: {
 
   for (const g of map.values()) {
     const n = g.entitlements.length;
-    g.summary = zh ? `${n} 项权益` : `${n} entitlement${n === 1 ? "" : "s"}`;
+    const gifts = g.entitlements.filter((e) => e.kind === "gift_coupon").length;
+    const draws = g.entitlements.filter((e) => e.kind === "draw_entry").length;
+    const prepaid = g.entitlements.filter((e) => e.kind === "prepaid").length;
+    const bits: string[] = [];
+    if (gifts) bits.push(zh ? `${gifts} 赠券` : `${gifts} gift`);
+    if (draws) bits.push(zh ? `${draws} 抽奖` : `${draws} draw`);
+    if (prepaid) bits.push(zh ? `${prepaid} 余额` : `${prepaid} balance`);
+    g.summary =
+      bits.length > 0
+        ? `${zh ? `${n} 项权益` : `${n} perk${n === 1 ? "" : "s"}`} · ${bits.join(" · ")}`
+        : zh
+          ? `${n} 项权益`
+          : `${n} perk${n === 1 ? "" : "s"}`;
     g.summaryEn = g.summary;
   }
 
   return Array.from(map.values()).sort((a, b) => {
     const score = (x: ActivityBundle) =>
       (x.tone === "ndp" ? 20 : 0) +
+      (x.tone === "draw" ? 12 : 0) +
       (x.campaignId ? 10 : 0) +
       x.entitlements.length;
     return score(b) - score(a);
