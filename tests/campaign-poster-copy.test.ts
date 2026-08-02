@@ -167,6 +167,8 @@ describe("campaign-poster-export sizes", () => {
     posterCanvasSize,
     posterFilename,
     dataUrlToBase64,
+    dataUrlToBlob,
+    dataUrlApproxKb,
   } = require("../src/lib/campaign-poster-export");
 
   test("canvas sizes", () => {
@@ -187,6 +189,16 @@ describe("campaign-poster-export sizes", () => {
 
   test("dataUrlToBase64 strips prefix", () => {
     expect(dataUrlToBase64("data:image/png;base64,AAA")).toBe("AAA");
+  });
+
+  test("dataUrlToBlob and approxKb keep png mime", () => {
+    // 1x1 png
+    const tiny =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const blob = dataUrlToBlob(tiny);
+    expect(blob.type).toBe("image/png");
+    expect(blob.size).toBeGreaterThan(10);
+    expect(dataUrlApproxKb(tiny)).toBeGreaterThanOrEqual(1);
   });
 });
 

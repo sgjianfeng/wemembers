@@ -93,8 +93,68 @@ export function triggerBlobDownload(blob: Blob, filename: string) {
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  a.rel = "noopener";
+  // iOS Safari：挂到 DOM 再点更稳
+  a.style.display = "none";
+  document.body.appendChild(a);
   a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  setTimeout(() => {
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, 4000);
+}
+
+/** dataURL → Blob（分享 / 下载共用，保持 PNG 无损） */
+export function dataUrlToBlob(dataUrl: string): Blob {
+  const comma = dataUrl.indexOf(",");
+  const header = comma >= 0 ? dataUrl.slice(0, comma) : "";
+  const b64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+  const mime =
+    /data:([^;]+)/.exec(header)?.[1]?.trim() || "image/png";
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+/** 约等于体积（KB），便于界面提示 */
+export function dataUrlApproxKb(dataUrl: string): number {
+  const comma = dataUrl.indexOf(",");
+  const b64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+  return Math.max(1, Math.round((b64.length * 0.75) / 1024));
+}
+
+/**
+ * 系统分享 PNG（iOS 可进相册 / WhatsApp）；不支持则下载。
+ * 始终用完整 PNG，不压 JPEG。
+ */
+export async function sharePngFile(
+  dataUrl: string,
+  filename: string
+): Promise<"shared" | "downloaded" | "cancelled"> {
+  const blob = dataUrlToBlob(dataUrl);
+  const file = new File([blob], filename, { type: "image/png" });
+  try {
+    if (
+      typeof navigator !== "undefined" &&
+      typeof navigator.share === "function" &&
+      typeof navigator.canShare === "function" &&
+      navigator.canShare({ files: [file] })
+    ) {
+      await navigator.share({
+        files: [file],
+        title: filename,
+      });
+      return "shared";
+    }
+  } catch (e) {
+    // 用户取消不视为失败
+    if (e instanceof Error && e.name === "AbortError") {
+      return "cancelled";
+    }
+  }
+  triggerBlobDownload(blob, filename);
+  return "downloaded";
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -728,10 +788,8 @@ export async function paintCampaignPosterCanvas(
 }
 
 function triggerDownload(dataUrl: string, filename: string) {
-  const a = document.createElement("a");
-  a.href = dataUrl;
-  a.download = filename;
-  a.click();
+  // 走 Blob 下载，兼容性优于直接 a[download]=dataURL
+  triggerBlobDownload(dataUrlToBlob(dataUrl), filename);
 }
 
 export async function drawCampaignPosterPng(
@@ -742,6 +800,7 @@ export async function drawCampaignPosterPng(
   const filename =
     filenameOverride ||
     posterFilename(opts.campaignName, opts.isDist, opts.layout);
+  // 无损 PNG（非 JPEG），保证二维码与红底印刷质量
   const dataUrl = canvas.toDataURL("image/png");
   triggerDownload(dataUrl, filename);
   canvas.width = 1;

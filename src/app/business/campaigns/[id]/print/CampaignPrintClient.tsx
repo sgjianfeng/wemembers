@@ -11,9 +11,11 @@ import {
   type CampaignPosterCopy,
 } from "@/lib/campaign-poster-copy";
 import {
-  drawCampaignPosterPng,
+  dataUrlApproxKb,
+  dataUrlToBlob,
   posterFilename,
   renderCampaignPosterDataUrl,
+  sharePngFile,
   triggerBlobDownload,
   zipCampaignPosterFiles,
   type CampaignPosterLayoutId,
@@ -99,6 +101,14 @@ export function CampaignPrintClient({
   const [bulkProgress, setBulkProgress] = useState("");
   const [err, setErr] = useState("");
   const [copiedShare, setCopiedShare] = useState<number | null>(null);
+  /** 全画质 PNG 预览（分享 / 下载 / 长按存相册） */
+  const [pngPreview, setPngPreview] = useState<{
+    dataUrl: string;
+    filename: string;
+    kb: number;
+  } | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareHint, setShareHint] = useState("");
 
   const origin =
     typeof window !== "undefined"
@@ -306,16 +316,72 @@ export function CampaignPrintClient({
     ]
   );
 
-  const downloadBranded = useCallback(async () => {
+  /**
+   * PNG：全画质渲染后打开独立预览页（非静默下载）。
+   * 手机可「系统分享」进相册/WhatsApp；也可长按图片存图。
+   */
+  const openPngPreview = useCallback(async () => {
     setBusy(true);
+    setErr("");
+    setShareHint("");
     try {
-      await drawCampaignPosterPng(exportOpts(sellerId, distLabel));
+      const { dataUrl, filename } = await renderCampaignPosterDataUrl(
+        exportOpts(sellerId, distLabel)
+      );
+      setPngPreview({
+        dataUrl,
+        filename,
+        kb: dataUrlApproxKb(dataUrl),
+      });
     } catch (e) {
       console.error(e);
+      setErr(lang === "en" ? "Export failed" : "导出失败");
       alert(lang === "en" ? "Export failed" : "导出失败");
     }
     setBusy(false);
   }, [distLabel, exportOpts, lang, sellerId]);
+
+  const shareFromPreview = useCallback(async () => {
+    if (!pngPreview) return;
+    setShareBusy(true);
+    setShareHint("");
+    try {
+      const result = await sharePngFile(
+        pngPreview.dataUrl,
+        pngPreview.filename
+      );
+      if (result === "shared") {
+        setShareHint(
+          lang === "en"
+            ? "Shared · you can Save Image to Photos from the sheet"
+            : "已打开系统分享 · 可选「存储图像」进相册"
+        );
+      } else if (result === "downloaded") {
+        setShareHint(
+          lang === "en"
+            ? "Downloaded · check Files → Downloads (not Photos)"
+            : "已触发下载 · 请到「文件 → 下载」查看（不在相册）"
+        );
+      }
+    } catch (e) {
+      console.error(e);
+      setShareHint(lang === "en" ? "Share failed" : "分享失败，请长按图片保存");
+    }
+    setShareBusy(false);
+  }, [lang, pngPreview]);
+
+  const downloadFromPreview = useCallback(() => {
+    if (!pngPreview) return;
+    triggerBlobDownload(
+      dataUrlToBlob(pngPreview.dataUrl),
+      pngPreview.filename
+    );
+    setShareHint(
+      lang === "en"
+        ? "Download started · Files → Downloads (not Photos)"
+        : "已开始下载 · 请到「文件 → 下载」（不在相册）"
+    );
+  }, [lang, pngPreview]);
 
   /**
    * 打印/PDF：用 canvas 渲染品牌海报再打印（保证国庆红等背景色），
@@ -685,14 +751,14 @@ export function CampaignPrintClient({
         <button
           type="button"
           disabled={busy}
-          onClick={downloadBranded}
+          onClick={openPngPreview}
           className="inline-flex h-9 items-center rounded-full bg-foreground px-4 text-xs font-semibold text-background disabled:opacity-50 active:scale-[0.97] transition-transform"
         >
           {busy
             ? "…"
             : lang === "en"
-              ? "Download PNG"
-              : "下载品牌 PNG"}
+              ? "PNG · preview & share"
+              : "PNG 预览 / 分享"}
         </button>
         <button
           type="button"
@@ -808,6 +874,82 @@ export function CampaignPrintClient({
           </>
         )}
       </p>
+
+      {/* 全画质 PNG 预览 / 分享（手机优先系统分享进相册） */}
+      {pngPreview && (
+        <div
+          className="print:hidden fixed inset-0 z-[80] flex flex-col bg-black/90"
+          role="dialog"
+          aria-modal="true"
+          aria-label={lang === "en" ? "PNG preview" : "PNG 预览"}
+        >
+          <div className="flex items-center justify-between gap-2 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-white truncate">
+                {lang === "en" ? "Full-quality PNG" : "全画质 PNG"}
+              </p>
+              <p className="text-[10px] text-white/70 truncate">
+                {pngPreview.filename} · ~{pngPreview.kb} KB
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setPngPreview(null);
+                setShareHint("");
+              }}
+              className="shrink-0 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold text-white"
+            >
+              {lang === "en" ? "Close" : "关闭"}
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-auto px-3 py-2 flex items-start justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={pngPreview.dataUrl}
+              alt={pngPreview.filename}
+              className="max-w-full h-auto rounded-xl shadow-2xl bg-white"
+              // 原图像素展示；CSS 只缩放显示，分享/下载仍用无损 PNG
+              style={{ imageRendering: "auto" }}
+            />
+          </div>
+
+          <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 space-y-2 bg-gradient-to-t from-black/80 to-transparent">
+            <p className="text-[10px] text-white/75 text-center leading-relaxed">
+              {lang === "en"
+                ? "Same full-resolution PNG as export (not compressed). Share → Save Image to Photos, or long-press the image."
+                : "与导出相同的全分辨率无损 PNG（未压成 JPEG）。点「分享」可选「存储图像」进相册；也可长按图片保存。"}
+            </p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              <button
+                type="button"
+                disabled={shareBusy}
+                onClick={shareFromPreview}
+                className="inline-flex h-11 min-w-[8.5rem] items-center justify-center rounded-full bg-white px-5 text-sm font-semibold text-slate-900 disabled:opacity-50"
+              >
+                {shareBusy
+                  ? "…"
+                  : lang === "en"
+                    ? "Share"
+                    : "分享（可存相册）"}
+              </button>
+              <button
+                type="button"
+                onClick={downloadFromPreview}
+                className="inline-flex h-11 min-w-[8.5rem] items-center justify-center rounded-full border border-white/40 px-5 text-sm font-semibold text-white"
+              >
+                {lang === "en" ? "Download file" : "下载文件"}
+              </button>
+            </div>
+            {shareHint && (
+              <p className="text-[11px] text-emerald-300 text-center leading-snug">
+                {shareHint}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
