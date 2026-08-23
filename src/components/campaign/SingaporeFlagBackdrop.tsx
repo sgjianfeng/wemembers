@@ -1,6 +1,6 @@
 /**
  * 新加坡国旗结构背景（上红下白 · 新月五星）
- * 几何绘制，不扭曲星月；国庆期宣传用，须庄重不倒置。
+ * 几何绘制，不扭曲星月；满赠期宣传用，须庄重不倒置。
  */
 
 function starPath(cx: number, cy: number, r: number) {
@@ -29,7 +29,7 @@ function crescentStarsGeometry(starCx: number, starCy: number, ring: number, sta
 
 /**
  * 仅星月（新月 + 五星），用于活动页 hero 右上角装饰。
- * 放在国庆红底上：月牙由白圆 + 同色红圆挖空；不画国旗下半白。
+ * 放在节日红底上：月牙由白圆 + 同色红圆挖空；不画国旗下半白。
  * 默认固定像素，避免 width/height 100% 在 absolute 容器被撑成整屏。
  */
 export function SingaporeCrescentStars({

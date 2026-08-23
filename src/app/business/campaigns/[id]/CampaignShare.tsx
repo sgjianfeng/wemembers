@@ -8,7 +8,7 @@ import {
   buildCampaignPosterCopy,
   fillShareTemplate,
 } from "@/lib/campaign-poster-copy";
-import { isFestivalNdpCampaign } from "@/lib/visual-templates";
+import { isSpendGetCampaign } from "@/lib/spend-and-get";
 
 interface Props {
   slug: string;
@@ -35,27 +35,28 @@ export function CampaignShare({
   const { t, lang } = useLang();
   const [copied, setCopied] = useState(false);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const isNdp = isFestivalNdpCampaign(type, campaignName, null);
+  // 分享链接指向哪是**活动类型**问题，与海报配色无关
+  const isSpendGet = isSpendGetCampaign(type, null);
 
   const buyUrl = useMemo(() => {
     if (!slug) return "";
-    if (isNdp) {
-      const base = `${origin}/ndp/${encodeURIComponent(slug)}?from=table`;
+    if (isSpendGet) {
+      const base = `${origin}/spend-get/${encodeURIComponent(slug)}?from=table`;
       return sellerId
         ? `${base}&seller=${encodeURIComponent(sellerId)}`
         : base;
     }
     const base = `${origin}/voucher/${encodeURIComponent(slug)}`;
     return sellerId ? `${base}?seller=${encodeURIComponent(sellerId)}` : base;
-  }, [origin, slug, sellerId, isNdp]);
+  }, [origin, slug, sellerId, isSpendGet]);
 
   const qrUrl = useMemo(() => {
     if (!slug) return "";
     const q = new URLSearchParams({ slug, size: "280" });
     if (sellerId) q.set("seller", sellerId);
-    if (isNdp) q.set("ndp", "1");
+    if (isSpendGet) q.set("spend_get", "1");
     return `/api/campaign/qr?${q.toString()}`;
-  }, [slug, sellerId, isNdp]);
+  }, [slug, sellerId, isSpendGet]);
 
   const posterShare = useMemo(() => {
     if (!type || !endDate) return null;

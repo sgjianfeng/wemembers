@@ -29,7 +29,7 @@ type Props = {
   storeId?: string | null;
 };
 
-const CATEGORY_ORDER = ["ndp", "grand_countdown", "long_term", "other"] as const;
+const CATEGORY_ORDER = ["spend_get", "grand_countdown", "long_term", "other"] as const;
 
 function sortByCategory(list: JoinableActivity[]): JoinableActivity[] {
   const rank = (c: JoinableActivity["category"]) => {
@@ -44,7 +44,7 @@ function sortByCategory(list: JoinableActivity[]): JoinableActivity[] {
 }
 
 function categoryTone(cat: JoinableActivity["category"]) {
-  if (cat === "ndp") return "ndp" as const;
+  if (cat === "spend_get") return "spend_get" as const;
   if (cat === "grand_countdown") return "draw" as const;
   return "calm" as const;
 }
@@ -87,8 +87,8 @@ export function ShopActivityShelf({
     <div className="space-y-4">
       {ordered.map((a) => {
         const tone = categoryTone(a.category);
-        const isNdp = a.category === "ndp" || a.type === "holiday";
-        const isDraw = a.displayMode === "draw" && !isNdp;
+        const isSpendGet = a.category === "spend_get" || a.type === "holiday";
+        const isDraw = a.displayMode === "draw" && !isSpendGet;
         const catLabel =
           a.category !== "other" ? categoryLabel(a.category, lang) : null;
         const products = (a.products || []).filter((p) => p.status === "active");
@@ -103,13 +103,13 @@ export function ShopActivityShelf({
           brandName,
         };
 
-        const ndpOpenHref = (() => {
+        const spendGetOpenHref = (() => {
           const base =
             a.slug != null
-              ? `/ndp/${encodeURIComponent(a.slug)}`
-              : a.href.startsWith("/ndp")
+              ? `/spend-get/${encodeURIComponent(a.slug)}`
+              : a.href.startsWith("/spend-get")
                 ? a.href.split("?")[0]
-                : `/ndp/${encodeURIComponent(a.id)}`;
+                : `/spend-get/${encodeURIComponent(a.id)}`;
           const q = new URLSearchParams();
           q.set("from", "table");
           if (storePath?.startsWith("/shop/")) q.set("store", storePath);
@@ -129,7 +129,7 @@ export function ShopActivityShelf({
             id={`activity-${a.id}`}
             className={cn(
               "rounded-2xl border overflow-hidden bg-card shadow-sm scroll-mt-16",
-              tone === "ndp" && "border-rose-200 dark:border-rose-800/50",
+              tone === "spend_get" && "border-rose-200 dark:border-rose-800/50",
               tone === "draw" && "border-amber-200 dark:border-amber-800/50",
               tone === "calm" && "border-border"
             )}
@@ -138,7 +138,7 @@ export function ShopActivityShelf({
             <div
               className={cn(
                 "px-3.5 py-3",
-                tone === "ndp" && "bg-rose-600 text-white",
+                tone === "spend_get" && "bg-rose-600 text-white",
                 tone === "draw" &&
                   "bg-amber-600 bg-gradient-to-br from-amber-600 to-orange-700 text-white",
                 tone === "calm" && "bg-muted/40"
@@ -153,7 +153,7 @@ export function ShopActivityShelf({
                       : "bg-white/20 text-white"
                   )}
                 >
-                  {isNdp ? (
+                  {isSpendGet ? (
                     <PartyPopper size={18} />
                   ) : isDraw ? (
                     <Trophy size={18} />
@@ -166,7 +166,7 @@ export function ShopActivityShelf({
                     {catLabel && (
                       <Badge
                         variant={
-                          isDraw ? "orange" : isNdp ? "red" : "slate"
+                          isDraw ? "orange" : isSpendGet ? "red" : "slate"
                         }
                         size="sm"
                         className={
@@ -216,13 +216,13 @@ export function ShopActivityShelf({
 
             {/* 下半：满赠权益 vs 可购产品 */}
             <div className="px-3 pb-3 pt-2 border-t border-border/60 space-y-1.5">
-              {isNdp ? (
+              {isSpendGet ? (
                 <>
                   <p className="text-[10px] font-semibold text-muted-foreground px-0.5">
                     {zh ? "活动权益 · 如何参加" : "How to join"}
                   </p>
                   <Link
-                    href={ndpOpenHref}
+                    href={spendGetOpenHref}
                     className="flex items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2.5 dark:border-rose-900/40 dark:bg-rose-950/30 active:scale-[0.99] transition-transform"
                   >
                     <span className="flex items-center gap-2 min-w-0">

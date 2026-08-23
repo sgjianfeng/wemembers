@@ -52,8 +52,8 @@ export function HomeActivityEntitlements({
             </p>
             <p className="text-[11px] text-muted-foreground/80 mt-1 leading-relaxed">
               {zh
-                ? "扫店内国庆码或购券后，权益会出现在这里"
-                : "Scan in-store NDP code or buy a voucher"}
+                ? "扫店内满赠码或购券后，权益会出现在这里"
+                : "Scan the in-store code or buy a voucher"}
             </p>
           </div>
         ) : (
@@ -64,7 +64,7 @@ export function HomeActivityEntitlements({
                 bundle={b}
                 lang={lang}
                 mode="customer"
-                defaultOpen={b.tone === "ndp" || b.entitlements.length <= 3}
+                defaultOpen={b.tone === "spend_get" || b.entitlements.length <= 3}
               />
             ))}
           </div>
@@ -100,7 +100,7 @@ export function HomeActivityEntitlements({
                 lang={lang}
                 mode={b.entitlements.length > 0 ? "customer" : "ad"}
                 defaultOpen={
-                  b.tone === "ndp" ||
+                  b.tone === "spend_get" ||
                   b.entitlements.length > 0 && b.entitlements.length <= 4
                 }
               />

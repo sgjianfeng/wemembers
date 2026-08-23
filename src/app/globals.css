@@ -338,7 +338,7 @@ input:-webkit-autofill:active {
   }
 }
 
-/* A4 实体券 / 活动墙贴打印：保留背景色（勿全局强制 color:#111，会冲掉国庆红底白字） */
+/* A4 实体券 / 活动墙贴打印：保留背景色（勿全局强制 color:#111，会冲掉节日红底白字） */
 @media print {
   @page {
     size: A4;

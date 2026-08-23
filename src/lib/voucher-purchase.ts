@@ -200,6 +200,9 @@ export async function fulfillVoucherPurchase(
         tier: tier.tier,
         shortCode,
         productKind,
+        // 红线：若将来新增「用余额支付购券」，必须先调
+        // assertBalanceUsableForPurchase()（@/lib/cashback）——
+        // cashback 余额是记账负债，用它购券既污染真金奖池，也打开套现通道。
         paymentMethod: "stripe",
       },
     });

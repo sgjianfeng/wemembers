@@ -35,17 +35,19 @@ const typeIcons: Record<string, LucideIcon> = {
   lucky_draw: Dices,
   lucky_draw_v2: Dices,
   voucher_sale: Tag,
+  cashback: Tag,
 };
 
 const typeLabels: Record<string, Record<string, string>> = {
   promotion: { zh: "促销", en: "Promotion" },
   seasonal: { zh: "季节", en: "Seasonal" },
-  holiday: { zh: "节日", en: "Holiday" },
+  holiday: { zh: "满赠", en: "Spend & get" },
   event: { zh: "活动", en: "Event" },
   launch: { zh: "新品", en: "New Launch" },
   lucky_draw: { zh: "幸运抽奖", en: "Lucky Draw" },
   lucky_draw_v2: { zh: "抽奖券", en: "Draw voucher" },
   voucher_sale: { zh: "代金券", en: "Voucher sale" },
+  cashback: { zh: "消费返 + 抽奖", en: "Spend rewards + draw" },
 };
 
 const campaignStatusLabels: Record<string, Record<string, string>> = {
@@ -154,6 +156,21 @@ export default async function CampaignDetailPage({
 
   let tags: string[] = [];
   try { tags = JSON.parse(campaign.tags || "[]"); } catch {}
+  // tags 混装了系统内部标记（category: / slot: / scope: / activity / shelf /
+  // default_activity 等）与商家自己写的标签。前者是给代码判定用的，
+  // 展示给商家既无意义又挤掉真正的信息，这里只留商家标签。
+  const SYSTEM_TAG_PREFIXES = ["category:", "slot:", "scope:", "listScope:"];
+  const SYSTEM_TAG_EXACT = new Set([
+    "activity", "shelf", "default_activity", "product_mirror",
+    "long_term", "grand_countdown", "cashback",
+    "face_open", "face_threshold", "discount_10", "discount_voucher",
+    "exclusive_ballot", "spend_get", "spend_get",
+  ]);
+  const visibleTags = tags.filter(
+    (tag) =>
+      !SYSTEM_TAG_PREFIXES.some((p) => tag.startsWith(p)) &&
+      !SYSTEM_TAG_EXACT.has(tag)
+  );
 
   const TypeIcon = typeIcons[campaign.type] || typeIcons.promotion;
   const typeLabel = typeLabels[campaign.type] || typeLabels.promotion;
@@ -189,9 +206,9 @@ export default async function CampaignDetailPage({
           <span className="nums">{campaign.startDate.toLocaleDateString("zh-CN")} ~ {campaign.endDate.toLocaleDateString("zh-CN")}</span>
           {campaign.status === "active" && daysLeft > 0 && <span className="text-amber-600 dark:text-amber-500 font-medium nums">· {t("campaign.detail.daysLeft", lang, { days: daysLeft })}</span>}
         </div>
-        {tags.length > 0 && (
+        {visibleTags.length > 0 && (
           <div className="flex gap-1 flex-wrap mt-2">
-            {tags.map((tag) => <span key={tag} className="px-2 py-0.5 bg-white/60 text-muted-foreground text-[10px] rounded-full">{tag}</span>)}
+            {visibleTags.map((tag) => <span key={tag} className="px-2 py-0.5 bg-white/60 text-muted-foreground text-[10px] rounded-full">{tag}</span>)}
           </div>
         )}
       </div>

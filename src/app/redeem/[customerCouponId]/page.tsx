@@ -40,7 +40,7 @@ export default async function RedeemPage({
     );
   }
 
-  // 单张券到期（国庆满赠等）优先于模版 validUntil
+  // 单张券到期（满赠等）优先于模版 validUntil
   const validUntil = claim.expiresAt ?? claim.coupon.validUntil;
   const daysLeft = daysUntil(validUntil);
   const formattedCode =

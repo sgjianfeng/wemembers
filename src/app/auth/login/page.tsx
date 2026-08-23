@@ -72,7 +72,7 @@ export default function LoginPage() {
         const customerFlow =
           intent === "customer" ||
           (redirect &&
-            (/^\/(ndp|voucher|join|activity|store|shop|coupons|wallet|home|redeem|balance|card)/.test(
+            (/^\/(spend-get|voucher|join|activity|store|shop|coupons|wallet|home|redeem|balance|card)/.test(
               redirect
             ) ||
               redirect.startsWith("/c/")));
@@ -155,14 +155,14 @@ export default function LoginPage() {
   function goHome(role: string) {
     const redirect = safeRedirectPath(searchParams.get("redirect"));
     // 企业/店员登录：不要带进顾客活动页当「已登录顾客」；回角色首页
-    // 顾客登录：优先回 redirect（NDP / 钱包等）
+    // 顾客登录：优先回 redirect（满赠落地页 / 钱包等）
     let dest = roleHome(role);
     if (role === "customer" && redirect) {
       dest = redirect;
     } else if (
       (role === "business" || role === "staff") &&
       redirect &&
-      !/^\/(ndp|voucher|join|activity|wallet|home|redeem|balance|card)/.test(
+      !/^\/(spend-get|voucher|join|activity|wallet|home|redeem|balance|card)/.test(
         redirect
       ) &&
       !redirect.startsWith("/c/")

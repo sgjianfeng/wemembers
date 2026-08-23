@@ -11,7 +11,8 @@ const PUBLIC_STARTS = [
   "/for-business",
   "/voucher",
   "/activity", // multi-product activity landing
-  "/ndp", // 国庆活动落地（桌码/前台码）
+  "/spend-get", // 满赠活动落地（桌码/前台码）
+  "/ndp", // 旧落地地址：已印在桌卡二维码上，永久 301 到 /spend-get
   "/draw", // legacy V1 draw links redirect to /voucher
   "/join", // 结账参加大奖（扫固定门店码）
   "/p",
@@ -39,6 +40,12 @@ const STAFF_BLOCKED = [
   "/business/products",
   "/business/templates",
   "/business/vouchers",
+  "/business/voucher-templates",
+  // cashback 活动配置（费率）仅企业主；收银台 /business/cashback-desk 店员可进，
+  // 匹配用 `=== r || startsWith(r + "/")`，不会误伤 -desk 后缀
+  "/business/cashback",
+  // 满赠参数（满多少送多少）同理仅企业主；发券台 /business/spend-get-issue 店员可进
+  "/business/spend-get",
 ];
 
 export async function middleware(request: NextRequest) {
@@ -69,14 +76,14 @@ export async function middleware(request: NextRequest) {
   if (pathname === "/" || PUBLIC_STARTS.some((r) => pathname.startsWith(r))) {
     if (pathname.startsWith("/auth/") && payload) {
       // 顾客活动回流：企业/店员已登录时仍允许打开登录页，以便「退出后以顾客身份继续」
-      // 否则点 NDP「登录」会被直接踢回 /business，redirect 被吃掉
+      // 否则点 满赠落地页「登录」会被直接踢回 /business，redirect 被吃掉
       const intent =
         request.nextUrl.searchParams.get("tab") ||
         request.nextUrl.searchParams.get("intent");
       const redirectRaw = request.nextUrl.searchParams.get("redirect") || "";
       const redirectPath = redirectRaw.split("?")[0] || "";
       const customerActivity =
-        redirectPath.startsWith("/ndp") ||
+        redirectPath.startsWith("/spend-get") ||
         redirectPath.startsWith("/voucher") ||
         redirectPath.startsWith("/join") ||
         redirectPath.startsWith("/activity") ||

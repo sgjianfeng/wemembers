@@ -107,8 +107,8 @@ export function LandingActivityFeed({ isZh, isLoggedIn = false }: Props) {
             </p>
             <h2 className="text-base font-extrabold text-foreground mt-0.5">
               {isZh
-                ? "国庆满赠 · 大奖倒计时"
-                : "National Day · Grand countdown"}
+                ? "满赠 · 大奖倒计时"
+                : "Spend & get · Grand countdown"}
             </h2>
           </div>
           <Link
@@ -185,11 +185,11 @@ function ActivityCard({
   lang: "zh" | "en";
   isZh: boolean;
 }) {
-  const isNdp =
-    a.type === "holiday" || /国庆|ndp|national/i.test(a.name || "");
-  const isDraw = a.displayMode === "draw" && !isNdp;
-  /** Festive header (draw / NDP): solid base color so text never goes white-on-white */
-  const festive = isNdp || isDraw;
+  const isSpendGet =
+    a.type === "holiday" || /满赠/i.test(a.name || "");
+  const isDraw = a.displayMode === "draw" && !isSpendGet;
+  /** Festive header (draw / spend & get): solid base color so text never goes white-on-white */
+  const festive = isSpendGet || isDraw;
   const title =
     customerOfferTitle(a.name, {
       kindTag: a.kindTag,
@@ -210,7 +210,7 @@ function ActivityCard({
     <article
       className={cn(
         "rounded-2xl border bg-card shadow-sm overflow-hidden",
-        isNdp
+        isSpendGet
           ? "border-rose-300 dark:border-rose-800/50"
           : isDraw
             ? "border-amber-300 dark:border-amber-800/50"
@@ -222,10 +222,10 @@ function ActivityCard({
         href={a.href}
         className={cn(
           "block p-3.5 active:opacity-95 transition-opacity",
-          isNdp &&
+          isSpendGet &&
             "bg-rose-600 bg-gradient-to-br from-rose-600 to-red-700 text-white",
           isDraw &&
-            !isNdp &&
+            !isSpendGet &&
             "bg-amber-600 bg-gradient-to-br from-amber-600 to-orange-700 text-white",
           !festive && "bg-card text-foreground"
         )}
@@ -239,7 +239,7 @@ function ActivityCard({
                 : "bg-primary/10 text-primary"
             )}
           >
-            {isNdp ? (
+            {isSpendGet ? (
               <PartyPopper size={18} />
             ) : isDraw ? (
               <Trophy size={18} />
@@ -257,10 +257,10 @@ function ActivityCard({
                     : "bg-primary/10 text-primary"
                 )}
               >
-                {isNdp
+                {isSpendGet
                   ? isZh
-                    ? "国庆满赠"
-                    : "National Day"
+                    ? "满赠"
+                    : "Spend & get"
                   : offerKindLabel(a.kindTag, lang)}
               </span>
               {a.hot && (
@@ -353,14 +353,14 @@ function ActivityCard({
                         "grid h-8 w-8 place-items-center rounded-lg shrink-0",
                         isProdDraw
                           ? "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400"
-                          : isNdp
+                          : isSpendGet
                             ? "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400"
                             : "bg-primary/10 text-primary"
                       )}
                     >
                       {isProdDraw ? (
                         <Trophy size={14} />
-                      ) : isNdp ? (
+                      ) : isSpendGet ? (
                         <Gift size={14} />
                       ) : (
                         <Ticket size={14} />
@@ -394,7 +394,7 @@ function ActivityCard({
             className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2.5"
           >
             <span className="text-[12px] text-foreground/70 min-w-0">
-              {isNdp
+              {isSpendGet
                 ? isZh
                   ? "满赠权益 · 扫码参加活动"
                   : "Spend-get perks · join activity"

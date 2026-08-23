@@ -29,7 +29,12 @@
     "audit:prod": "node scripts/prod-audit.mjs",
     "test:e2e:customer-prod": "PLAYWRIGHT_BASE_URL=https://wemembers.store npx playwright test tests/e2e/customer-flow-prod.spec.ts --config=playwright.prod.config.ts",
     "test:e2e:business-prod": "PLAYWRIGHT_BASE_URL=https://wemembers.store npx playwright test tests/e2e/business-flow-prod.spec.ts --config=playwright.prod.config.ts",
-    "gate:prod": "npm run audit:prod && npm run test:e2e:customer-prod && npm run test:e2e:business-prod"
+    "gate:prod": "npm run audit:prod && npm run test:e2e:customer-prod && npm run test:e2e:business-prod",
+    "db:seed-meowbbq": "npx tsx scripts/seed-meowbbq.ts",
+    "db:reset-meowbbq": "npx tsx scripts/seed-meowbbq.ts --reset",
+    "db:show-meowbbq": "npx tsx scripts/seed-meowbbq.ts --show",
+    "db:full-reset-meowbbq": "npx tsx scripts/seed-meowbbq.ts --full",
+    "shots:meowbbq": "npx playwright test --config playwright.meowbbq.config.ts && npx tsx tests/screenshots/meowbbq/report.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

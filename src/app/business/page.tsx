@@ -311,8 +311,8 @@ export default async function BusinessDashboard() {
               label: lang === "en" ? "Activity perks" : "活动券",
               desc:
                 lang === "en"
-                  ? "Pick store → NDP / redeem"
-                  : "先选门店 · 国庆/核销",
+                  ? "Pick store → Spend & get / redeem"
+                  : "先选门店 · 满赠/核销",
               href: "/business/offers",
             },
             {

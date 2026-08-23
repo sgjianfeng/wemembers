@@ -65,7 +65,7 @@ export default async function CompanyStorePage({
     isActivityAtStore(o, store.id)
   );
 
-  const nNdp = storeOffers.filter((o) => o.category === "ndp").length;
+  const nSpendGet = storeOffers.filter((o) => o.category === "spend_get").length;
   const nDraw = storeOffers.filter(
     (o) => o.category === "grand_countdown"
   ).length;
@@ -136,13 +136,13 @@ export default async function CompanyStorePage({
                 : ""}
             </span>
           </div>
-          {(nNdp > 0 || nDraw > 0 || nLong > 0) && (
+          {(nSpendGet > 0 || nDraw > 0 || nLong > 0) && (
             <p className="px-3 text-[10px] text-muted-foreground/90 mb-2">
               {[
-                nNdp > 0
+                nSpendGet > 0
                   ? lang === "en"
-                    ? "National Day"
-                    : "国庆满赠"
+                    ? "Spend & get"
+                    : "满赠"
                   : null,
                 nDraw > 0
                   ? lang === "en"

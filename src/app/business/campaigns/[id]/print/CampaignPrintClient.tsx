@@ -24,15 +24,15 @@ import {
   THEME_SWATCHES,
   VISUAL_TEMPLATES,
   getVisualTemplate,
-  isFestivalNdpCampaign,
-  isNdpFestivalAccent,
+  isFestivalRedAccent,
   type ThemeColorId,
   type VisualTemplateId,
 } from "@/lib/visual-templates";
 import {
   SingaporeCrescentStars,
 } from "@/components/campaign/SingaporeFlagBackdrop";
-import { SG_NDP_RED } from "@/lib/visual-templates";
+import { FESTIVAL_RED } from "@/lib/visual-templates";
+import { isSpendGetCampaign } from "@/lib/spend-and-get";
 
 type LayoutId = CampaignPosterLayoutId;
 
@@ -77,16 +77,16 @@ export function CampaignPrintClient({
   stores: { id: string; name: string }[];
   tags?: string | null;
 }) {
-  const isNdp = isFestivalNdpCampaign(type, campaignName, tags);
+  // 内容按活动类型；节日红装饰只在商家自己选了那个主题色时才出现
+  const isSpendGet = isSpendGetCampaign(type, tags);
   const [layout, setLayout] = useState<LayoutId>("tent");
+  // 满赠不再自动套节日红 —— 那是国庆遗留。商家想要节日视觉自己选模版/主题色。
   const [templateId, setTemplateId] = useState<VisualTemplateId>(() => {
-    if (isNdp) return "festival_ndp";
     if (type === "lucky_draw_v2" || type === "lucky_draw") return "store_bold";
     return "store_classic";
   });
   const [themeId, setThemeId] = useState<ThemeColorId | "campaign" | "custom">(
     () => {
-      if (isNdp) return "ndp_red";
       if (color && /^#[0-9A-Fa-f]{6}$/.test(color)) return "campaign";
       return "orange";
     }
@@ -116,8 +116,8 @@ export function CampaignPrintClient({
       : process.env.NEXT_PUBLIC_APP_URL || "";
 
   const buyUrl = useMemo(() => {
-    if (isNdp) {
-      const base = `${origin}/ndp/${encodeURIComponent(slug)}?from=table`;
+    if (isSpendGet) {
+      const base = `${origin}/spend-get/${encodeURIComponent(slug)}?from=table`;
       return sellerId
         ? `${base}&seller=${encodeURIComponent(sellerId)}`
         : base;
@@ -126,7 +126,7 @@ export function CampaignPrintClient({
     return sellerId
       ? `${base}?seller=${encodeURIComponent(sellerId)}`
       : base;
-  }, [origin, slug, sellerId, isNdp]);
+  }, [origin, slug, sellerId, isSpendGet]);
 
   const qrSrc = useMemo(() => {
     const q = new URLSearchParams({
@@ -135,10 +135,10 @@ export function CampaignPrintClient({
       format: "png",
     });
     if (sellerId) q.set("seller", sellerId);
-    // 国庆/节日：确保接口走 NDP 落地与类型放行
-    if (isNdp) q.set("ndp", "1");
+    // 满赠：QR 要指向满赠落地页而不是购券页
+    if (isSpendGet) q.set("spendGet", "1");
     return `/api/campaign/qr?${q.toString()}`;
-  }, [slug, sellerId, isNdp]);
+  }, [slug, sellerId, isSpendGet]);
 
   const copy: CampaignPosterCopy = useMemo(
     () =>
@@ -272,8 +272,8 @@ export function CampaignPrintClient({
   const exportOpts = useCallback(
     (sid: string, label: string) => {
       let url: string;
-      if (isNdp) {
-        const base = `${origin}/ndp/${encodeURIComponent(slug)}?from=table`;
+      if (isSpendGet) {
+        const base = `${origin}/spend-get/${encodeURIComponent(slug)}?from=table`;
         url = sid ? `${base}&seller=${encodeURIComponent(sid)}` : base;
       } else {
         const base = `${origin}/voucher/${encodeURIComponent(slug)}`;
@@ -285,7 +285,7 @@ export function CampaignPrintClient({
         format: "png",
       });
       if (sid) q.set("seller", sid);
-      if (isNdp) q.set("ndp", "1");
+      if (isSpendGet) q.set("spendGet", "1");
       return {
         layout,
         campaignName,
@@ -307,7 +307,7 @@ export function CampaignPrintClient({
       businessName,
       campaignName,
       copy,
-      isNdp,
+      isSpendGet,
       lang,
       layout,
       origin,
@@ -384,7 +384,7 @@ export function CampaignPrintClient({
   }, [lang, pngPreview]);
 
   /**
-   * 打印/PDF：用 canvas 渲染品牌海报再打印（保证国庆红等背景色），
+   * 打印/PDF：用 canvas 渲染品牌海报再打印（保证节日红等背景色），
    * 避免 DOM 打印被浏览器洗成灰白。弹窗被拦时回退 window.print()。
    */
   const printBranded = useCallback(async () => {
@@ -849,7 +849,7 @@ export function CampaignPrintClient({
           accent={accent}
           surface={surface}
           lang={lang}
-          festival={isNdp || isNdpFestivalAccent(accent)}
+          festival={isFestivalRedAccent(accent)}
         />
       </div>
 
@@ -865,12 +865,12 @@ export function CampaignPrintClient({
         {lang === "en"
           ? "Print tip: colour preferred; keep QR unobstructed, ≥ 4cm wide."
           : "打印建议：尽量彩色；二维码无遮挡，边长建议 ≥ 4cm。"}
-        {isNdp && (
+        {isSpendGet && (
           <>
             {" "}
             {lang === "en"
-              ? "National Flag style (red/white + crescent/stars) is for respectful National Day period promo; do not invert or distort."
-              : "国旗红白+星月为国庆期庄重宣传用（7–9 月商用意象通常允许）；请勿倒置/扭曲/遮挡星月核心。"}
+              ? "National Flag style (red/white + crescent/stars) is for respectful Spend & get period promo; do not invert or distort."
+              : "国旗红白+星月为满赠期庄重宣传用（7–9 月商用意象通常允许）；请勿倒置/扭曲/遮挡星月核心。"}
           </>
         )}
       </p>
@@ -1033,7 +1033,7 @@ function CampaignCardSheet({
         )}
         style={{
           background: festival
-            ? accent || SG_NDP_RED
+            ? accent || FESTIVAL_RED
             : isDark
               ? "#1E1B2E"
               : undefined,
@@ -1044,7 +1044,7 @@ function CampaignCardSheet({
             className="pointer-events-none absolute right-2 top-2 z-0 h-12 w-12 opacity-80"
             aria-hidden
           >
-            <SingaporeCrescentStars red={accent || SG_NDP_RED} size={48} />
+            <SingaporeCrescentStars red={accent || FESTIVAL_RED} size={48} />
           </div>
         )}
         <div
@@ -1078,7 +1078,7 @@ function CampaignCardSheet({
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="text-[9px] font-bold uppercase tracking-wider text-white/90">
-                    SG61 · {lang === "en" ? "National Day" : "国庆满赠"}
+                    SG61 · {lang === "en" ? "Spend & get" : "满赠"}
                   </p>
                   <p className="text-sm font-bold truncate">
                     {businessName || campaignName}
@@ -1181,7 +1181,7 @@ function CampaignCardSheet({
             a4 || vhd ? "px-5 pt-6 pb-4" : "px-5 pt-6 pb-4"
           )}
           style={{
-            background: festival ? accent || SG_NDP_RED : headerBg,
+            background: festival ? accent || FESTIVAL_RED : headerBg,
           }}
         >
           {festival && (
@@ -1189,7 +1189,7 @@ function CampaignCardSheet({
               className="pointer-events-none absolute right-2.5 top-2.5 h-11 w-11 opacity-80"
               aria-hidden
             >
-              <SingaporeCrescentStars red={accent || SG_NDP_RED} size={44} />
+              <SingaporeCrescentStars red={accent || FESTIVAL_RED} size={44} />
             </div>
           )}
           {festival ? (
@@ -1222,7 +1222,7 @@ function CampaignCardSheet({
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/90">
-                    SG61 · {lang === "en" ? "National Day" : "国庆满赠"}
+                    SG61 · {lang === "en" ? "Spend & get" : "满赠"}
                   </p>
                   <h1
                     className={cn(
@@ -1403,7 +1403,7 @@ function CampaignCardSheet({
     );
   }
 
-  // tent — 国庆：落地页同款（整块红 + 品牌 + 满赠卡 + 右上星月）
+  // tent — 满赠：落地页同款（整块红 + 品牌 + 满赠卡 + 右上星月）
   return (
     <div
       data-campaign-print-card
@@ -1428,7 +1428,7 @@ function CampaignCardSheet({
         )}
         style={
           festival
-            ? { backgroundColor: accent || SG_NDP_RED }
+            ? { backgroundColor: accent || FESTIVAL_RED }
             : undefined
         }
       >
@@ -1437,7 +1437,7 @@ function CampaignCardSheet({
             className="pointer-events-none absolute right-2.5 top-2.5 h-14 w-14 opacity-80"
             aria-hidden
           >
-            <SingaporeCrescentStars red={accent || SG_NDP_RED} size={56} />
+            <SingaporeCrescentStars red={accent || FESTIVAL_RED} size={56} />
           </div>
         )}
         {!festival && (
@@ -1470,7 +1470,7 @@ function CampaignCardSheet({
               ) : null}
               <div className="text-left min-w-0 flex-1">
                 <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/90">
-                  SG61 · {lang === "en" ? "National Day" : "国庆满赠"}
+                  SG61 · {lang === "en" ? "Spend & get" : "满赠"}
                 </p>
                 <h1 className="text-lg font-bold leading-snug truncate">
                   {businessName || campaignName}

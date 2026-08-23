@@ -325,13 +325,13 @@ function VoucherDrawInner() {
     viewParam === "countdown" ||
     viewParam === "pool" ||
     hashDraw;
-  /** 从国庆 / 门店货架进入：保持活动语境 */
+  /** 从满赠 / 门店货架进入：保持活动语境 */
   const buyCtx = parseActivityBuyContext(searchParams);
-  const fromNdp = buyCtx.from === "ndp";
+  const fromSpendGet = buyCtx.from === "spend_get";
   const fromStore = buyCtx.from === "store" || buyCtx.from === "shop";
-  const fromActivityShelf = fromNdp || fromStore;
-  const ndpMin = buyCtx.minSpendSgd && buyCtx.minSpendSgd > 0 ? buyCtx.minSpendSgd : 120;
-  const ndpGift = buyCtx.giftSgd && buyCtx.giftSgd > 0 ? buyCtx.giftSgd : 61;
+  const fromActivityShelf = fromSpendGet || fromStore;
+  const spendGetMin = buyCtx.minSpendSgd && buyCtx.minSpendSgd > 0 ? buyCtx.minSpendSgd : 120;
+  const spendGetGift = buyCtx.giftSgd && buyCtx.giftSgd > 0 ? buyCtx.giftSgd : 61;
   const activityBackHref = activityBuyBackHref(buyCtx);
 
   const refreshPool = useCallback(async () => {
@@ -501,7 +501,7 @@ function VoucherDrawInner() {
     setResult(null);
 
     try {
-      // 把当前页语境带给 Stripe 回跳（from=ndp / 门店等），取消/成功后不丢活动上下文
+      // 把当前页语境带给 Stripe 回跳（from=spend-get / 门店等），取消/成功后不丢活动上下文
       const returnQuery = searchParams.toString();
       const res = await fetch(`/api/voucher/checkout?slug=${encodeURIComponent(slug)}`, {
         method: "POST",
@@ -635,10 +635,10 @@ function VoucherDrawInner() {
     ? lang === "en"
       ? "Prize countdown"
       : "大奖倒计时"
-    : fromNdp
+    : fromSpendGet
       ? lang === "en"
-        ? "National Day buy"
-        : "国庆购券"
+        ? "Spend & get buy"
+        : "满赠购券"
       : fromStore
         ? lang === "en"
           ? "Store buy"
@@ -648,7 +648,7 @@ function VoucherDrawInner() {
   return (
     <div
       className={`min-h-screen bg-gradient-to-b ${
-        fromNdp && !drawView
+        fromSpendGet && !drawView
           ? "from-rose-700 via-rose-600 to-background"
           : fromStore && !drawView
             ? isDraw
@@ -671,7 +671,7 @@ function VoucherDrawInner() {
       />
 
       {/* 活动/门店语境条：购券页不「跳戏」；抽奖台模式不展示买券引导条 */}
-      {fromNdp && !drawView && (
+      {fromSpendGet && !drawView && (
         <div className="px-4 pt-2">
           <Link
             href={activityBackHref}
@@ -682,12 +682,12 @@ function VoucherDrawInner() {
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-[10px] font-bold uppercase tracking-wide text-white/85">
-                {lang === "en" ? "National Day activity" : "国庆满赠活动"}
+                {lang === "en" ? "Spend & get activity" : "满赠活动"}
               </span>
               <span className="block text-[13px] font-semibold leading-snug mt-0.5">
                 {lang === "en"
-                  ? `Buy here → redeem in store · spend ≥ S$${ndpMin} gets S$${ndpGift}`
-                  : `在此购券 → 到店核销满 S$${ndpMin} 送 S$${ndpGift}`}
+                  ? `Buy here → redeem in store · spend ≥ S$${spendGetMin} gets S$${spendGetGift}`
+                  : `在此购券 → 到店核销满 S$${spendGetMin} 送 S$${spendGetGift}`}
               </span>
               <span className="block text-[11px] text-white/80 mt-0.5">
                 {lang === "en"
@@ -742,7 +742,7 @@ function VoucherDrawInner() {
             ? lang === "en"
               ? "Your draw stage"
               : "我的抽奖台"
-            : fromNdp
+            : fromSpendGet
               ? lang === "en"
                 ? "Activity purchase · Grand countdown"
                 : "活动购券 · 大奖倒计时"
@@ -783,7 +783,7 @@ function VoucherDrawInner() {
             ? lang === "en"
               ? "Instant wheel · grand pool countdown · your chances"
               : "即时转盘 · 大奖池进度 · 你的抽奖机会"
-            : fromNdp
+            : fromSpendGet
               ? lang === "en"
                 ? "Pay for a voucher · use in store · join the prize countdown"
                 : "付款买券 · 到店使用 · 同步冲大奖倒计时"
@@ -808,12 +808,12 @@ function VoucherDrawInner() {
         )}
         {!drawView && (
           <div className="flex flex-wrap justify-center gap-1.5 mt-3">
-            {fromNdp ? (
+            {fromSpendGet ? (
               <>
                 <TrustPill>
                   {lang === "en"
-                    ? `Spend S$${ndpMin} → S$${ndpGift}`
-                    : `满 S$${ndpMin} 送 S$${ndpGift}`}
+                    ? `Spend S$${spendGetMin} → S$${spendGetGift}`
+                    : `满 S$${spendGetMin} 送 S$${spendGetGift}`}
                 </TrustPill>
                 <TrustPill>{t("voucher.trust.pillPaynow")}</TrustPill>
                 <TrustPill>
@@ -881,18 +881,18 @@ function VoucherDrawInner() {
             : "px-4 -mt-2 pb-8 space-y-3"
         }
       >
-        {fromNdp && !drawView && (
+        {fromSpendGet && !drawView && (
           <Card className="border-rose-200 bg-rose-50/95 shadow-sm dark:border-rose-900/40 dark:bg-rose-950/40">
             <CardContent className="p-3 text-[12px] leading-relaxed text-rose-950 dark:text-rose-100">
               <p className="font-semibold">
                 {lang === "en"
-                  ? "Still in National Day flow"
-                  : "仍在国庆满赠流程中"}
+                  ? "Still in Spend & get flow"
+                  : "仍在满赠流程中"}
               </p>
               <p className="mt-1 text-rose-900/85 dark:text-rose-100/85">
                 {lang === "en"
-                  ? `1) Buy this voucher · 2) Redeem in store · 3) When this bill ≥ S$${ndpMin}, get S$${ndpGift} gift for next visit · also joins the grand countdown below.`
-                  : `① 在本页买券 ② 到店核销消费 ③ 本单满 S$${ndpMin} 自动送 S$${ndpGift} 下次用 · 下方奖池是同步参加的大奖倒计时。`}
+                  ? `1) Buy this voucher · 2) Redeem in store · 3) When this bill ≥ S$${spendGetMin}, get S$${spendGetGift} gift for next visit · also joins the grand countdown below.`
+                  : `① 在本页买券 ② 到店核销消费 ③ 本单满 S$${spendGetMin} 自动送 S$${spendGetGift} 下次用 · 下方奖池是同步参加的大奖倒计时。`}
               </p>
               {/* 独享购券仍可点转盘抽即时小奖（赢余额），非必做 */}
               {isExclusiveDraw && (

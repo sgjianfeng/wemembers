@@ -76,7 +76,7 @@ export default async function TokenRechargePage({
     !!stripeAcct?.chargesEnabled &&
     !stripeAcct?.payoutsEnabled;
 
-  // 自用/独享：只计实付>0（排除国庆零元大奖签等）
+  // 自用/独享：只计实付>0（排除满赠零元大奖签等）
   const dayStart = new Date();
   dayStart.setHours(0, 0, 0, 0);
   const campBiz = { campaign: { businessId: session.userId } };

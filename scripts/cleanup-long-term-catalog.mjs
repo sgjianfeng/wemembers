@@ -358,7 +358,7 @@ async function cleanupBusiness(businessId, businessName) {
     if (a.id === longTerm.id) continue;
     if (a.type === "holiday" || a.type === "lucky_draw_v2" || a.type === "lucky_draw")
       continue;
-    if (parseTags(a.tags).includes("category:ndp") || /国庆|ndp/i.test(a.name))
+    if (parseTags(a.tags).includes("category:spend_get") || /满赠|ndp/i.test(a.name))
       continue;
     if (
       parseTags(a.tags).includes("category:grand_countdown") ||

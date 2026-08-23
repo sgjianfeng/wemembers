@@ -224,7 +224,7 @@ export function ActivityAdCard({
         className={cn(
           "overflow-hidden border-l-4 shadow-sm",
           toneBarClass(bundle.tone),
-          bundle.tone === "ndp" && "bg-gradient-to-br from-rose-50/80 to-card"
+          bundle.tone === "spend_get" && "bg-gradient-to-br from-rose-50/80 to-card"
         )}
       >
         <CardContent className="p-3.5">
@@ -245,17 +245,17 @@ export function ActivityAdCard({
             <span
               className={cn(
                 "shrink-0 text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full",
-                bundle.tone === "ndp"
+                bundle.tone === "spend_get"
                   ? "bg-rose-600 text-white"
                   : bundle.tone === "draw"
                     ? "bg-violet-600 text-white"
                     : "bg-primary text-primary-foreground"
               )}
             >
-              {bundle.tone === "ndp"
+              {bundle.tone === "spend_get"
                 ? zh
-                  ? "国庆"
-                  : "NDP"
+                  ? "满赠"
+                  : "Spend & get"
                 : bundle.joined
                   ? zh
                     ? "已参与"

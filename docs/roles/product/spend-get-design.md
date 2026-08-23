@@ -1,15 +1,15 @@
-# 国庆满赠（商业上线版）
+# 满赠 Spend & Get（商业上线版）
 
 状态：**今日可开张**  
-入口：企业 `/business/ndp-issue` → **一键开启国庆活动**
+入口：企业 `/business/spend-get-issue` → **一键开启满赠活动**
 
 ## 主场景动线
 
 ```
-桌码/前台码 → /ndp/{slug}?from=table|counter
+桌码/前台码 → /spend-get/{slug}?from=table|counter
   → 注册/登录
   → 路径 A 购券冲大奖 → 前台核销 ≥120 → 自动发 S$61
-  → 路径 B 前台付账 → 店员 ndp-issue 绑手机确认小票 → 发 S$61 + 赠送弱抽奖
+  → 路径 B 前台付账 → 店员 spend-get-issue 绑手机确认小票 → 发 S$61 + 赠送弱抽奖
 ```
 
 | 路径 | 抽奖 | S$61 |
@@ -21,18 +21,18 @@
 
 | 能力 | 路径 |
 |------|------|
-| 规则/发放 | `src/lib/ndp-promo.ts` |
-| 凭票发双权益 | `POST /api/business/promo/ndp/issue` |
-| 一键配置 | `POST /api/business/promo/ndp/setup` |
-| 顾客落地页 | `/ndp/[slug]` |
+| 规则/发放 | `src/lib/spend-get-issue.ts`（发放）+ `src/lib/spend-and-get.ts`（规则/负债） |
+| 凭票发双权益 | `POST /api/business/spend-get/issue` |
+| 一键配置 | `POST /api/business/default-activities` |
+| 顾客落地页 | `/spend-get/[slug]`（旧 `/ndp/[slug]` 永久 301） |
 | 核销自动 61 | `POST /api/voucher/redeem` → `maybeIssueNdpOnVoucherRedeem` |
-| 店员台 | `/business/ndp-issue` |
+| 店员台 | `/business/spend-get-issue` |
 | 钱包分组 | `/wallet` |
-| 桌/前台 QR | `/api/campaign/qr?slug=...&ndp=1&from=table\|counter` |
+| 桌/前台 QR | `/api/campaign/qr?slug=...&spendGet=1&from=table\|counter` |
 
 ## 开张清单（老板 5 分钟）
 
-1. 登录企业号 → **国庆满赠** → **一键开启国庆活动**  
+1. 登录企业号 → **满赠** → **一键开启满赠活动**  
 2. 长按保存「桌码」「前台码」打印/贴桌  
 3. 确认购券关联（若已有抽奖活动会自动挂 `buyVoucherSlug`）  
 4. 店员：核销台扫顾客预付券；现金客走「凭单满赠」  
@@ -48,10 +48,10 @@
 |------|------|----------|
 | **长期活动** | 原价代金无门槛 + 门槛券 | 常年买、到店花 |
 | **大奖倒计时** | 独享购券抽奖 50/100 | 买券进池、看倒计时 |
-| **国庆满赠** | holiday + 满 120→61 | 桌码/前台码 · 核销或凭票领 |
+| **满赠** | holiday + 满 120→61 | 桌码/前台码 · 核销或凭票领 |
 
 实现：`ensureDefaultActivities`（`src/lib/default-activities.ts`）  
-入口：`POST /api/business/promo/ndp/setup` · `/business/ndp-issue` 一键按钮 · 活动券筛选
+入口：`POST /api/business/default-activities` · `/business/spend-get-issue` 一键按钮 · 活动券筛选
 
 ## 统一心智（客户 / 门店 / 企业）
 

@@ -126,8 +126,8 @@ export default function PhysicalClaimPage() {
             </p>
           )}
           <p className="text-xs text-center text-muted-foreground leading-relaxed">
-            {/国庆|满赠|赠送/.test(data.title || "")
-              ? "国庆满赠纸质版 · 绑定后进券包 · 与线上赠送券一致"
+            {/满赠|满赠|赠送/.test(data.title || "")
+              ? "满赠纸质版 · 绑定后进券包 · 与线上赠送券一致"
               : data.type === "draw"
                 ? "抽奖实体 · 绑后进余额/资格"
                 : "自用券打印版 · 同品牌可核 · 绑后进余额"}
@@ -182,15 +182,15 @@ export default function PhysicalClaimPage() {
                 {msg ||
                   (data.type === "draw"
                     ? "已绑定 · 线上抽奖资格已同步"
-                    : /国庆|满赠|赠送/.test(data.title || "")
-                      ? "已绑定 · 国庆赠送券已进券包"
+                    : /满赠|满赠|赠送/.test(data.title || "")
+                      ? "已绑定 · 赠送券已进券包"
                       : "已绑定 · 线上预付余额已同步")}
               </p>
               <Link
                 href={
                   data.type === "draw"
                     ? "/home"
-                    : /国庆|满赠|赠送/.test(data.title || "")
+                    : /满赠|满赠|赠送/.test(data.title || "")
                       ? "/wallet"
                       : "/balance"
                 }
@@ -198,7 +198,7 @@ export default function PhysicalClaimPage() {
                 <Button className="w-full" variant="outline">
                   {data.type === "draw"
                     ? "查看活动/首页"
-                    : /国庆|满赠|赠送/.test(data.title || "")
+                    : /满赠|满赠|赠送/.test(data.title || "")
                       ? "打开券包"
                       : "打开预付余额"}
                 </Button>
