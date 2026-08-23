@@ -6,9 +6,11 @@ import { prisma } from "@/lib/db";
 import { serializeStoreIds } from "@/lib/utils";
 import {
   buildDiscount10Snapshot,
+  buildDiscountVoucherSnapshot,
   buildExclusiveBallotSnapshot,
   buildFaceOpenSnapshot,
   buildFaceThresholdSnapshot,
+  clampDiscountPercent,
   tiersToVoucherTiersJson,
   type DefaultPackKind,
 } from "@/lib/store-defaults";
@@ -52,6 +54,12 @@ export async function createVoucherProduct(
     name: string;
     description?: string | null;
     packKind?: DefaultPackKind | string | null;
+    /** discount_voucher 模版的折扣率 %（0 = 原价代金） */
+    discountPercent?: number | null;
+    /** 购后 N 天有效；null = 跟随活动截止 */
+    validDays?: number | null;
+    /** 门槛储值券：最低消费 = 券面 × 该倍数；0 = 无门槛 */
+    minSpendMultiplier?: number | null;
     templateId?: string | null;
     businessTemplateId?: string | null;
     rulesSnapshot?: Record<string, unknown> | null;
@@ -72,7 +80,27 @@ export async function createVoucherProduct(
   let templateId: string | null = input.templateId || null;
   let voucherTiers: ReturnType<typeof tiersToVoucherTiersJson> | null = null;
 
-  if (input.packKind === "face_open") {
+  if (input.packKind === "discount_voucher") {
+    // 统一折扣券模版：折扣率参数化（0 = 原价代金，10 = 9 折卡，20 = 8 折卡…）
+    snapshot = buildDiscountVoucherSnapshot(
+      clampDiscountPercent(input.discountPercent),
+      input.enabledTiers,
+      {
+        validDays: input.validDays ?? null,
+        minSpendMultiplier:
+          input.minSpendMultiplier != null && input.minSpendMultiplier > 0
+            ? Math.round(input.minSpendMultiplier)
+            : 0,
+      }
+    );
+    type = "voucher_sale";
+    productKind = "self_use";
+    templateId = "self_use_voucher";
+    voucherTiers = tiersToVoucherTiersJson(
+      (snapshot.enabledTiers as number[]) || [10, 20, 50, 100, 200],
+      { instantCap: () => 0 }
+    );
+  } else if (input.packKind === "face_open") {
     snapshot = buildFaceOpenSnapshot(input.enabledTiers);
     type = "voucher_sale";
     productKind = "self_use";
@@ -209,6 +237,7 @@ export async function createVoucherProduct(
       const packKind = String(snapshot.packKind || "");
       const listScope = String(snapshot.listScope || "hot");
       const isLongTermPack =
+        packKind === "discount_voucher" ||
         packKind === "face_open" ||
         packKind === "face_threshold" ||
         packKind === "discount_10";
@@ -225,7 +254,9 @@ export async function createVoucherProduct(
               { name: { startsWith: "长期券" } },
               { tags: { contains: "category:long_term" } },
               { tags: { contains: "face_open" } },
+              { tags: { contains: "discount_voucher" } },
               { rulesSnapshot: { contains: '"packKind":"face_open"' } },
+              { rulesSnapshot: { contains: '"packKind":"discount_voucher"' } },
             ],
           },
           orderBy: { createdAt: "asc" },

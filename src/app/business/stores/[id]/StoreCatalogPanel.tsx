@@ -28,7 +28,7 @@ type ActivityRow = {
 };
 
 function toneLabel(tone: string | undefined, type: string, zh: boolean): string {
-  if (tone === "ndp" || type === "holiday") return zh ? "满赠" : "Spend&get";
+  if (tone === "spend_get" || type === "holiday") return zh ? "满赠" : "Spend&get";
   if (tone === "draw" || type === "lucky_draw_v2" || type === "lucky_draw")
     return zh ? "大奖" : "Draw";
   return zh ? "长期/代金" : "Voucher";
@@ -197,7 +197,7 @@ export function StoreCatalogPanel({ storeId }: { storeId: string }) {
                           </span>
                           {productNames.join(" · ")}
                         </>
-                      ) : a.type === "holiday" || a.tone === "ndp" ? (
+                      ) : a.type === "holiday" || a.tone === "spend_get" ? (
                         <span className="text-muted-foreground">
                           {zh
                             ? "满赠权益（无货架购券产品）"

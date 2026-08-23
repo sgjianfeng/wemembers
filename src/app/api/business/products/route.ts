@@ -101,11 +101,31 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+
+    // 资金红线：抵扣额度（cashback）与奖励券（prize）只能由系统按规则发放。
+    // 允许商家手动创建等于让他绕过计提逻辑凭空发额度，也会污染负债台账。
+    const SYSTEM_ISSUED_KINDS = new Set(["cashback", "prize", "cashback_credit"]);
+    if (
+      typeof body.packKind === "string" &&
+      SYSTEM_ISSUED_KINDS.has(body.packKind)
+    ) {
+      return NextResponse.json(
+        {
+          error: "抵扣额度与奖励券由系统按活动规则自动发放，不能手动创建",
+          code: "SYSTEM_ISSUED_ONLY",
+        },
+        { status: 400 }
+      );
+    }
+
     try {
       const product = await createVoucherProduct(session.userId, {
         name: body.name,
         description: body.description,
         packKind: body.packKind,
+        discountPercent: body.discountPercent,
+        validDays: body.validDays,
+        minSpendMultiplier: body.minSpendMultiplier,
         templateId: body.templateId,
         businessTemplateId: body.businessTemplateId,
         enabledTiers: body.enabledTiers,

@@ -62,7 +62,7 @@ export async function GET(
       }
     }
 
-    // 活动容器：可售代金/抽奖 + 国庆等；排除产品镜像与清理归档
+    // 活动容器：可售代金/抽奖 + 满赠等；排除产品镜像与清理归档
     const campaigns = await prisma.campaign.findMany({
       where: {
         businessId: store.businessId,

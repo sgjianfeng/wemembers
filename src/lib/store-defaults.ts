@@ -58,8 +58,12 @@ export function ballotFeeSplitLabel(paidFaceCents: number): string {
 }
 
 export type DefaultPackKind =
+  /** 统一折扣券模版：discountPercent 参数化（0 = 原价代金） */
+  | "discount_voucher"
+  /** @deprecated 用 discount_voucher + discountPercent 0；保留以兼容存量数据 */
   | "face_open"
   | "face_threshold"
+  /** @deprecated 用 discount_voucher + discountPercent 10；保留以兼容存量数据 */
   | "discount_10"
   | "exclusive_ballot";
 
@@ -68,6 +72,7 @@ export type DefaultPackKind =
  * （原价代金、门槛券、9 折卡）
  */
 export const BASE_CATALOG_PACKS: DefaultPackKind[] = [
+  "discount_voucher",
   "face_open",
   "face_threshold",
   "discount_10",
@@ -77,6 +82,7 @@ export function isBaseCatalogPack(
   packKind: string | null | undefined
 ): boolean {
   return (
+    packKind === "discount_voucher" ||
     packKind === "face_open" ||
     packKind === "face_threshold" ||
     packKind === "discount_10"
@@ -86,6 +92,8 @@ export function isBaseCatalogPack(
 export const DEFAULT_PACK_SLUGS = {
   faceOpen: "default-face-voucher-open",
   faceThreshold: "default-face-voucher-threshold",
+  /** 折扣券（统一模版） */
+  discountVoucher: "default-discount-voucher",
   /** 9 折优惠卡：付 90 得 100 */
   discount10: "default-discount-card-10",
   exclusiveBallot: "default-exclusive-ballot-15",
@@ -96,43 +104,42 @@ export const DISCOUNT_CARD_TIERS_SGD = [10, 20, 50, 100, 200] as const;
 /** 付 90 得 100 → 折扣 10% */
 export const DISCOUNT_CARD_PERCENT = 10;
 
-export function buildFaceOpenSnapshot(enabledTiers: number[] = [...FACE_VOUCHER_OPEN_TIERS_SGD]) {
-  return {
-    templateId: "self_use_voucher" as const,
-    kind: "voucher_discount" as const,
-    allowDiscount: true,
-    discountPercent: 0,
-    sellerCommissionPercent: 0,
-    platformFeePercent: 0,
-    prizePoolPercent: 0,
-    shareSellingEnabled: false,
-    campaignType: "voucher_sale",
-    instantPoolRatio: 0,
-    midPoolRatio: 0,
-    grandPoolRatio: 0,
-    enabledTiers: [...enabledTiers].sort((a, b) => a - b),
-    prizePackId: "none" as const,
-    minSpendMultiplier: 0,
-    productKind: "self_use" as const,
-    exclusiveFeeTotalPercent: null,
-    packKind: "face_open" as DefaultPackKind,
-    /** 门店基础项：首页热门不展示 */
-    listScope: "store" as const,
-    snapshottedAt: new Date().toISOString(),
-  };
+/** 折扣券折扣率边界 %：0 = 原价代金，上限 50 防误配 */
+export const DISCOUNT_VOUCHER_PERCENT_MIN = 0;
+export const DISCOUNT_VOUCHER_PERCENT_MAX = 50;
+
+export function clampDiscountPercent(n: unknown): number {
+  const v = typeof n === "number" && Number.isFinite(n) ? Math.round(n) : 0;
+  return Math.min(
+    DISCOUNT_VOUCHER_PERCENT_MAX,
+    Math.max(DISCOUNT_VOUCHER_PERCENT_MIN, v)
+  );
 }
 
 /**
- * 9 折优惠卡：顾客付面值的 90%，到账 100% 余额（付 S$90 得 S$100）
+ * 折扣券（统一模版）——「原价代金」与「9 折卡」本是同一模版的两个参数值：
+ *   discountPercent 0  → 付 100 得 100（原价代金）
+ *   discountPercent 10 → 付 90  得 100（9 折卡）
+ *   discountPercent 20 → 付 80  得 100（8 折卡）
+ *
+ * `face_open` / `discount_10` 保留为向后兼容的别名（存量商品的 rulesSnapshot 里
+ * 已固化了这两个 packKind，且业务 UI 有 12 处在匹配它们，不做破坏性重命名）。
  */
-export function buildDiscount10Snapshot(
-  enabledTiers: number[] = [...DISCOUNT_CARD_TIERS_SGD]
+export function buildDiscountVoucherSnapshot(
+  discountPercent: number = 0,
+  enabledTiers: number[] = [...DISCOUNT_CARD_TIERS_SGD],
+  opts: {
+    packKind?: DefaultPackKind;
+    minSpendMultiplier?: number;
+    /** 购后 N 天有效；null/0 = 跟随活动截止 */
+    validDays?: number | null;
+  } = {}
 ) {
   return {
     templateId: "self_use_voucher" as const,
     kind: "voucher_discount" as const,
     allowDiscount: true,
-    discountPercent: DISCOUNT_CARD_PERCENT,
+    discountPercent: clampDiscountPercent(discountPercent),
     sellerCommissionPercent: 0,
     platformFeePercent: 0,
     prizePoolPercent: 0,
@@ -143,14 +150,40 @@ export function buildDiscount10Snapshot(
     grandPoolRatio: 0,
     enabledTiers: [...enabledTiers].sort((a, b) => a - b),
     prizePackId: "none" as const,
-    minSpendMultiplier: 0,
+    minSpendMultiplier: opts.minSpendMultiplier ?? 0,
     productKind: "self_use" as const,
     exclusiveFeeTotalPercent: null,
-    packKind: "discount_10" as DefaultPackKind,
-    /** 长期券：首页不展示，进店可见 */
+    packKind: (opts.packKind ?? "discount_voucher") as DefaultPackKind,
+    /**
+     * 购后 N 天有效（`validity.ts` 的 entitlementValidDays）；
+     * null = 跟随活动截止（旧行为，存量券不受影响）
+     */
+    validDays:
+      opts.validDays != null && opts.validDays > 0
+        ? Math.round(opts.validDays)
+        : null,
+    /** 长期券：首页热门不展示，进店可见 */
     listScope: "store" as const,
     snapshottedAt: new Date().toISOString(),
   };
+}
+
+/** @deprecated 折扣率 0 的折扣券。保留以兼容存量数据与既有 UI */
+export function buildFaceOpenSnapshot(
+  enabledTiers: number[] = [...FACE_VOUCHER_OPEN_TIERS_SGD]
+) {
+  return buildDiscountVoucherSnapshot(0, enabledTiers, {
+    packKind: "face_open",
+  });
+}
+
+/** @deprecated 折扣率 10 的折扣券（付 90 得 100）。保留以兼容存量数据与既有 UI */
+export function buildDiscount10Snapshot(
+  enabledTiers: number[] = [...DISCOUNT_CARD_TIERS_SGD]
+) {
+  return buildDiscountVoucherSnapshot(DISCOUNT_CARD_PERCENT, enabledTiers, {
+    packKind: "discount_10",
+  });
 }
 
 export function buildFaceThresholdSnapshot(
