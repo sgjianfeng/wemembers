@@ -81,6 +81,14 @@ model User {
   promoGrantsAsCustomer PromoGrant[]   @relation("PromoGrantCustomer")
   promoGrantsAsStaff    PromoGrant[]   @relation("PromoGrantStaff")
   promoGrantsAsBusiness PromoGrant[]   @relation("PromoGrantBusiness")
+  spendRecordsAsBusiness SpendRecord[] @relation("SpendRecordBusiness")
+  spendRecordsAsFunder   SpendRecord[] @relation("SpendRecordFunder")
+  spendRecordsAsCustomer SpendRecord[] @relation("SpendRecordCustomer")
+  spendRecordsAsStaff    SpendRecord[] @relation("SpendRecordStaff")
+  platformFeePolicies         PlatformFeePolicy[] @relation("PlatformFeePolicyBusiness")
+  platformFeePoliciesApproved PlatformFeePolicy[] @relation("PlatformFeePolicyApprover")
+  cashbackTokensAsBusiness    CashbackClaimToken[] @relation("CashbackTokenBusiness")
+  cashbackTokensAsStaff       CashbackClaimToken[] @relation("CashbackTokenStaff")
 }
 
 // ──── 验证码 ────
@@ -105,7 +113,8 @@ model Membership {
   id           String   @id @default(cuid())
   businessId   String
   customerId   String
-  points       Int      @default(0)
+  points       Int      @default(0)   // 可花余额：领券会扣
+  lifetimePoints Int    @default(0)   // 累计获得，只增不减 —— 等级只看它，花积分不掉级
   visitsCount  Int      @default(0)
   totalSpent   Float    @default(0) // 元
   isFavorite   Boolean  @default(false)
@@ -146,6 +155,8 @@ model Store {
   physicalSold    PhysicalTicket[] @relation("PhysicalTicketSoldStore")
   physicalRedeemed PhysicalTicket[] @relation("PhysicalTicketRedeemStore")
   promoGrants     PromoGrant[]
+  spendRecords    SpendRecord[]
+  cashbackTokens  CashbackClaimToken[]
 
   @@unique([businessId, name])
 }
@@ -160,6 +171,7 @@ model MembershipTierConfig {
   pointsRequired Int                    // 升级所需积分
   color          String?                // 标签色
   benefits       String?                // JSON: ["9折优惠","生日礼"]
+  cashbackBonusPercent Float @default(0) // 该等级的额外返现百分点（3% + 1 = 4%），计入商家负债，受总费率上限约束
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -205,6 +217,9 @@ model Coupon {
   status              String   @default("draft") // draft | published | paused | ended
   isGiftable          Boolean  @default(true)
   perCustomerLimit    Int      @default(1)
+  /// manual = 商家自建 | spend_get = 满赠发放（下次消费的额度，计入商家负债）
+  /// spend_get 的券在发放时累加 Campaign.cashbackIssuedCents，核销时累加 cashbackRedeemedCents
+  origin              String   @default("manual")
 
   // 冗余计数器
   claimedCount        Int      @default(0)
@@ -670,6 +685,13 @@ model BusinessTemplate {
   exclusiveGrandPoolPercent   Int?
   /// JSON number[] 面额 SGD
   enabledTiers                String?
+  /// ── Cashback 模版（kind = "cashback"）────
+  /// 消费返额度 %
+  cashbackPercent             Float?
+  /// 抽奖充值 %
+  drawPercentCfg              Float?
+  /// 阶梯平台费快照 JSON（便于合同对账）
+  platformTierJson            String?
   status                      String   @default("active") // active | archived
   createdAt                   DateTime @default(now())
   updatedAt                   DateTime @updatedAt
@@ -788,6 +810,27 @@ model Campaign {
   //         distribution = 分发券（平台托管、核销结算 T+1）
   productKind     String   @default("distribution") // self_use | distribution
 
+  // ── Cashback（type = "cashback"）────
+  // 专享阶段不扣商家真金：发放 = 记一笔负债，核销 = 负债兑现（商家交付商品）。
+  // 共赢阶段（Phase 3）才需要真实托管资金。
+  /// 累计发放的抵扣额度（分）= 记账负债
+  cashbackIssuedCents   Int      @default(0)
+  /// 累计已核销（分）
+  cashbackRedeemedCents Int      @default(0)
+  /// 未核销负债上限（分）；null = 不限。超限触发降级
+  maxOutstandingCents   Int?
+  /// 大奖券默认有效天数（活动 2 延迟大奖，可分期发多张）
+  prizeVoucherValidDays Int?
+  /// 已发放的大奖档位 id JSON 数组。逐档解锁：一档只发一次，
+  /// 池子一次跨越多档时仍按顺序逐档发放，避免奖池被瞬间掏空
+  awardedGrandPrizeIds  String?
+  /// 大奖券分期期数（如 12 = 拆成 12 张月券）；null/1 = 一次性一张
+  prizeInstalments      Int?
+  /// 共赢网络最低总费率 %（joinable 活动必填；加入方不得低于此值）
+  minTotalPercent     Float?
+  /// 品牌多店内部转移定价：redeemer_full = 核销门店全额计营业额 | issuer_bears = 发放门店承担
+  transferPricingMode String   @default("redeemer_full")
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -801,6 +844,8 @@ model Campaign {
   catalogProducts CampaignProduct[]
   mirrorOfProduct VoucherProduct? @relation("ProductMirrorCampaign")
   promoGrants     PromoGrant[]
+  spendRecords    SpendRecord[]
+  cashbackTokens  CashbackClaimToken[]
 }
 
 // ──── 活动满赠发放（国庆：满 120 → 61 代金 + 低权重大奖签）────
@@ -899,6 +944,18 @@ model Voucher {
   issueNote             String?
   /// 操作人（企业主/店员 userId）
   issuedById            String?
+  /// 资金来源：purchase = 顾客付费购券 | cashback = 消费返额度 | prize = 中奖 | gift | promo
+  /// 决定核销费率与提现权限；非 purchase 一律不可提现/退款/拆分
+  origin                String   @default("purchase")
+  /// true = 核销时不再走 20%/15% 抽点（cashback/prize 券必须为 true，防双重抽点）
+  feeExempt             Boolean  @default(false)
+  /// 活跃即长期有效：任何消费或使用都刷新时钟；null = 走固定 expiresAt 旧逻辑
+  lastActivityAt        DateTime?
+  /// 无活动失效月数（cashback 默认 24）；null = 不适用
+  inactivityMonths      Int?
+  /// 券自身到期时刻。此前券过期靠 Campaign.endDate 经 computeEntitlementExpiry 推导；
+  /// 大奖券需要每张独立有效期，故显式落库。null = 沿用旧推导（存量券不受影响）
+  expiresAt             DateTime?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -911,8 +968,12 @@ model Voucher {
   /// 实体纸唯一关联（自用券打印版）
   physicalTicket PhysicalTicket?
   promoGrant    PromoGrant?
+  /// cashback 券对应的消费流水（1-1）
+  cashbackSpendRecord SpendRecord? @relation("SpendRecordCashbackVoucher")
 
   @@index([customerId, status])
+  @@index([customerId, origin, status])
+  @@index([status, expiresAt])
   @@index([campaignId, createdAt])
   @@index([productId, createdAt])
   @@index([sellerId])
@@ -943,6 +1004,9 @@ model VoucherDraw {
   voucherId    String
   drawType     String                // "instant" | "grand" (legacy "mid" treated as deferred)
   won          Boolean  @default(false)
+  /// 奖品稳定 id（GrandPrizeDef.id / CreditPrize.id）。
+  /// 逐档解锁必须靠 id 判定——只存 prizeName 时商家改名就失效
+  prizeId      String?
   prizeName    String?
   prizeIcon    String?
   valueCents   Int?
@@ -952,6 +1016,7 @@ model VoucherDraw {
   voucher      Voucher  @relation(fields: [voucherId], references: [id])
 
   @@index([voucherId])
+  @@index([voucherId, drawType, prizeId])
 }
 
 // ──── 票据管理 (聊天式分组 + AI 采集) ────
@@ -1103,4 +1168,141 @@ model PhysicalTicket {
   @@index([redeemedStoreId, redeemedAt])
   @@index([customerId])
   @@index([status, soldAt])
+}
+
+// ──── Cashback：消费流水 ────
+// 一笔线下消费 → 计提（cashback + 抽奖 + 平台费）→ 发抵扣额度 + 抽奖机会
+// 钱不经过平台；平台只记账并从商家钱包扣计提
+
+model SpendRecord {
+  id                  String   @id @default(cuid())
+  campaignId          String                      // cashback 活动
+  businessId          String                      // 品牌
+  /// 计提出资方：直营 = businessId；加盟店 = 加盟商自己的 businessId
+  /// Phase 1 恒等于 businessId，但必须现在落库，否则加盟连锁上线时无法回填历史
+  fundedByBusinessId  String
+  storeId             String                      // 发放门店
+  customerId          String?                     // 绑定后回填
+  /// 本地号，无 +65 前缀
+  phone               String
+  staffUserId         String?                     // 录入人
+
+  amountCents         Int                         // 消费金额
+  /// staff = 店员录入 | receipt = 小票识别 | redeem = 核销带出 | pos = 收银对接
+  source              String   @default("staff")
+  receiptNote         String?                     // 单号后四位等
+  /// 防重复：hash(storeId + phone + amountCents + yyyymmdd + receiptNote)
+  receiptFingerprint  String?
+  receiptUrl          String?                     // 小票照片（Phase 4）
+
+  // 计提快照：费率取自 Campaign.rulesSnapshot，落库避免事后改率影响历史账
+  cashbackPercent     Float
+  drawPercent         Float
+  platformPercent     Float
+  cashbackCents       Int      @default(0)
+  drawCents           Int      @default(0)
+  platformFeeCents    Int      @default(0)
+  /// 平台费减免额（促销）；应收 = platformFeeCents，实收 = platformFeeCents - platformWaivedCents
+  platformWaivedCents Int      @default(0)
+  /// 平台费实扣（分）。应收 - 减免 - 实扣 = 欠费，欠费累计驱动降级
+  platformFeeChargedCents Int  @default(0)
+  /// 即时小奖金额（分）。并入消费额度，单列便于报表
+  instantPrizeCents   Int      @default(0)
+  /// 消费当时的会员等级（发放前的等级——升级在本笔之后才生效）
+  memberTier          String?
+  /// 该等级带来的额外返现百分点，已并入 cashbackPercent。单列便于回答「这笔为什么是 4%」
+  tierBonusPercent    Float    @default(0)
+
+  /// full = 全额 | degraded = 商家余额不足降级 | points_only = 仅积分
+  fundingTier         String   @default("full")
+  /// pending | settled | void
+  status              String   @default("settled")
+
+  cashbackVoucherId   String?  @unique            // 发出的 cashback 额度
+  /// 抽奖机会（Phase 2 接入 DrawTicket）
+  drawTicketId        String?  @unique
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  campaign        Campaign @relation(fields: [campaignId], references: [id])
+  business        User     @relation("SpendRecordBusiness", fields: [businessId], references: [id])
+  fundedBy        User     @relation("SpendRecordFunder", fields: [fundedByBusinessId], references: [id])
+  store           Store    @relation(fields: [storeId], references: [id])
+  customer        User?    @relation("SpendRecordCustomer", fields: [customerId], references: [id])
+  staff           User?    @relation("SpendRecordStaff", fields: [staffUserId], references: [id])
+  cashbackVoucher Voucher? @relation("SpendRecordCashbackVoucher", fields: [cashbackVoucherId], references: [id])
+
+  @@index([businessId, createdAt])
+  @@index([fundedByBusinessId, createdAt])
+  @@index([storeId, createdAt])
+  @@index([campaignId, phone])
+  @@index([phone, status])
+  @@index([receiptFingerprint])
+  @@index([customerId, createdAt])
+}
+
+// ──── 平台费促销策略 ────
+// FEE_PLATFORM_PERCENT 是常量且明确「不可改」；促销减免通过本表按商家覆盖
+// 仅 admin 可创建；reason + approvedByUserId 必填，可审计
+
+model PlatformFeePolicy {
+  id                String   @id @default(cuid())
+  businessId        String
+  /// waive_all = 全免 | rate_override = 降率 | waive_minimum = 仅免保底 | tier_shift = 阶梯前移
+  kind              String
+  /// rate_override 用，如 0.5 表示 0.5%
+  percentOverride   Float?
+  /// 是否同时豁免月保底（只免率不免保底 = 等于没免）
+  waiveMinimum      Boolean  @default(false)
+  startsAt          DateTime
+  /// null = 永久（早鸟）
+  endsAt            DateTime?
+  /// 必填，可审计
+  reason            String
+  /// 仅 admin
+  approvedByUserId  String
+  status            String   @default("active") // active | expired | revoked
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  business   User @relation("PlatformFeePolicyBusiness", fields: [businessId], references: [id])
+  approvedBy User @relation("PlatformFeePolicyApprover", fields: [approvedByUserId], references: [id])
+
+  @@index([businessId, status, startsAt])
+  @@index([endsAt, status])
+}
+
+// ──── Cashback 领取令牌（店员出码 · 顾客扫码）────
+// 平台不经手支付，消费金额由店员在收银时录入并生成一次性二维码；
+// 顾客扫码绑定手机后领取。金额由店员填 = 可信；顾客只负责扫码 = 店员负担最小。
+// 顾客自填金额的方案作弊风险过高（可填 S$800 实花 S$5），不采用。
+
+model CashbackClaimToken {
+  id                  String   @id @default(cuid())
+  /// 进 URL 的短随机串
+  token               String   @unique
+  campaignId          String
+  businessId          String
+  storeId             String
+  staffUserId         String?
+  amountCents         Int
+  receiptNote         String?
+  /// pending | claimed | expired | void
+  status              String   @default("pending")
+  claimedByCustomerId String?
+  spendRecordId       String?
+  expiresAt           DateTime
+  claimedAt           DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+  business User     @relation("CashbackTokenBusiness", fields: [businessId], references: [id])
+  store    Store    @relation(fields: [storeId], references: [id])
+  staff    User?    @relation("CashbackTokenStaff", fields: [staffUserId], references: [id])
+
+  @@index([businessId, createdAt])
+  @@index([storeId, status, createdAt])
+  @@index([status, expiresAt])
 }

@@ -2,6 +2,7 @@
  * Apply redeem split:
  * - draw: Model A pot (store 80% + pot → seller/platform/prize pool)
  * - voucher: cash-equivalent C=R×P/F; platform 1.5% + seller 5% on C
+ * - feeExempt (cashback / 中奖券): 零抽点，面额全额归门店
  */
 import { prisma } from "@/lib/db";
 import { grantBusinessIncomeHold } from "@/lib/tokens";
@@ -32,6 +33,11 @@ export interface ApplyRedeemSplitArgs {
   /** Voucher face & paid (for C = R×P/F). Required for accurate voucher split. */
   faceCents?: number;
   paidCents?: number;
+  /**
+   * 零抽点：`Voucher.feeExempt`（cashback / 中奖额度）。
+   * 资金已在发放时计提，核销再抽即为双重抽点。
+   */
+  feeExempt?: boolean;
   recomputeWeight?: {
     amountCents: number;
     tier: "small" | "medium" | "large";
@@ -49,9 +55,12 @@ export async function applyRedeemSplit(args: ApplyRedeemSplitArgs): Promise<{
 }> {
   const mode: ProductMode = args.mode === "voucher" ? "voucher" : "draw";
   const issuerBusinessId = args.issuerBusinessId || args.redeemerBusinessId;
+  const feeExempt = args.feeExempt === true;
 
-  const sellerRewardRecipientId =
-    mode === "voucher"
+  // 零抽点券没有卖券佣金收款方
+  const sellerRewardRecipientId = feeExempt
+    ? null
+    : mode === "voucher"
       ? resolveSellerRewardRecipient({
           voucherSellerId: args.sellerId,
           redeemerBusinessId: args.redeemerBusinessId,
@@ -60,6 +69,7 @@ export async function applyRedeemSplit(args: ApplyRedeemSplitArgs): Promise<{
       : args.sellerId || null;
 
   const split = splitRedeemAmount({
+    feeExempt,
     amountCents: args.amountCents,
     budgetPercent: args.budgetPercent,
     sellerCommissionPercent: args.sellerCommissionPercent,
@@ -83,7 +93,7 @@ export async function applyRedeemSplit(args: ApplyRedeemSplitArgs): Promise<{
   });
 
   const weightUpdate =
-    mode === "draw" && args.recomputeWeight != null
+    !feeExempt && mode === "draw" && args.recomputeWeight != null
       ? {
           drawWeight: calculateTierWeight(
             args.recomputeWeight.amountCents,
@@ -93,7 +103,7 @@ export async function applyRedeemSplit(args: ApplyRedeemSplitArgs): Promise<{
             args.recomputeWeight.usedCents
           ),
         }
-      : mode === "voucher"
+      : !feeExempt && mode === "voucher"
         ? { drawWeight: 0 }
         : {};
 
@@ -103,11 +113,13 @@ export async function applyRedeemSplit(args: ApplyRedeemSplitArgs): Promise<{
       prizePoolContribution: { increment: split.prizePoolCents },
       sellerCommissionCents: { increment: split.sellerCommissionCents },
       platformFeeCents: { increment: split.platformFeeCents },
+      // 活跃即长期有效：核销即刷新时钟
+      lastActivityAt: new Date(),
       ...weightUpdate,
     },
   });
 
-  if (mode === "draw" && split.prizePoolCents > 0) {
+  if (!feeExempt && mode === "draw" && split.prizePoolCents > 0) {
     // 定稿：小奖 3% + 大奖 10%（无卖家时 5% 已并入 prizePool）
     const smallCents = Math.floor((split.amountCents * 3) / 100);
     const grandCents = Math.max(0, split.prizePoolCents - smallCents);

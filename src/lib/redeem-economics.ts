@@ -21,6 +21,12 @@
  *   - else → issuing business (cross-store marketing to issuer)
  *
  * Net 本店: store + seller-to-self = C − platform only.
+ *
+ * ## Fee-exempt (cashback / 中奖券)
+ * `feeExempt` 券（`Voucher.origin !== "purchase"`）核销时零抽点：
+ * 面额全额归门店，不收平台费、不付卖券佣金、不进奖池。
+ * 这些额度的资金在**发放时**就已从商家钱包计提，核销时再抽一次即为双重抽点。
+ * 短路做在 `splitRedeemAmount` 入口，任何调用路径都无法绕过——这是资金安全红线。
  */
 
 export type ProductMode = "draw" | "voucher";
@@ -41,6 +47,11 @@ export interface RedeemSplitInput {
   /** Voucher only: face / paid on the voucher (for C = R×P/F) */
   faceCents?: number;
   paidCents?: number;
+  /**
+   * 零抽点：cashback / 中奖等非购买来源的额度。
+   * 为 true 时忽略所有费率，面额全额归门店。
+   */
+  feeExempt?: boolean;
 }
 
 export interface RedeemSplit {
@@ -60,10 +71,37 @@ export interface RedeemSplit {
 
 export function splitRedeemAmount(input: RedeemSplitInput): RedeemSplit {
   const mode: ProductMode = input.mode === "voucher" ? "voucher" : "draw";
+  // 资金安全红线：零抽点券必须在任何费率计算之前短路
+  if (input.feeExempt) {
+    return splitFeeExemptRedeem(input, mode);
+  }
   if (mode === "voucher") {
     return splitVoucherRedeem(input);
   }
   return splitDrawRedeem(input);
+}
+
+/**
+ * 零抽点核销：面额全额归门店。
+ * 用于 cashback 额度与中奖券——其资金已在发放时从商家钱包计提。
+ */
+export function splitFeeExemptRedeem(
+  input: RedeemSplitInput,
+  mode: ProductMode = "voucher"
+): RedeemSplit {
+  const amountCents = Math.max(0, Math.round(input.amountCents));
+  return {
+    amountCents,
+    redeemFaceCents: amountCents,
+    cashCents: amountCents,
+    storeIncomeCents: amountCents,
+    potCents: 0,
+    sellerCommissionCents: 0,
+    platformFeeCents: 0,
+    prizePoolCents: 0,
+    budgetPercent: 0,
+    mode,
+  };
 }
 
 /** Pay P get F — fees on cash equivalent C = R×P/F */
