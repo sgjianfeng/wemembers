@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const sellerId =
       typeof body.sellerId === "string" && body.sellerId ? body.sellerId : "";
 
-    // 支付成功/取消后回到购券页时保留国庆/门店语境
+    // 支付成功/取消后回到购券页时保留满赠/门店语境
     const returnQuery =
       typeof body.returnQuery === "string"
         ? sanitizeCheckoutReturnQuery(new URLSearchParams(body.returnQuery))

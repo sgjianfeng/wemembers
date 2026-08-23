@@ -3,7 +3,7 @@
  * 商家只选模版 + 有限主题色；版式由平台固定。
  */
 
-export type VisualTemplateId = "store_classic" | "store_bold" | "festival_ndp";
+export type VisualTemplateId = "store_classic" | "store_bold" | "festival_red";
 
 export type ThemeColorId =
   | "blue"
@@ -11,7 +11,7 @@ export type ThemeColorId =
   | "violet"
   | "green"
   | "dark"
-  | "ndp_red"
+  | "deep_red"
   | "festival_red";
 
 export interface ThemeSwatch {
@@ -21,16 +21,16 @@ export interface ThemeSwatch {
   labelEn: string;
 }
 
-/** 新加坡国庆红（印刷常用） */
-export const SG_NDP_RED = "#CE1126";
-export const SG_NDP_RED_DEEP = "#9B0A1A";
+/** 新加坡节日红（印刷常用） */
+export const FESTIVAL_RED = "#CE1126";
+export const FESTIVAL_RED_DEEP = "#9B0A1A";
 
 export const THEME_SWATCHES: ThemeSwatch[] = [
   {
-    id: "ndp_red",
-    hex: SG_NDP_RED,
-    labelZh: "国庆红（推荐节日）",
-    labelEn: "National Day red",
+    id: "deep_red",
+    hex: FESTIVAL_RED,
+    labelZh: "深红（印刷推荐）",
+    labelEn: "Deep red",
   },
   {
     id: "festival_red",
@@ -81,36 +81,42 @@ export const VISUAL_TEMPLATES: VisualTemplateMeta[] = [
     surface: "dark",
   },
   {
-    id: "festival_ndp",
+    id: "festival_red",
     family: "store",
-    nameZh: "国庆节日",
-    nameEn: "National Day",
-    taglineZh: "整块国庆红 · 品牌+门店 · 满赠数字卡 · 右上星月 · 台卡/海报",
-    taglineEn: "Solid NDP red · brand+store · spend-get card · crescent badge",
-    defaultThemeHex: SG_NDP_RED,
-    // light：避免走「醒目色块」黑底分支；国庆色由 accent 整卡渲染
+    nameZh: "节日红",
+    nameEn: "Festival red",
+    taglineZh: "整块节日红 · 品牌+门店 · 数字卡 · 右上星月 · 台卡/海报",
+    taglineEn: "Solid festival red · brand+store · amount card · crescent badge",
+    defaultThemeHex: FESTIVAL_RED,
+    // light：避免走「醒目色块」黑底分支；节日色由 accent 整卡渲染
     surface: "light",
   },
 ];
 
-/** 是否国庆/节日类活动（用于默认模版与落地页） */
-export function isFestivalNdpCampaign(
-  type?: string | null,
-  name?: string | null,
-  tags?: string | null
+/**
+ * 是否走节日红视觉（红白渐变 + 星月装饰）。
+ *
+ * 以前的判定是「type === holiday 或名字里有国庆/ndp」—— 于是**每一个满赠活动**
+ * 都被自动套上新加坡国庆的旗帜装饰。满赠是长期活动模版，不是节日，
+ * 现在只认商家显式选的主题色与显式打的 festival 标签。
+ */
+export function isFestivalRedCampaign(
+  _type?: string | null,
+  _name?: string | null,
+  tags?: string | null,
+  themeHex?: string | null
 ): boolean {
-  if (type === "holiday") return true;
-  if (name && /国庆|ndp|national\s*day|满120送|满赠/i.test(name)) return true;
-  if (tags && /ndp|国庆|national|category:ndp/i.test(tags)) return true;
+  if (themeHex && isFestivalRedAccent(themeHex)) return true;
+  if (tags && /\bfestival\b|national-day/i.test(tags)) return true;
   return false;
 }
 
-/** 主题是否偏国庆红（导出时用红白渐变 + 星月装饰） */
-export function isNdpFestivalAccent(hex: string | null | undefined): boolean {
+/** 主题是否偏节日红（导出时用红白渐变 + 星月装饰） */
+export function isFestivalRedAccent(hex: string | null | undefined): boolean {
   if (!hex) return false;
   const h = hex.toUpperCase();
   return (
-    h === SG_NDP_RED.toUpperCase() ||
+    h === FESTIVAL_RED.toUpperCase() ||
     h === "#EF3340" ||
     h === "#ED2939" ||
     h === "#C8102E" ||
@@ -149,7 +155,7 @@ export function listVisualTemplatesForType(
     ...t,
     recommended:
       type === "festival"
-        ? t.id === "festival_ndp"
+        ? t.id === "festival_red"
         : type === "draw"
           ? t.id === "store_bold"
           : t.id === "store_classic",

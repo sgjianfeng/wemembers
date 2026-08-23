@@ -36,6 +36,13 @@ export async function POST(request: NextRequest) {
     if (!voucher) {
       return NextResponse.json({ error: "券不存在" }, { status: 404 });
     }
+    // 资金安全红线：非购买来源的额度没有顾客付款，无款可退
+    if (voucher.origin !== "purchase") {
+      return NextResponse.json(
+        { error: "消费抵扣额度无付款记录，不支持退款" },
+        { status: 403 }
+      );
+    }
 
     const isExclusive =
       voucher.productKind === "self_use" &&

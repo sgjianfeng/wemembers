@@ -122,8 +122,8 @@ export default async function CouponsPage() {
             <p className="text-sm">{t("business.coupons.noCoupons", lang)}</p>
             <p className="text-xs mt-2 leading-relaxed max-w-xs mx-auto">
               {lang === "en"
-                ? "Need sellable store cards or exclusive draws? Use Products. For National Day gifts, create here then link in an Activity."
-                : "要卖 9 折卡、独享抽奖 → 去「券产品」。国庆赠送券可在此创建后挂到「活动」。"}
+                ? "Need sellable store cards or exclusive draws? Use Products. For Spend & get gifts, create here then link in an Activity."
+                : "要卖 9 折卡、独享抽奖 → 去「券产品」。赠送券可在此创建后挂到「活动」。"}
             </p>
             <div className="flex flex-wrap justify-center gap-2 mt-4">
               <Link

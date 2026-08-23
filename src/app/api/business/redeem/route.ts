@@ -104,6 +104,8 @@ export async function GET(request: NextRequest) {
         valueCents: claim.coupon.valueCents,
         valueSgd: (claim.coupon.valueCents / 100).toFixed(2),
         minSpendCents: claim.coupon.minSpendCents,
+        /** true = 核销时必须带 billCents，收银台要先问账单金额 */
+        requiresBill: claim.coupon.minSpendCents > 0,
         expiresAt: validUntil.toISOString(),
         customerName: claim.customer.displayName || "",
         customerPhone: claim.customer.phone
@@ -166,7 +168,7 @@ export async function POST(request: NextRequest) {
     if (!claim) return NextResponse.json({ error: "无效的核销码" }, { status: 404 });
     if (claim.status !== "available") return NextResponse.json({ error: `该券已${claim.status === "used" ? "使用" : "过期"}` }, { status: 400 });
 
-    // 单张券到期（国庆满赠等）优先于模版 validUntil
+    // 单张券到期（满赠等）优先于模版 validUntil
     const claimExpiry = claim.expiresAt ?? claim.coupon.validUntil;
     if (claimExpiry < new Date()) {
       await prisma.customerCoupon.update({
@@ -211,6 +213,42 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 满减门槛校验。
+    //
+    // 这里以前只把 minSpendCents 塞进 GET 的返回体给店员看一眼，从不校验 ——
+    // 于是「满 S$100 减 S$15」的券买 S$20 的东西也能核销掉，满减券实际上
+    // 只是一张写了提示文字的代金券。储值券那条路（/api/voucher/redeem）早就
+    // 用 billCents 校验了，这里沿用同一套约定，两条路的口径统一。
+    const minSpend = Math.max(0, claim.coupon.minSpendCents);
+    if (minSpend > 0) {
+      const billRaw = body.billCents ?? body.orderCents;
+      const bill =
+        billRaw != null && Number.isFinite(Number(billRaw))
+          ? Math.round(Number(billRaw))
+          : null;
+      if (bill == null) {
+        return NextResponse.json(
+          {
+            error: `本券最低消费 S$${(minSpend / 100).toFixed(2)}，请填写账单金额`,
+            code: "BILL_REQUIRED",
+            minSpendCents: minSpend,
+          },
+          { status: 400 }
+        );
+      }
+      if (bill < minSpend) {
+        return NextResponse.json(
+          {
+            error: `本券最低消费 S$${(minSpend / 100).toFixed(2)}，当前账单 S$${(bill / 100).toFixed(2)}`,
+            code: "MIN_SPEND",
+            minSpendCents: minSpend,
+            billCents: bill,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // 跨商家核销判断（按企业 businessId）
     const isCrossStore = claim.coupon.businessId !== businessId;
     let settlementMessage = "";
@@ -248,6 +286,24 @@ export async function POST(request: NextRequest) {
       where: { id: claim.couponId },
       data: { usedCount: { increment: 1 } },
     });
+
+    // 满赠券核销 → 冲减商家负债。
+    // 满赠发的是下次消费的额度，和 cashback 额度券是同一种负债，
+    // 走同一对计数器（cashbackIssuedCents / cashbackRedeemedCents）。
+    // 不冲减的话负债只增不减，商家会被自己的上限锁死。
+    if (claim.coupon.origin === "spend_get" && claim.coupon.campaignId) {
+      try {
+        const { recordGiftRedeemed } = await import("@/lib/spend-and-get");
+        await recordGiftRedeemed(
+          prisma,
+          claim.coupon.campaignId,
+          claim.coupon.valueCents
+        );
+      } catch (e) {
+        // 核销已成功，账目失败只记日志，不回滚顾客的核销
+        console.error("满赠负债冲减失败", claim.coupon.campaignId, e);
+      }
+    }
 
     // 实体券绑定后按线上核销：同步纸码状态，防双花
     if (physical && physical.status !== "redeemed") {
@@ -414,7 +470,11 @@ export async function POST(request: NextRequest) {
         const { addPointsLog, checkAndUpgradeTier } = await import("@/lib/points");
         await prisma.membership.update({
           where: { id: membership.id },
-          data: { points: { increment: earnPoints }, visitsCount: { increment: 1 } },
+          data: {
+            points: { increment: earnPoints },
+            lifetimePoints: { increment: earnPoints },
+            visitsCount: { increment: 1 },
+          },
         });
         await addPointsLog({
           membershipId: membership.id,

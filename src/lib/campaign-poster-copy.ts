@@ -9,8 +9,8 @@ import {
   parseRulesSnapshot,
   type RulesSnapshot,
 } from "@/lib/templates";
-import { isFestivalNdpCampaign } from "@/lib/visual-templates";
-import { ndpPosterTermsLine } from "@/lib/ndp-promo";
+import { isSpendGetCampaign } from "@/lib/spend-and-get";
+import { spendGetPosterTermsLine } from "@/lib/spend-get-issue";
 
 export type CampaignPosterLang = "zh" | "en";
 
@@ -36,7 +36,7 @@ export type CampaignPosterCopy = {
   /** 副文案（动作说明） */
   sub: string;
   /**
-   * 广告钩子语（国庆等）：更抓眼球，放在 QR 上方
+   * 广告钩子语（满赠等）：更抓眼球，放在 QR 上方
    * 例：本单满就送 · 下次再来吃
    */
   hookLine?: string | null;
@@ -49,8 +49,8 @@ export type CampaignPosterCopy = {
   /** 截止日短标签 */
   untilShort: string;
   /**
-   * 海报底部精简条款（国庆等）：领后天数 / 不可叠优惠 / 一桌一券 等
-   * 非国庆为 null
+   * 海报底部精简条款（满赠等）：领后天数 / 不可叠优惠 / 一桌一券 等
+   * 非满赠为 null
    */
   termsLine?: string | null;
   discountPercent: number;
@@ -173,11 +173,7 @@ export function buildCampaignPosterCopy(
   let benefitLine: string;
   let sub: string;
 
-  const isNdp = isFestivalNdpCampaign(
-    input.type,
-    input.name,
-    input.tags
-  );
+  const isSpendGet = isSpendGetCampaign(input.type, input.tags);
 
   // 从名称解析「满120送61」类文案
   const spendGet =
@@ -190,8 +186,8 @@ export function buildCampaignPosterCopy(
   let hookPills: string[] | null = null;
   let termsLine: string | null = null;
 
-  if (isNdp) {
-    // 对齐顾客落地页 + 广告钩子（SG61 国庆意象）
+  if (isSpendGet) {
+    // 对齐顾客落地页 + 广告钩子（SG61 满赠意象）
     // 分层避免重复：红卡利益 → 中部行动 pill → 底部条款一行
     headline =
       lang === "en"
@@ -218,7 +214,7 @@ export function buildCampaignPosterCopy(
         ? ["Scan at the table", "Gift on this bill", "Use next visit"]
         : ["桌边扫一扫", "本单满就送", "赠券下次用"];
     // 底部唯一条款行：天数 · 不叠惠 · 一桌一券 · 本店有权调整
-    termsLine = ndpPosterTermsLine(lang);
+    termsLine = spendGetPosterTermsLine(lang);
   } else if (isDraw) {
     headline =
       lang === "en" ? "Buy · instant prize · 100% win" : "买就抽 · 100% 有奖";
@@ -285,11 +281,11 @@ export function buildCampaignPosterCopy(
   const faceHint = tiersLine || (lang === "en" ? "voucher" : "代金券");
   const shareTemplates =
     lang === "en"
-      ? isNdp
+      ? isSpendGet
         ? [
             `${name} — scan to join · redeem in store: {url}`,
-            `National Day: spend S$${minSpend} → gift S$${giftAmt}. Scan: {url}`,
-            `Until ${untilShort} · National Day gift promo: {url}`,
+            `Spend & get: spend S$${minSpend} → gift S$${giftAmt}. Scan: {url}`,
+            `Until ${untilShort} · Spend & get gift promo: {url}`,
           ]
         : isDraw
         ? [
@@ -304,12 +300,12 @@ export function buildCampaignPosterCopy(
               : `${name} voucher (${faceHint}). Redeem in store: {url}`,
             `Grab ${name} before ${untilShort}. Scan: {url}`,
           ]
-      : isNdp
+      : isSpendGet
         ? [
             // 名称已含「满120送61」时不再重复利益点
             `【${name}】扫码参加 · 到店核销：{url}`,
-            `国庆满赠 · 满 S$${minSpend} 送 S$${giftAmt} 赠券，扫码：{url}`,
-            `活动至 ${untilShort}｜扫码领国庆活动：{url}`,
+            `满赠 · 满 S$${minSpend} 送 S$${giftAmt} 赠券，扫码：{url}`,
+            `活动至 ${untilShort}｜扫码领满赠活动：{url}`,
           ]
         : isDraw
         ? [

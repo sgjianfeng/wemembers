@@ -27,7 +27,15 @@ export default function CreateCouponPage() {
   const [error, setError] = useState("");
 
   // Step 1
-  const [couponType, setCouponType] = useState<CouponType>("fixed_amount");
+  // 从券模版索引页带入类型（?type=fixed_amount|percentage|free_item）
+  const typeFromUrl = searchParams.get("type");
+  const initialType: CouponType =
+    typeFromUrl === "percentage" ||
+    typeFromUrl === "free_item" ||
+    typeFromUrl === "fixed_amount"
+      ? typeFromUrl
+      : "fixed_amount";
+  const [couponType, setCouponType] = useState<CouponType>(initialType);
   const [title, setTitle] = useState("");
   const [valueCents, setValueCents] = useState(1500);
   const [pointsRequired, setPointsRequired] = useState(120);
@@ -232,7 +240,15 @@ export default function CreateCouponPage() {
             <p className="text-xs text-muted-foreground mb-4">定义使用条件和限制</p>
 
             <div className="space-y-3">
-              <Input label="最低消费 (元，0=无)" type="number" value={minSpend} onChange={(e) => setMinSpend(Number(e.target.value))} prefix="S$" />
+              <div>
+                <Input label="最低消费 (0 = 无门槛)" type="number" value={minSpend} onChange={(e) => setMinSpend(Number(e.target.value))} prefix="S$" />
+                {minSpend > 0 && (
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    设了门槛后，店员核销时必须先输入本单金额，未达门槛核销会被拒。
+                    想做「本单不打折、送下次用」请改用满赠活动。
+                  </p>
+                )}
+              </div>
               <Input label="有效期 (天)" type="number" value={validDays} onChange={(e) => setValidDays(Number(e.target.value))} />
 
               <div>

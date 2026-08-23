@@ -86,7 +86,9 @@ export default function ScanClient({
     income?: string;
     fee?: string;
   } | null>(null);
-  /** 国庆赠送券 / 优惠券（CustomerCoupon） */
+  /** 赠送券 / 优惠券（CustomerCoupon） */
+  /** 满减券核销时的账单金额（S$）；无门槛的券用不到 */
+  const [giftBillSgd, setGiftBillSgd] = useState("");
   const [giftInfo, setGiftInfo] = useState<{
     qrCode: string;
     title: string;
@@ -96,6 +98,10 @@ export default function ScanClient({
     expiresAt: string;
     canRedeem: boolean;
     blockReason: string | null;
+    /** 满减门槛（分），0 = 无门槛 */
+    minSpendCents: number;
+    /** true = 核销必须带账单金额 */
+    requiresBill: boolean;
   } | null>(null);
   const [giftRedeeming, setGiftRedeeming] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -210,7 +216,10 @@ export default function ScanClient({
       expiresAt: String(d.expiresAt || ""),
       canRedeem: Boolean(d.canRedeem),
       blockReason: d.blockReason ? String(d.blockReason) : null,
+      minSpendCents: Number(d.minSpendCents) || 0,
+      requiresBill: Boolean(d.requiresBill),
     });
+    setGiftBillSgd("");
     setVoucherId(String(d.qrCode || code));
     return true;
   }
@@ -225,7 +234,7 @@ export default function ScanClient({
     setVoucherResult(null);
     setCandidates([]);
     try {
-      // 12 位左右字母数字 → 先试赠送券核销码（国庆满赠）
+      // 12 位左右字母数字 → 先试赠送券核销码（满赠）
       const looksLikeGiftCode = /^[A-Z0-9]{8,16}$/i.test(id) && !/^\d+$/.test(id);
       if (looksLikeGiftCode) {
         const hit = await lookupGiftCoupon(id.toUpperCase());
@@ -294,10 +303,17 @@ export default function ScanClient({
     setGiftRedeeming(true);
     setVoucherResult(null);
     try {
+      const billCents = giftInfo.requiresBill
+        ? Math.round(Number(giftBillSgd) * 100)
+        : undefined;
       const res = await fetch("/api/business/redeem", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qrCode: giftInfo.qrCode, storeId }),
+        body: JSON.stringify({
+          qrCode: giftInfo.qrCode,
+          storeId,
+          ...(billCents != null && Number.isFinite(billCents) ? { billCents } : {}),
+        }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -314,6 +330,7 @@ export default function ScanClient({
               : `已核销 ${giftInfo.title} · S$${giftInfo.valueSgd}`,
         });
         setGiftInfo(null);
+        setGiftBillSgd("");
         setVoucherId("");
       }
     } catch {
@@ -384,7 +401,7 @@ export default function ScanClient({
         const kind =
           json.data?.productKind === "self_use" ? "self_use" : "distribution";
         const draw = voucherInfo?.isDraw === true;
-        const ndp = json.data?.ndpGift;
+        const gift = json.data?.spendGetGift;
         const baseMsg =
           kind === "self_use"
             ? draw
@@ -393,14 +410,14 @@ export default function ScanClient({
             : draw
               ? t("scan.successCoWin")
               : t("scan.successDist");
-        const ndpMsg = ndp?.issued
+        const spendGetMsg = gift?.issued
           ? lang === "en"
-            ? ` · NDP gift S$${ndp.valueSgd} issued (valid until ${new Date(ndp.expiresAt).toLocaleDateString()})`
-            : ` · 已自动发放国庆 S$${ndp.valueSgd}（有效至 ${new Date(ndp.expiresAt).toLocaleDateString("zh-CN")}）`
+            ? ` · gift S$${gift.valueSgd} issued (valid until ${new Date(gift.expiresAt).toLocaleDateString()})`
+            : ` · 已自动发放满赠 S$${gift.valueSgd}（有效至 ${new Date(gift.expiresAt).toLocaleDateString("zh-CN")}）`
           : "";
         setVoucherResult({
           ok: true,
-          message: baseMsg + ndpMsg,
+          message: baseMsg + spendGetMsg,
           remaining: json.data?.voucher?.remainingBalanceSgd,
           income: json.data?.usage?.storeIncomeSgd,
           fee: json.data?.usage?.feeSgd,
@@ -828,6 +845,23 @@ export default function ScanClient({
                     )}
                   </p>
                 )}
+                {giftInfo.requiresBill && (
+                  <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 px-2.5 py-2 space-y-2">
+                    <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                      {lang === "en"
+                        ? `Min spend S$${(giftInfo.minSpendCents / 100).toFixed(2)} — enter the bill amount`
+                        : `本券满 S$${(giftInfo.minSpendCents / 100).toFixed(2)} 可用 — 请填写本单金额`}
+                    </p>
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      value={giftBillSgd}
+                      onChange={(e) => setGiftBillSgd(e.target.value)}
+                      placeholder={(giftInfo.minSpendCents / 100).toFixed(2)}
+                      prefix="S$"
+                    />
+                  </div>
+                )}
                 {giftInfo.blockReason && (
                   <p className="text-xs text-red-600 bg-red-50 rounded-lg px-2.5 py-2">
                     {giftInfo.blockReason}
@@ -836,7 +870,11 @@ export default function ScanClient({
                 <Button
                   className="w-full h-11 rounded-full font-semibold"
                   loading={giftRedeeming}
-                  disabled={!giftInfo.canRedeem}
+                  disabled={
+                    !giftInfo.canRedeem ||
+                    (giftInfo.requiresBill &&
+                      Math.round(Number(giftBillSgd) * 100) < giftInfo.minSpendCents)
+                  }
                   onClick={() => void redeemGiftCoupon()}
                 >
                   {lang === "en"

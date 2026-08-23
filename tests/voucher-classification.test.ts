@@ -4,27 +4,27 @@ import {
 } from "@/lib/voucher-classification";
 
 describe("voucher-classification", () => {
-  const ndpDraw = {
+  const spendGetDraw = {
     balanceCents: 0,
     paidCents: 0,
     usedCents: 0,
     drawWeight: 400,
     paymentMethod: "free",
     issueReason: "marketing",
-    issueNote: "国庆满赠大奖签 · 消费154.43",
+    issueNote: "满赠大奖签 · 消费154.43",
     status: "active",
   };
 
   it("treats NDP gift draw ticket as draw-entry-only", () => {
-    expect(isDrawEntryOnlyVoucher(ndpDraw)).toBe(true);
-    expect(isSpendableBalanceVoucher(ndpDraw)).toBe(false);
+    expect(isDrawEntryOnlyVoucher(spendGetDraw)).toBe(true);
+    expect(isSpendableBalanceVoucher(spendGetDraw)).toBe(false);
   });
 
   it("treats ndp_draw_entry reason as draw-only", () => {
     expect(
       isDrawEntryOnlyVoucher({
-        ...ndpDraw,
-        issueReason: "ndp_draw_entry",
+        ...spendGetDraw,
+        issueReason: "spend_get_draw_entry",
         issueNote: null,
       })
     ).toBe(true);

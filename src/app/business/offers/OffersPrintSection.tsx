@@ -89,7 +89,7 @@ export function OffersPrintSection({
                 key={a.id}
                 className={cn(
                   "rounded-2xl border border-border bg-card p-3 border-l-4",
-                  a.tone === "ndp"
+                  a.tone === "spend_get"
                     ? "border-l-rose-500"
                     : a.tone === "draw"
                       ? "border-l-violet-500"

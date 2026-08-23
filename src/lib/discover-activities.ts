@@ -21,7 +21,7 @@ import {
   type DefaultActivityCategory,
 } from "@/lib/default-activities";
 
-/** 顾客可见活动类型：代金 / 抽奖 / 国庆等节日满赠 */
+/** 顾客可见活动类型：代金 / 抽奖 / 满赠等节日满赠 */
 const DRAW_TYPES = [
   "lucky_draw",
   "lucky_draw_v2",
@@ -87,7 +87,7 @@ export type JoinableActivity = {
   /** Customer UI branch: calm voucher card vs festive draw card */
   displayMode: OfferDisplayMode;
   /**
-   * 商业三类：长期券 / 大奖倒计时 / 国庆满赠
+   * 商业三类：长期券 / 大奖倒计时 / 满赠
    * （与 default-activities 槽位一致）
    */
   category: DefaultActivityCategory | "other";
@@ -150,6 +150,7 @@ function kindTag(
     return productKind === "self_use" ? "exclusive_draw" : "co_win_draw";
   }
   if (
+    packKind === "discount_voucher" ||
     packKind === "discount_10" ||
     (discountPercent > 0 && type === "voucher_sale")
   ) {
@@ -267,8 +268,8 @@ export function offerBlurb(
 ): string {
   if (
     a.type === "holiday" ||
-    /国庆|ndp|national/i.test(a.name || "") ||
-    /国庆|ndp/i.test(a.description || "")
+    /满赠/i.test(a.name || "") ||
+    /满赠/i.test(a.description || "")
   ) {
     return lang === "en"
       ? "Spend & get gift · grand draw chance"
@@ -372,13 +373,13 @@ function resolveHref(
   campaignName?: string | null,
   tags?: string | null
 ): string {
-  // 国庆 / 节日满赠 → 统一落地页
+  // 满赠 / 节日满赠 → 统一落地页
   if (
     campaignType === "holiday" ||
-    /国庆|ndp|national/i.test(campaignName || "") ||
-    (tags && /ndp|国庆|national/i.test(tags))
+    /满赠/i.test(campaignName || "") ||
+    (tags && /category:spend_get|slot:spend_get|ndp|国庆/i.test(tags))
   ) {
-    return `/ndp/${campaignSlug || activityId}?from=table`;
+    return `/spend-get/${campaignSlug || activityId}?from=table`;
   }
   const active = products.filter((p) => p.status === "active");
   if (active.length === 1) {
@@ -459,12 +460,12 @@ export async function listJoinableActivities(
       (x) => x.product.status === "active"
     );
     if (activeProds.length > 0) return true;
-    // legacy / 国庆满赠：无 catalog 也可凭 slug 或 holiday 展示
+    // legacy / 满赠：无 catalog 也可凭 slug 或 holiday 展示
     return (
       c.type === "lucky_draw" ||
       c.type === "holiday" ||
       Boolean(c.slug) ||
-      (c.tags || "").includes("ndp")
+      (c.tags || "").includes("spend_get")
     );
   });
 
@@ -776,7 +777,7 @@ export async function listJoinableActivities(
   });
 
   // hot = 首页：排除门店长期券（listScope store / category long_term）
-  // all = 门店/发现：长期 + 国庆 + 大奖都可见
+  // all = 门店/发现：长期 + 满赠 + 大奖都可见
   let scoped =
     opts.listScope === "all"
       ? items
@@ -784,12 +785,14 @@ export async function listJoinableActivities(
           (x) => x.listScope !== "store" && x.category !== "long_term"
         );
 
-  // 优先：国庆 → 大奖倒计时 → 其它，同类内按热度
+  // 优先：满赠 → 大奖倒计时 → 其它，同类内按热度
   const categoryRank: Record<JoinableActivity["category"], number> = {
-    ndp: 0,
+    spend_get: 0,
     grand_countdown: 1,
-    long_term: 2,
-    other: 3,
+    // 消费返不需要顾客"发现"（在店内扫码即得），排在长期券之后
+    cashback: 2,
+    long_term: 3,
+    other: 4,
   };
   scoped.sort((a, b) => {
     const cr = categoryRank[a.category] - categoryRank[b.category];

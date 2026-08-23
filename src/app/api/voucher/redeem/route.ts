@@ -8,7 +8,8 @@ import { prisma } from "@/lib/db";
 import { applyRedeemSplit } from "@/lib/apply-redeem-split";
 import { parseRulesSnapshot, legacyDrawSnapshot } from "@/lib/templates";
 import { isSelfUse, resolveProductKind } from "@/lib/product-kind";
-import { maybeIssueNdpOnVoucherRedeem } from "@/lib/ndp-promo";
+import { maybeIssueSpendGetOnVoucherRedeem } from "@/lib/spend-get-issue";
+import { settleCashbackRedeem } from "@/lib/cashback";
 
 export async function POST(request: NextRequest) {
   try {
@@ -205,8 +206,15 @@ export async function POST(request: NextRequest) {
           balanceCents: newBalance,
           usedCents: newUsed,
           status: newStatus,
+          // 活跃即长期有效：核销即刷新时钟
+          lastActivityAt: new Date(),
         },
       });
+
+      // cashback 额度：从兑付储备金核销（门店不二次入账，钱在发放时已扣）
+      if (voucher.origin === "cashback") {
+        await settleCashbackRedeem(prisma, voucher.campaignId, amount);
+      }
 
       // 实体打印版：余额用尽时同步纸码 redeemed
       if (newBalance <= 0) {
@@ -221,13 +229,13 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // 国庆：核销 ≥120 自动发 S$61（抽奖已在购券时获得）
-      let ndpGift: Awaited<ReturnType<typeof maybeIssueNdpOnVoucherRedeem>> =
+      // 满赠：核销 ≥120 自动发 S$61（抽奖已在购券时获得）
+      let spendGetGift: Awaited<ReturnType<typeof maybeIssueSpendGetOnVoucherRedeem>> =
         null;
       if (voucher.campaign && voucher.customerId) {
         try {
-          ndpGift = await prisma.$transaction((tx) =>
-            maybeIssueNdpOnVoucherRedeem(tx, {
+          spendGetGift = await prisma.$transaction((tx) =>
+            maybeIssueSpendGetOnVoucherRedeem(tx, {
               voucherCampaign: voucher.campaign!,
               customerId: voucher.customerId,
               customerPhone: voucher.customer?.phone,
@@ -238,7 +246,7 @@ export async function POST(request: NextRequest) {
             })
           );
         } catch (e) {
-          console.error("ndp auto issue (self_use)", e);
+          console.error("spend-get auto issue (self_use)", e);
         }
       }
 
@@ -265,13 +273,13 @@ export async function POST(request: NextRequest) {
             frozenSgd: null,
             note: "自用券：售出时已收款，核销仅记门店履约，无平台入账",
           },
-          ndpGift: ndpGift
+          spendGetGift: spendGetGift
             ? {
                 issued: true,
-                valueCents: ndpGift.valueCents,
-                valueSgd: (ndpGift.valueCents / 100).toFixed(0),
-                expiresAt: ndpGift.expiresAt,
-                qrCode: ndpGift.qrCode,
+                valueCents: spendGetGift.valueCents,
+                valueSgd: (spendGetGift.valueCents / 100).toFixed(0),
+                expiresAt: spendGetGift.expiresAt,
+                qrCode: spendGetGift.qrCode,
               }
             : null,
         },
@@ -336,6 +344,8 @@ export async function POST(request: NextRequest) {
       sellerId: voucher.sellerId,
       label: productMode === "draw" ? "核销抽奖券" : "核销分发券",
       mode: productMode,
+      // 零抽点：cashback / 中奖额度，资金已在发放时计提
+      feeExempt: voucher.feeExempt,
       faceCents: voucher.amountCents,
       paidCents: voucher.paidCents || voucher.amountCents,
       recomputeWeight:
@@ -358,12 +368,16 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    let ndpGift: Awaited<ReturnType<typeof maybeIssueNdpOnVoucherRedeem>> =
+    if (voucher.origin === "cashback") {
+      await settleCashbackRedeem(prisma, voucher.campaignId, amount);
+    }
+
+    let spendGetGift: Awaited<ReturnType<typeof maybeIssueSpendGetOnVoucherRedeem>> =
       null;
     if (voucher.campaign && voucher.customerId) {
       try {
-        ndpGift = await prisma.$transaction((tx) =>
-          maybeIssueNdpOnVoucherRedeem(tx, {
+        spendGetGift = await prisma.$transaction((tx) =>
+          maybeIssueSpendGetOnVoucherRedeem(tx, {
             voucherCampaign: voucher.campaign!,
             customerId: voucher.customerId,
             customerPhone: voucher.customer?.phone,
@@ -374,7 +388,7 @@ export async function POST(request: NextRequest) {
           })
         );
       } catch (e) {
-        console.error("ndp auto issue (distribution)", e);
+        console.error("spend-get auto issue (distribution)", e);
       }
     }
 
@@ -402,13 +416,13 @@ export async function POST(request: NextRequest) {
           frozenSgd: (applied.storeWallet.frozenAfter / 100).toFixed(2),
           note: "分发券：核销收入 T+1 解冻后可提现",
         },
-        ndpGift: ndpGift
+        spendGetGift: spendGetGift
           ? {
               issued: true,
-              valueCents: ndpGift.valueCents,
-              valueSgd: (ndpGift.valueCents / 100).toFixed(0),
-              expiresAt: ndpGift.expiresAt,
-              qrCode: ndpGift.qrCode,
+              valueCents: spendGetGift.valueCents,
+              valueSgd: (spendGetGift.valueCents / 100).toFixed(0),
+              expiresAt: spendGetGift.expiresAt,
+              qrCode: spendGetGift.qrCode,
             }
           : null,
       },

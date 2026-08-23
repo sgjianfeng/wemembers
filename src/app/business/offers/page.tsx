@@ -10,10 +10,10 @@ import {
   type EntitlementItem,
 } from "@/lib/activity-entitlements";
 import {
-  NDP_GIFT_COUPON_CENTS,
-  parseNdpMetaFromCampaign,
-  buildNdpTermsDatesView,
-} from "@/lib/ndp-promo";
+  SPEND_GET_GIFT_CENTS,
+  parseSpendGetMetaFromCampaign,
+  buildSpendGetTermsDatesView,
+} from "@/lib/spend-get-issue";
 
 /**
  * 企业 / 门店「活动券」：活动分类 + 权益券 + 匹配操作
@@ -79,8 +79,8 @@ export default async function BusinessOffersPage({
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             {zh
-              ? "请先选择门店 · 核销与国庆发券都在本店完成"
-              : "Pick a store first · redeem & NDP issue stay on that outlet"}
+              ? "请先选择门店 · 核销与满赠发券都在本店完成"
+              : "Pick a store first · redeem & gift issuing stay on that outlet"}
           </p>
         </div>
         <div className="px-4 mt-4 space-y-2">
@@ -196,7 +196,7 @@ export default async function BusinessOffersPage({
   const grantMap = new Map(grantCounts.map((g) => [g.campaignId, g._count.id]));
 
   const bundles: ActivityBundle[] = campaigns.map((camp) => {
-    const meta = parseNdpMetaFromCampaign(camp);
+    const meta = parseSpendGetMetaFromCampaign(camp);
     const tone = activityToneFromType(
       camp.type,
       camp.name,
@@ -204,17 +204,17 @@ export default async function BusinessOffersPage({
       camp.rulesSnapshot
     );
     /**
-     * 真正的国庆满赠容器：只用 tone，勿用 meta.enabled。
-     * 大奖/购券活动 rules 里也会挂 ndp 联动块，meta.enabled 会误判。
+     * 真正的满赠容器：只用 tone，勿用 meta.enabled。
+     * 大奖/购券活动 rules 里也会挂满赠联动块，meta.enabled 会误判。
      */
-    const isNdpActivity = tone === "ndp";
+    const isSpendGetActivity = tone === "spend_get";
     const isDrawActivity = tone === "draw";
     const entitlements: EntitlementItem[] = [];
 
-    // 仅国庆活动展示赠送券模版；其它活动只挂可售产品
-    if (isNdpActivity) {
+    // 仅满赠活动展示赠送券模版；其它活动只挂可售产品
+    if (isSpendGetActivity) {
       for (const coupon of camp.coupons) {
-        const terms = buildNdpTermsDatesView(
+        const terms = buildSpendGetTermsDatesView(
           {
             startDate: camp.startDate,
             endDate: camp.endDate,
@@ -249,9 +249,9 @@ export default async function BusinessOffersPage({
         });
       }
 
-      // 国庆无券模版时仍展示「可发权益」占位（条款写在 secondary，不单开一行）
-      if (!camp.coupons.some((x) => x.valueCents === NDP_GIFT_COUPON_CENTS)) {
-        const terms = buildNdpTermsDatesView(
+      // 满赠无券模版时仍展示「可发权益」占位（条款写在 secondary，不单开一行）
+      if (!camp.coupons.some((x) => x.valueCents === SPEND_GET_GIFT_CENTS)) {
+        const terms = buildSpendGetTermsDatesView(
           {
             startDate: camp.startDate,
             endDate: camp.endDate,
@@ -260,10 +260,10 @@ export default async function BusinessOffersPage({
           meta
         );
         entitlements.unshift({
-          id: `ndp-gift-${camp.id}`,
+          id: `spend-get-gift-${camp.id}`,
           kind: "gift_coupon",
           tone: "gift",
-          title: zh ? "国庆赠送券 S$61" : "National Day gift S$61",
+          title: zh ? "赠送券 S$61" : "Spend & get gift S$61",
           primaryLabel: "S$61",
           secondaryLabel: zh
             ? `门槛 S$${meta.minSpendCents / 100} · 已发放 ${grantMap.get(camp.id) || 0} · ${terms.redeemRuleZh}`
@@ -277,8 +277,8 @@ export default async function BusinessOffersPage({
       // 下架产品不展示；draft 历史线仅企业主可见（非店员）
       if (p.status === "archived") continue;
       if (p.status === "draft" && session.role !== "business") continue;
-      // 国庆满赠容器一般不挂购券产品（购券在大奖活动）
-      if (isNdpActivity) continue;
+      // 满赠容器一般不挂购券产品（购券在大奖活动）
+      if (isSpendGetActivity) continue;
       entitlements.push({
         id: p.id,
         kind: "catalog",
@@ -306,17 +306,17 @@ export default async function BusinessOffersPage({
     const deskQs = new URLSearchParams();
     if (storeId) deskQs.set("storeId", storeId);
     deskQs.set("campaignId", camp.id);
-    const ndpDeskHref = `/business/ndp-desk?${deskQs.toString()}`;
+    const spendGetDeskHref = `/business/spend-get-desk?${deskQs.toString()}`;
     const scanHref = storeId
       ? `/business/scan?storeId=${encodeURIComponent(storeId)}`
       : "/business/scan";
 
-    // 操作按活动类型：只有国庆需要「活动券核销」定制台
-    if (isNdpActivity) {
+    // 操作按活动类型：只有满赠需要「活动券核销」定制台
+    if (isSpendGetActivity) {
       ops.push({
         label: "活动券核销",
         labelEn: "Activity redeem",
-        href: ndpDeskHref,
+        href: spendGetDeskHref,
         primary: true,
       });
     } else if (!isDrawActivity) {
@@ -333,23 +333,23 @@ export default async function BusinessOffersPage({
       ops.push({
         label: "顾客页",
         labelEn: "Landing",
-        href: isNdpActivity
-          ? `/ndp/${camp.slug}?from=counter`
+        href: isSpendGetActivity
+          ? `/spend-get/${camp.slug}?from=counter`
           : `/voucher/${camp.slug}`,
         primary: isDrawActivity,
       });
     }
 
     if (session.role === "business") {
-      // 打印 / 实体 / 设置：各活动自有（国庆、大奖、长期均可）
-      if (camp.slug || isNdpActivity) {
+      // 打印 / 实体 / 设置：各活动自有（满赠、大奖、长期均可）
+      if (camp.slug || isSpendGetActivity) {
         ops.push({
           label: "活动广告",
           labelEn: "Ad print",
           href: `/business/campaigns/${camp.id}/print?from=offers`,
         });
       }
-      // 实体券：大奖/长期有票；国庆以赠送券为主，仍可进批次页
+      // 实体券：大奖/长期有票；满赠以赠送券为主，仍可进批次页
       ops.push({
         label: "实体券",
         labelEn: "Physical",
@@ -362,18 +362,18 @@ export default async function BusinessOffersPage({
       });
     }
 
-    const nGift = isNdpActivity
+    const nGift = isSpendGetActivity
       ? entitlements.filter((e) => e.kind === "gift_coupon").length
       : 0;
-    const nProd = isNdpActivity
+    const nProd = isSpendGetActivity
       ? 0
       : camp.catalogProducts.filter((l) => l.product.status !== "archived")
           .length;
-    const issued = isNdpActivity ? grantMap.get(camp.id) || 0 : 0;
+    const issued = isSpendGetActivity ? grantMap.get(camp.id) || 0 : 0;
 
     let blurb: string;
     let blurbEn: string | undefined;
-    if (isNdpActivity) {
+    if (isSpendGetActivity) {
       blurb = `满 S$${meta.minSpendCents / 100} 送 S$${meta.giftCouponCents / 100} · 领后 ${meta.validDays} 天有效（活动结束不缩短）`;
       blurbEn = `Spend S$${meta.minSpendCents / 100} → S$${meta.giftCouponCents / 100} · ${meta.validDays}d from claim`;
     } else if (isDrawActivity) {
@@ -398,20 +398,20 @@ export default async function BusinessOffersPage({
         session.role === "business"
           ? `/business/campaigns/${camp.id}`
           : camp.slug
-            ? isNdpActivity
-              ? `/ndp/${camp.slug}?from=counter`
+            ? isSpendGetActivity
+              ? `/spend-get/${camp.slug}?from=counter`
               : `/voucher/${camp.slug}`
             : null,
       entitlements,
       summary: zh
-        ? isNdpActivity
+        ? isSpendGetActivity
           ? `${nGift} 赠券 · 发放 ${issued}`
           : `${nProd} 产品 · 购券 ${camp._count.vouchers}`
-        : isNdpActivity
+        : isSpendGetActivity
           ? `${nGift} gifts · ${issued} issued`
           : `${nProd} products · ${camp._count.vouchers} sold`,
       ops,
-      stats: isNdpActivity
+      stats: isSpendGetActivity
         ? [
             { label: zh ? "状态" : "Status", value: camp.status },
             { label: zh ? "发放" : "Issued", value: String(issued) },
@@ -429,17 +429,17 @@ export default async function BusinessOffersPage({
   // 无活动时的引导
   const empty = bundles.length === 0;
 
-  // 仅真正的国庆满赠活动（勿用购券活动上的 ndp 联动 meta）
-  const ndpCamp = campaigns.find(
+  // 仅真正的满赠活动（勿用购券活动上的满赠联动 meta）
+  const spendGetCamp = campaigns.find(
     (c) =>
-      activityToneFromType(c.type, c.name, c.tags, c.rulesSnapshot) === "ndp"
+      activityToneFromType(c.type, c.name, c.tags, c.rulesSnapshot) === "spend_get"
   );
-  const ndpDeskHref =
-    storeId && ndpCamp
-      ? `/business/ndp-desk?storeId=${encodeURIComponent(storeId)}&campaignId=${encodeURIComponent(ndpCamp.id)}`
+  const spendGetDeskHref =
+    storeId && spendGetCamp
+      ? `/business/spend-get-desk?storeId=${encodeURIComponent(storeId)}&campaignId=${encodeURIComponent(spendGetCamp.id)}`
       : storeId
-        ? `/business/ndp-desk?storeId=${encodeURIComponent(storeId)}`
-        : "/business/ndp-desk";
+        ? `/business/spend-get-desk?storeId=${encodeURIComponent(storeId)}`
+        : "/business/spend-get-desk";
 
   return (
     <div className="pb-6">
@@ -454,8 +454,8 @@ export default async function BusinessOffersPage({
         </h1>
         <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
           {zh
-            ? "本店活动 × 权益 · 国庆操作台 / 扫码核销（门店已锁定）"
-            : "This store · NDP desk / scan (store locked)"}
+            ? "本店活动 × 权益 · 满赠操作台 / 扫码核销（门店已锁定）"
+            : "This store · Spend & get desk / scan (store locked)"}
         </p>
         {session.role === "business" && storeId && (
           <Link
@@ -471,7 +471,7 @@ export default async function BusinessOffersPage({
         {zh ? (
           <>
             展开
-            <strong className="text-foreground">国庆满赠</strong>
+            <strong className="text-foreground">满赠</strong>
             → 点
             <strong className="text-foreground">活动券核销</strong>
             （本活动专用：购券扫码 / 收银凭票）。其它预付券请用底栏「核销」。
@@ -479,7 +479,7 @@ export default async function BusinessOffersPage({
         ) : (
           <>
             Expand{" "}
-            <strong className="text-foreground">National Day</strong> →{" "}
+            <strong className="text-foreground">Spend & get</strong> →{" "}
             <strong className="text-foreground">Activity redeem</strong>. Other
             prepaid vouchers use bottom-nav Scan.
           </>
@@ -487,18 +487,18 @@ export default async function BusinessOffersPage({
       </div>
 
       <div className="px-4 mt-3 flex flex-wrap gap-2">
-        {storeId && ndpCamp && (
+        {storeId && spendGetCamp && (
           <Link
-            href={ndpDeskHref}
+            href={spendGetDeskHref}
             className="text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-600 text-white"
           >
-            {zh ? "活动券核销（国庆）" : "Activity redeem"}
+            {zh ? "活动券核销（满赠）" : "Activity redeem"}
           </Link>
         )}
         {session.role === "business" && (
           <>
             <Link
-              href="/business/ndp-issue"
+              href="/business/spend-get-issue"
               className="text-xs font-semibold px-3 py-1.5 rounded-full border border-border bg-card"
             >
               {zh ? "配置默认活动" : "Setup defaults"}
@@ -559,18 +559,18 @@ export default async function BusinessOffersPage({
             </p>
             {session.role === "business" && (
               <Link
-                href="/business/ndp-issue"
+                href="/business/spend-get-issue"
                 className="inline-block mt-3 text-sm font-semibold text-primary"
               >
-                {zh ? "配置默认活动（含国庆）→" : "Setup default activities →"}
+                {zh ? "配置默认活动（含满赠）→" : "Setup default activities →"}
               </Link>
             )}
             {session.role === "staff" && storeId && (
               <Link
-                href={`/business/ndp-desk?storeId=${encodeURIComponent(storeId)}`}
+                href={`/business/spend-get-desk?storeId=${encodeURIComponent(storeId)}`}
                 className="inline-block mt-3 text-sm font-semibold text-primary"
               >
-                {zh ? "国庆操作台 →" : "NDP desk →"}
+                {zh ? "满赠操作台 →" : "Spend & get desk →"}
               </Link>
             )}
           </div>

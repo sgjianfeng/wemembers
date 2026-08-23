@@ -4,14 +4,14 @@
  */
 
 export type EntitlementKind =
-  | "gift_coupon" // 国庆 61 等固定面额赠券
+  | "gift_coupon" // 满赠 61 等固定面额赠券
   | "draw_entry" // 大奖资格（付费或赠送）
   | "prepaid" // 可花预付余额
   | "catalog"; // 企业侧：可售产品线（非顾客持有）
 
 export type EntitlementTone = "gift" | "draw" | "prepaid" | "default";
 
-export type ActivityTone = "ndp" | "draw" | "voucher" | "default";
+export type ActivityTone = "spend_get" | "draw" | "voucher" | "default";
 
 export type EntitlementItem = {
   id: string;
@@ -60,21 +60,21 @@ export function activityToneFromType(
   tags?: string | null,
   rulesSnapshot?: string | null
 ): ActivityTone {
-  if (type === "holiday" || /国庆|ndp|national/i.test(name || "")) return "ndp";
-  if (tags && /ndp|国庆|national|category:ndp/i.test(tags)) return "ndp";
-  if (rulesSnapshot && type === "holiday" && /"ndp"/.test(rulesSnapshot))
-    return "ndp";
+  if (type === "holiday" || /满赠/i.test(name || "")) return "spend_get";
+  if (tags && /category:spend_get|slot:spend_get|ndp|国庆/i.test(tags)) return "spend_get";
+  if (rulesSnapshot && type === "holiday" && /"spend_get"/.test(rulesSnapshot))
+    return "spend_get";
   if (type === "lucky_draw" || type === "lucky_draw_v2") return "draw";
   if (tags && /exclusive_ballot|category:grand/i.test(tags)) return "draw";
   if (type === "voucher_sale") return "voucher";
-  if (tags && /face_open|face_threshold|category:long/i.test(tags))
+  if (tags && /discount_voucher|face_open|face_threshold|category:long/i.test(tags))
     return "voucher";
   return "default";
 }
 
 export function toneBarClass(tone: ActivityTone): string {
   switch (tone) {
-    case "ndp":
+    case "spend_get":
       return "border-l-rose-500";
     case "draw":
       return "border-l-violet-500";
@@ -99,7 +99,7 @@ export function entitlementBarClass(tone: EntitlementTone): string {
 }
 
 /**
- * 顾客持仓里抽奖行的跳转：区分国庆落地页 vs 独享大奖倒计时。
+ * 顾客持仓里抽奖行的跳转：区分满赠落地页 vs 独享大奖倒计时。
  */
 export function resolveCustomerDrawLinks(input: {
   campaignId: string;
@@ -108,27 +108,30 @@ export function resolveCustomerDrawLinks(input: {
   campaignName?: string | null;
   campaignTags?: string | null;
   rulesSnapshot?: string | null;
-  /** 国庆 rules 里的 buyVoucherSlug；也可调用方直接传入 */
+  /** 满赠 rules 里的 buyVoucherSlug；也可调用方直接传入 */
   buyVoucherSlug?: string | null;
 }): { activityHref: string; countdownHref: string } {
   const slug = input.campaignSlug?.trim() || null;
-  const isNdp =
+  const isSpendGet =
     input.campaignType === "holiday" ||
-    /国庆|ndp|national\s*day/i.test(input.campaignName || "") ||
+    /满赠/i.test(input.campaignName || "") ||
     (input.campaignTags
-      ? /ndp|国庆|national|category:ndp/i.test(input.campaignTags)
+      ? /category:spend_get|slot:spend_get|ndp|国庆/i.test(input.campaignTags)
       : false);
 
   let buySlug = input.buyVoucherSlug?.trim() || null;
   if (!buySlug && input.rulesSnapshot) {
     try {
       const raw = JSON.parse(input.rulesSnapshot) as Record<string, unknown>;
-      const ndp =
-        raw.ndp && typeof raw.ndp === "object"
+      const block =
+        (raw.spendGet && typeof raw.spendGet === "object"
+          ? (raw.spendGet as Record<string, unknown>)
+          : null) ??
+        (raw.ndp && typeof raw.ndp === "object"
           ? (raw.ndp as Record<string, unknown>)
-          : null;
-      if (ndp && typeof ndp.buyVoucherSlug === "string") {
-        buySlug = ndp.buyVoucherSlug.trim() || null;
+          : null);
+      if (block && typeof block.buyVoucherSlug === "string") {
+        buySlug = block.buyVoucherSlug.trim() || null;
       }
     } catch {
       /* ignore */
@@ -136,18 +139,18 @@ export function resolveCustomerDrawLinks(input: {
   }
 
   const activityHref =
-    slug && isNdp
-      ? `/ndp/${encodeURIComponent(slug)}`
+    slug && isSpendGet
+      ? `/spend-get/${encodeURIComponent(slug)}`
       : slug
         ? `/voucher/${encodeURIComponent(slug)}`
         : `/activity/${encodeURIComponent(input.campaignId)}`;
 
-  // 国庆赠送签权重挂在满赠活动上，倒计时看关联的大奖（独享）活动
+  // 满赠赠送签权重挂在满赠活动上，倒计时看关联的大奖（独享）活动
   // view=draw：落地为抽奖台优先（非买券主叙事）；hash 兼容旧链
   const countdownHref =
-    isNdp && buySlug
+    isSpendGet && buySlug
       ? `/voucher/${encodeURIComponent(buySlug)}?view=draw#grand-countdown`
-      : isNdp
+      : isSpendGet
         ? activityHref
         : slug
           ? `/voucher/${encodeURIComponent(slug)}?view=draw#grand-countdown`
@@ -198,14 +201,14 @@ export function buildCustomerActivityBundles(input: {
     amountCents: number;
     /**
      * 活动详情页：
-     * - 国庆 holiday → /ndp/{slug}
+     * - 满赠 holiday → /spend-get/{slug}
      * - 抽奖/独享 → /voucher/{slug}
      */
     activityHref?: string | null;
     /**
      * 大奖倒计时：
      * - 独享抽奖 → /voucher/{slug}?view=draw#grand-countdown
-     * - 国庆赠送签 → 关联 buyVoucherSlug 的大奖活动（勿链 /voucher/ndp-slug）
+     * - 满赠赠送签 → 关联 buyVoucherSlug 的大奖活动（勿链 /voucher/spend-get-slug）
      */
     countdownHref?: string | null;
     /** 预付余额行跳转，默认 /balance */
@@ -261,11 +264,11 @@ export function buildCustomerActivityBundles(input: {
   }) => {
     if (d.activityHref) return d.activityHref;
     const slug = d.campaignSlug?.trim();
-    const isNdp =
+    const isSpendGet =
       d.campaignType === "holiday" ||
-      /国庆|ndp|national\s*day/i.test(d.campaignName || "");
-    if (slug && isNdp) {
-      return `/ndp/${encodeURIComponent(slug)}`;
+      /满赠/i.test(d.campaignName || "");
+    if (slug && isSpendGet) {
+      return `/spend-get/${encodeURIComponent(slug)}`;
     }
     if (slug) {
       return `/voucher/${encodeURIComponent(slug)}`;
@@ -284,14 +287,14 @@ export function buildCustomerActivityBundles(input: {
     activityHref?: string | null;
     countdownHref?: string | null;
   }) => {
-    // 国庆满赠签：调用方应传入关联大奖 slug 的 countdownHref
+    // 满赠签：调用方应传入关联大奖 slug 的 countdownHref
     if (d.countdownHref) return d.countdownHref;
     const slug = d.campaignSlug?.trim();
-    const isNdp =
+    const isSpendGet =
       d.campaignType === "holiday" ||
-      /国庆|ndp|national\s*day/i.test(d.campaignName || "");
-    // 国庆活动本身不是 lucky_draw 页：无关联时回活动详情，勿打开 /voucher/ndp-*
-    if (isNdp) {
+      /满赠/i.test(d.campaignName || "");
+    // 满赠活动本身不是 lucky_draw 页：无关联时回活动详情，勿打开 /voucher/spend-get-*
+    if (isSpendGet) {
       return activityOf(d);
     }
     if (slug) {
@@ -337,7 +340,7 @@ export function buildCustomerActivityBundles(input: {
       title: d.campaignName || (zh ? "大奖活动" : "Grand draw"),
       businessName: d.businessName,
       type: d.campaignType || "lucky_draw_v2",
-      tone: tone === "default" ? (d.isGiftEntry ? "ndp" : "draw") : tone,
+      tone: tone === "default" ? (d.isGiftEntry ? "spend_get" : "draw") : tone,
       blurb: d.isGiftEntry
         ? zh
           ? "赠送抽奖 · 购券可获约 5 倍机会"
@@ -345,7 +348,7 @@ export function buildCustomerActivityBundles(input: {
         : zh
           ? "购券 · 大奖资格"
           : "Paid · Grand draw",
-      // 活动详情：国庆落地页 / 购券活动页（不是错误的 /voucher/ndp）
+      // 活动详情：满赠落地页 / 购券活动页（不是错误的 /voucher/spend-get）
       href: activityHref,
     });
     // 同一张券：可花余额 + 抽奖资格 拆成两行（首页/券包一致）
@@ -441,7 +444,7 @@ export function buildCustomerActivityBundles(input: {
 
   return Array.from(map.values()).sort((a, b) => {
     const score = (x: ActivityBundle) =>
-      (x.tone === "ndp" ? 20 : 0) +
+      (x.tone === "spend_get" ? 20 : 0) +
       (x.tone === "draw" ? 12 : 0) +
       (x.campaignId ? 10 : 0) +
       x.entitlements.length;
@@ -477,7 +480,7 @@ export function buildDiscoverActivityBundles(
       const isDraw =
         (p.type || "").includes("lucky_draw") ||
         tone === "draw" ||
-        tone === "ndp";
+        tone === "spend_get";
       return {
         id: p.id,
         kind: isDraw ? "draw_entry" : "catalog",
@@ -495,14 +498,14 @@ export function buildDiscoverActivityBundles(
       };
     });
 
-    // 国庆无产品线时补两行权益说明
-    if (tone === "ndp" && entitlements.length === 0) {
+    // 满赠无产品线时补两行权益说明
+    if (tone === "spend_get" && entitlements.length === 0) {
       entitlements.push(
         {
           id: `${a.id}-gift`,
           kind: "gift_coupon",
           tone: "gift",
-          title: zh ? "国庆赠送券 S$61" : "NDP gift S$61",
+          title: zh ? "赠送券 S$61" : "gift S$61",
           primaryLabel: "S$61",
           secondaryLabel: zh
             ? "满120领取 · 自领起30天"
@@ -533,7 +536,7 @@ export function buildDiscoverActivityBundles(
       tone,
       blurb:
         a.blurb ||
-        (tone === "ndp"
+        (tone === "spend_get"
           ? zh
             ? "满额赠券 · 大奖倒计时"
             : "Spend & get · grand countdown"

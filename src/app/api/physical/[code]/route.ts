@@ -6,8 +6,8 @@ import {
   normalizePhysicalCode,
 } from "@/lib/physical-tickets";
 import {
-  isNdpGiftCampaign,
-  materializePhysicalToNdpGift,
+  isSpendGetGiftCampaign,
+  materializePhysicalToSpendGetGift,
   materializePhysicalToVoucher,
 } from "@/lib/physical-to-voucher";
 
@@ -110,7 +110,7 @@ export async function POST(
       }
       if (ticket.status === "claimed") {
         if (ticket.customerId === session.userId) {
-          // 已绑国庆赠送券
+          // 已绑赠送券
           if (ticket.customerCouponId) {
             const cc = await tx.customerCoupon.findUnique({
               where: { id: ticket.customerCouponId },
@@ -120,7 +120,7 @@ export async function POST(
               status: 200 as const,
               already: true,
               ticket,
-              kind: "ndp_gift" as const,
+              kind: "spend_get" as const,
               customerCoupon: cc,
               giftCents: ticket.batch.valueCents,
               expiresAt: cc?.expiresAt || null,
@@ -152,7 +152,7 @@ export async function POST(
         return { error: "该券已过期", status: 400 as const };
       }
 
-      // ── 国庆满赠实体 → CustomerCoupon（与线上赠送券一致）──
+      // ── 满赠实体 → CustomerCoupon（与线上赠送券一致）──
       if (ticket.batch.type === "voucher" && ticket.batch.campaignId) {
         const camp = await tx.campaign.findUnique({
           where: { id: ticket.batch.campaignId },
@@ -164,9 +164,9 @@ export async function POST(
             rulesSnapshot: true,
           },
         });
-        if (camp && isNdpGiftCampaign(camp)) {
+        if (camp && isSpendGetGiftCampaign(camp)) {
           try {
-            const mat = await materializePhysicalToNdpGift(tx, {
+            const mat = await materializePhysicalToSpendGetGift(tx, {
               ticketId: ticket.id,
               customerId: session.userId,
             });
@@ -175,7 +175,7 @@ export async function POST(
               status: 200 as const,
               already: !mat.created,
               ticket: { ...ticket, ...mat.ticket, batch: ticket.batch },
-              kind: "ndp_gift" as const,
+              kind: "spend_get" as const,
               customerCoupon: mat.customerCoupon,
               giftCents: "giftCents" in mat ? mat.giftCents : ticket.batch.valueCents,
               expiresAt:
@@ -188,13 +188,13 @@ export async function POST(
             if (msg === "ALREADY_REDEEMED") {
               return { error: "该券已核销，无法绑定", status: 400 as const };
             }
-            if (msg === "NDP_CAMPAIGN_REQUIRED") {
+            if (msg === "SPEND_GET_CAMPAIGN_REQUIRED") {
               return {
-                error: "国庆活动无效，请联系门店",
+                error: "满赠活动无效，请联系门店",
                 status: 400 as const,
               };
             }
-            console.error("physical NDP claim:", e);
+            console.error("physical spend-get claim:", e);
             return { error: "绑定失败", status: 500 as const };
           }
         }
@@ -268,8 +268,8 @@ export async function POST(
 
     const ticketOut = result.ticket;
 
-    // 国庆满赠实体绑定
-    if ("kind" in result && result.kind === "ndp_gift") {
+    // 满赠实体绑定
+    if ("kind" in result && result.kind === "spend_get") {
       const giftCents =
         "giftCents" in result && typeof result.giftCents === "number"
           ? result.giftCents
@@ -288,10 +288,10 @@ export async function POST(
           code,
           status: "claimed",
           already: result.already,
-          type: "ndp_gift",
+          type: "spend_get",
           title: ticketOut.batch.title,
           productKind: "gift",
-          displayKind: "ndp_gift",
+          displayKind: "spend_get",
           paymentMethod: "free",
           giftCoupon: {
             id: cc?.id,
@@ -300,8 +300,8 @@ export async function POST(
           },
           voucher: null,
           message: exp
-            ? `已绑定：国庆赠送券 S$${(giftCents / 100).toFixed(0)} 已放入券包 · 有效至 ${exp}`
-            : `已绑定：国庆赠送券 S$${(giftCents / 100).toFixed(0)} 已放入券包`,
+            ? `已绑定：赠送券 S$${(giftCents / 100).toFixed(0)} 已放入券包 · 有效至 ${exp}`
+            : `已绑定：赠送券 S$${(giftCents / 100).toFixed(0)} 已放入券包`,
           goWallet: true,
           goBalance: false,
         },

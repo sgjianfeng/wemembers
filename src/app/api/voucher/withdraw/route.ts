@@ -39,6 +39,14 @@ export async function POST(request: NextRequest) {
     if (!voucher) {
       return NextResponse.json({ error: "券不存在" }, { status: 404 });
     }
+    // 资金安全红线：非购买来源的额度（cashback / 中奖 / 赠送）一律不可提现。
+    // 这些额度是商家计提出来的营销负债，不是顾客付过的钱。
+    if (voucher.origin !== "purchase") {
+      return NextResponse.json(
+        { error: "消费抵扣额度不可提现，请到店消费时使用" },
+        { status: 403 }
+      );
+    }
     if (voucher.status !== "active" || voucher.balanceCents <= 0) {
       return NextResponse.json({ error: "无可提现余额" }, { status: 400 });
     }

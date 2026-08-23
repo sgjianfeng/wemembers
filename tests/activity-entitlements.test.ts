@@ -14,10 +14,10 @@ describe("activity-entitlements grouping", () => {
           id: "c1",
           status: "available",
           campaignId: "camp1",
-          campaignName: "国庆满赠",
+          campaignName: "满赠",
           campaignType: "holiday",
           businessName: "Meow",
-          title: "国庆赠送券 S$61",
+          title: "赠送券 S$61",
           valueCents: 6100,
           validUntil: "2026-09-01T00:00:00.000Z",
         },
@@ -26,7 +26,7 @@ describe("activity-entitlements grouping", () => {
         {
           id: "d1",
           campaignId: "camp1",
-          campaignName: "国庆满赠",
+          campaignName: "满赠",
           businessName: "Meow",
           drawWeight: 400,
           shortCode: "ABC123",
@@ -37,7 +37,7 @@ describe("activity-entitlements grouping", () => {
       ],
     });
     expect(bundles).toHaveLength(1);
-    expect(bundles[0].tone).toBe("ndp");
+    expect(bundles[0].tone).toBe("spend_get");
     expect(bundles[0].entitlements.length).toBeGreaterThanOrEqual(2);
     expect(bundles[0].entitlements.some((e) => e.kind === "gift_coupon")).toBe(
       true
@@ -47,22 +47,38 @@ describe("activity-entitlements grouping", () => {
     );
   });
 
-  it("detects ndp tone from name", () => {
-    expect(activityToneFromType("promotion", "国庆满赠")).toBe("ndp");
+  it("detects spend-get tone from name", () => {
+    expect(activityToneFromType("promotion", "满赠")).toBe("spend_get");
     expect(activityToneFromType("lucky_draw_v2", "Summer")).toBe("draw");
   });
 
-  it("ndp draw links go to /ndp and grand voucher countdown", () => {
+  it("满赠链接指向 /spend-get，大奖倒计时指向购券活动", () => {
+    const links = resolveCustomerDrawLinks({
+      campaignId: "c1",
+      campaignSlug: "spend-get-2uevq5",
+      campaignType: "holiday",
+      campaignName: "满赠 · 满120送61",
+      rulesSnapshot: JSON.stringify({
+        spendGet: { enabled: true, buyVoucherSlug: "meow-bbq-exclusive-ballot-15" },
+      }),
+    });
+    expect(links.activityHref).toBe("/spend-get/spend-get-2uevq5");
+    expect(links.countdownHref).toBe(
+      "/voucher/meow-bbq-exclusive-ballot-15?view=draw#grand-countdown"
+    );
+  });
+
+  it("存量活动的旧 ndp 键仍然读得出来", () => {
     const links = resolveCustomerDrawLinks({
       campaignId: "c1",
       campaignSlug: "ndp-2uevq5-2026",
       campaignType: "holiday",
-      campaignName: "国庆满赠 · 满120送61",
+      campaignName: "满赠 · 满120送61",
       rulesSnapshot: JSON.stringify({
         ndp: { enabled: true, buyVoucherSlug: "meow-bbq-exclusive-ballot-15" },
       }),
     });
-    expect(links.activityHref).toBe("/ndp/ndp-2uevq5-2026");
+    expect(links.activityHref).toBe("/spend-get/ndp-2uevq5-2026");
     expect(links.countdownHref).toBe(
       "/voucher/meow-bbq-exclusive-ballot-15?view=draw#grand-countdown"
     );

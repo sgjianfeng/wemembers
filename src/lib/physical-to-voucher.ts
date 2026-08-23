@@ -1,6 +1,6 @@
 /**
  * 实体纸 → 线上权益
- * - type=voucher + 国庆活动 → CustomerCoupon（满赠券，与线上一致）
+ * - type=voucher + 满赠活动 → CustomerCoupon（满赠券，与线上一致）
  * - type=voucher → 自用代金 Voucher
  * - type=draw + campaign self_use lucky_draw_v2 → 独享抽奖 Voucher
  */
@@ -10,30 +10,34 @@ import { awardInstantPrizeToVoucher } from "@/lib/instant-prize";
 import { generateShortCodeCandidate } from "@/lib/voucher-short-code";
 import { generateQrCode } from "@/lib/utils";
 import {
-  computeNdpExpiresAt,
-  ensureNdpGiftCoupon,
-  NDP_GIFT_COUPON_CENTS,
-  NDP_VALID_DAYS,
-  parseNdpMetaFromCampaign,
-} from "@/lib/ndp-promo";
+  computeSpendGetExpiresAt,
+  ensureSpendGetGiftCoupon,
+  SPEND_GET_GIFT_CENTS,
+  SPEND_GET_VALID_DAYS,
+  parseSpendGetMetaFromCampaign,
+} from "@/lib/spend-get-issue";
 
 type Tx = Prisma.TransactionClient;
 
-/** 是否国庆满赠类活动（实体应绑成赠送券） */
-export function isNdpGiftCampaign(camp: {
+/** 是否满赠类活动（实体应绑成赠送券） */
+export function isSpendGetGiftCampaign(camp: {
   type?: string | null;
   name?: string | null;
   tags?: string | null;
   rulesSnapshot?: string | null;
 }): boolean {
   if (camp.type === "holiday") return true;
-  if (camp.name && /国庆|ndp|national\s*day/i.test(camp.name)) return true;
-  if (camp.tags && /ndp|国庆|national|category:ndp/i.test(camp.tags))
+  if (camp.name && false) return true;
+  if (camp.tags && /category:spend_get|slot:spend_get/i.test(camp.tags))
     return true;
   try {
-    if (camp.rulesSnapshot && /"ndp"\s*:/.test(camp.rulesSnapshot)) {
-      const o = JSON.parse(camp.rulesSnapshot) as { ndp?: { enabled?: boolean } };
-      if (o.ndp && o.ndp.enabled !== false) return true;
+    if (camp.rulesSnapshot && /"spend_get"\s*:/.test(camp.rulesSnapshot)) {
+      const o = JSON.parse(camp.rulesSnapshot) as {
+        spendGet?: { enabled?: boolean };
+        ndp?: { enabled?: boolean };
+      };
+      const block = o.spendGet ?? o.ndp;
+      if (block && block.enabled !== false) return true;
     }
   } catch {
     /* ignore */
@@ -42,9 +46,9 @@ export function isNdpGiftCampaign(camp: {
 }
 
 /**
- * 国庆实体纸 → 线上满赠 CustomerCoupon（与前台发放规则一致：领后 N 天有效）
+ * 满赠实体纸 → 线上满赠 CustomerCoupon（与前台发放规则一致：领后 N 天有效）
  */
-export async function materializePhysicalToNdpGift(
+export async function materializePhysicalToSpendGetGift(
   tx: Tx,
   input: { ticketId: string; customerId: string }
 ) {
@@ -80,7 +84,7 @@ export async function materializePhysicalToNdpGift(
     });
     if (existing) {
       return {
-        kind: "ndp_gift" as const,
+        kind: "spend_get" as const,
         customerCoupon: existing,
         voucher: null,
         created: false,
@@ -108,7 +112,7 @@ export async function materializePhysicalToNdpGift(
   }
 
   const campaignId = ticket.batch.campaignId;
-  if (!campaignId) throw new Error("NDP_CAMPAIGN_REQUIRED");
+  if (!campaignId) throw new Error("SPEND_GET_CAMPAIGN_REQUIRED");
 
   const campaign = await tx.campaign.findUnique({
     where: { id: campaignId },
@@ -125,9 +129,9 @@ export async function materializePhysicalToNdpGift(
     },
   });
   if (!campaign || campaign.businessId !== ticket.batch.businessId) {
-    throw new Error("NDP_CAMPAIGN_REQUIRED");
+    throw new Error("SPEND_GET_CAMPAIGN_REQUIRED");
   }
-  if (!isNdpGiftCampaign(campaign)) throw new Error("NDP_CAMPAIGN_REQUIRED");
+  if (!isSpendGetGiftCampaign(campaign)) throw new Error("SPEND_GET_CAMPAIGN_REQUIRED");
 
   const customer = await tx.user.findUnique({
     where: { id: input.customerId },
@@ -137,16 +141,16 @@ export async function materializePhysicalToNdpGift(
     throw new Error("CUSTOMER_REQUIRED");
   }
 
-  const meta = parseNdpMetaFromCampaign(campaign);
+  const meta = parseSpendGetMetaFromCampaign(campaign);
   const giftCents =
     ticket.batch.valueCents > 0
       ? ticket.batch.valueCents
-      : meta.giftCouponCents || NDP_GIFT_COUPON_CENTS;
+      : meta.giftCouponCents || SPEND_GET_GIFT_CENTS;
 
   const issuedAt = new Date();
-  const validity = computeNdpExpiresAt({
+  const validity = computeSpendGetExpiresAt({
     obtainedAt: issuedAt,
-    validDays: meta.validDays || NDP_VALID_DAYS,
+    validDays: meta.validDays || SPEND_GET_VALID_DAYS,
     activityEnd: campaign.endDate,
     dualProtection: meta.dualProtection,
   });
@@ -163,10 +167,11 @@ export async function materializePhysicalToNdpGift(
   const templateUntil = new Date(finalExpiry.getTime());
   templateUntil.setDate(templateUntil.getDate() + 365);
 
-  const coupon = await ensureNdpGiftCoupon(tx, {
+  const coupon = await ensureSpendGetGiftCoupon(tx, {
     businessId: ticket.batch.businessId,
     campaignId: campaign.id,
     giftCouponCents: giftCents,
+    validDays: meta.validDays,
     templateValidUntil: templateUntil,
   });
 
@@ -256,7 +261,7 @@ export async function materializePhysicalToNdpGift(
   });
 
   return {
-    kind: "ndp_gift" as const,
+    kind: "spend_get" as const,
     customerCoupon: claim,
     voucher: null,
     created: true,

@@ -1,6 +1,6 @@
 import {
   computeEntitlementExpiry,
-  computeNdpGiftExpiry,
+  computeSpendGetGiftExpiry,
   resolveRelativeDays,
   addDays,
 } from "@/lib/validity";
@@ -42,7 +42,7 @@ describe("validity rules", () => {
 
   it("NDP default: full month even near activity end", () => {
     const late = new Date("2026-03-30T12:00:00.000Z");
-    const r = computeNdpGiftExpiry({
+    const r = computeSpendGetGiftExpiry({
       obtainedAt: late,
       validDays: 30,
       activityEnd,
@@ -56,7 +56,7 @@ describe("validity rules", () => {
 
   it("NDP dual on: late claim truncated to activity end", () => {
     const late = new Date("2026-03-30T12:00:00.000Z");
-    const r = computeNdpGiftExpiry({
+    const r = computeSpendGetGiftExpiry({
       obtainedAt: late,
       validDays: 30,
       activityEnd,

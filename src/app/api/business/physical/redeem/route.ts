@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
         Boolean(ticket.voucherId) ||
         Boolean(ticket.customerCouponId);
 
-      // ── 已绑国庆赠送 CustomerCoupon：核销线上赠送券 + 实体码 ──
+      // ── 已绑满赠赠送 CustomerCoupon：核销线上赠送券 + 实体码 ──
       if (ticket.customerCouponId) {
         const claim = await tx.customerCoupon.findUnique({
           where: { id: ticket.customerCouponId },
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
           redeemStoreName: actingStoreName,
           remainingBalanceCents: 0,
           productKind: "gift",
-          displayKind: "ndp_gift",
+          displayKind: "spend_get",
         };
       }
 

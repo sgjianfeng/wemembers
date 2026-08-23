@@ -4,13 +4,13 @@ import { prisma } from "@/lib/db";
 import { uniquePhysicalCode } from "@/lib/physical-tickets";
 import {
   ensureSelfUseCampaignForPrint,
-  isNdpGiftCampaign,
+  isSpendGetGiftCampaign,
 } from "@/lib/physical-to-voucher";
 import {
-  ensureNdpGiftCoupon,
-  NDP_GIFT_COUPON_CENTS,
-  parseNdpMetaFromCampaign,
-} from "@/lib/ndp-promo";
+  ensureSpendGetGiftCoupon,
+  SPEND_GET_GIFT_CENTS,
+  parseSpendGetMetaFromCampaign,
+} from "@/lib/spend-get-issue";
 import type { Prisma } from "@prisma/client";
 import {
   isVisualTemplateId,
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
     }
 
     let resolvedCampaignId = campaignId;
-    let isNdpPaper = false;
+    let isSpendGetPaper = false;
     let campRow: {
       id: string;
       productKind: string;
@@ -192,8 +192,8 @@ export async function POST(request: NextRequest) {
       if (!campRow) {
         return NextResponse.json({ error: "活动无效" }, { status: 400 });
       }
-      isNdpPaper = isNdpGiftCampaign(campRow);
-      if (type === "voucher" && !isNdpPaper && campRow.productKind !== "self_use") {
+      isSpendGetPaper = isSpendGetGiftCampaign(campRow);
+      if (type === "voucher" && !isSpendGetPaper && campRow.productKind !== "self_use") {
         return NextResponse.json(
           { error: "实体代金须关联「自用券」活动（打印版）" },
           { status: 400 }
@@ -228,14 +228,14 @@ export async function POST(request: NextRequest) {
       validUntil ||
       new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
-    // 国庆满赠纸：挂 NDP 活动 + 赠送券模版；绑号后进 CustomerCoupon
+    // 满赠纸：挂满赠活动 + 赠送券模版；绑号后进 CustomerCoupon
     // 其它代金：挂 self_use campaign；绑号后进预付余额
     let couponId: string | null = null;
-    if (type === "voucher" && isNdpPaper && campRow) {
+    if (type === "voucher" && isSpendGetPaper && campRow) {
       resolvedCampaignId = campRow.id;
-      const meta = parseNdpMetaFromCampaign(campRow);
+      const meta = parseSpendGetMetaFromCampaign(campRow);
       const giftCents =
-        valueCents > 0 ? valueCents : meta.giftCouponCents || NDP_GIFT_COUPON_CENTS;
+        valueCents > 0 ? valueCents : meta.giftCouponCents || SPEND_GET_GIFT_CENTS;
       // 活动窗口内：默认有效期不短于活动结束+赠送天数缓冲
       if (!validUntilRaw) {
         const end = new Date(campRow.endDate);
@@ -243,10 +243,11 @@ export async function POST(request: NextRequest) {
         until = end;
       }
       couponId = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        const coupon = await ensureNdpGiftCoupon(tx, {
+        const coupon = await ensureSpendGetGiftCoupon(tx, {
           businessId: session.userId,
           campaignId: campRow!.id,
           giftCouponCents: giftCents,
+          validDays: meta.validDays,
           templateValidUntil: until,
         });
         return coupon.id;
@@ -280,16 +281,16 @@ export async function POST(request: NextRequest) {
     }
 
     const defaultTitle =
-      type === "voucher" && isNdpPaper
-        ? `国庆赠送券 S$${(valueCents / 100).toFixed(0)}（实体）`
+      type === "voucher" && isSpendGetPaper
+        ? `赠送券 S$${(valueCents / 100).toFixed(0)}（实体）`
         : type === "voucher"
           ? `自用券 S$${(valueCents / 100).toFixed(0)}（实体）`
           : type === "ballot"
             ? `入箱票 S$${(valueCents / 100).toFixed(0)}（大奖贡献 S$${(contributionCents / 100).toFixed(2)}）`
             : "抽奖实体券";
     const defaultDesc =
-      type === "voucher" && isNdpPaper
-        ? `国庆满赠纸质版 · 扫码绑定后进券包（与线上赠送券一致）· ${store.name}`
+      type === "voucher" && isSpendGetPaper
+        ? `满赠纸质版 · 扫码绑定后进券包（与线上赠送券一致）· ${store.name}`
         : type === "voucher"
           ? `自用券打印版 · ${store.name} 出库 · 集团门店可核 · 绑号后进余额`
           : type === "ballot"

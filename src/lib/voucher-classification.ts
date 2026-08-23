@@ -1,7 +1,7 @@
 /**
  * 顾客侧「余额」vs「券包/大奖资格」分流
  *
- * 国庆满赠发放两样东西：
+ * 满赠发放两样东西：
  * 1. CustomerCoupon S$61 → 券包核销（可花）
  * 2. Voucher 零余额 + drawWeight → 仅大奖权重，不可当钱花
  *
@@ -32,8 +32,8 @@ export function isDrawEntryOnlyVoucher(v: VoucherClassFields): boolean {
   // 明确营销/满赠路径
   if (
     (reason === "marketing" ||
-      reason === "ndp_draw_entry" ||
-      /国庆.*大奖|满赠大奖|ndp.*draw|gift.*draw/i.test(note)) &&
+      reason === "spend_get_draw_entry" ||
+      /满赠.*大奖|满赠大奖|gift.*draw/i.test(note)) &&
     paid === 0 &&
     bal === 0 &&
     used === 0

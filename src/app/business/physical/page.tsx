@@ -9,10 +9,10 @@ import { formatMoney } from "@/lib/utils";
 import { Ticket, Dice5, Store, Package } from "lucide-react";
 import { parseRulesSnapshot } from "@/lib/templates";
 import {
-  NDP_GIFT_COUPON_CENTS,
-  NDP_MIN_SPEND_CENTS,
-  parseNdpMetaFromCampaign,
-} from "@/lib/ndp-promo";
+  SPEND_GET_GIFT_CENTS,
+  SPEND_GET_MIN_SPEND_CENTS,
+  parseSpendGetMetaFromCampaign,
+} from "@/lib/spend-get-issue";
 import {
   PhysicalBatchCreateForm,
   type PrintableCampaign,
@@ -40,14 +40,14 @@ function productTiers(product: {
   return enabledTiers;
 }
 
-function isNdpLike(camp: {
+function isSpendGetLike(camp: {
   type: string;
   name: string;
   tags?: string | null;
 }): boolean {
   if (camp.type === "holiday") return true;
-  if (/国庆|ndp|national\s*day/i.test(camp.name || "")) return true;
-  if (camp.tags && /ndp|国庆|national|category:ndp/i.test(camp.tags))
+  if (/满赠/i.test(camp.name || "")) return true;
+  if (camp.tags && /category:spend_get|slot:spend_get/i.test(camp.tags))
     return true;
   return false;
 }
@@ -99,7 +99,7 @@ export default async function PhysicalBatchesPage({
         status: { in: ["active", "draft"] },
         endDate: { gte: new Date() },
         role: { not: "product_mirror" },
-        // 可印纸质：自用代金/抽奖/促销/节日（国庆满赠挂产品后亦可）
+        // 可印纸质：自用代金/抽奖/促销/节日（满赠挂产品后亦可）
         OR: [
           { productKind: "self_use" },
           {
@@ -151,20 +151,20 @@ export default async function PhysicalBatchesPage({
 
   const campaigns: PrintableCampaign[] = rawCampaigns
     .map((camp) => {
-      const ndp = isNdpLike(camp);
-      // 国庆满赠：固定赠送面额（默认 S$61），不是预付 10/20/50 档
-      if (ndp) {
-        const meta = parseNdpMetaFromCampaign({
+      const isGift = isSpendGetLike(camp);
+      // 满赠：固定赠送面额（默认 S$61），不是预付 10/20/50 档
+      if (isGift) {
+        const meta = parseSpendGetMetaFromCampaign({
           type: camp.type,
           name: camp.name,
           tags: camp.tags,
           rulesSnapshot: camp.rulesSnapshot,
         });
         const giftSgd = Math.round(
-          (meta.giftCouponCents || NDP_GIFT_COUPON_CENTS) / 100
+          (meta.giftCouponCents || SPEND_GET_GIFT_CENTS) / 100
         );
         const minSgd = Math.round(
-          (meta.minSpendCents || NDP_MIN_SPEND_CENTS) / 100
+          (meta.minSpendCents || SPEND_GET_MIN_SPEND_CENTS) / 100
         );
         return {
           id: camp.id,
@@ -177,14 +177,14 @@ export default async function PhysicalBatchesPage({
               id: `campaign:${camp.id}`,
               name:
                 lang === "en"
-                  ? `National Day gift S$${giftSgd}`
-                  : `国庆赠送券 S$${giftSgd}`,
+                  ? `Spend & get gift S$${giftSgd}`
+                  : `赠送券 S$${giftSgd}`,
               type: "holiday",
               productKind: "self_use",
               status: camp.status,
               description: camp.name,
               enabledTiers: [giftSgd],
-              packKind: "ndp_gift",
+              packKind: "spend_get",
               summaryZh: `满赠券 S$${giftSgd} · 门槛 S$${minSgd}`,
               summaryEn: `Gift S$${giftSgd} · min spend S$${minSgd}`,
             },

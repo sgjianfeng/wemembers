@@ -5,7 +5,7 @@
 
 import JSZip from "jszip";
 import type { CampaignPosterCopy } from "@/lib/campaign-poster-copy";
-import { isNdpFestivalAccent } from "@/lib/visual-templates";
+import { isFestivalRedAccent } from "@/lib/visual-templates";
 
 /**
  * tent 台卡 · poster 吧台 · sticker 1:1 社交 · a4 墙贴 ·
@@ -168,11 +168,11 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 /**
- * 国庆广告背景：上红（内容）下白（QR）· 右上角小星月徽章
+ * 满赠广告背景：上红（内容）下白（QR）· 右上角小星月徽章
  * 对齐顾客落地页 hero（非整幅国旗半白，避免大块假空白）。
  * 星月庄重：不倒置、不扭曲。
  */
-function drawNdpLandingStyleBackdrop(
+function drawFestivalBackdrop(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
@@ -301,7 +301,7 @@ export async function paintCampaignPosterCanvas(
 
   const isDark = opts.surface === "dark";
   const accent = opts.accent || "#1A6EFF";
-  const festival = isNdpFestivalAccent(accent);
+  const festival = isFestivalRedAccent(accent);
   const isA4 = opts.layout === "a4";
   const isVhd = opts.layout === "vhd";
   const isPosterLike = opts.layout === "poster" || isA4 || isVhd;
@@ -318,7 +318,7 @@ export async function paintCampaignPosterCanvas(
   const giftAmt = spendMatch ? spendMatch[2] : "61";
 
   /**
-   * 国庆红区：按「品牌行 + 满赠卡」内容紧凑算高度。
+   * 节日红区：按「品牌行 + 满赠卡」内容紧凑算高度。
    * 旧逻辑用画布比例（vhd≈46%）再把卡贴红区底 → 中间大片空红，竖屏像变形。
    */
   const festPad = Math.round(36 * scale);
@@ -329,7 +329,7 @@ export async function paintCampaignPosterCanvas(
   const festCardY = festRowY + festLogoS + festCardGap;
   const festContentRedH = festCardY + festCardH + Math.round(26 * scale);
   const redH = festival
-    ? // 国庆：红区高度 = 内容底边（各版式一致，禁止「比例红区 + 卡贴底」空心）
+    ? // 满赠：红区高度 = 内容底边（各版式一致，禁止「比例红区 + 卡贴底」空心）
       Math.min(festContentRedH, Math.round(h * 0.55))
     : Math.round(
         h *
@@ -343,7 +343,7 @@ export async function paintCampaignPosterCanvas(
       );
 
   if (festival) {
-    drawNdpLandingStyleBackdrop(ctx, w, h, redHex, redH);
+    drawFestivalBackdrop(ctx, w, h, redHex, redH);
   } else {
     const bg = isDark ? "#1E1B2E" : "#ffffff";
     ctx.fillStyle = bg;
@@ -433,7 +433,7 @@ export async function paintCampaignPosterCanvas(
     ctx.fillStyle = "rgba(255,255,255,0.9)";
     ctx.font = `bold ${Math.round(13 * scale)}px system-ui, -apple-system, sans-serif`;
     ctx.fillText(
-      `SG${giftAmt} · ${opts.lang === "en" ? "National Day" : "国庆满赠"}`,
+      `SG${giftAmt} · ${opts.lang === "en" ? "Spend & get" : "满赠"}`,
       textX,
       rowY + Math.round(20 * scale)
     );
@@ -466,8 +466,8 @@ export async function paintCampaignPosterCanvas(
     ctx.font = `${Math.round(15 * scale)}px system-ui, -apple-system, sans-serif`;
     ctx.fillText(
       opts.lang === "en"
-        ? `National Day · Spend ${minSpend} Get ${giftAmt}`
-        : `国庆满赠 · 满${minSpend}送${giftAmt}`,
+        ? `Spend & get · Spend ${minSpend} Get ${giftAmt}`
+        : `满赠 · 满${minSpend}送${giftAmt}`,
       cardX + Math.round(24 * scale),
       cardY + Math.round(34 * scale)
     );
@@ -546,7 +546,7 @@ export async function paintCampaignPosterCanvas(
     }
   }
 
-  // 国庆白区：钩子语 + 卖点条 + 适中 QR（A4 不再占半屏）
+  // 满赠白区：钩子语 + 卖点条 + 适中 QR（A4 不再占半屏）
   // 其它布局保持原逻辑
   // 竖版白区更高：QR 可更大且仍居中，避免「上头空、下头挤」
   const qrSize = festival
@@ -661,7 +661,7 @@ export async function paintCampaignPosterCanvas(
     return canvas;
   }
 
-  // ── 国庆白区（钩子 + 卖点 pill + 中等 QR）──
+  // ── 满赠白区（钩子 + 卖点 pill + 中等 QR）──
   const whiteTop = redH;
   // 竖版白区更高：内容块在白区内略居中，避免全顶死、底下大片空白
   const whiteBodyPad = Math.round(isVhd ? 36 : isA4 ? 36 : 28);
@@ -772,7 +772,7 @@ export async function paintCampaignPosterCanvas(
   }
   y = qrY + qrSize + Math.round((isVhd ? 40 : isA4 ? 36 : 28) * scale);
 
-  // 底部：国庆有 termsLine 时只印条款（红区已有 sub 利益点，避免叠三遍）
+  // 底部：满赠有 termsLine 时只印条款（红区已有 sub 利益点，避免叠三遍）
   ctx.textAlign = "center";
   if (opts.copy.termsLine) {
     ctx.fillStyle = "#94a3b8";

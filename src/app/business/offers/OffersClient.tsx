@@ -12,17 +12,17 @@ type Filter =
   | "all"
   | "long_term"
   | "grand_countdown"
-  | "ndp"
+  | "spend_get"
   | "print"
   | "active"
   | "ended";
 
 function bundleCategory(
   b: ActivityBundle
-): "long_term" | "grand_countdown" | "ndp" | "other" {
-  if (b.tone === "ndp") return "ndp";
+): "long_term" | "grand_countdown" | "spend_get" | "other" {
+  if (b.tone === "spend_get") return "spend_get";
   if (b.tone === "draw") return "grand_countdown";
-  // 非国庆、非大奖的活动一律归长期券
+  // 非满赠、非大奖的活动一律归长期券
   if (b.tone === "voucher" || b.type === "voucher_sale" || b.tone === "default")
     return "long_term";
   return "long_term";
@@ -49,7 +49,7 @@ export function OffersClient({
       if (filter === "all") return true;
       if (filter === "active") return b.status === "active" || b.status === "draft";
       if (filter === "ended") return b.status === "ended";
-      if (filter === "ndp") return bundleCategory(b) === "ndp";
+      if (filter === "spend_get") return bundleCategory(b) === "spend_get";
       if (filter === "long_term") return bundleCategory(b) === "long_term";
       if (filter === "grand_countdown")
         return bundleCategory(b) === "grand_countdown";
@@ -61,7 +61,7 @@ export function OffersClient({
     { key: "all", label: zh ? "全部" : "All" },
     { key: "long_term", label: zh ? "长期券" : "Long-term" },
     { key: "grand_countdown", label: zh ? "大奖倒计时" : "Countdown" },
-    { key: "ndp", label: zh ? "国庆满赠" : "National Day" },
+    { key: "spend_get", label: zh ? "满赠" : "Spend & get" },
     ...(showPrint
       ? ([{ key: "print" as const, label: zh ? "打印设计" : "Print" }] as const)
       : []),
@@ -126,7 +126,7 @@ export function OffersClient({
               bundle={b}
               lang={lang}
               mode="business"
-              defaultOpen={b.tone === "ndp" || b.status === "active"}
+              defaultOpen={b.tone === "spend_get" || b.status === "active"}
             />
           ))}
         </>

@@ -18,8 +18,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing slug" }, { status: 400 });
   }
 
-  // 活动广告/台卡：任意活动类型（含 holiday 国庆）；不再限 voucher_sale / lucky_draw_v2
-  const forceNdp = searchParams.get("ndp") === "1";
+  // 活动广告/台卡：任意活动类型（含 holiday 满赠）；不再限 voucher_sale / lucky_draw_v2
+  // spendGet=1 是新参数；ndp=1 已印在旧二维码链接里，继续认
+  const forceSpendGet =
+    searchParams.get("spendGet") === "1" ||
+    searchParams.get("spend_get") === "1" ||
+    searchParams.get("ndp") === "1";
   const campaign = await prisma.campaign.findFirst({
     where: {
       slug,
@@ -50,15 +54,13 @@ export async function GET(request: NextRequest) {
     process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
   const seller = searchParams.get("seller");
   const from = searchParams.get("from") === "counter" ? "counter" : "table";
-  const isNdpLanding =
-    forceNdp ||
-    campaign.type === "holiday" ||
-    /国庆|ndp|national/i.test(campaign.name || "") ||
-    (campaign.tags && /ndp|国庆|national|category:ndp/i.test(campaign.tags));
+  const { isSpendGetCampaign } = await import("@/lib/spend-and-get");
+  const isSpendGetLanding =
+    forceSpendGet || isSpendGetCampaign(campaign.type, campaign.tags);
 
   let url: string;
-  if (isNdpLanding) {
-    url = `${origin}/ndp/${encodeURIComponent(slug)}?from=${from}`;
+  if (isSpendGetLanding) {
+    url = `${origin}/spend-get/${encodeURIComponent(slug)}?from=${from}`;
     if (seller) url += `&seller=${encodeURIComponent(seller)}`;
   } else {
     url = `${origin}/voucher/${encodeURIComponent(slug)}`;

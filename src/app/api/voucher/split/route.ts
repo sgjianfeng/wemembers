@@ -70,6 +70,14 @@ export async function POST(request: NextRequest) {
     if (!parent) {
       return NextResponse.json({ error: "券不存在或不可用" }, { status: 404 });
     }
+    // 资金安全红线：非购买来源的额度不可拆分（拆分是转赠的前置动作，
+    // 允许拆分等于让营销负债在网络外流通）
+    if (parent.origin !== "purchase") {
+      return NextResponse.json(
+        { error: "消费抵扣额度不可拆分" },
+        { status: 403 }
+      );
+    }
     // 券产品开关（优先产品 rules，回落活动）；默认关闭
     const splitOk =
       isCustomerSplitAllowed(parent.product?.rulesSnapshot) ||

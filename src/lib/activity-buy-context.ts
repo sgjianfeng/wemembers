@@ -1,9 +1,9 @@
 /**
- * 活动购券语境：门店货架 / 国庆 / 品牌页 → 统一 /voucher 执行页
+ * 活动购券语境：门店货架 / 满赠 / 品牌页 → 统一 /voucher 执行页
  * 用 query 保持「仍在某活动里」，避免跳戏。
  */
 
-export type ActivityBuyFrom = "store" | "ndp" | "shop" | "home";
+export type ActivityBuyFrom = "store" | "spend_get" | "shop" | "home";
 
 export type ActivityBuyContext = {
   from: ActivityBuyFrom;
@@ -15,9 +15,9 @@ export type ActivityBuyContext = {
   storePath?: string | null;
   storeName?: string | null;
   brandName?: string | null;
-  /** 国庆专用 */
-  ndpSlug?: string | null;
-  ndpFrom?: "table" | "counter" | string | null;
+  /** 满赠专用 */
+  spendGetSlug?: string | null;
+  spendGetFrom?: "table" | "counter" | string | null;
   minSpendSgd?: number | null;
   giftSgd?: number | null;
 };
@@ -42,8 +42,8 @@ export function withActivityBuyContext(
   if (ctx.storePath) q.set("store", ctx.storePath);
   if (ctx.storeName) q.set("storeName", ctx.storeName);
   if (ctx.brandName) q.set("brand", ctx.brandName);
-  if (ctx.ndpSlug) q.set("ndp", ctx.ndpSlug);
-  if (ctx.ndpFrom) q.set("ndpFrom", ctx.ndpFrom);
+  if (ctx.spendGetSlug) q.set("spend_get", ctx.spendGetSlug);
+  if (ctx.spendGetFrom) q.set("spendGetFrom", ctx.spendGetFrom);
   if (ctx.minSpendSgd != null && ctx.minSpendSgd > 0) {
     q.set("min", String(ctx.minSpendSgd));
   }
@@ -64,7 +64,7 @@ export function parseActivityBuyContext(
       ? "store"
       : fromRaw;
   const from = (
-    ["store", "ndp", "shop", "home"].includes(fromNorm) ? fromNorm : ""
+    ["store", "spend_get", "shop", "home"].includes(fromNorm) ? fromNorm : ""
   ) as ActivityBuyFrom | "";
   const ctx: ActivityBuyContext = {
     from: (from || "home") as ActivityBuyFrom,
@@ -74,31 +74,31 @@ export function parseActivityBuyContext(
     storePath: sp.get("store"),
     storeName: sp.get("storeName"),
     brandName: sp.get("brand"),
-    ndpSlug: sp.get("ndp"),
-    ndpFrom: sp.get("ndpFrom"),
+    spendGetSlug: sp.get("spend_get"),
+    spendGetFrom: sp.get("spendGetFrom"),
     minSpendSgd: sp.get("min") ? Number(sp.get("min")) : null,
     giftSgd: sp.get("gift") ? Number(sp.get("gift")) : null,
   };
   return {
     ...ctx,
-    isContextual: from === "ndp" || from === "store" || from === "shop",
+    isContextual: from === "spend_get" || from === "store" || from === "shop",
   };
 }
 
-/** 返回上一层：门店 / 国庆 / 品牌 */
+/** 返回上一层：门店 / 满赠 / 品牌 */
 export function activityBuyBackHref(ctx: ActivityBuyContext): string {
-  // 国庆购券：优先回门店货架（从店进国庆再进购券），否则回 NDP 落地页
-  if (ctx.from === "ndp") {
+  // 满赠购券：优先回门店货架（从店进满赠再进购券），否则回满赠落地页
+  if (ctx.from === "spend_get") {
     if (ctx.storePath && ctx.storePath.startsWith("/shop/")) {
       return ctx.storePath;
     }
-    if (ctx.ndpSlug) {
-      const f = ctx.ndpFrom || "table";
+    if (ctx.spendGetSlug) {
+      const f = ctx.spendGetFrom || "table";
       const q = new URLSearchParams({ from: f });
       if (ctx.storePath?.startsWith("/shop/")) q.set("store", ctx.storePath);
       if (ctx.storeName) q.set("storeName", ctx.storeName);
       if (ctx.brandName) q.set("brand", ctx.brandName);
-      return `/ndp/${encodeURIComponent(ctx.ndpSlug)}?${q.toString()}`;
+      return `/spend-get/${encodeURIComponent(ctx.spendGetSlug)}?${q.toString()}`;
     }
   }
   if ((ctx.from === "store" || ctx.from === "shop") && ctx.storePath) {
@@ -118,8 +118,8 @@ const RETURN_QUERY_ALLOW = new Set([
   "store",
   "storeName",
   "brand",
-  "ndp",
-  "ndpFrom",
+  "spend_get",
+  "spendGetFrom",
   "min",
   "gift",
   "seller",

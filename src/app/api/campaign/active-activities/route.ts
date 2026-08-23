@@ -12,7 +12,7 @@ export async function GET() {
     const data = await listJoinableActivities({
       limit: 40,
       customerId,
-      // 首页：国庆满赠 + 大奖倒计时（长期券只在门店页）
+      // 首页：满赠 + 大奖倒计时（长期券只在门店页）
       listScope: "hot",
     });
     return NextResponse.json({ data });

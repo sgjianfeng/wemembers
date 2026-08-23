@@ -9,31 +9,31 @@ describe("default activities catalog", () => {
     const cats = new Set(DEFAULT_ACTIVITY_SLOTS.map((s) => s.category));
     expect(cats.has("long_term")).toBe(true);
     expect(cats.has("grand_countdown")).toBe(true);
-    expect(cats.has("ndp")).toBe(true);
+    expect(cats.has("spend_get")).toBe(true);
     expect(DEFAULT_ACTIVITY_SLOTS.length).toBeGreaterThanOrEqual(4);
   });
 
   it("labels categories in zh", () => {
     expect(categoryLabel("long_term", "zh")).toContain("长期");
     expect(categoryLabel("grand_countdown", "zh")).toContain("大奖");
-    expect(categoryLabel("ndp", "zh")).toContain("国庆");
+    expect(categoryLabel("spend_get", "zh")).toContain("满赠");
   });
 
   it("detects category from campaign fields", () => {
     expect(
       detectActivityCategory({
         type: "holiday",
-        name: "国庆满赠",
-        tags: '["ndp"]',
+        name: "满赠",
+        tags: '["spend_get"]',
       })
-    ).toBe("ndp");
+    ).toBe("spend_get");
     expect(
       detectActivityCategory({
         type: "lucky_draw_v2",
         rulesSnapshot: JSON.stringify({ packKind: "exclusive_ballot" }),
       })
     ).toBe("grand_countdown");
-    // 大奖活动 rules 里常挂 ndp 联动，不可误判为国庆
+    // 大奖活动 rules 里常挂 ndp 联动，不可误判为满赠
     expect(
       detectActivityCategory({
         type: "lucky_draw_v2",

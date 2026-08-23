@@ -5,7 +5,7 @@
  * 2. 相对规则优先（购后/领后 N 天）；活动与券都写了相对天数 → 取更短
  * 3. 活动绝对截止默认只停卖/停发，不缩短已发权益
  * 4. 仅 dualProtection=true 时：E = min(相对截止, 活动截止[+宽限])
- * 5. 国庆默认 dualProtection=false，E = 领取 + validDays
+ * 5. 满赠默认 dualProtection=false，E = 领取 + validDays
  *
  * 客户只看一个「有效至」；副文解释算法。
  */
@@ -352,8 +352,8 @@ export function buildTermsDatesView(input: TermsDatesInput): TermsDatesView {
   };
 }
 
-/** 国庆专用：相对优先、默认无双重保护 */
-export function computeNdpGiftExpiry(input: {
+/** 满赠专用：相对优先、默认无双重保护 */
+export function computeSpendGetGiftExpiry(input: {
   obtainedAt: Date;
   validDays: number;
   activityEnd: Date;
