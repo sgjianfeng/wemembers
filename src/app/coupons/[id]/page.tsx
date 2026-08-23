@@ -41,9 +41,19 @@ export default async function CouponDetailPage({ params }: { params: Promise<{ i
     take: 5,
   });
 
-  // Fetch user points if logged in
+  // 领券扣的是**本品牌**积分，这里就必须读本品牌的，不能读平台通用余额
   const userPoints = isCustomer
-    ? (await prisma.user.findUnique({ where: { id: session!.userId }, select: { pointsBalance: true } }))?.pointsBalance ?? 0
+    ? (
+        await prisma.membership.findUnique({
+          where: {
+            businessId_customerId: {
+              businessId: coupon.businessId,
+              customerId: session!.userId,
+            },
+          },
+          select: { points: true },
+        })
+      )?.points ?? 0
     : 0;
   const pointsGap = coupon.pointsRequired - userPoints;
 

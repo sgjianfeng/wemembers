@@ -37,6 +37,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params;
   const body = await request.json();
 
+  // 注意：这里改的是可花余额，不动 lifetimePoints，因此**不会**改变等级。
+  // 要调整等级请走 POST（发放/扣减积分）。
   const updated = await prisma.membership.update({
     where: { businessId_customerId: { businessId: session.userId, customerId: id } },
     data: {
@@ -70,35 +72,42 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const type = amount > 0 ? "manual_grant" : "manual_deduct";
 
-  const [updated] = await Promise.all([
-    prisma.membership.update({
-      where: { id: membership.id },
-      data: { points: { increment: amount } },
-    }),
-    prisma.user.update({
-      where: { id: customerId },
-      data: {
-        pointsBalance: { increment: amount },
-        ...(amount > 0 ? { lifetimePoints: { increment: amount } } : {}),
-      },
-    }),
-  ]);
+  // 商家发的分只进本品牌账。
+  // 这里以前同时给 User.pointsBalance 加分，而那个余额能兑任何商家的券——
+  // 等于 A 商家发分、B 商家买单。
+  const { grantBrandPoints, spendBrandPoints, checkAndUpgradeTier } = await import("@/lib/points");
 
-  const { addPointsLog, checkAndUpgradeTier } = await import("@/lib/points");
-  await addPointsLog({
-    membershipId: membership.id,
-    storeId: session.storeId,
-    amount,
-    type,
-    reason: reason || (amount > 0 ? "手动发放" : "手动扣减"),
-  });
-
-  const upgraded = await checkAndUpgradeTier(membership.id, session.userId);
+  let points: number;
+  let upgraded: string | null = null;
+  if (amount > 0) {
+    const granted = await grantBrandPoints({
+      businessId: session.userId,
+      customerId,
+      amount,
+      type,
+      reason: reason || "手动发放",
+      storeId: session.storeId,
+    });
+    points = granted.balanceAfter;
+    upgraded = granted.newTier;
+  } else {
+    const spent = await spendBrandPoints({
+      businessId: session.userId,
+      customerId,
+      amount: -amount,
+      type,
+      reason: reason || "手动扣减",
+      storeId: session.storeId,
+    });
+    points = spent.balanceAfter;
+    // 扣减不动 lifetimePoints，等级不变；仍复算一次以防历史数据不一致
+    upgraded = await checkAndUpgradeTier(membership.id, session.userId);
+  }
 
   return NextResponse.json({
     data: {
       success: true,
-      points: updated.points,
+      points,
       ...(upgraded ? { tierUpgraded: upgraded } : {}),
     },
   });

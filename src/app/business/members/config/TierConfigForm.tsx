@@ -14,7 +14,11 @@ interface TierConfig {
   pointsRequired: number;
   color: string;
   benefits: string;
+  cashbackBonusPercent: number;
 }
+
+/** 与 lib/points.ts 的 TIER_BONUS_PERCENT_MAX 保持一致 */
+const BONUS_MAX = 5;
 
 export function TierConfigForm({
   configs: initialConfigs,
@@ -104,6 +108,30 @@ export function TierConfigForm({
                 }
                 prefix="⭐"
               />
+
+              <div>
+                <Input
+                  label="额外返现（百分点）"
+                  type="number"
+                  step="0.5"
+                  min={0}
+                  max={BONUS_MAX}
+                  value={cfg.cashbackBonusPercent ?? 0}
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    updateConfig(
+                      i,
+                      "cashbackBonusPercent",
+                      Number.isFinite(n) ? Math.max(0, Math.min(BONUS_MAX, n)) : 0
+                    );
+                  }}
+                  prefix="+"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  该等级的顾客消费时，返现在活动基础比例上再加这么多个百分点。
+                  0 = 无加成。加成由你承担，且「返现 + 加成 + 抽奖」合计不会超过 15%。
+                </p>
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-foreground/80 mb-1">

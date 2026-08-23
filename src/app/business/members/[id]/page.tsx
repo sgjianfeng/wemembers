@@ -118,8 +118,9 @@ export default async function MemberDetailPage({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border">
-              <MiniStat label="积分" value={membership.points.toString()} />
+            <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-border">
+              <MiniStat label="可用积分" value={membership.points.toString()} />
+              <MiniStat label="累计积分" value={membership.lifetimePoints.toString()} />
               <MiniStat
                 label="总消费"
                 value={`S$${membership.totalSpent.toFixed(0)}`}
@@ -130,8 +131,9 @@ export default async function MemberDetailPage({
               />
             </div>
 
+            {/* 等级看累计积分，不看可用余额 */}
             <TierProgress
-              points={membership.points}
+              points={membership.lifetimePoints}
               tierConfigs={JSON.parse(JSON.stringify(tierConfigs))}
             />
 

@@ -52,49 +52,17 @@ export async function POST() {
     prisma.checkIn.create({ data: { userId: session.userId, date: today, dayNumber: newStreak, bonus: total } }),
   ]);
 
-  // 签到积分计入最近消费的商家
-  let businessPointsEarned = 0;
-  try {
-    const lastRedemption = await prisma.redemptionLog.findFirst({
-      where: { customerId: session.userId },
-      orderBy: { redeemedAt: "desc" },
-      select: { businessId: true },
-    });
-
-    if (lastRedemption) {
-      const membership = await prisma.membership.findUnique({
-        where: {
-          businessId_customerId: {
-            businessId: lastRedemption.businessId,
-            customerId: session.userId,
-          },
-        },
-      });
-
-      if (membership) {
-        const { addPointsLog } = await import("@/lib/points");
-        await prisma.membership.update({
-          where: { id: membership.id },
-          data: { points: { increment: total } },
-        });
-        await addPointsLog({
-          membershipId: membership.id,
-          amount: total,
-          type: "checkin",
-          reason: `连续签到第${newStreak}天`,
-        });
-        businessPointsEarned = total;
-      }
-    }
-  } catch {
-    // 签到积分商家计入失败不影响主流程
-  }
+  // 签到是**平台侧**的连续打卡玩法，只涨 User.pointsBalance / lifetimePoints 与连签天数。
+  //
+  // 这里以前会把签到分整笔记到「最近一次核销的商家」头上：顾客昨天在 A 店核销、
+  // 今天在家签到，A 店就凭空多出一笔它没参与的负债，归属完全是猜的。
+  // 品牌积分是品牌的负债，只能由该品牌的真实交易产生（消费、核销、商家手动发放），
+  // 平台不能替商家发分，所以这段归属已移除。
 
   return NextResponse.json({
     data: {
       streak: newStreak, reward: total, baseReward, bonus,
       nextMilestone: newStreak >= 30 ? null : newStreak < 3 ? { days: 3, bonus: 10 } : newStreak < 7 ? { days: 7, bonus: 30 } : newStreak < 15 ? { days: 15, bonus: 80 } : { days: 30, bonus: 200 },
-      businessPointsEarned: businessPointsEarned > 0 ? businessPointsEarned : undefined,
     },
   });
 }

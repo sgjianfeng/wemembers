@@ -15,6 +15,11 @@ describe("Voucher System", () => {
     customer = await createTestUser({ role: "customer", displayName: "Voucher Sammy" });
     await testPrisma.tokenAccount.create({ data: { userId: customer.id, balance: 500 } });
     await testPrisma.user.update({ where: { id: customer.id }, data: { pointsBalance: 5000, lifetimePoints: 5000 } });
+    // 领券扣的是**本品牌**积分（见 tests/points-brand-scope.test.ts）。
+    // 上面的 User.pointsBalance 是平台侧成长值，兑不了任何商家的券。
+    await testPrisma.membership.create({
+      data: { businessId: bizA.id, customerId: customer.id, points: 5000, lifetimePoints: 5000 },
+    });
   });
 
   afterAll(async () => {
@@ -94,15 +99,43 @@ describe("Voucher System", () => {
     });
 
     test("customer points deducted after claim", async () => {
-      const user = await testPrisma.user.findUnique({ where: { id: customer.id } });
-      expect(user!.pointsBalance).toBeLessThan(5000);
-    });
-
-    test("auto-creates membership on first claim", async () => {
       const m = await testPrisma.membership.findUnique({
         where: { businessId_customerId: { businessId: bizA.id, customerId: customer.id } },
       });
-      expect(m).toBeTruthy();
+      expect(m!.points).toBeLessThan(5000);
+      // 累计积分不动 —— 花积分不掉级
+      expect(m!.lifetimePoints).toBe(5000);
+      // 平台侧成长值不参与领券
+      const user = await testPrisma.user.findUnique({ where: { id: customer.id } });
+      expect(user!.pointsBalance).toBe(5000);
+    });
+
+    test("auto-creates membership on first claim", async () => {
+      // 换一个没开过卡的顾客，验证 0 积分券也能自动开卡
+      const fresh = await createTestUser({ role: "customer", displayName: "Fresh Claimer" });
+      try {
+        const free = await testPrisma.coupon.create({
+          data: {
+            businessId: bizA.id, title: "Free Claim", type: "fixed_amount",
+            valueCents: 500, pointsRequired: 0, perCustomerLimit: 1,
+            validFrom: new Date(), validUntil: new Date(Date.now() + 86400000),
+            status: "published",
+          },
+        });
+        const { POST } = await import("@/app/api/coupons/[id]/claim/route");
+        const token = await signTestJwt({ id: fresh.id, role: fresh.role });
+        const req = mockRequest({}, { method: "POST" });
+        setAuthCookie(req, token);
+        const res = await POST(req as any, { params: Promise.resolve({ id: free.id }) });
+        expect(res.status).toBe(200);
+
+        const m = await testPrisma.membership.findUnique({
+          where: { businessId_customerId: { businessId: bizA.id, customerId: fresh.id } },
+        });
+        expect(m).toBeTruthy();
+      } finally {
+        await deleteUsersSafe([fresh.id]);
+      }
     });
 
     test("rejects claim exceeding per-customer limit", async () => {
