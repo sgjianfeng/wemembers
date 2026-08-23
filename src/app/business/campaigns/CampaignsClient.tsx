@@ -24,13 +24,20 @@ type Filter = "all" | "active" | "draft" | "ended";
 const typeLabels: Record<string, { zh: string; en: string; icon: string }> = {
   promotion: { zh: "促销", en: "Promotion", icon: "🏷️" },
   seasonal: { zh: "季节", en: "Seasonal", icon: "🌸" },
-  holiday: { zh: "节日", en: "Holiday", icon: "🎉" },
+  holiday: { zh: "满赠", en: "Spend & get", icon: "🎁" },
   event: { zh: "活动", en: "Event", icon: "📅" },
   launch: { zh: "新品", en: "Launch", icon: "🚀" },
   lucky_draw: { zh: "抽奖", en: "Lucky draw", icon: "🎰" },
   lucky_draw_v2: { zh: "抽奖券", en: "Draw voucher", icon: "🎰" },
   voucher_sale: { zh: "代金券", en: "Voucher", icon: "🏷️" },
+  cashback: { zh: "消费返", en: "Spend rewards", icon: "💸" },
 };
+
+/**
+ * 规则型活动：按规则自动发放，不挂券产品。
+ * 对它们显示「未挂券产品」是误导——商家会以为配置没做完。
+ */
+const RULE_DRIVEN_TYPES = new Set(["cashback", "holiday"]);
 
 const statusBadge: Record<
   string,
@@ -130,8 +137,16 @@ export function CampaignsClient({
           const productCount = c.productNames.length;
           const dateLocale = zh ? "zh-CN" : "en-US";
 
+          // 规则型活动有自己的配置页（费率滑块等），通用详情页对它没有意义
+          const href =
+            c.type === "cashback"
+              ? "/business/cashback"
+              : c.type === "holiday"
+                ? "/business/spend-get"
+                : `/business/campaigns/${c.id}`;
+
           return (
-            <Link key={c.id} href={`/business/campaigns/${c.id}`}>
+            <Link key={c.id} href={href}>
               <Card
                 className="hover:border-primary/30 transition-colors border-l-4 mb-3"
                 style={{ borderLeftColor: c.color || "#1A6EFF" }}
@@ -185,6 +200,12 @@ export function CampaignsClient({
                         </span>
                         {c.productNames.join(" · ")}
                       </>
+                    ) : RULE_DRIVEN_TYPES.has(c.type) ? (
+                      <span className="text-muted-foreground">
+                        {zh
+                          ? "规则型活动 · 按规则自动发放，无需挂券"
+                          : "Rule-driven · issues automatically, no products needed"}
+                      </span>
                     ) : (
                       <span className="text-amber-700 dark:text-amber-400">
                         {zh

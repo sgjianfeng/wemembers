@@ -18,7 +18,7 @@ export default async function BalancePage() {
   const c = await cookies();
   const lang = c.get("gwm_lang")?.value === "en" ? "en" : "zh";
 
-  // ── 可花余额券（排除国庆满赠「大奖签」零余额 Voucher）──
+  // ── 可花余额券（排除满赠「大奖签」零余额 Voucher）──
   const activeVouchersRaw = await prisma.voucher.findMany({
     where: { customerId: session.userId, status: "active" },
     select: {
@@ -33,6 +33,10 @@ export default async function BalancePage() {
       shortCode: true,
       amountCents: true,
       productKind: true,
+      origin: true,
+      lastActivityAt: true,
+      inactivityMonths: true,
+      expiresAt: true,
       product: { select: { rulesSnapshot: true } },
       campaign: {
         select: {
@@ -65,10 +69,35 @@ export default async function BalancePage() {
       }
     })
   );
-  const totalBalance = activeVouchers.reduce(
-    (sum, v) => sum + v.balanceCents,
-    0,
+  // ── 钱包三分区（定稿）──
+  // 购券余额 purchase：可提现，活动/相对天数到期
+  // 消费额度 cashback：不可提现，活跃即长期有效（并入即时小奖）
+  // 大奖券   prize   ：不可提现，每张独立 expiresAt
+  const purchaseVouchers = activeVouchers.filter(
+    (v) => (v.origin ?? "purchase") === "purchase",
   );
+  const cashbackVouchers = activeVouchers.filter(
+    (v) => v.origin === "cashback",
+  );
+  const prizeVouchers = activeVouchers.filter((v) => v.origin === "prize");
+
+  const sumCents = (list: { balanceCents: number }[]) =>
+    list.reduce((sum, v) => sum + v.balanceCents, 0);
+
+  const totalBalance = sumCents(purchaseVouchers);
+  const cashbackBalance = sumCents(cashbackVouchers);
+  const prizeBalance = sumCents(prizeVouchers);
+
+  /** 活跃即长期有效：最后活动 + N 个月 */
+  const inactivityExpiry = (v: {
+    lastActivityAt: Date | null;
+    inactivityMonths: number | null;
+  }): Date | null => {
+    if (!v.lastActivityAt || !v.inactivityMonths) return null;
+    const d = new Date(v.lastActivityAt.getTime());
+    d.setMonth(d.getMonth() + v.inactivityMonths);
+    return d;
+  };
 
   // ── 购券记录（含已用尽，排除拆分产生的子券：用 paid>0 且有支付痕迹近似） ──
   const purchases = await prisma.voucher.findMany({
@@ -148,28 +177,110 @@ export default async function BalancePage() {
               S${formatMoney(totalBalance)}
             </p>
             <p className="text-xs text-white/60 mt-1">
-              {t("balance.voucherCount", lang, { count: activeVouchers.length })}
+              {t("balance.voucherCount", lang, { count: purchaseVouchers.length })}
             </p>
             <p className="text-[11px] text-white/90 mt-2 font-medium">
               {t("balance.trustLine", lang)}
             </p>
             <p className="text-[10px] text-white/75 mt-2 leading-relaxed">
               {lang === "en"
-                ? "Gift coupons & draw entries live in Wallet · only spendable prepaid balance is listed here."
-                : "赠送券与大奖资格在「券包」；此处仅展示可花的预付余额。"}
+                ? "Prepaid balance only · withdrawable. Cashback credit and prize vouchers are listed separately below."
+                : "仅预付余额，可提现。消费抵扣额度与中奖奖励券在下方单独展示。"}
             </p>
           </CardContent>
         </Card>
       </div>
 
+      {/* 消费抵扣额度（cashback + 即时小奖，不可提现） */}
+      {cashbackVouchers.length > 0 && (
+        <div className="px-4 mt-3">
+          <Card className="bg-gradient-to-r from-emerald-600 to-emerald-500 border-0">
+            <CardContent className="p-5">
+              <p className="text-sm text-white/80">
+                {lang === "en" ? "Spend credit" : "消费抵扣额度"}
+              </p>
+              <p className="text-3xl font-bold text-white mt-1">
+                S${formatMoney(cashbackBalance)}
+              </p>
+              <p className="text-[10px] text-white/75 mt-2 leading-relaxed">
+                {lang === "en"
+                  ? "Earned from spending · use on your next visit · not withdrawable. Stays valid as long as you keep using it."
+                  : "消费返还 · 下次到店抵扣 · 不可提现。只要保持使用就长期有效。"}
+              </p>
+              <div className="mt-3 space-y-1">
+                {cashbackVouchers.slice(0, 5).map((v) => {
+                  const exp = inactivityExpiry(v);
+                  return (
+                    <div
+                      key={v.id}
+                      className="flex items-center justify-between text-xs text-white/90"
+                    >
+                      <span className="font-mono">{v.shortCode || "—"}</span>
+                      <span>
+                        S${formatMoney(v.balanceCents)}
+                        {exp
+                          ? ` · ${exp.toLocaleDateString("zh-SG")} 前有效`
+                          : ""}
+                      </span>
+                    </div>
+                  );
+                })}
+                {cashbackVouchers.length > 5 && (
+                  <p className="text-[10px] text-white/70">
+                    共 {cashbackVouchers.length} 笔
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* 中奖奖励券（每张独立有效期，不可提现） */}
+      {prizeVouchers.length > 0 && (
+        <div className="px-4 mt-3">
+          <Card className="bg-gradient-to-r from-violet-600 to-fuchsia-500 border-0">
+            <CardContent className="p-5">
+              <p className="text-sm text-white/80">
+                {lang === "en" ? "Prize vouchers" : "中奖奖励券"}
+              </p>
+              <p className="text-3xl font-bold text-white mt-1">
+                S${formatMoney(prizeBalance)}
+              </p>
+              <div className="mt-3 space-y-1">
+                {prizeVouchers.map((v) => (
+                  <div
+                    key={v.id}
+                    className="flex items-center justify-between text-xs text-white/90"
+                  >
+                    <span className="font-mono">{v.shortCode || "—"}</span>
+                    <span>
+                      S${formatMoney(v.balanceCents)}
+                      {v.expiresAt
+                        ? ` · ${new Date(v.expiresAt).toLocaleDateString("zh-SG")} 到期`
+                        : ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-white/75 mt-2">
+                {lang === "en"
+                  ? "Not withdrawable · each has its own expiry."
+                  : "不可提现 · 每张独立有效期。"}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* 可核销的券列表 */}
-      {activeVouchers.length > 0 && (
+      {purchaseVouchers.length > 0 && (
         <div className="px-4 mt-6">
           <h2 className="text-sm font-semibold text-foreground mb-3">
             {t("balance.myVouchers", lang)}
           </h2>
           <div className="space-y-2">
-            {activeVouchers.map((v) => {
+            {purchaseVouchers.map((v) => {
               const isDraw = v.campaign?.type === "lucky_draw_v2";
               const isSelf =
                 v.productKind === "self_use" ||

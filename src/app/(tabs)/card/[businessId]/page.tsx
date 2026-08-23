@@ -4,6 +4,8 @@ import { t } from "@/lib/i18n";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/Card";
+import { formatSgd } from "@/lib/utils";
+import { getCustomerBrandCard } from "@/lib/customer-brand-cards";
 import { Badge } from "@/components/ui/Badge";
 import Link from "next/link";
 import { formatMoney } from "@/lib/utils";
@@ -52,10 +54,12 @@ export default async function CardDetailPage({
     );
   }
 
-  const tierConfigs = await prisma.membershipTierConfig.findMany({
-    where: { businessId },
-    orderBy: { pointsRequired: "asc" },
-  });
+  const brand = await getCustomerBrandCard(session.userId, businessId);
+
+  // 必须走 getTierConfigs：商家未配置等级时它会补齐 4 档默认值。
+  // 直接查表会得到空数组，进而把普通会员误判成「已达最高等级」。
+  const { getTierConfigs } = await import("@/lib/points");
+  const tierConfigs = await getTierConfigs(businessId);
 
   const tierKey = membership.tier || "regular";
   const tierLabels: Record<string, string> = {
@@ -78,6 +82,8 @@ export default async function CardDetailPage({
     }
   }
 
+  const tierBonus = currentConfig?.cashbackBonusPercent ?? 0;
+
   const idx = TIER_ORDER.indexOf(tierKey as (typeof TIER_ORDER)[number]);
   const nextTierKey =
     idx >= 0 && idx < TIER_ORDER.length - 1 ? TIER_ORDER[idx + 1] : null;
@@ -85,9 +91,10 @@ export default async function CardDetailPage({
     ? tierConfigs.find((tc) => tc.tier === nextTierKey)
     : null;
   const nextLabel = nextConfig?.name || (nextTierKey ? tierLabels[nextTierKey] : null);
+  // 升级进度按累计积分算：花掉的积分不该把进度条往回拉
   const pointsToNext =
     nextConfig != null
-      ? Math.max(0, nextConfig.pointsRequired - membership.points)
+      ? Math.max(0, nextConfig.pointsRequired - membership.lifetimePoints)
       : null;
 
   const shopHref = membership.business.businessSlug
@@ -166,12 +173,83 @@ export default async function CardDetailPage({
         </div>
       </div>
 
+      {brand && brand.spendableCents > 0 && (
+        <div className="px-4 mt-5">
+          <h2 className="text-sm font-semibold text-foreground mb-2">
+            {lang === "en" ? "My balance here" : "我在这家店的余额"}
+          </h2>
+          <Card>
+            <CardContent className="p-4 space-y-2.5">
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {lang === "en" ? "Available" : "可用合计"}
+                </span>
+                <span className="text-xl font-bold tabular-nums">
+                  {formatSgd(brand.spendableCents)}
+                </span>
+              </div>
+              <div className="border-t border-border pt-2.5 space-y-1.5">
+                {brand.cashbackCents > 0 && (
+                  <BalanceRow
+                    label={lang === "en" ? "Spend credit" : "消费抵扣额度"}
+                    hint={lang === "en" ? "not withdrawable" : "不可提现"}
+                    cents={brand.cashbackCents}
+                  />
+                )}
+                {brand.purchaseCents > 0 && (
+                  <BalanceRow
+                    label={lang === "en" ? "Prepaid balance" : "购券余额"}
+                    hint={lang === "en" ? "withdrawable" : "可提现"}
+                    cents={brand.purchaseCents}
+                  />
+                )}
+                {brand.prizeCents > 0 && (
+                  <BalanceRow
+                    label={lang === "en" ? "Prize vouchers" : "中奖奖励券"}
+                    hint={lang === "en" ? "not withdrawable" : "不可提现"}
+                    cents={brand.prizeCents}
+                  />
+                )}
+              </div>
+              {brand.couponCount > 0 && (
+                <Link
+                  href="/wallet"
+                  className="block text-xs text-[#1A6EFF] pt-1"
+                >
+                  {lang === "en"
+                    ? `${brand.couponCount} coupons →`
+                    : `另有 ${brand.couponCount} 张优惠券 →`}
+                </Link>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <div className="px-4 mt-5">
         <h2 className="text-sm font-semibold text-foreground mb-2">
           {t("card.detail.benefits", lang)}
         </h2>
         <Card>
           <CardContent className="p-4">
+            {/* 等级的实际效果放在文案权益之前——这是唯一会真正改变金额的一条 */}
+            {tierBonus > 0 && (
+              <div className="mb-3 pb-3 border-b border-border flex items-start gap-2">
+                <span className="text-amber-500 shrink-0">✦</span>
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {lang === "en"
+                      ? `+${tierBonus}% extra cashback`
+                      : `消费额外多返 ${tierBonus}%`}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {lang === "en"
+                      ? "Applied automatically on top of the store's base rate."
+                      : "在门店活动基础返现比例上自动叠加，无需操作"}
+                  </p>
+                </div>
+              </div>
+            )}
             {benefits.length > 0 ? (
               <ul className="space-y-2">
                 {benefits.map((b, i) => (
@@ -184,7 +262,7 @@ export default async function CardDetailPage({
                   </li>
                 ))}
               </ul>
-            ) : (
+            ) : tierBonus > 0 ? null : (
               <p className="text-xs text-muted-foreground">
                 {t("card.detail.noBenefits", lang)}
               </p>
@@ -203,6 +281,26 @@ export default async function CardDetailPage({
           </Link>
         </div>
       )}
+    </div>
+  );
+}
+
+function BalanceRow({
+  label,
+  hint,
+  cents,
+}: {
+  label: string;
+  hint: string;
+  cents: number;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="text-sm">
+        {label}
+        <span className="text-[11px] text-muted-foreground ml-1.5">{hint}</span>
+      </span>
+      <span className="text-sm tabular-nums">{formatSgd(cents)}</span>
     </div>
   );
 }

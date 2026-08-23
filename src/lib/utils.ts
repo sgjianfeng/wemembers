@@ -56,6 +56,14 @@ export function formatMoney(cents: number): string {
 }
 
 /**
+ * 带币种符号的金额。`formatMoney` 只返回数字，调用处必须自己拼 "S$"，
+ * 漏拼就会出现 "已到账 2.40" 这种没有币种的文案——用本函数避免。
+ */
+export function formatSgd(cents: number): string {
+  return `S$${formatMoney(cents)}`;
+}
+
+/**
  * 规范化新加坡手机号为 E.164（+65XXXXXXXX）。
  * 接受：91251676 / 65 9125 1676 / +6591251676
  * 非 SG 格式原样返回（已带 + 的国际号）。

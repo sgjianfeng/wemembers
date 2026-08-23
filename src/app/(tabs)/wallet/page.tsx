@@ -114,7 +114,7 @@ export default async function WalletPage() {
             v.paidCents === 0 ||
             v.paymentMethod === "free" ||
             v.issueReason === "marketing" ||
-            v.issueReason === "ndp_draw_entry",
+            v.issueReason === "spend_get_draw_entry",
           balanceCents: v.balanceCents,
           amountCents: v.amountCents,
           activityHref: links.activityHref,

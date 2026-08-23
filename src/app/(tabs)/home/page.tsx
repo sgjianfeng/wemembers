@@ -46,7 +46,7 @@ export default async function CustomerHome() {
     listJoinableActivities({
       limit: 30,
       customerId: session.userId,
-      // 首页：国庆 + 大奖倒计时；长期券进店可见
+      // 首页：满赠 + 大奖倒计时；长期券进店可见
       listScope: "hot",
     }),
     prisma.voucher.findMany({
@@ -175,7 +175,7 @@ export default async function CustomerHome() {
             v.paidCents === 0 ||
             v.paymentMethod === "free" ||
             v.issueReason === "marketing" ||
-            v.issueReason === "ndp_draw_entry",
+            v.issueReason === "spend_get_draw_entry",
           balanceCents: v.balanceCents,
           amountCents: v.amountCents,
           activityHref: links.activityHref,
@@ -197,11 +197,11 @@ export default async function CustomerHome() {
       })),
   });
 
-  // 活动目录：与持仓同一「活动 → 权益」结构（含产品线 / 国庆双权益说明）
+  // 活动目录：与持仓同一「活动 → 权益」结构（含产品线 / 满赠双权益说明）
   const discoverSorted = [...activities].sort((a, b) => {
     const score = (x: (typeof activities)[0]) => {
       let s = 0;
-      if (x.type === "holiday" || /国庆|ndp/i.test(x.name)) s += 100;
+      if (x.type === "holiday" || /满赠/i.test(x.name)) s += 100;
       if (x.displayMode === "draw") s += 50;
       if (x.joined) s += 20;
       if (x.hot) s += 10;

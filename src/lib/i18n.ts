@@ -113,6 +113,7 @@ const zh: Record<string, string> = {
 
   "tabs.home": "首页",
   "tabs.wallet": "券包",
+  "tabs.cards": "我的卡",
   "tabs.card": "会员卡",
   "tabs.profile": "我的",
   "tabs.scan": "核销",
@@ -303,7 +304,7 @@ const zh: Record<string, string> = {
   "coupon.claim.networkError": "网络错误",
   "coupon.claim.button": "领取 ({points}⭐)",
 
-  "card.title": "我的会员卡",
+  "card.title": "我的卡",
   "card.noCard": "还没有会员卡",
   "card.noCardHint": "去首页领取代金券即可成为商家会员",
   "card.goClaim": "去领券",
@@ -317,7 +318,7 @@ const zh: Record<string, string> = {
   "card.detail.noBenefits": "商家尚未配置专属权益",
   "card.detail.visitShop": "进入店铺",
   "card.detail.notFound": "会员卡不存在",
-  "card.detail.backList": "返回会员卡列表",
+  "card.detail.backList": "返回我的卡",
   "card.detail.nextTier": "距 {name} 还差 {points} 分",
   "card.detail.maxTier": "已达最高等级",
 
@@ -1342,6 +1343,7 @@ const en: Record<string, string> = {
 
   "tabs.home": "Home",
   "tabs.wallet": "Wallet",
+  "tabs.cards": "My cards",
   "tabs.card": "Cards",
   "tabs.profile": "Me",
   "tabs.scan": "Scan",

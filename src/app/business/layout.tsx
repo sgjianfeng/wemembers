@@ -37,7 +37,8 @@ export default async function BusinessLayout({
 
   /**
    * 企业底栏：日常主路径 4 个 + 「更多」
-   * 主：概览 / 核销 / 活动 / 门店（现场运营）
+   * 主：概览 / 核销 / 活动 / 门店
+   * 活动是商家侧唯一的组织单位；券产品挂在活动里，不占主栏。
    * 更多：运营配置 · 工具 · 账户（工具页承接原「功能仓」能力，不占主栏）
    *
    * 店员底栏：工作台 / 核销 / 资料 / 本店（无「更多」，能力收敛）
@@ -59,9 +60,9 @@ export default async function BusinessLayout({
       href: "/business/scan",
     },
     {
-      icon: "gift" as const,
-      label: lang === "en" ? "Offers" : "活动券",
-      href: "/business/offers",
+      icon: "campaigns" as const,
+      label: lang === "en" ? "Activities" : "活动",
+      href: "/business/campaigns",
     },
     {
       icon: "stores" as const,
@@ -71,19 +72,23 @@ export default async function BusinessLayout({
   ];
 
   /**
-   * 三大块：券管理（模版+产品）/ 活动管理 / 活动券（底栏不动）
+   * 两层心智：活动（做什么生意）→ 券产品（卖什么 / 发什么）。
+   *
+   * 活动进主栏；券产品降到「更多」——它只是活动的下一层，
+   * 平级摆放会让商家以为要分别配置两次。日常发券是**操作**不是配置，
+   * 改名「现场发券」以免与「活动」「券产品」三个名字互撞。
    */
   const businessMore = [
     {
-      icon: "coupons" as const,
-      label: lang === "en" ? "Vouchers" : "券管理",
-      href: "/business/vouchers",
+      icon: "gift" as const,
+      label: lang === "en" ? "Issue at counter" : "现场发券",
+      href: "/business/offers",
       section: moreOp,
     },
     {
-      icon: "campaigns" as const,
-      label: lang === "en" ? "Activities" : "活动管理",
-      href: "/business/campaigns",
+      icon: "coupons" as const,
+      label: lang === "en" ? "Voucher products" : "券产品",
+      href: "/business/vouchers",
       section: moreOp,
     },
     {
@@ -132,7 +137,7 @@ export default async function BusinessLayout({
     },
     {
       icon: "gift" as const,
-      label: lang === "en" ? "Offers" : "活动券",
+      label: lang === "en" ? "Issue" : "发券",
       href: "/business/offers",
     },
     {

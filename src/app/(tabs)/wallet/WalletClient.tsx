@@ -172,7 +172,7 @@ export function WalletClient({
               mode="customer"
               defaultOpen={
                 tab === "available" &&
-                (b.tone === "ndp" ||
+                (b.tone === "spend_get" ||
                   b.tone === "draw" ||
                   b.entitlements.length <= 3)
               }

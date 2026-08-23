@@ -9,10 +9,15 @@ import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
   const { t } = useLang();
+  /**
+   * 券包与余额过去是两个 tab，那是按**存储形式**分的（CustomerCoupon vs Voucher），
+   * 是数据库的分法不是顾客的分法。顾客要回答的是「我在这家店有什么」，
+   * 跑两个 tab 才能拼出答案。合并为按品牌聚合的「我的卡」。
+   * /wallet 与 /balance 路由保留，供深链与品牌卡内的下钻。
+   */
   const tabs = [
     { icon: "home" as const, label: t("tabs.home"), href: "/home" },
-    { icon: "wallet" as const, label: t("tabs.wallet"), href: "/wallet" },
-    { icon: "balance" as const, label: t("tabs.balance"), href: "/balance" },
+    { icon: "wallet" as const, label: t("tabs.cards"), href: "/card" },
     { icon: "profile" as const, label: t("tabs.profile"), href: "/profile" },
   ];
 
