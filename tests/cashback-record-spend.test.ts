@@ -20,6 +20,7 @@ import {
   OWED_DEGRADE_CENTS,
   OWED_POINTS_ONLY_CENTS,
   DEGRADED_CASHBACK_PERCENT,
+  DEGRADED_TOTAL_PERCENT,
   DEFAULT_CASHBACK_RULES,
 } from "@/lib/cashback";
 
@@ -35,10 +36,10 @@ describe("费率校验", () => {
 });
 
 describe("parseCashbackRules", () => {
-  test("缺失走默认 3+2 / 35:65", () => {
+  test("缺失走默认（一条线：0 返 + 10 抽，奖池 35:65）", () => {
     const r = parseCashbackRules(null);
-    expect(r.cashbackPercent).toBe(3);
-    expect(r.drawPercent).toBe(2);
+    expect(r.cashbackPercent).toBe(0);
+    expect(r.drawPercent).toBe(10);
     expect(r.instantPoolRatio).toBe(35);
     expect(r.grandPoolRatio).toBe(65);
   });
@@ -46,28 +47,49 @@ describe("parseCashbackRules", () => {
     const r = parseCashbackRules(JSON.stringify({ instantPoolRatio: 40 }));
     expect(r.grandPoolRatio).toBe(60);
   });
-  test("坏 JSON 不崩", () => {
-    expect(parseCashbackRules("{oops").cashbackPercent).toBe(3);
+  test("坏 JSON 不崩，退回默认", () => {
+    expect(parseCashbackRules("{oops")).toEqual(DEFAULT_CASHBACK_RULES);
   });
 });
 
 describe("computeAccrual · 降级档", () => {
   const quote = { grossCents: 100, waivedCents: 0, netCents: 100 };
+  // 旧的两条线配置（3 返 + 2 抽）。显式写死，不跟着产品默认走。
+  const legacy = { ...DEFAULT_CASHBACK_RULES, cashbackPercent: 3, drawPercent: 2 };
+  // 现在的默认：一条线，10 个点全进抽奖
   const rules = DEFAULT_CASHBACK_RULES;
 
-  test("full：3% + 2%，奖池 35/65 切分", () => {
-    const a = computeAccrual({ amountCents: 10_000, rules, tier: "full", platformQuote: quote });
+  test("full（两条线）：3% + 2%，奖池 35/65 切分", () => {
+    const a = computeAccrual({ amountCents: 10_000, rules: legacy, tier: "full", platformQuote: quote });
     expect(a.cashbackCents).toBe(300);
     expect(a.drawCents).toBe(200);
     expect(a.instantPoolCents).toBe(70);
     expect(a.grandPoolCents).toBe(130);
   });
 
-  test("degraded：cashback 降到 1%，抽奖不变", () => {
-    const a = computeAccrual({ amountCents: 10_000, rules, tier: "degraded", platformQuote: quote });
+  test("full（一条线，默认）：10% 全进抽奖，奖池 35/65 切分", () => {
+    const a = computeAccrual({ amountCents: 10_000, rules, tier: "full", platformQuote: quote });
+    expect(a.cashbackCents).toBe(0);
+    expect(a.drawCents).toBe(1_000);
+    expect(a.instantPoolCents).toBe(350);
+    expect(a.grandPoolCents).toBe(650);
+  });
+
+  test("degraded（两条线）：cashback 降到 1%，抽奖不变", () => {
+    const a = computeAccrual({ amountCents: 10_000, rules: legacy, tier: "degraded", platformQuote: quote });
     expect(a.cashbackPercent).toBe(DEGRADED_CASHBACK_PERCENT);
     expect(a.cashbackCents).toBe(100);
     expect(a.drawCents).toBe(200);
+  });
+
+  // 风控红线：cashbackPercent = 0 时降级也必须真的降下来。
+  // 只压 cashback 那条腿的话，欠费商家会继续按 10% 发额度。
+  test("degraded（一条线）：总发放被压到 DEGRADED_TOTAL_PERCENT", () => {
+    const a = computeAccrual({ amountCents: 10_000, rules, tier: "degraded", platformQuote: quote });
+    expect(a.cashbackCents).toBe(0);
+    expect(a.drawPercent).toBe(DEGRADED_TOTAL_PERCENT);
+    expect(a.drawCents).toBe(300);
+    expect(a.cashbackPercent + a.drawPercent).toBeLessThanOrEqual(DEGRADED_TOTAL_PERCENT);
   });
 
   test("points_only：两者都为 0", () => {

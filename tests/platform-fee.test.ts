@@ -56,16 +56,20 @@ describe("marginalPlatformFee · 阶梯边际计费", () => {
 });
 
 describe("月保底", () => {
-  test("未达 S$88 时补齐", () => {
-    expect(monthlyMinimumTopUp(0)).toBe(PLATFORM_MIN_MONTHLY_CENTS);
-    expect(monthlyMinimumTopUp(3_000)).toBe(5_800);
+  // 拓客期保底已关（PLATFORM_MIN_MONTHLY_CENTS = 0）。
+  // 这里断言的是**机制**，不是当前那个数——恢复保底时只改常量，测试不用改。
+  test("保底为 0 时永不补收", () => {
+    expect(PLATFORM_MIN_MONTHLY_CENTS).toBe(0);
+    expect(monthlyMinimumTopUp(0)).toBe(0);
+    expect(monthlyMinimumTopUp(3_000)).toBe(0);
   });
-  test("已超 S$88 不补", () => {
-    expect(monthlyMinimumTopUp(8_800)).toBe(0);
+  test("补收 = 保底 − 已收，且不为负", () => {
+    expect(monthlyMinimumTopUp(0)).toBe(PLATFORM_MIN_MONTHLY_CENTS);
+    expect(monthlyMinimumTopUp(PLATFORM_MIN_MONTHLY_CENTS)).toBe(0);
     expect(monthlyMinimumTopUp(50_000)).toBe(0);
   });
-  test("达到保底所需流水（首档 1%）", () => {
-    expect(gmvToReachMinimum()).toBe(880_000); // S$8,800
+  test("保底为 0 时不提示补差额流水", () => {
+    expect(gmvToReachMinimum()).toBe(0);
   });
 });
 

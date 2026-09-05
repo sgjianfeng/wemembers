@@ -232,7 +232,9 @@ export function CashbackSetupClient() {
             />
           </div>
           <div className="space-y-1.5 text-sm">
-            <Row label={`消费返利 ${cashback}%`} value={cashbackCost} muted="记账负债，不预扣现金" />
+            {cashback > 0 && (
+              <Row label={`消费返利 ${cashback}%`} value={cashbackCost} muted="记账负债，不预扣现金" />
+            )}
             <Row label={`抽奖充值 ${draw}%`} value={drawCost} muted="额度形式发放" />
             <Row
               label="平台费"
@@ -247,6 +249,14 @@ export function CashbackSetupClient() {
             <div className="border-t pt-2 flex justify-between font-bold">
               <span>合计</span>
               <span>{formatSgd(cashbackCost + drawCost + platformCost)}</span>
+            </div>
+            {/* 名义额度 ≠ 现金支出：额度以商品兑现，按食材成本三成折算才是真实成本。
+                不写这一行，老板看到"送 10%"就走了——他的净利率也就 10% 出头。 */}
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>其中真实成本（额度按食材成本约 30% 折算）</span>
+              <span>
+                约 {formatSgd(Math.round((cashbackCost + drawCost) * 0.3) + platformCost)}
+              </span>
             </div>
           </div>
           {policy?.endsAt && (

@@ -38,6 +38,16 @@ export const OWED_POINTS_ONLY_CENTS = 50_000; // S$500
 
 /** 降级档的 cashback 费率 % */
 export const DEGRADED_CASHBACK_PERCENT = 1;
+/**
+ * 降级档的**总发放**上限（返利 + 抽奖，百分点）。
+ *
+ * 只压 cashback 那条腿是不够的：单一 drawPercent 模型下 cashbackPercent 可能是 0，
+ * 压它等于没压——欠了 S$200 的商家照样按 10% 发额度，风控形同虚设。
+ *
+ * 取 3 是为了对齐旧行为：旧默认 3% 返 + 2% 抽，降级后是 1 + 2 = 3 点。
+ * 也正好等于 TOTAL_PERCENT_MIN——降级是掉到"最低可用档"，不是掉到零。
+ */
+export const DEGRADED_TOTAL_PERCENT = 3;
 /** 降级档的抽奖权重系数（与独享 gift 路径一致） */
 export const DEGRADED_WEIGHT_FACTOR = 0.2;
 
@@ -63,9 +73,22 @@ export type CashbackRules = {
   avgTicketCents: number;
 };
 
+/**
+ * 默认规则 —— **一条线：消费的 10% 全部进抽奖，不再单列固定返利。**
+ *
+ * 旧默认是 3% 返利 + 2% 抽奖两条线。同样的钱，"返你 S$5"是记账，"抽到 S$8.20"才是活动，
+ * 顾客记得住后者。所以把 cashbackPercent 归零，10 个点整个交给抽奖，
+ * 由 instantPoolRatio / grandPoolRatio 去分即时小奖与大奖。
+ *
+ * 两个滑杆都保留：想回到"固定返利 + 小抽奖"的商家自己调回去就是。
+ *
+ * 10% 是**名义**成本，不是现金成本：额度以商品兑现，餐饮食材成本约 3 成，
+ * 再打上核销率，真实成本落在 2–3%。商家后台必须按真实成本展示，
+ * 否则老板看到"送 10%"就走了——他的净利率也就 10% 出头。
+ */
 export const DEFAULT_CASHBACK_RULES: CashbackRules = {
-  cashbackPercent: 3,
-  drawPercent: 2,
+  cashbackPercent: 0,
+  drawPercent: 10,
   instantPoolRatio: 35,
   grandPoolRatio: 65,
   minSpendCents: 0,
@@ -201,6 +224,9 @@ export function computeAccrual(input: {
   if (input.tier === "degraded") {
     // 降级档是硬上限：等级加成不能绕过它
     cashbackPct = Math.min(cashbackPct, DEGRADED_CASHBACK_PERCENT);
+    // 再压抽奖那条腿，把**总发放**收进 DEGRADED_TOTAL_PERCENT。
+    // 少了这一步，cashbackPercent = 0 的活动（单一 drawPercent 模型）根本降不下来。
+    drawPct = Math.min(drawPct, Math.max(0, DEGRADED_TOTAL_PERCENT - cashbackPct));
   } else if (input.tier === "points_only") {
     cashbackPct = 0;
     drawPct = 0;

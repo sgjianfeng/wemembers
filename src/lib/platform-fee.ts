@@ -8,7 +8,8 @@
  * 阶梯按**当月累计流水**分段计算边际费率，不能用整月单一费率——
  * 否则商家月末冲量跳档会产生账单争议（同一笔消费在月初月末算出不同费用）。
  *
- * 保底在月末结算任务补收，交易时不收。
+ * 月保底当前为 0（拓客期关闭，见下）。保底机制本身保留：
+ * 恢复只需把常量改回 8_800，月末结算任务和后台提示会自动跟着回来。
  */
 
 export type PlatformFeeTier = {
@@ -24,8 +25,19 @@ export const PLATFORM_FEE_TIERS: PlatformFeeTier[] = [
   { upToCents: Number.POSITIVE_INFINITY, percent: 0.5 },
 ];
 
-/** 月最低平台费 S$88 */
-export const PLATFORM_MIN_MONTHLY_CENTS = 8_800;
+/**
+ * 月最低平台费。**拓客期为 0 —— 只按流水抽成，不收保底。**
+ *
+ * 原值 S$88 会打到最该拉进来的那批店：月流水 S$3,000 的小店按首档 1% 只该交 S$30，
+ * 保底一上来就是 S$88，交的比抽成还多三倍——开口就把小店劝退了。
+ *
+ * 平台费的天花板是 2%（活动 3 的 FEE_PLATFORM_PERCENT），阶梯档 1%/0.7%/0.5% 全在其下，
+ * 所以关掉保底之后，商家侧的成本一定 ≤ 2%，不存在"哪笔算多了"的争议。
+ *
+ * 成熟期要重开：改回 8_800 即可，下面的 monthlyMinimumTopUp / gmvToReachMinimum
+ * 与月末结算任务不用动。
+ */
+export const PLATFORM_MIN_MONTHLY_CENTS = 0;
 
 export type MarginalFeeBreakdown = {
   feeCents: number;
@@ -90,8 +102,12 @@ export function monthlyMinimumTopUp(chargedThisMonthCents: number): number {
   return Math.max(0, PLATFORM_MIN_MONTHLY_CENTS - charged);
 }
 
-/** 达到保底所需的月流水（按首档费率）——商家后台"再做多少就不用补保底"提示用 */
+/**
+ * 达到保底所需的月流水（按首档费率）——商家后台"再做多少就不用补保底"提示用。
+ * 保底为 0 时返回 0，调用方据此隐藏该提示。
+ */
 export function gmvToReachMinimum(): number {
+  if (PLATFORM_MIN_MONTHLY_CENTS <= 0) return 0;
   const firstTier = PLATFORM_FEE_TIERS[0];
   return Math.ceil((PLATFORM_MIN_MONTHLY_CENTS * 100) / firstTier.percent);
 }

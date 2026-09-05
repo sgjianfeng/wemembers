@@ -14,8 +14,15 @@ import {
 } from "@/lib/cashback";
 
 const QUOTE = { grossCents: 0, waivedCents: 0, netCents: 0 };
+
+/**
+ * 这一组测的是**等级加成叠在 cashback 上**的行为，所以基线必须自带 cashback。
+ * 不能跟着 DEFAULT_CASHBACK_RULES 走——产品默认已经改成"一条线"（cashback 0 / draw 10），
+ * 跟着走的话这些断言会因为一个业务参数变动而集体失效，而它们要守的东西根本没变。
+ */
+const BASE = { ...DEFAULT_CASHBACK_RULES, cashbackPercent: 3, drawPercent: 2 };
 const rules = (over: Partial<typeof DEFAULT_CASHBACK_RULES> = {}) => ({
-  ...DEFAULT_CASHBACK_RULES,
+  ...BASE,
   ...over,
 });
 
@@ -129,7 +136,7 @@ describe("computeAccrual 带等级加成", () => {
       tier: "full",
       platformQuote: QUOTE,
     });
-    expect(a.cashbackPercent).toBe(DEFAULT_CASHBACK_RULES.cashbackPercent);
+    expect(a.cashbackPercent).toBe(BASE.cashbackPercent);
     expect(a.cashbackCents).toBe(Math.floor((7_777 * 3) / 100));
   });
 });
