@@ -34,6 +34,7 @@
     "db:reset-meowbbq": "npx tsx scripts/seed-meowbbq.ts --reset",
     "db:show-meowbbq": "npx tsx scripts/seed-meowbbq.ts --show",
     "db:full-reset-meowbbq": "npx tsx scripts/seed-meowbbq.ts --full",
+    "sync:nexuswork-ledger": "npx tsx scripts/push-to-nexuswork.ts",
     "shots:meowbbq": "npx playwright test --config playwright.meowbbq.config.ts && npx tsx tests/screenshots/meowbbq/report.ts"
   },
   "dependencies": {
