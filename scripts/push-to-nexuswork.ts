@@ -21,8 +21,14 @@ function arg(name: string): string | undefined {
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
+/**
+ * 不带 --date 时聚合的是**新加坡时间的昨天**，不是今天。
+ * cron 在 00:10 触发，此刻「今天」只过了十分钟，聚合出来必然是零；
+ * 而 externalKey 按天固定、写入又是幂等跳过，那行零会永久钉死在台账里。
+ */
 function singaporeDay(value?: string) {
-  const day = value ?? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Singapore" }).format(new Date());
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const day = value ?? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Singapore" }).format(yesterday);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || Number.isNaN(new Date(`${day}T00:00:00+08:00`).getTime())) {
     throw new Error("--date 必须是 YYYY-MM-DD");
   }
