@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { pushJoinRequestToNexuswork } from "@/lib/nexuswork-join-request";
 
 // GET /api/business/campaigns/[id]/requests
 export async function GET(
@@ -62,7 +63,10 @@ export async function POST(
     const existing = await prisma.campaignJoinRequest.findUnique({
       where: { campaignId_storeId: { campaignId: id, storeId } },
     });
-    if (existing) continue;
+    if (existing) {
+      if (existing.status === "pending" && !existing.nwTaskCardId) await pushJoinRequestToNexuswork(existing.id);
+      continue;
+    }
 
     const req = await prisma.campaignJoinRequest.create({
       data: {
@@ -74,6 +78,7 @@ export async function POST(
       include: { store: { select: { name: true } } },
     });
     created.push(req);
+    await pushJoinRequestToNexuswork(req.id);
   }
 
   return NextResponse.json({ data: created });

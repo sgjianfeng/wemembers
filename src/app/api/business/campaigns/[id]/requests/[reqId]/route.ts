@@ -27,12 +27,20 @@ export async function PUT(
   if (joinReq.status !== "pending") {
     return NextResponse.json({ error: "该申请已处理" }, { status: 400 });
   }
+  let managedInNexuswork = false;
+  try {
+    const targets = JSON.parse(process.env.NEXUSWORK_JOIN_TARGETS || "{}") as Record<string, unknown>;
+    managedInNexuswork = !!targets[campaign.businessId];
+  } catch {}
+  if (joinReq.nwTaskCardId || managedInNexuswork) {
+    return NextResponse.json({ error: "该申请已进入 nexuswork 两步审批，请在任务卡中处理" }, { status: 409 });
+  }
 
   const status = action === "approve" ? "approved" : "rejected";
 
   await prisma.campaignJoinRequest.update({
     where: { id: reqId },
-    data: { status, reviewedAt: new Date() },
+    data: { status, reviewedAt: new Date(), reviewedBy: session.userId },
   });
 
   if (action === "approve") {
