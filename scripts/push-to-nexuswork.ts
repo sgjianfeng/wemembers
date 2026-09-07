@@ -5,14 +5,15 @@
  *   NEXUSWORK_LEDGER_TOKEN=创建后只显示一次的集成 token
  *   NEXUSWORK_LEDGER_TARGETS='{"<wm store id>":{"conversationCode":"S-MEOWBBQ-CT"}}'
  * 可选：NEXUSWORK_URL=https://work.wemembers.store
- * 用法：npx tsx scripts/push-to-nexuswork.ts [--date 2026-09-05] [--dry-run]
+ * 用法：npx tsx scripts/push-to-nexuswork.ts [--date 2026-09-05] [--customers] [--dry-run]
  *
- * 仅推每日聚合，不带顾客、手机号或任何逐笔流水。externalKey 按门店/日期稳定生成，
- * 因此超时重试、cron 重跑和人工补数都不会重复写入。
+ * 每日推经营汇总；周一额外推顾客画像（或用 --customers 手工触发）。画像只有手机号
+ * 末四位及聚合值，不带姓名或逐笔流水。externalKey 稳定，重推由接收端跳过或冲正。
  */
 import { prisma } from "../src/lib/db";
+import { customerProfileRow, normalizeCustomerPhone } from "../src/lib/nexuswork-customer-profile";
 
-type Target = { conversationCode: string; spendLedgerCode?: string; redeemLedgerCode?: string };
+type Target = { conversationCode: string; spendLedgerCode?: string; redeemLedgerCode?: string; customerLedgerCode?: string };
 type Targets = Record<string, Target>;
 type Row = Record<string, string | number> & { externalKey: string };
 
@@ -96,7 +97,67 @@ async function main() {
       ledgerCode: target.redeemLedgerCode ?? "REDEEM",
       rows: [{ externalKey: `wm-redeem-${day}-${storeId}`, happen_at: day, orders: redeem._count._all, amount: (redeem._sum.amountCents ?? 0) / 100, income: (redeem._sum.storeIncome ?? 0) / 100 }],
     }, dryRun);
+
+    // 周一凌晨的日任务刚好汇总完周日；人工补数可显式带 --customers。
+    const pushCustomers = process.argv.includes("--customers") || start.getUTCDay() === 6;
+    if (pushCustomers) {
+      const profiles = await customerProfiles(storeId);
+      const rows = profiles.map((profile) => customerProfileRow(storeId, day, profile));
+      for (let offset = 0; offset < rows.length; offset += 500) {
+        await post(token ?? "", baseUrl, {
+          conversationCode: target.conversationCode,
+          ledgerCode: target.customerLedgerCode ?? "CUSTOMER",
+          rows: rows.slice(offset, offset + 500),
+        }, dryRun);
+      }
+    }
   }
+}
+
+async function customerProfiles(storeId: string) {
+  const spends = await prisma.spendRecord.groupBy({
+    by: ["phone"],
+    where: { storeId, status: "settled" },
+    _min: { createdAt: true },
+    _max: { createdAt: true },
+    _sum: { amountCents: true },
+  });
+  if (spends.length === 0) return [];
+
+  const phones = [...new Set(spends.map((row) => normalizeCustomerPhone(row.phone)).filter(Boolean))];
+  const candidates = [...new Set(phones.flatMap((phone) => [phone, `+65${phone}`]))];
+  const users = await prisma.user.findMany({ where: { phone: { in: candidates } }, select: { id: true, phone: true } });
+  const phoneByUser = new Map(users.map((user) => [user.id, normalizeCustomerPhone(user.phone ?? "")]));
+  const balances = users.length === 0 ? [] : await prisma.voucher.groupBy({
+    by: ["customerId"],
+    where: { storeId, status: "active", customerId: { in: users.map((user) => user.id) } },
+    _sum: { balanceCents: true },
+  });
+  const balanceByPhone = new Map<string, number>();
+  for (const row of balances) {
+    const phone = phoneByUser.get(row.customerId);
+    if (phone) balanceByPhone.set(phone, (balanceByPhone.get(phone) ?? 0) + (row._sum.balanceCents ?? 0));
+  }
+
+  const merged = new Map<string, { phone: string; firstVisit: Date; lastVisit: Date; totalSpentCents: number; balanceCents: number }>();
+  for (const row of spends) {
+    const phone = normalizeCustomerPhone(row.phone);
+    if (!phone || !row._min.createdAt || !row._max.createdAt) continue;
+    const current = merged.get(phone);
+    merged.set(phone, current ? {
+      ...current,
+      firstVisit: current.firstVisit < row._min.createdAt ? current.firstVisit : row._min.createdAt,
+      lastVisit: current.lastVisit > row._max.createdAt ? current.lastVisit : row._max.createdAt,
+      totalSpentCents: current.totalSpentCents + (row._sum.amountCents ?? 0),
+    } : {
+      phone,
+      firstVisit: row._min.createdAt,
+      lastVisit: row._max.createdAt,
+      totalSpentCents: row._sum.amountCents ?? 0,
+      balanceCents: balanceByPhone.get(phone) ?? 0,
+    });
+  }
+  return [...merged.values()];
 }
 
 main().catch((err) => { console.error(err instanceof Error ? err.message : err); process.exitCode = 1; }).finally(() => prisma.$disconnect());
